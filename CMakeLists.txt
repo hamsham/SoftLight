@@ -60,7 +60,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 		add_definitions(-msse3)
 		add_definitions(-mmmx)
 		add_definitions(-mfma)
-		add_definitions(-mfpmath=both)
+		add_definitions(-mfpmath=sse,387)
 	endif(ENABLE_X86_OPTIMIZATIONS)
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 	add_definitions(/Wall) # enable all warnings
