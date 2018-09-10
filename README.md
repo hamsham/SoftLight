@@ -18,6 +18,7 @@ SoftLight uses CPU-based SIMD acceleration (SSE3 on x86 and NEON/VFPv4 on ARM) t
 ## Getting Started
 To build the project, you'll need GCC, Clang, or Microsoft Visual Studio
 2017. The project has been tested on the following compilers:
+
 | GCC | Clang | MSVC | MinGW |
 | --- | ----- | ---- | ----- |
 | 4.8.2 | 3.5 | 2017 | 5.1.0 |
