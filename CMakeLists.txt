@@ -35,8 +35,6 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 	add_definitions(-ftree-vectorize)
 	add_definitions(-ffast-math)
 	add_definitions(-funsafe-math-optimizations)
-	add_definitions(-static-libstdc++)
-	add_definitions(-static-libgcc)
 
 	option(ENABLE_PROFILING "Enable profiling (recommended for release builds with debug information)." OFF)
 	if (ENABLE_PROFILING)
