@@ -18,7 +18,7 @@ function freeimage_configure()
     pushd @EXTERNAL_PROJECT_PREFIX@/src/FreeImage
 
     # Freeimage attempts to give root permissions to the installed files. No
-    sed -i -r 's/(^[[:space:]]+install)[[:space:]]+\-m[[:space:]]+.+root[[:space:]]+(\$.+)/\1 \2/g' Makefile.gnu
+    sed -i -E 's/(^[[:space:]]+install)[[:space:]]+\-m[[:space:]]+.+root[[:space:]]+(\$.+)/\1 \2/g' Makefile.gnu
 
     # Rename functions which conflict with GLibC
     set +e
@@ -40,27 +40,27 @@ function freeimage_configure_mingw()
     pushd @EXTERNAL_PROJECT_PREFIX@/src/FreeImage
 
     # Fix hard-coded build configurations
-    sed -i -r 's/CC = gcc/CC ?=/g' "./Makefile.mingw"
-    sed -i -r 's/LD = g\+\+/LD ?=/g' "./Makefile.mingw"
-    sed -i -r 's/RC = windres/RC ?=/g' "./Makefile.mingw"
-    sed -i -r 's/DLLTOOL = dlltool/DLLTOOL ?=/g' "./Makefile.mingw"
-    sed -i -r 's/LIBRARIES = -lws2_32/LIBRARIES ?=/g' "./Makefile.mingw"
-    sed -i -r 's/-shared//g' "./Makefile.mingw"
+    sed -i -E 's/CC = gcc/CC ?=/g' "./Makefile.mingw"
+    sed -i -E 's/LD = g\+\+/LD ?=/g' "./Makefile.mingw"
+    sed -i -E 's/RC = windres/RC ?=/g' "./Makefile.mingw"
+    sed -i -E 's/DLLTOOL = dlltool/DLLTOOL ?=/g' "./Makefile.mingw"
+    sed -i -E 's/LIBRARIES = -lws2_32/LIBRARIES ?=/g' "./Makefile.mingw"
+    sed -i -E 's/-shared//g' "./Makefile.mingw"
 
     # Rename functions which conflict with GLibC
-    sed -i -r 's/define snprintf _snprintf//g' "./Source/LibTIFF4/tif_config.h"
+    sed -i -E 's/define snprintf _snprintf//g' "./Source/LibTIFF4/tif_config.h"
 
     # Ensure OpenEXR's optimization code uses the correct int size to contain a pointer
-    sed -i -r 's/unsigned long( trailingBits = \(\()unsigned long/unsigned long long\1unsigned long long/g' "./Source/OpenEXR/IlmImf/ImfOptimizedPixelReading.h"
+    sed -i -E 's/unsigned long( trailingBits = \(\()unsigned long/unsigned long long\1unsigned long long/g' "./Source/OpenEXR/IlmImf/ImfOptimizedPixelReading.h"
 
     # Remove posix_memalign from OpenEXR
-    sed -i -r 's/posix_memalign.+/_aligned_malloc(size, alignment);/g' "./Source/OpenEXR/IlmImf/ImfSystemSpecific.h"
-    sed -i -r 's/([[:space:]]+)free\(ptr\);/\1_aligned_free(ptr);/g' "./Source/OpenEXR/IlmImf/ImfSystemSpecific.h"
+    sed -i -E 's/posix_memalign.+/_aligned_malloc(size, alignment);/g' "./Source/OpenEXR/IlmImf/ImfSystemSpecific.h"
+    sed -i -E 's/([[:space:]]+)free\(ptr\);/\1_aligned_free(ptr);/g' "./Source/OpenEXR/IlmImf/ImfSystemSpecific.h"
 
     # LibJXR defines conflicting pointer sizes and functions
-    sed -i -r 's/#define PLATFORM_ANSI//g' ".//Source/LibJXR/image/sys/strcodec.h"
-    sed -i -r 's/#include "ansi.h"//g' ".//Source/LibJXR/image/sys/strcodec.h"
-    sed -i -r 's/_byteswap_ulong/_byteswap_uint/g' ".//Source/LibJXR/image/sys/strcodec.c"
+    sed -i -E 's/#define PLATFORM_ANSI//g' ".//Source/LibJXR/image/sys/strcodec.h"
+    sed -i -E 's/#include "ansi.h"//g' ".//Source/LibJXR/image/sys/strcodec.h"
+    sed -i -E 's/_byteswap_ulong/_byteswap_uint/g' ".//Source/LibJXR/image/sys/strcodec.c"
 
     find Source/LibOpenJPEG -type f -exec sed -i 's/__stdcall//g' {} +
     find Source/LibJXR -type f -exec sed -i 's/__stdcall//g' {} +
@@ -75,9 +75,9 @@ function freeimage_make()
 {
     pushd @EXTERNAL_PROJECT_PREFIX@/src/FreeImage
 
-    local dllTool=`echo "@CMAKE_RC_COMPILER@" | sed -r 's/windres/dlltool/'`
-    local libs=`echo "@CMAKE_RC_COMPILER@" | sed -r 's/(.+)\/bin(.+)-windres/\1\2/'`
-    local linker=`echo "@CMAKE_RC_COMPILER@" | sed -r 's/windres/g++/'`
+    local dllTool=`echo "@CMAKE_RC_COMPILER@" | sed -E 's/windres/dlltool/'`
+    local libs=`echo "@CMAKE_RC_COMPILER@"    | sed -E 's/(.+)\/bin(.+)-windres/\1\2/'`
+    local linker=`echo "@CMAKE_RC_COMPILER@"  | sed -E 's/windres/g++/'`
 
     if [[ @CMAKE_SYSTEM_NAME@ = "Windows" ]]; then
         export CFLAGS="${CFLAGS}"\ -D\ WIN32\ -D\ CINTERFACE\ -DFREEIMAGE_LIB\ -DLIBRAW_NODLL\ -DOPJ_STATIC\ -DDISABLE_PERF_MEASUREMENT\ -DLIBRAW_LIBRARY_BUILD
