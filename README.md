@@ -37,6 +37,7 @@ To see how to build a sample application using either SoftLight or the LightSky 
 
 
 ## TODO
+- [ ] Implement blending functionality for transparency.
 - [ ] Doxygen-based documentation for the software rendering module.
 - [X] Doxygen-based documentation for the LightSky modules.
 - [X] Add Unit Tests.
