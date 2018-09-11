@@ -52,11 +52,11 @@ enum SR_ShaderLimits
 -----------------------------------------------------------------------------*/
 struct alignas(sizeof(ls::math::vec4)) SR_FragmentBin
 {
-    // 4-byte floats * 4-element vector = 16 bytes
-    ls::math::vec4 mPerspDivide;
-
     // 4-byte floats * 4-element vector * 3 vectors-per-tri = 48 bytes
     ls::math::vec4 mScreenCoords[SR_SHADER_MAX_SCREEN_COORDS];
+
+    // 4-byte floats * 4-element vector = 16 bytes
+    ls::math::vec4 mPerspDivide;
 
     // 4-byte floats * 4-element vector * 3-vectors-per-tri * 4 varyings-per-vertex = 192 bytes
     ls::math::vec4 mVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS];

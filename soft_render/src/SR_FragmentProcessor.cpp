@@ -588,18 +588,18 @@ void SR_FragmentProcessor::render_triangle(
     SR_ColorRGBAf*    pOutputs,
     ls::math::vec4*   outVaryings) noexcept
 {
-    const math::vec4  persp        = mBins[mBinId].mPerspDivide;
     const math::vec4* screenCoords = mBins[mBinId].mScreenCoords;
-    math::vec2        p0           = *reinterpret_cast<const math::vec2*>(screenCoords[0].v);
-    math::vec2        p1           = *reinterpret_cast<const math::vec2*>(screenCoords[1].v);
-    math::vec2        p2           = *reinterpret_cast<const math::vec2*>(screenCoords[2].v);
+    const math::vec4  depth        {screenCoords[0][2], screenCoords[1][2], screenCoords[2][2], 0.f};
+    math::vec2        p0           {screenCoords[0][0], screenCoords[0][1]};
+    math::vec2        p1           {screenCoords[1][0], screenCoords[1][1]};
+    math::vec2        p2           {screenCoords[2][0], screenCoords[2][1]};
+    const math::vec4  persp        = mBins[mBinId].mPerspDivide;
     const int32_t     bboxMinX     = math::min(mFboX1, math::max(mFboX0, math::min(p0[0], p1[0], p2[0])));
     const int32_t     bboxMinY     = math::min(mFboY1, math::max(mFboY0, math::min(p0[1], p1[1], p2[1])));
     const int32_t     bboxMaxX     = math::max(mFboX0, math::min(mFboX1, math::max(p0[0], p1[0], p2[0])));
     const int32_t     bboxMaxY     = math::max(mFboY0, math::min(mFboY1, math::max(p0[1], p1[1], p2[1])));
-    const math::vec4  depth        {screenCoords[0][2], screenCoords[1][2], screenCoords[2][2], 0.f};
-    const float       t0[3]        {p2[0]-p0[0], p1[0]-p0[0], p0[0]};
-    const float       t1[3]        {p2[1]-p0[1], p1[1]-p0[1], p0[1]};
+    const float       t0[3]        = {p2[0]-p0[0], p1[0]-p0[0], p0[0]};
+    const float       t1[3]        = {p2[1]-p0[1], p1[1]-p0[1], p0[1]};
     const float       scaleInv     = (t0[0] * t1[1]) - (t0[1] * t1[0]);
     const float       scale        = math::rcp(scaleInv);
 

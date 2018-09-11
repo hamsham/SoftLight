@@ -39,7 +39,7 @@ inline math::vec4 world_to_screen_3(const math::vec4& v, const float widthScale,
     temp[0] = widthScale  + temp[0] * widthScale;
     temp[1] = heightScale + temp[1] * heightScale;
 
-    return math::vec4{temp[0], temp[1], temp[2], -1.f};
+    return math::vec4{temp[0], temp[1], temp[2], 0.f};
 }
 
 
