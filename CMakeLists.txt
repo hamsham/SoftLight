@@ -36,7 +36,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 	add_definitions(-ffast-math)
 	add_definitions(-funsafe-math-optimizations)
     add_definitions(-fomit-frame-pointer)
-    add_definitions(-fno-stack-protector)
+	add_definitions(-fno-stack-protector)
 
 	option(ENABLE_PROFILING "Enable profiling (recommended for release builds with debug information)." OFF)
 	if (ENABLE_PROFILING)

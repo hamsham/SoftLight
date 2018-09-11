@@ -264,6 +264,7 @@ void SR_VertexProcessor::push_fragments(
                     pLocks[lockedBinId].lock();
                     pFragBins[lockedBinId].push_back(lockedBin);
                     pLocks[lockedBinId].unlock();
+                    lockedBinId = UINT32_MAX;
                 }
 
                 // make one last attempt to push a fragment
@@ -271,7 +272,6 @@ void SR_VertexProcessor::push_fragments(
                 {
                     pFragBins[tileId].push_back(bin);
                     pLocks[tileId].unlock();
-                    lockedBinId = UINT32_MAX;
                 }
                 else
                 {
