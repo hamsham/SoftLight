@@ -815,7 +815,12 @@ bool SR_RenderWindowXlib::peek_event(SR_WindowEvent* const pEvent) noexcept
 
         case KeyPress:
             pKey = &mLastEvent->xkey;
-            XkbLookupKeySym(mDisplay, pKey->keycode, pKey->state, &keyMods, &keySym);
+
+            // Additional key processing is only performed in text-mode
+            if (mKeysRepeat)
+            {
+                XkbLookupKeySym(mDisplay, pKey->keycode, pKey->state, &keyMods, &keySym);
+            }
 
             pEvent->type = WIN_EVENT_KEY_DOWN;
             pEvent->pNativeWindow = pKey->window;
@@ -828,7 +833,12 @@ bool SR_RenderWindowXlib::peek_event(SR_WindowEvent* const pEvent) noexcept
 
         case KeyRelease:
             pKey = &mLastEvent->xkey;
-            XkbLookupKeySym(mDisplay, pKey->keycode, pKey->state, &keyMods, &keySym);
+            
+            // Additional key processing is only performed in text-mode
+            if (mKeysRepeat)
+            {
+                XkbLookupKeySym(mDisplay, pKey->keycode, pKey->state, &keyMods, &keySym);
+            }
 
             pEvent->type = WIN_EVENT_KEY_UP;
             pEvent->pNativeWindow = pKey->window;
