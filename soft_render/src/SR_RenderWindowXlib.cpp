@@ -817,11 +817,7 @@ bool SR_RenderWindowXlib::peek_event(SR_WindowEvent* const pEvent) noexcept
             pKey = &mLastEvent->xkey;
 
             // Additional key processing is only performed in text-mode
-            if (mKeysRepeat)
-            {
-                XkbLookupKeySym(mDisplay, pKey->keycode, pKey->state, &keyMods, &keySym);
-            }
-
+            XkbLookupKeySym(mDisplay, pKey->keycode, pKey->state, &keyMods, &keySym);
             pEvent->type = WIN_EVENT_KEY_DOWN;
             pEvent->pNativeWindow = pKey->window;
             pEvent->keyboard.keysym = (SR_KeySymbol)keySym;
@@ -835,11 +831,7 @@ bool SR_RenderWindowXlib::peek_event(SR_WindowEvent* const pEvent) noexcept
             pKey = &mLastEvent->xkey;
             
             // Additional key processing is only performed in text-mode
-            if (mKeysRepeat)
-            {
-                XkbLookupKeySym(mDisplay, pKey->keycode, pKey->state, &keyMods, &keySym);
-            }
-
+            XkbLookupKeySym(mDisplay, pKey->keycode, pKey->state, &keyMods, &keySym);
             pEvent->type = WIN_EVENT_KEY_UP;
             pEvent->pNativeWindow = pKey->window;
             pEvent->keyboard.keysym = (SR_KeySymbol)keySym;
