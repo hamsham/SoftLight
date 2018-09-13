@@ -717,17 +717,34 @@ bool SR_RenderWindowWin32::peek_event(SR_WindowEvent* const pEvent) noexcept
         pEvent->window.height = (uint16_t)(clientRect.bottom - clientRect.top);
         break;
 
-    case WM_KEYDOWN:
-        // As per the windows documentation, bit #30 determines if the key had
-        // previously been depressed.
-        if (!mKeysRepeat && (mLastMsg.lParam & (1<<30)) != 0)
+    case WM_CHAR:
+        // mKeysRepeat is basically turning this function into text mode
+        if (mKeysRepeat)
         {
+            pEvent->type = SR_WinEventType::WIN_EVENT_UNKNOWN;
             return false;
         }
 
         pEvent->type = WIN_EVENT_KEY_DOWN;
         pEvent->keyboard.keysym = (SR_KeySymbol)mLastMsg.wParam;
-        pEvent->keyboard.key = *key_to_string((SR_KeySymbol)mLastMsg.wParam);
+        pEvent->keyboard.key = mLastMsg.wParam & 0xFF;
+        pEvent->keyboard.capsLock = (uint8_t)((GetKeyState(VK_CAPITAL) & 0x0001) != 0);
+        pEvent->keyboard.numLock = (uint8_t)((GetKeyState(VK_NUMLOCK) & 0x0001) != 0);
+        pEvent->keyboard.scrollLock = (uint8_t)((GetKeyState(VK_SCROLL) & 0x0001) != 0);
+        break;
+
+    case WM_KEYDOWN:
+        // As per the windows documentation, bit #30 determines if the key had
+        // previously been depressed.
+        if (!mKeysRepeat || (mLastMsg.lParam & (1<<30)) != 0)
+        {
+            pEvent->type = SR_WinEventType::WIN_EVENT_UNKNOWN;
+            return false;
+        }
+
+        pEvent->type = WIN_EVENT_KEY_DOWN;
+        pEvent->keyboard.keysym = (SR_KeySymbol)mLastMsg.wParam;
+        pEvent->keyboard.key = 0; // do no additional processing in non-text mode.
         pEvent->keyboard.capsLock = (uint8_t)((GetKeyState(VK_CAPITAL) & 0x0001) != 0);
         pEvent->keyboard.numLock = (uint8_t)((GetKeyState(VK_NUMLOCK) & 0x0001) != 0);
         pEvent->keyboard.scrollLock = (uint8_t)((GetKeyState(VK_SCROLL) & 0x0001) != 0);
@@ -736,7 +753,7 @@ bool SR_RenderWindowWin32::peek_event(SR_WindowEvent* const pEvent) noexcept
     case WM_KEYUP:
         pEvent->type = WIN_EVENT_KEY_UP;
         pEvent->keyboard.keysym = (SR_KeySymbol)mLastMsg.wParam;
-        pEvent->keyboard.key = *key_to_string((SR_KeySymbol)mLastMsg.wParam);
+        pEvent->keyboard.key = 0; // do no additional processing in non-text mode.
         pEvent->keyboard.capsLock = (uint8_t)((GetKeyState(VK_CAPITAL) & 0x0001) != 0);
         pEvent->keyboard.numLock = (uint8_t)((GetKeyState(VK_NUMLOCK) & 0x0001) != 0);
         pEvent->keyboard.scrollLock = (uint8_t)((GetKeyState(VK_SCROLL) & 0x0001) != 0);

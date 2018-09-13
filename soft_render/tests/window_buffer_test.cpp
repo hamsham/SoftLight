@@ -172,7 +172,7 @@ int main()
         return -2;
     }
 
-    pWindow->set_keys_repeat(true);
+    pWindow->set_keys_repeat(false); // text mode
 
     while (!shouldQuit)
     {
@@ -239,7 +239,7 @@ int main()
 
                     case SR_KeySymbol::KEY_SYM_F1:
                         pWindow->set_mouse_capture(!pWindow->is_mouse_captured());
-                        pWindow->set_keys_repeat(!pWindow->keys_repeat());
+                        pWindow->set_keys_repeat(!pWindow->keys_repeat()); // no text mode
                         std::cout << "Mouse Capture: " << pWindow->is_mouse_captured() << std::endl;
                         break;
 

@@ -820,7 +820,7 @@ bool SR_RenderWindowXlib::peek_event(SR_WindowEvent* const pEvent) noexcept
             pEvent->type = WIN_EVENT_KEY_DOWN;
             pEvent->pNativeWindow = pKey->window;
             pEvent->keyboard.keysym = (SR_KeySymbol)keySym;
-            pEvent->keyboard.key = (uint8_t)pKey->keycode;
+            pEvent->keyboard.key = mKeysRepeat ? 0 : (uint8_t)pKey->keycode; // only get key names in text mode
             pEvent->keyboard.capsLock = (uint8_t)((pKey->state & LockMask) > 0);
             pEvent->keyboard.numLock = (uint8_t)((pKey->state & Mod2Mask) > 0);
             pEvent->keyboard.scrollLock = (uint8_t)((pKey->state & Mod3Mask) > 0);
@@ -833,7 +833,7 @@ bool SR_RenderWindowXlib::peek_event(SR_WindowEvent* const pEvent) noexcept
             pEvent->type = WIN_EVENT_KEY_UP;
             pEvent->pNativeWindow = pKey->window;
             pEvent->keyboard.keysym = (SR_KeySymbol)keySym;
-            pEvent->keyboard.key = (uint8_t)pKey->keycode;
+            pEvent->keyboard.key = mKeysRepeat ? 0 : (uint8_t)pKey->keycode; // only get key names in text mode
             pEvent->keyboard.capsLock = (uint8_t)((pKey->state & LockMask) > 0);
             pEvent->keyboard.numLock = (uint8_t)((pKey->state & Mod2Mask) > 0);
             pEvent->keyboard.scrollLock = (uint8_t)((pKey->state & Mod3Mask) > 0);
