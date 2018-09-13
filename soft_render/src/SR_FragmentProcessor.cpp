@@ -661,14 +661,15 @@ void SR_FragmentProcessor::render_triangle(
             );
 
             // depth texture lookup will always be slow
-            const math::vec4 z              = depth * bcF;
-            const math::vec4 depthBufTexels = depthBuffer->raw_texel4<float>(x, y);
-            const int        depthTest      = math::sign_bits(z - depthBufTexels);
-            const int        signBits       = depthTest
-                                              | ((math::sign_bits(bcF[0]) != 0) << 0x00)
-                                              | ((math::sign_bits(bcF[1]) != 0) << 0x01)
-                                              | ((math::sign_bits(bcF[2]) != 0) << 0x02)
-                                              | ((math::sign_bits(bcF[3]) != 0) << 0x03);
+            const math::vec4&& z = depth * bcF;
+            const math::vec4&& depthBufTexels = depthBuffer->raw_texel4<float>(x, y);
+
+            const int depthTest = math::sign_bits(z - depthBufTexels);
+            const int signBits  = depthTest
+                | ((math::sign_bits(bcF[0]) != 0) << 0x00)
+                | ((math::sign_bits(bcF[1]) != 0) << 0x01)
+                | ((math::sign_bits(bcF[2]) != 0) << 0x02)
+                | ((math::sign_bits(bcF[3]) != 0) << 0x03);
 
             for (int32_t i = 0; i < 4; ++i)
             {
@@ -686,12 +687,7 @@ void SR_FragmentProcessor::render_triangle(
                 const float bW = math::rcp(math::sum(bc4));
                 bc4 *= bW;
 
-                outCoords[numQueuedFrags] = SR_FragCoord{
-                    bc4,
-                    (uint16_t)(x+i),
-                    (uint16_t)y2,
-                    zf
-                };
+                outCoords[numQueuedFrags] = SR_FragCoord{bc4, (uint16_t)(x+i), (uint16_t)y2, zf};
                 ++numQueuedFrags;
 
                 if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
@@ -765,7 +761,7 @@ void SR_FragmentProcessor::render_triangle(
         const float   d0         = yf - p0[1]; // scan-line start/end calculation
         const float   d1         = yf - p1[1];
         const float   alpha      = d0 * p20y;
-        const int     secondHalf = d1 < 0.f;
+        const int     secondHalf = math::sign_bit(d1);
         int32_t       xMin       = (int32_t)(p0[0] + (p20x * alpha));
         int32_t       xMax       = (int32_t)(secondHalf ? (p1[0] + p21xy * d1) : (p0[0] + p10xy * d0));
 
@@ -788,23 +784,11 @@ void SR_FragmentProcessor::render_triangle(
             // Only render pixels within the triangle edges.
             // Ensure the current point is in a triangle by checking the sign
             // bits of all 3 barycentric coordinates.
-            union
-            {
-                const float* f;
-                const int32_t* i;
-            } bcFtoI{bc.v};
-
-            //if (bc.v[0] < 0.f || bc.v[1] < 0.f || bc.v[2] < 0.f)
-            if ((bcFtoI.i[0] | bcFtoI.i[1] | bcFtoI.i[2]) & 0x80000000)
-            {
-                continue;
-            }
-
             const float z = math::dot(depth, bc);
             const float oldDepth = depthBuffer->raw_texel<float>(x, y);
 
-            // expensive
-            if (z < oldDepth)
+            //if (bc.v[0] < 0.f || bc.v[1] < 0.f || bc.v[2] < 0.f)
+            if (math::sign_bits(bc) | math::sign_bit(z - oldDepth))
             {
                 continue;
             }
