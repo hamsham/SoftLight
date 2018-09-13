@@ -30,6 +30,13 @@ file(MAKE_DIRECTORY ${EXTERNAL_PROJECT_PREFIX}/bin)
 
 
 # #####################################
+# Version Control Tools
+# #####################################
+find_package(Git REQUIRED)
+
+
+
+# #####################################
 # External build for ASSIMP
 # #####################################
 set(ASSIMP_BRANCH "master" CACHE STRING "Git branch or tag for checking out Assimp.")
@@ -129,7 +136,7 @@ set(GLM_BUILD_FLAGS
     -DGLM_TEST_ENABLE_CXX_11:BOOL=ON
     -DGLM_TEST_ENABLE_CXX_14:BOOL=OFF
     -DGLM_TEST_ENABLE_CXX_17:BOOL=OFF
-    -DGLM_TEST_ENABLE_FAST_MATH:BOOL=ON)
+    -DGLM_TEST_ENABLE_FAST_MATH:BOOL=OFF)
 mark_as_advanced(GLM_BUILD_FLAGS)
 
 # Compiler settings for GLM
@@ -198,7 +205,7 @@ if (MSVC)
         GIT_TAG
             "${FREEIMAGE_BRANCH}"
         UPDATE_COMMAND
-            git fetch
+            ${GIT_EXECUTABLE} fetch
         CONFIGURE_COMMAND
             ""
         PATCH_COMMAND
@@ -225,7 +232,7 @@ else()
         GIT_TAG
             "${FIMG_BRANCH}"
         UPDATE_COMMAND
-            git fetch
+            ${GIT_EXECUTABLE} fetch
         CONFIGURE_COMMAND
             bash ${EXTERNAL_PROJECT_PREFIX}/build_freeimage.sh --configure
         BUILD_COMMAND

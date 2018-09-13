@@ -78,7 +78,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     if (ENABLE_X86_OPTIMIZATIONS)
-	    add_definitions(/arch:SSE3) # enable SSE
+	    add_definitions(/arch:SSE2) # enable SSE
     endif(ENABLE_X86_OPTIMIZATIONS)
     
 	add_definitions(/GL) # global program optimization

@@ -69,7 +69,7 @@ struct alignas(sizeof(ls::math::vec4)) SR_FragmentBin
 /*-----------------------------------------------------------------------------
  * Helper structure to put a pixel on the screen
 -----------------------------------------------------------------------------*/
-struct alignas(sizeof(float)) SR_FragCoord
+struct alignas(sizeof(ls::math::vec4)) SR_FragCoord
 {
     ls::math::vec4 bc; // 32*4
     uint16_t       x; // 16
