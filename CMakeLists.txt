@@ -22,6 +22,16 @@ endif()
 
 
 # #####################################
+# Build Options
+# #####################################
+option(ENABLE_X86_OPTIMIZATIONS "Enable x86-specific compiler optimization flags." ON)
+option(ENABLE_ARM_OPTIMIZATIONS "Enable arm-specific compiler optimization flags." OFF)
+
+option(ENABLE_PROFILING "Enable profiling (recommended for release builds with debug information)." OFF)
+
+
+
+# #####################################
 # Compiler Options
 # #####################################
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -38,14 +48,12 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_definitions(-fomit-frame-pointer)
 	add_definitions(-fno-stack-protector)
 
-	option(ENABLE_PROFILING "Enable profiling (recommended for release builds with debug information)." OFF)
 	if (ENABLE_PROFILING)
 		message("-- Profiling enabled")
 		add_definitions(-Og -pg)
 		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg -Og") # failsafe
 	endif(ENABLE_PROFILING)
 
-	option(ENABLE_ARM_OPTIMIZATIONS "Enable arm-specific compiler optimization flags." OFF)
 	if (ENABLE_ARM_OPTIMIZATIONS)
 		message("-- ARM compiler optimizations enabled.")
 		add_definitions(-mhard-float)
@@ -54,7 +62,6 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 		add_definitions(-march=armv7-a)
 	endif(ENABLE_ARM_OPTIMIZATIONS)
 
-	option(ENABLE_X86_OPTIMIZATIONS "Enable x86-specific compiler optimization flags." ON)
 	if (ENABLE_X86_OPTIMIZATIONS)
 		message("-- x86 compiler optimizations enabled.")
 		add_definitions(-msse)
@@ -68,18 +75,23 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 			#add_definitions(-march=core2)
 		endif()
 	endif(ENABLE_X86_OPTIMIZATIONS)
+    
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-	add_definitions(/Wall) # enable all warnings
+    if (ENABLE_X86_OPTIMIZATIONS)
+	    add_definitions(/arch:SSE3) # enable SSE
+    endif(ENABLE_X86_OPTIMIZATIONS)
+    
 	add_definitions(/GL) # global program optimization
 	add_definitions(/Oi) # enable instrinsic functions
 	add_definitions(/Ot) # favor fast code
 	add_definitions(/Oy) # Omit frame pointers
-	add_definitions(/arch:SSE2) # enable SSE
+    add_definitions(/permissive-) # enable conformance mode
+	add_definitions(/Wall) # enable all warnings
     add_definitions(/sdl)
     add_definitions(/W3) # production-quality warnings
     add_definitions(/WX) # warnings are errors
     add_definitions(/Zc:rvalueCast /Zc:strictStrings /Zc:inline)
-    add_definitions(/permissive-) # enable conformance mode
+
     add_definitions(/wd4146) # unsigned negation using the '-' operator
     add_definitions(/wd4996) # insecure use of wcstombs
     add_definitions(/wd4365) # Impplicit conversion from signed to unsigned (built into the standard library :/ )
