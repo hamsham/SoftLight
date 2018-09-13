@@ -44,8 +44,7 @@ int main()
 
       if (evt.type == SR_WinEventType::WIN_EVENT_KEY_DOWN)
       {
-        const SR_KeySymbol keySym = evt.keyboard.keysym;
-        std::cout << "Pressed key " << key_to_string(keySym) << ' ' << (unsigned)evt.keyboard.numLock << std::endl;
+        std::cout << "Pressed key " << evt.keyboard.key << ' ' << evt.keyboard.keysym  << std::endl;
       }
       else if (evt.type == SR_WinEventType::WIN_EVENT_KEY_UP)
       {
@@ -61,11 +60,13 @@ int main()
             if (pWindow->state() == WindowStateInfo::WINDOW_RUNNING)
             {
               std::cout << "Space button pressed. Pausing." << std::endl;
+              pWindow->set_keys_repeat(true);
               pWindow->pause();
             }
             else
             {
               std::cout << "Space button pressed. Resuming." << std::endl;
+              pWindow->set_keys_repeat(false);
               pWindow->run();
             }
             break;
