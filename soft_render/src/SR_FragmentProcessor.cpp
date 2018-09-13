@@ -579,9 +579,139 @@ void SR_FragmentProcessor::render_triangle(
 
 
 
+#elif defined(LS_ARCH_ARM) // Translating x86 into a NEON implementation.
+
+void SR_FragmentProcessor::render_triangle(
+    const SR_Texture* depthBuffer,
+    SR_ColorRGBAf*    pOutputs,
+    ls::math::vec4*   outVaryings) noexcept
+{
+    const math::vec4  persp        = mBins[mBinId].mPerspDivide;
+    const math::vec4* screenCoords = mBins[mBinId].mScreenCoords;
+    math::vec2        p0           = *reinterpret_cast<const math::vec2*>(screenCoords[0].v);
+    math::vec2        p1           = *reinterpret_cast<const math::vec2*>(screenCoords[1].v);
+    math::vec2        p2           = *reinterpret_cast<const math::vec2*>(screenCoords[2].v);
+    const int32_t     bboxMinX     = math::min(mFboX1, math::max(mFboX0, math::min(p0[0], p1[0], p2[0])));
+    const int32_t     bboxMinY     = math::min(mFboY1, math::max(mFboY0, math::min(p0[1], p1[1], p2[1])));
+    const int32_t     bboxMaxX     = math::max(mFboX0, math::min(mFboX1, math::max(p0[0], p1[0], p2[0])));
+    const int32_t     bboxMaxY     = math::max(mFboY0, math::min(mFboY1, math::max(p0[1], p1[1], p2[1])));
+    const math::vec4  depth        {screenCoords[0][2], screenCoords[1][2], screenCoords[2][2], 0.f};
+    const math::vec4  t0[3]        {math::vec4{p2[0]-p0[0]}, math::vec4{p1[0]-p0[0]}, math::vec4{p0[0]}};
+    const math::vec4  t1[3]        {math::vec4{p2[1]-p0[1]}, math::vec4{p1[1]-p0[1]}, math::vec4{p0[1]}};
+    const math::vec4  scaleInv     = {(t0[0] * t1[1]) - (t0[1] * t1[0])};
+    const math::vec4  scale        = math::rcp(scaleInv);
+
+    // Don't render triangles which are too small to see
+    if (std::fabs(scaleInv[0]) < 1.f)
+    {
+        return;
+    }
+
+    if (p0[1] < p1[1]) std::swap(p0, p1);
+    if (p0[1] < p2[1]) std::swap(p0, p2);
+    if (p1[1] < p2[1]) std::swap(p1, p2);
+
+    const float p10x  = p1[0] - p0[0];
+    const float p20x  = p2[0] - p0[0];
+    const float p21x  = p2[0] - p1[0];
+    const float p10y  = math::rcp(p1[1] - p0[1]);
+    const float p21y  = math::rcp(p2[1] - p1[1]);
+    const float p20y  = math::rcp(p2[1] - p0[1]);
+    const float p10xy = p10x * p10y;
+    const float p21xy = p21x * p21y;
+
+    unsigned numQueuedFrags = 0;
+    SR_FragCoord outCoords[SR_SHADER_MAX_FRAG_QUEUES];
+
+    for (int32_t y = bboxMinY; y <= bboxMaxY; ++y)
+    {
+        // calculate the bounds of the current scan-line
+        const float      yf         = (float)y;
+        const math::vec4 ty         = t1[2] - yf;
+        const math::vec4 t00y       = t0[0] * ty;
+        const math::vec4 t01y       = t0[1] * ty;
+        const float      d0         = yf - p0[1];
+        const float      d1         = yf - p1[1];
+        const float      alpha      = d0 * p20y;
+        const int        secondHalf = math::sign_bit(d1);
+        int32_t          xMin       = (int32_t)(p0[0] + (p20x * alpha));
+        int32_t          xMax       = (int32_t)(secondHalf ? (p1[0] + p21xy * d1) : (p0[0] + p10xy * d0));
+
+        // Get the beginning and end of the scan-line
+        if (xMin > xMax) std::swap(xMin, xMax);
+        xMin = math::clamp<int32_t>(xMin, bboxMinX, bboxMaxX);
+        xMax = math::clamp<int32_t>(xMax, bboxMinX, bboxMaxX);
+
+        for (int32_t x = xMin; x <= xMax; x += 4)
+        {
+            // calculate barycentric coordinates
+            const math::vec4&& xf = (math::vec4)(math::vec4i{x} + math::vec4i{0, 1, 2, 3});
+            const math::vec4&& tx = t0[2] - xf;
+            const math::vec4&& u0 = (t01y - (tx * t1[1])) * scale;
+            const math::vec4&& u1 = ((tx * t1[0]) - t00y) * scale;
+
+            //math::vec3   bc {1.f - (u0 + u1), u1, u0};
+            const math::mat4&& bcF = math::transpose<float>(
+                math::mat4{
+                    math::vec4{math::vec4{1.f} - (u0 + u1)},
+                    u1,
+                    u0,
+                    math::vec4{0.f}
+                }
+            );
+
+            // depth texture lookup will always be slow
+            const math::vec4 z              = depth * bcF;
+            const math::vec4 depthBufTexels = depthBuffer->raw_texel4<float>(x, y);
+            const int        depthTest      = math::sign_bits(z - depthBufTexels);
+            const int        signBits       = depthTest
+                                              | ((math::sign_bits(bcF[0]) != 0) << 0x00)
+                                              | ((math::sign_bits(bcF[1]) != 0) << 0x01)
+                                              | ((math::sign_bits(bcF[2]) != 0) << 0x02)
+                                              | ((math::sign_bits(bcF[3]) != 0) << 0x03);
+
+            for (int32_t i = 0; i < 4; ++i)
+            {
+                if (signBits & (1 << i))
+                {
+                    continue;
+                }
+
+                // prefetch
+                const int32_t y2 = y;
+                const float zf = z[i];
+
+                // perspective correction
+                math::vec4&& bc4 = bcF[i] * persp;
+                const float bW = math::rcp(math::sum(bc4));
+                bc4 *= bW;
+
+                outCoords[numQueuedFrags] = SR_FragCoord{
+                    bc4,
+                    (uint16_t)(x+i),
+                    (uint16_t)y2,
+                    zf
+                };
+                ++numQueuedFrags;
+
+                if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
+                {
+                    numQueuedFrags = 0;
+                    flush_fragments(SR_SHADER_MAX_FRAG_QUEUES, outCoords, pOutputs, outVaryings);
+                }
+            }
+        }
+    }
+
+    if (numQueuedFrags)
+    {
+        flush_fragments(numQueuedFrags, outCoords, pOutputs, outVaryings);
+    }
+}
+
+
+
 #else
-
-
 
 void SR_FragmentProcessor::render_triangle(
     const SR_Texture* depthBuffer,

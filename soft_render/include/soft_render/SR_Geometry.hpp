@@ -209,7 +209,7 @@ inline unsigned sr_vertex_stride(const SR_CommonVertType vertexTypes)
 
 
 /*-------------------------------------
- * @Brief the common vertex names array helps to keep track of all vertex names
+ * @brief the common vertex names array helps to keep track of all vertex names
  * and make iteration over them easier in client code.
 -------------------------------------*/
 const char* const* sr_common_vertex_names() noexcept;

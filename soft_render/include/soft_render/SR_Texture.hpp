@@ -50,7 +50,7 @@ enum SR_TexChunkInfo : uint_fast32_t
 
 
 /**----------------------------------------------------------------------------
- * @Brief Generic texture Class
+ * @brief Generic texture Class
  *
  * This class encodes textures using a Z-ordered curve.
 -----------------------------------------------------------------------------*/

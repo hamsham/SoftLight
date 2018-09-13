@@ -432,8 +432,8 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context* c, const SR_Mesh*
         fragTask.mMode    = m->mode;
         fragTask.mFboX0   = (float)(fboW * (threadId % cols));
         fragTask.mFboY0   = (float)(fboH * ((threadId / cols) % rows));
-        fragTask.mFboX1   = (float)(fboW + fragTask.mFboX0 - 1);
-        fragTask.mFboY1   = (float)(fboH + fragTask.mFboY0 - 1);
+        fragTask.mFboX1   = ((float)fboW + fragTask.mFboX0 - 1);
+        fragTask.mFboY1   = ((float)fboH + fragTask.mFboY0 - 1);
         fragTask.mBinId   = 0;
 
         SR_ProcessorPool::Worker* pWorker = mThreads[threadId];
