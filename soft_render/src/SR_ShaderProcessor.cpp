@@ -409,6 +409,18 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context* c, const SR_Mesh*
 
     // ensure all threads reach a sync-point
     wait();
+    // Each thread will pause except for the main thread.
+    /*
+    for (unsigned threadId = 0; threadId < mNumThreads-1u; ++threadId)
+    {
+        SR_ProcessorPool::Worker* const pWorker = mThreads[threadId];
+
+        while (!pWorker->ready())
+        {
+            continue;
+        }
+    }
+    */
 
     // calculate fragment tiles
     uint16_t cols;
