@@ -566,7 +566,7 @@ inline ls::math::vec4_t<float> SR_Texture::raw_texel4<float>(uint16_t x, uint16_
     #elif defined(LS_ARCH_ARM)
         return ls::math::vec4_t<float>{vld1q_f32(pBuffer)};
     #else
-        return ls::math::vec4_t<data_t>{pBuffer[0], pBuffer[1], pBuffer[2], pBuffer[3]};
+        return ls::math::vec4_t<float>{pBuffer[0], pBuffer[1], pBuffer[2], pBuffer[3]};
     #endif
 }
 
@@ -596,7 +596,7 @@ inline ls::math::vec4_t<float> SR_Texture::raw_texel4<float>(uint16_t x, uint16_
     #elif defined(LS_ARCH_ARM)
         return ls::math::vec4_t<float>{vld1q_f32(pBuffer)};
     #else
-        return ls::math::vec4_t<data_t>{pBuffer[0], pBuffer[1], pBuffer[2], pBuffer[3]};
+        return ls::math::vec4_t<float>{pBuffer[0], pBuffer[1], pBuffer[2], pBuffer[3]};
     #endif
 }
 

@@ -579,7 +579,7 @@ void SR_FragmentProcessor::render_triangle(
 
 
 
-#elif defined(LS_ARCH_ARM) // Translating x86 into a NEON implementation.
+#elif 0 //defined(LS_ARCH_ARM) // Translating x86 into a NEON implementation.
 
 void SR_FragmentProcessor::render_triangle(
     const SR_Texture* depthBuffer,
@@ -673,7 +673,7 @@ void SR_FragmentProcessor::render_triangle(
 
             for (int32_t i = 0; i < 4; ++i)
             {
-                if (signBits & (1 << i))
+                if (signBits & (0x01 << i))
                 {
                     continue;
                 }
