@@ -179,8 +179,7 @@ void SR_VertexProcessor::push_fragments(
 ) const noexcept
 {
     const SR_Mesh m = mMesh;
-    ls::utils::SpinLock* const pLocks = mLocks;
-    //std::mutex* const pLocks = mLocks;
+    LockType* const pLocks = mLocks;
     std::vector<SR_FragmentBin>* const pFragBins = mFragBins;
 
     // Copy all per-vertex coordinates and varyings to the fragment bins which
@@ -237,8 +236,8 @@ void SR_VertexProcessor::push_fragments(
     }
 
     // render all lines & triangles
-    uint32_t lockedBinId = UINT32_MAX;
-    SR_FragmentBin lockedBin;
+    //uint32_t lockedBinId = UINT32_MAX;
+    //SR_FragmentBin lockedBin;
 
     for (uint32_t tileId = 0; tileId < numTiles; ++tileId)
     {
@@ -252,6 +251,10 @@ void SR_VertexProcessor::push_fragments(
             // Atomic spin-locks burn CPU cycles while waiting on an
             // acquisition. try to minimize this by attempting to do something
             // useful.
+            pLocks[tileId].lock();
+            pFragBins[tileId].push_back(bin);
+            pLocks[tileId].unlock();
+            /*
             if (pLocks[tileId].try_lock())
             {
                 pFragBins[tileId].push_back(bin);
@@ -279,15 +282,16 @@ void SR_VertexProcessor::push_fragments(
                     lockedBin = bin;
                 }
             }
+             */
         }
     }
 
-    if (lockedBinId != UINT32_MAX)
-    {
-        pLocks[lockedBinId].lock();
-        pFragBins[lockedBinId].push_back(lockedBin);
-        pLocks[lockedBinId].unlock();
-    }
+    //if (lockedBinId != UINT32_MAX)
+    //{
+    //    while (!pLocks[lockedBinId].try_lock());
+    //    pFragBins[lockedBinId].push_back(lockedBin);
+    //    pLocks[lockedBinId].unlock();
+    //}
 }
 
 

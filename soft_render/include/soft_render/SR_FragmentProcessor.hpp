@@ -104,7 +104,7 @@ struct SR_FragmentProcessor
     // 16 bits
     SR_RenderMode mMode;
 
-    // 368 bits
+    // 464 bits = 58 bytes
 
     void render_point(
         SR_Framebuffer* const    fbo,
@@ -124,7 +124,7 @@ struct SR_FragmentProcessor
     ) noexcept;
 
     void flush_fragments(
-        uint_fast32_t            numQueuedFrags,
+        uint_fast64_t            numQueuedFrags,
         const SR_FragCoord*      outCoords,
         SR_ColorRGBAType<float>* pOutputs,
         ls::math::vec4*          outVaryings) noexcept;

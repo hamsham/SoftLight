@@ -89,6 +89,33 @@ inline unsigned SR_ProcessorPool::num_threads() const noexcept
 
 
 /*-------------------------------------
+ * Wait for the threads to finish
+-------------------------------------*/
+inline void SR_ProcessorPool::wait() noexcept
+{
+    // Each thread will pause except for the main thread.
+    for (unsigned threadId = 0; threadId < mNumThreads-1u; ++threadId)
+    {
+        SR_ProcessorPool::Worker* const pWorker = mThreads[threadId];
+        pWorker->wait();
+    }
+
+    /*
+    for (unsigned threadId = 0; threadId < mNumThreads-1u; ++threadId)
+    {
+        SR_ProcessorPool::Worker* const pWorker = mThreads[threadId];
+
+        while (!pWorker->ready())
+        {
+            continue;
+        }
+    }
+    */
+}
+
+
+
+/*-------------------------------------
  * Run the processor threads
 -------------------------------------*/
 inline void SR_ProcessorPool::execute() noexcept
@@ -107,6 +134,19 @@ inline void SR_ProcessorPool::push_fragment_bin(unsigned threadId, const SR_Frag
     mLocks[threadId].lock();
     mFragBins[threadId].push_back(bin);
     mLocks[threadId].unlock();
+}
+
+
+
+/*-------------------------------------
+ * Remove all bins from potential processing
+-------------------------------------*/
+inline void SR_ProcessorPool::clear_fragment_bins() noexcept
+{
+    for (uint16_t i = 0; i < mNumThreads; ++i)
+    {
+        mFragBins[i].clear();
+    }
 }
 
 

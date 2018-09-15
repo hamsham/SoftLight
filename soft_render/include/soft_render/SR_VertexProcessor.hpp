@@ -63,6 +63,9 @@ inline void sr_calc_frag_tiles(data_type numThreads, data_type& numHoriz, data_t
 -----------------------------------------------------------------------------*/
 struct SR_VertexProcessor
 {
+    typedef ls::utils::SpinLock LockType;
+    //typedef std::mutex LockType;
+
     // 64-128 bits
     const SR_Shader*  mShader;
     const SR_Context* mContext;
@@ -79,8 +82,7 @@ struct SR_VertexProcessor
     SR_Mesh mMesh;
 
     // 64-128 bits
-    ls::utils::SpinLock* mLocks;
-    //std::mutex* mLocks;
+    LockType* mLocks;
     std::vector<SR_FragmentBin>* mFragBins;
 
 

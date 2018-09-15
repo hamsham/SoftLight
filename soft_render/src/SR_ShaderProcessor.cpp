@@ -283,6 +283,24 @@ SR_ProcessorPool& SR_ProcessorPool::operator=(SR_ProcessorPool&& p) noexcept
 
 
 
+/*-------------------------------------
+ * Flush the thread pool
+-------------------------------------*/
+void SR_ProcessorPool::flush() noexcept
+{
+    for (unsigned threadId = 0; threadId < mNumThreads; ++threadId)
+    {
+        SR_ProcessorPool::Worker* const pWorker = mThreads[threadId];
+
+        if (pWorker->have_pending_tasks())
+        {
+            pWorker->flush();
+        }
+    }
+}
+
+
+
 /*--------------------------------------
  * Set the number of threads
 --------------------------------------*/
@@ -345,39 +363,6 @@ unsigned SR_ProcessorPool::num_threads(unsigned inNumThreads) noexcept
 
 
 /*-------------------------------------
- * Flush the thread pool
--------------------------------------*/
-void SR_ProcessorPool::flush() noexcept
-{
-    for (unsigned threadId = 0; threadId < mNumThreads; ++threadId)
-    {
-        SR_ProcessorPool::Worker* const pWorker = mThreads[threadId];
-
-        if (pWorker->have_pending_tasks())
-        {
-            pWorker->flush();
-        }
-    }
-}
-
-
-
-/*-------------------------------------
- * Wait for the threads to finish
--------------------------------------*/
-void SR_ProcessorPool::wait() noexcept
-{
-    // Each thread will pause except for the main thread.
-    for (unsigned threadId = 0; threadId < mNumThreads-1u; ++threadId)
-    {
-        SR_ProcessorPool::Worker* const pWorker = mThreads[threadId];
-        pWorker->wait();
-    }
-}
-
-
-
-/*-------------------------------------
 -------------------------------------*/
 void SR_ProcessorPool::run_shader_processors(const SR_Context* c, const SR_Mesh* m, const SR_Shader* s, SR_Framebuffer* fbo) noexcept
 {
@@ -402,25 +387,13 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context* c, const SR_Mesh*
         // Busy waiting will be enabled the moment the first flush occurs on each
         // thread.
         SR_ProcessorPool::Worker* pWorker = mThreads[threadId];
-        pWorker->busy_waiting(true);
+        pWorker->busy_waiting(false);
         pWorker->push(task);
         pWorker->flush();
     }
 
-    // ensure all threads reach a sync-point
+    // sync-point
     wait();
-    // Each thread will pause except for the main thread.
-    /*
-    for (unsigned threadId = 0; threadId < mNumThreads-1u; ++threadId)
-    {
-        SR_ProcessorPool::Worker* const pWorker = mThreads[threadId];
-
-        while (!pWorker->ready())
-        {
-            continue;
-        }
-    }
-    */
 
     // calculate fragment tiles
     uint16_t cols;
@@ -457,18 +430,6 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context* c, const SR_Mesh*
     // Each thread should now pause except for the main thread.
     wait();
     clear_fragment_bins();
-}
-
-
-
-/*-------------------------------------
--------------------------------------*/
-void SR_ProcessorPool::clear_fragment_bins() noexcept
-{
-    for (uint16_t i = 0; i < mNumThreads; ++i)
-    {
-        mFragBins[i].clear();
-    }
 }
 
 
