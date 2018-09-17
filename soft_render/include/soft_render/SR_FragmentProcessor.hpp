@@ -124,7 +124,7 @@ struct SR_FragmentProcessor
     ) noexcept;
 
     void flush_fragments(
-        uint_fast64_t            numQueuedFrags,
+        uint_fast32_t            numQueuedFrags,
         const SR_FragCoord*      outCoords,
         SR_ColorRGBAType<float>* pOutputs,
         ls::math::vec4*          outVaryings) noexcept;

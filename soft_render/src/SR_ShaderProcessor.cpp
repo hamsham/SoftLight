@@ -366,6 +366,14 @@ unsigned SR_ProcessorPool::num_threads(unsigned inNumThreads) noexcept
 -------------------------------------*/
 void SR_ProcessorPool::run_shader_processors(const SR_Context* c, const SR_Mesh* m, const SR_Shader* s, SR_Framebuffer* fbo) noexcept
 {
+    // calculate fragment tiles early on to avoid a delay when flushing the
+    // fragment threads.
+    uint16_t cols;
+    uint16_t rows;
+    sr_calc_frag_tiles<uint16_t>(mNumThreads, cols, rows);
+    const uint16_t fboW = fbo->width() / cols;
+    const uint16_t fboH = fbo->height() / rows;
+
     SR_ShaderProcessor task;
     task.mType = SR_VERTEX_SHADER;
     SR_VertexProcessor& vertTask = task.mVertProcessor;
@@ -387,21 +395,29 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context* c, const SR_Mesh*
         // Busy waiting will be enabled the moment the first flush occurs on each
         // thread.
         SR_ProcessorPool::Worker* pWorker = mThreads[threadId];
-        pWorker->busy_waiting(false);
+        pWorker->busy_waiting(true);
         pWorker->push(task);
-        pWorker->flush();
+        //pWorker->flush();
     }
 
     // sync-point
-    wait();
+    // Each thread will pause except for the main thread.
+    for (unsigned threadId = 0; threadId < mNumThreads; ++threadId)
+    {
+        SR_ProcessorPool::Worker* const pWorker = mThreads[threadId];
+        pWorker->flush();
+    }
 
-    // calculate fragment tiles
-    uint16_t cols;
-    uint16_t rows;
-    sr_calc_frag_tiles<uint16_t>(mNumThreads, cols, rows);
+    for (unsigned threadId = 0; threadId < mNumThreads-1u; ++threadId)
+    {
+        SR_ProcessorPool::Worker* const pWorker = mThreads[threadId];
+        //pWorker->wait();
 
-    const uint16_t fboW = fbo->width() / cols;
-    const uint16_t fboH = fbo->height() / rows;
+        // spin
+        while (!pWorker->ready())
+        {
+        }
+    }
 
     task.mType = SR_FRAGMENT_SHADER;
     SR_FragmentProcessor& fragTask = task.mFragProcessor;
