@@ -18,7 +18,7 @@ function freeimage_configure()
     pushd @EXTERNAL_PROJECT_PREFIX@/src/FreeImage
 
     # Freeimage attempts to give root permissions to the installed files. No
-    sed -i -E 's/(^[[:space:]]+install)[[:space:]]+\-m[[:space:]]+.+root[[:space:]]+(\$.+)/\1 \2/g' Makefile.gnu
+    sed -i -E 's/(^[ \t]+install)[ \t]+\-m[ \t]+.+root[ \t]+(\$.+)/\1 \2/g' Makefile.gnu
 
     # Rename functions which conflict with GLibC
     set +e
@@ -55,7 +55,7 @@ function freeimage_configure_mingw()
 
     # Remove posix_memalign from OpenEXR
     sed -i -E 's/posix_memalign.+/_aligned_malloc(size, alignment);/g' "./Source/OpenEXR/IlmImf/ImfSystemSpecific.h"
-    sed -i -E 's/([[:space:]]+)free\(ptr\);/\1_aligned_free(ptr);/g' "./Source/OpenEXR/IlmImf/ImfSystemSpecific.h"
+    sed -i -E 's/([ \t]+)free\(ptr\);/\1_aligned_free(ptr);/g' "./Source/OpenEXR/IlmImf/ImfSystemSpecific.h"
 
     # LibJXR defines conflicting pointer sizes and functions
     sed -i -E 's/#define PLATFORM_ANSI//g' ".//Source/LibJXR/image/sys/strcodec.h"
