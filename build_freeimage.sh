@@ -18,7 +18,7 @@ function freeimage_configure()
     pushd @EXTERNAL_PROJECT_PREFIX@/src/FreeImage
 
     # Freeimage attempts to give root permissions to the installed files. No
-    sed -i -E 's/(^[ \t]+install)[ \t]+\-m[ \t]+.+root[ \t]+(\$.+)/\1 \2/g' Makefile.gnu
+    sed -i -E 's/([ \t]+install)[ \t]+\-m[ \t]+.+root[ \t]+(\$.+)/\1 \2/g' Makefile.gnu
 
     # Rename functions which conflict with GLibC
     set +e

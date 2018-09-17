@@ -117,13 +117,12 @@ inline void _sr_frag_bin_qsort_impl(SR_FragmentBin* const bins, const long l, co
     {
         return;
     }
-    else
-    {
-        const long pivotIndex = (l+r)/2l;
-        temp = bins[pivotIndex];
-        bins[pivotIndex] = bins[r];
-        bins[r] = temp;
-    }
+
+    //const long pivotIndex = (l+r)/2l;
+    const long pivotIndex = (l+r) >> 1l;
+    temp = bins[pivotIndex];
+    bins[pivotIndex] = bins[r];
+    bins[r] = temp;
 
     long m = l - 1;
     long n = r;
@@ -879,7 +878,7 @@ void SR_FragmentProcessor::execute() noexcept
     {
         return a.mPerspDivide[0] > b.mPerspDivide[0];
     });
-    #elif 0
+    #elif 1
     sr_frag_bin_qsort(mBins, mNumBins);
     #else
     std::qsort(mBins, mNumBins, sizeof(SR_FragmentBin), [](const void* pA, const void* pB)-> int

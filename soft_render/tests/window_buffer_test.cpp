@@ -287,7 +287,7 @@ int main()
                 currSeconds = 0.f;
             }
 
-            if (totalFrames >= 600)
+            if (totalFrames >= 1200)
             {
                 shouldQuit = true;
             }
