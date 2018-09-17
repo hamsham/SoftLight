@@ -3,6 +3,8 @@
 #define SR_BOUNDING_BOX_HPP
 
 #include "lightsky/math/vec3.h"
+#include "lightsky/math/vec4.h"
+#include "lightsky/math/vec_utils.h"
 
 
 
@@ -15,15 +17,22 @@
 class SR_BoundingBox
 {
   private:
-    ls::math::vec3 mTopRearRight;
+    ls::math::vec4 mTopRearRight;
 
-    ls::math::vec3 mBotFrontLeft;
+    ls::math::vec4 mBotFrontLeft;
 
   public:
     /**
+     * @brief Destructor
+     *
+     * Defaulted
+     */
+    ~SR_BoundingBox() noexcept = default;
+
+    /**
      * @brief Constructor
      */
-    SR_BoundingBox() noexcept;
+    constexpr SR_BoundingBox() noexcept;
 
     /**
      * @brief Copy Constructor
@@ -34,7 +43,7 @@ class SR_BoundingBox
      * A constant reference to a fully constructed bounding box
      * object.
      */
-    SR_BoundingBox(const SR_BoundingBox& bb) noexcept;
+    constexpr SR_BoundingBox(const SR_BoundingBox& bb) noexcept;
 
     /**
      * @brief Move Constructor
@@ -44,13 +53,6 @@ class SR_BoundingBox
      * @param An r-value reference to a fully constructed bounding box
      */
     SR_BoundingBox(SR_BoundingBox&&) noexcept;
-
-    /**
-     * @brief Destructor
-     *
-     * Defaulted
-     */
-    ~SR_BoundingBox() noexcept = default;
 
     /**
      * @brief Copy Operator
@@ -84,6 +86,15 @@ class SR_BoundingBox
     bool is_in_box(const ls::math::vec3&) const noexcept;
 
     /**
+     * @brief Check if a point is within this box.
+     *
+     * @param A constant reference to a vec4 object.
+     *
+     * @return TRUE if the point is within *this, or FALSE if otherwise.
+     */
+    bool is_in_box(const ls::math::vec4&) const noexcept;
+
+    /**
      * Check if a portion of another bounding box is within *this.
      *
      * @param A constant reference to another bounding box.
@@ -102,12 +113,20 @@ class SR_BoundingBox
     void set_top_rear_right(const ls::math::vec3&) noexcept;
 
     /**
+     * Set the top-rear-right point of this bounding box.
+     *
+     * @param A constant reference to a point that will be used as the top,
+     * rear, right point of this bounding box.
+     */
+    void set_top_rear_right(const ls::math::vec4&) noexcept;
+
+    /**
      * Get the top-rear-right point of this bounding box.
      *
      * @return A constant reference to the top, rear, right point of this
      * bounding box.
      */
-    const ls::math::vec3& get_top_rear_right() const noexcept;
+    const ls::math::vec4& get_top_rear_right() const noexcept;
 
     /**
      * Set the bottom, front, left point of this bounding box.
@@ -118,12 +137,20 @@ class SR_BoundingBox
     void set_bot_front_left(const ls::math::vec3&) noexcept;
 
     /**
+     * Set the bottom, front, left point of this bounding box.
+     *
+     * @param A constant reference to a point that will be used as the
+     * bottom, front, left point of this bounding box.
+     */
+    void set_bot_front_left(const ls::math::vec4&) noexcept;
+
+    /**
      * Get the bottom, front, left point of this bounding box.
      *
      * @return A constant reference to the bottom, front, left point of this
      * bounding box.
      */
-    const ls::math::vec3& get_bot_front_left() const noexcept;
+    const ls::math::vec4& get_bot_front_left() const noexcept;
 
     /**
      * Reset the bounds of this bounding box to their default values.
@@ -140,7 +167,101 @@ class SR_BoundingBox
      * size of this bounding box.
      */
     void compare_and_update(const ls::math::vec3& point) noexcept;
+
+    /**
+     * Compare a point to the current set of vertices.
+     * If any of the components within the parameter are larger than the
+     * components of this box, the current set of points will be enlarged.
+     *
+     * @param point
+     * A point who's individual components should be used to update the
+     * size of this bounding box.
+     */
+    void compare_and_update(const ls::math::vec4& point) noexcept;
 };
+
+
+
+/*-------------------------------------
+    Constructor
+-------------------------------------*/
+constexpr SR_BoundingBox::SR_BoundingBox() noexcept :
+    mTopRearRight{1.f, 1.f, 1.f, 0.f},
+    mBotFrontLeft{-1.f, -1.f, -1.f, 0.f}
+{}
+
+
+
+/*-------------------------------------
+    Copy Constructor
+-------------------------------------*/
+constexpr SR_BoundingBox::SR_BoundingBox(const SR_BoundingBox& bb) noexcept :
+    mTopRearRight{bb.mTopRearRight},
+    mBotFrontLeft{bb.mBotFrontLeft}
+{}
+
+
+
+/*-------------------------------------
+    Move Constructor
+-------------------------------------*/
+inline SR_BoundingBox::SR_BoundingBox(SR_BoundingBox&& bb) noexcept :
+    mTopRearRight{std::move(bb.mTopRearRight)},
+    mBotFrontLeft{std::move(bb.mBotFrontLeft)}
+{
+    bb.reset_size();
+}
+
+
+
+/*-------------------------------------
+    Copy Operator
+-------------------------------------*/
+inline SR_BoundingBox& SR_BoundingBox::operator=(const SR_BoundingBox& bb) noexcept
+{
+    mTopRearRight = bb.mTopRearRight;
+    mBotFrontLeft = bb.mBotFrontLeft;
+
+    return *this;
+}
+
+
+
+/*-------------------------------------
+    Move Operator
+-------------------------------------*/
+inline SR_BoundingBox& SR_BoundingBox::operator=(SR_BoundingBox&& bb) noexcept
+{
+    mTopRearRight = std::move(bb.mTopRearRight);
+    mBotFrontLeft = std::move(bb.mBotFrontLeft);
+
+    bb.reset_size();
+
+    return *this;
+}
+
+
+
+/*-------------------------------------
+    Check if a portion of another bounding box is within *this.
+-------------------------------------*/
+inline bool SR_BoundingBox::is_in_box(const ls::math::vec3& v) const noexcept
+{
+    return
+        v[0] < mTopRearRight[0] && v[1] < mTopRearRight[1] && v[2] < mTopRearRight[2]
+        &&
+        v[0] >= mBotFrontLeft[0] && v[1] >= mBotFrontLeft[1] && v[2] >= mBotFrontLeft[2];
+}
+
+
+
+/*-------------------------------------
+    Check if a portion of another bounding box is within *this.
+-------------------------------------*/
+inline bool SR_BoundingBox::is_in_box(const ls::math::vec4& v) const noexcept
+{
+    return v < mTopRearRight && v >= mBotFrontLeft;
+}
 
 
 
@@ -159,6 +280,16 @@ inline bool SR_BoundingBox::is_in_box(const SR_BoundingBox& bb) const noexcept
 -------------------------------------*/
 inline void SR_BoundingBox::set_top_rear_right(const ls::math::vec3& v) noexcept
 {
+    mTopRearRight = ls::math::vec4{v[0], v[1], v[2], 0.f};
+}
+
+
+
+/*-------------------------------------
+    Set the top-rear-right point of this bounding box.
+-------------------------------------*/
+inline void SR_BoundingBox::set_top_rear_right(const ls::math::vec4& v) noexcept
+{
     mTopRearRight = v;
 }
 
@@ -167,7 +298,7 @@ inline void SR_BoundingBox::set_top_rear_right(const ls::math::vec3& v) noexcept
 /*-------------------------------------
     Get the top-rear-right point of this bounding box.
 -------------------------------------*/
-inline const ls::math::vec3& SR_BoundingBox::get_top_rear_right() const noexcept
+inline const ls::math::vec4& SR_BoundingBox::get_top_rear_right() const noexcept
 {
     return mTopRearRight;
 }
@@ -179,6 +310,16 @@ inline const ls::math::vec3& SR_BoundingBox::get_top_rear_right() const noexcept
 -------------------------------------*/
 inline void SR_BoundingBox::set_bot_front_left(const ls::math::vec3& v) noexcept
 {
+    mBotFrontLeft = ls::math::vec4{v[0], v[1], v[2], 0.f};
+}
+
+
+
+/*-------------------------------------
+    Set the bottom, front, left point of this bounding box.
+-------------------------------------*/
+inline void SR_BoundingBox::set_bot_front_left(const ls::math::vec4& v) noexcept
+{
     mBotFrontLeft = v;
 }
 
@@ -187,10 +328,43 @@ inline void SR_BoundingBox::set_bot_front_left(const ls::math::vec3& v) noexcept
 /*-------------------------------------
     Get the bottom, front, left point of this bounding box.
 -------------------------------------*/
-inline const ls::math::vec3& SR_BoundingBox::get_bot_front_left() const noexcept
+inline const ls::math::vec4& SR_BoundingBox::get_bot_front_left() const noexcept
 {
     return mBotFrontLeft;
 }
+
+
+
+/*-------------------------------------
+    Reset the bounds of this bounding box to their default values.
+-------------------------------------*/
+inline void SR_BoundingBox::reset_size() noexcept
+{
+    set_top_rear_right(ls::math::vec4{1.f, 1.f, 1.f, 0.f});
+    set_bot_front_left(ls::math::vec4{-1.f, -1.f, -1.f, 0.f});
+}
+
+
+
+/*-------------------------------------
+    Compare a point to the current set of vertices.
+-------------------------------------*/
+inline void SR_BoundingBox::compare_and_update(const ls::math::vec3& point) noexcept
+{
+    compare_and_update(ls::math::vec4{point[0], point[1], point[2], 0.f});
+}
+
+
+
+/*-------------------------------------
+    Compare a point to the current set of vertices.
+-------------------------------------*/
+inline void SR_BoundingBox::compare_and_update(const ls::math::vec4& point) noexcept
+{
+    mTopRearRight = ls::math::max(mTopRearRight, point);
+    mBotFrontLeft = ls::math::min(mBotFrontLeft, point);
+}
+
 
 
 #endif  /* SR_BOUNDING_BOX_HPP */

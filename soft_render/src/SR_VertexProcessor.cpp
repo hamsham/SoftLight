@@ -214,8 +214,9 @@ void SR_VertexProcessor::push_fragments(
         const uint32_t y0 = fboH * ((tileId / cols) % rows);
         const uint32_t x1 = fboW + x0;
         const uint32_t y1 = fboH + y0;
+        const int isFragVisible = !(bboxMaxX < (float)x0 || (float)x1 < bboxMinX || bboxMaxY < (float)y0 || (float)y1 < bboxMinY);
 
-        if (!(bboxMaxX < (float)x0 || (float)x1 < bboxMinX || bboxMaxY < (float)y0 || (float)y1 < bboxMinY))
+        if (isFragVisible)
         {
             // Atomic spin-locks burn CPU cycles while waiting on an
             // acquisition. try to minimize this by attempting to do something

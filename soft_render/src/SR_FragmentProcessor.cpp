@@ -1,5 +1,5 @@
 
-#include <cstdlib> // qsort()
+#include "lightsky/utils/Sort.hpp" // utils::quick_sort
 
 #include "lightsky/setup/Arch.h"
 
@@ -17,6 +17,7 @@
  * Namespace setup
 -----------------------------------------------------------------------------*/
 namespace math = ls::math;
+namespace utils = ls::utils;
 
 
 
@@ -105,57 +106,6 @@ inline void interpolate_tri_varyings(
 
 
 
-/*-----------------------------------------------------------------------------
- * Quick Sort for binning
------------------------------------------------------------------------------*/
-template <int binCoordIndex>
-inline void _sr_frag_bin_qsort_impl(SR_FragmentBin* const bins, const long l, const long r)
-{
-    SR_FragmentBin temp;
-
-    if (r <= l)
-    {
-        return;
-    }
-
-    //const long pivotIndex = (l+r)/2l;
-    const long pivotIndex = (l+r) >> 1l;
-    temp = bins[pivotIndex];
-    bins[pivotIndex] = bins[r];
-    bins[r] = temp;
-
-    long m = l - 1;
-    long n = r;
-    const SR_FragmentBin& pivot = bins[r];
-
-    do
-    {
-        while (bins[++m].mPerspDivide[binCoordIndex] > pivot.mPerspDivide[binCoordIndex]);
-        while ((m < n) && (pivot.mPerspDivide[binCoordIndex] > bins[--n].mPerspDivide[binCoordIndex]));
-
-        temp    = bins[m];
-        bins[m] = bins[n];
-        bins[n] = temp;
-    } while (m < n);
-
-    temp    = bins[m];
-    bins[m] = bins[r];
-    bins[r] = temp;
-
-    _sr_frag_bin_qsort_impl<binCoordIndex>(bins, l, m - 1);
-    _sr_frag_bin_qsort_impl<binCoordIndex>(bins, m + 1, r);
-}
-
-
-
-/* Quick Sort Interface */
-inline void sr_frag_bin_qsort(SR_FragmentBin* const bins, long count)
-{
-    _sr_frag_bin_qsort_impl<0>(bins, 0, count-1);
-}
-
-
-
 } // end anonymous namespace
 
 
@@ -226,7 +176,7 @@ void SR_FragmentProcessor::render_point(
 void SR_FragmentProcessor::render_line(
     SR_Framebuffer* fbo,
     SR_ColorRGBAf*  pOutputs,
-    ls::math::vec4* outVaryings) noexcept
+    math::vec4*     outVaryings) noexcept
 {
     const SR_FragmentShader fragShader  = mShader->mFragShader;
     const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
@@ -437,7 +387,7 @@ void SR_FragmentProcessor::render_line(
 void SR_FragmentProcessor::render_triangle(
     const SR_Texture* depthBuffer,
     SR_ColorRGBAf*    pOutputs,
-    ls::math::vec4*   outVaryings) noexcept
+    math::vec4*       outVaryings) noexcept
 {
     const __m128      persp        = mBins[mBinId].mPerspDivide.simd;
     const math::vec4* screenCoords = mBins[mBinId].mScreenCoords;
@@ -583,7 +533,7 @@ void SR_FragmentProcessor::render_triangle(
 void SR_FragmentProcessor::render_triangle(
     const SR_Texture* depthBuffer,
     SR_ColorRGBAf*    pOutputs,
-    ls::math::vec4*   outVaryings) noexcept
+    math::vec4*       outVaryings) noexcept
 {
     const math::vec4  persp        = mBins[mBinId].mPerspDivide;
     const math::vec4* screenCoords = mBins[mBinId].mScreenCoords;
@@ -711,7 +661,7 @@ void SR_FragmentProcessor::render_triangle(
 void SR_FragmentProcessor::render_triangle(
     const SR_Texture* depthBuffer,
     SR_ColorRGBAf*    pOutputs,
-    ls::math::vec4*   outVaryings) noexcept
+    math::vec4*       outVaryings) noexcept
 {
     const math::vec4* screenCoords = mBins[mBinId].mScreenCoords;
     const math::vec4  depth        {screenCoords[0][2], screenCoords[1][2], screenCoords[2][2], 0.f};
@@ -828,7 +778,7 @@ void SR_FragmentProcessor::flush_fragments(
     uint_fast32_t       numQueuedFrags,
     const SR_FragCoord* outCoords,
     SR_ColorRGBAf*      pOutputs,
-    ls::math::vec4*     outVaryings) noexcept
+    math::vec4*         outVaryings) noexcept
 {
     const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
     const SR_FragmentShader fragShader  = mShader->mFragShader;
@@ -868,26 +818,12 @@ void SR_FragmentProcessor::flush_fragments(
 -------------------------------------*/
 void SR_FragmentProcessor::execute() noexcept
 {
-    SR_ColorRGBAf   pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
-    ls::math::vec4  outVaryings[SR_SHADER_MAX_VARYING_VECTORS];
+    SR_ColorRGBAf pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
+    math::vec4    outVaryings[SR_SHADER_MAX_VARYING_VECTORS];
 
     // Sort the bins based on their depth. Closer objects should be rendered
     // first to allow for fragment rejection during the depth test.
-    #if 0
-    std::sort(mBins, mBins+mNumBins, [](const SR_FragmentBin& a, const SR_FragmentBin& b)->bool
-    {
-        return a.mPerspDivide[0] > b.mPerspDivide[0];
-    });
-    #elif 1
-    sr_frag_bin_qsort(mBins, mNumBins);
-    #else
-    std::qsort(mBins, mNumBins, sizeof(SR_FragmentBin), [](const void* pA, const void* pB)-> int
-    {
-        const SR_FragmentBin* a = reinterpret_cast<const SR_FragmentBin*>(pA);
-        const SR_FragmentBin* b = reinterpret_cast<const SR_FragmentBin*>(pB);
-        return a->mPerspDivide[0] < b->mPerspDivide[0];
-    });
-    #endif
+    utils::quick_sort<SR_FragmentBin, utils::IsGreater<SR_FragmentBin>>(mBins, mNumBins);
 
     // local cache
     const SR_RenderMode mode = mMode;

@@ -20,9 +20,9 @@ namespace math = ls::math;
 /*-------------------------------------
  * Test the visibility of a point
 -------------------------------------*/
-bool sr_is_visible(const math::vec3& point, const math::mat4& mvpMatrix, const float fovDivisor)
+bool sr_is_visible(const math::vec4& point, const math::mat4& mvpMatrix, const float fovDivisor)
 {
-    math::vec4&& temp = mvpMatrix * math::vec4{point[0], point[1], point[2], 1.f};
+    math::vec4&& temp = mvpMatrix * point;
 
     // Debug multipliers to reduce the frustum planes
     temp[0] *= fovDivisor;
@@ -41,19 +41,19 @@ bool sr_is_visible(const math::vec3& point, const math::mat4& mvpMatrix, const f
 -------------------------------------*/
 bool sr_is_visible(const SR_BoundingBox& bb, const math::mat4& mvpMatrix, const float fovDivisor)
 {
-    const math::vec3& trr = bb.get_top_rear_right();
-    const math::vec3& bfl = bb.get_bot_front_left();
+    const math::vec4& trr = bb.get_top_rear_right();
+    const math::vec4& bfl = bb.get_bot_front_left();
 
-    const math::vec3 points[] = {
-        {trr[0], bfl[1], bfl[2]},
-        {trr[0], trr[1], bfl[2]},
-        {trr[0], trr[1], trr[2]},
-        {bfl[0], trr[1], trr[2]},
-        {bfl[0], bfl[1], trr[2]},
-        {bfl[0], bfl[1], bfl[2]},
+    const math::vec4 points[] = {
+        {trr[0], bfl[1], bfl[2], 1.f},
+        {trr[0], trr[1], bfl[2], 1.f},
+        {trr[0], trr[1], trr[2], 1.f},
+        {bfl[0], trr[1], trr[2], 1.f},
+        {bfl[0], bfl[1], trr[2], 1.f},
+        {bfl[0], bfl[1], bfl[2], 1.f},
 
-        {trr[0], bfl[1], trr[2]},
-        {bfl[0], trr[1], bfl[2]},
+        {trr[0], bfl[1], trr[2], 1.f},
+        {bfl[0], trr[1], bfl[2], 1.f},
     };
 
     for (unsigned i = 0; i < LS_ARRAY_SIZE(points); ++i)
