@@ -63,37 +63,6 @@ inline uint32_t get_next_vertex(const SR_IndexBuffer* pIbo, uint32_t vId) noexce
 
 
 
-inline math::vec2_t<uint32_t> get_next_vertex2(const SR_IndexBuffer* pIbo, uint32_t vId) noexcept
-{
-    math::vec2_t<uint32_t> ret;
-
-    switch (pIbo->type())
-    {
-        case VERTEX_DATA_BYTE:
-            ret[0] = *reinterpret_cast<const unsigned char*>(pIbo->element(vId+0));
-            ret[1] = *reinterpret_cast<const unsigned char*>(pIbo->element(vId+1));
-            break;
-
-        case VERTEX_DATA_SHORT:
-            ret[0] = *reinterpret_cast<const unsigned short*>(pIbo->element(vId+0));
-            ret[1] = *reinterpret_cast<const unsigned short*>(pIbo->element(vId+1));
-            break;
-
-        case VERTEX_DATA_INT:
-            ret[0] = *reinterpret_cast<const unsigned int*>(pIbo->element(vId+0));
-            ret[1] = *reinterpret_cast<const unsigned int*>(pIbo->element(vId+1));
-            break;
-
-        default:
-            abort();
-            break;
-    }
-
-    return ret;
-}
-
-
-
 inline math::vec4_t<uint32_t> get_next_vertex3(const SR_IndexBuffer* pIbo, uint32_t vId) noexcept
 {
     math::vec4_t<uint32_t> ret;
