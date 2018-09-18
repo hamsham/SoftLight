@@ -45,10 +45,10 @@ struct SR_VertexShader
     uint8_t numVaryings;
 
     ls::math::vec4_t<float> (*shader)(
-        const uint32_t vertId,
-        const SR_VertexArray& vao,
-        const SR_VertexBuffer& vbo,
-        const SR_UniformBuffer* uniforms,
+        const uint32_t           vertId,
+        const SR_VertexArray&    vao,
+        const SR_VertexBuffer&   vbo,
+        const SR_UniformBuffer*  uniforms,
         ls::math::vec4_t<float>* varyings
     );
 };
@@ -66,9 +66,9 @@ struct SR_FragmentShader
 
     bool (*shader)(
         const ls::math::vec4_t<float>& fragCoord,
-        const SR_UniformBuffer* uniforms,
+        const SR_UniformBuffer*        uniforms,
         const ls::math::vec4_t<float>* varyings,
-        SR_ColorRGBAType<float>* outputs
+        SR_ColorRGBAType<float>*       outputs
     );
 };
 
@@ -82,9 +82,6 @@ class SR_Shader
     friend class SR_Context;
     friend struct SR_VertexProcessor;
     friend struct SR_FragmentProcessor;
-
-  public:
-    typedef SR_ColorRGBAType<float> FragColorType;
 
   private:
     SR_VertexShader mVertShader;

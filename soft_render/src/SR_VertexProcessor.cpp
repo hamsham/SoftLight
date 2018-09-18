@@ -160,7 +160,7 @@ void SR_VertexProcessor::push_fragments(
 
     // divide the screen into equal parts which can then be rendered by all
     // available fragment threads.
-    const uint32_t numTiles = mNumTiles;
+    uint32_t numTiles = mNumTiles;
     uint32_t cols;
     uint32_t rows;
 
@@ -180,14 +180,14 @@ void SR_VertexProcessor::push_fragments(
     // responsible for
 
     // render points through whichever tile/thread they appear in
-    if (0 != (m.mode & RENDER_MODE_POINTS))
+    if (m.mode & RENDER_MODE_POINTS)
     {
         bboxMinX = p0[0];
         bboxMaxX = p0[0];
         bboxMinY = p0[1];
         bboxMaxY = p0[1];
     }
-    else if (0 != (m.mode & RENDER_MODE_LINES))
+    else if (m.mode & RENDER_MODE_LINES)
     {
         // establish a bounding box to detect overlap with a thread's tiles
         bboxMinX = math::min(p0[0], p1[0]);
@@ -195,7 +195,7 @@ void SR_VertexProcessor::push_fragments(
         bboxMaxX = math::max(p0[0], p1[0]);
         bboxMaxY = math::max(p0[1], p1[1]);
     }
-    else if (0 != (m.mode & RENDER_MODE_TRIANGLES))
+    else if (m.mode & RENDER_MODE_TRIANGLES)
     {
         // establish a bounding box to detect overlap with a thread's tiles
         bboxMinX = math::min(p0[0], p1[0], p2[0]);
@@ -205,19 +205,19 @@ void SR_VertexProcessor::push_fragments(
     }
 
     // render all lines & triangles
-    for (uint32_t tileId = 0; tileId < numTiles; ++tileId)
+    while (numTiles --> 0)
     {
-        const uint32_t x0 = fboW * (tileId % cols);
-        const uint32_t y0 = fboH * ((tileId / cols) % rows);
+        const uint32_t x0 = fboW * (numTiles % cols);
+        const uint32_t y0 = fboH * ((numTiles / cols) % rows);
         const uint32_t x1 = fboW + x0;
         const uint32_t y1 = fboH + y0;
         const int isFragVisible = (bboxMaxX >= (float)x0 && (float)x1 >= bboxMinX && bboxMaxY >= (float)y0 && (float)y1 >= bboxMinY);
 
         if (isFragVisible)
         {
-            pLocks[tileId].lock();
-            pFragBins[tileId].push_back(bin);
-            pLocks[tileId].unlock();
+            pLocks[numTiles].lock();
+            pFragBins[numTiles].push_back(bin);
+            pLocks[numTiles].unlock();
         }
     }
 }
@@ -257,8 +257,7 @@ void SR_VertexProcessor::execute() noexcept
         for (uint32_t i = begin; i < end; i += step)
         {
             const uint32_t vertId = get_next_vertex(pIbo, i);
-
-            worldCoords[0]  = vertShader.shader(vertId, vao, vbo, pUniforms, pVaryings);
+            worldCoords[0] = vertShader.shader(vertId, vao, vbo, pUniforms, pVaryings);
 
             if (worldCoords[0][3] > 0.f)
             {
@@ -271,9 +270,10 @@ void SR_VertexProcessor::execute() noexcept
     {
         begin += mTileId;
         const uint32_t step = mNumTiles;
+
         for (uint32_t i = begin; i < end; i += step)
         {
-            worldCoords[0]  = vertShader.shader(i, vao, vbo, pUniforms, pVaryings);
+            worldCoords[0] = vertShader.shader(i, vao, vbo, pUniforms, pVaryings);
 
             if (worldCoords[0][3] > 0.f)
             {
@@ -287,8 +287,8 @@ void SR_VertexProcessor::execute() noexcept
         // 3 vertices per set of lines
         begin += mTileId * 3u;
         const uint32_t step = mNumTiles * 3u;
-        for (uint32_t i = begin; i < end; i += step)
 
+        for (uint32_t i = begin; i < end; i += step)
         {
             for (uint32_t j = 0; j < 3; ++j)
             {
