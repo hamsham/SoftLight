@@ -818,17 +818,14 @@ void SR_FragmentProcessor::flush_fragments(
 -------------------------------------*/
 void SR_FragmentProcessor::execute() noexcept
 {
-    SR_ColorRGBAf pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
-    math::vec4    outVaryings[SR_SHADER_MAX_VARYING_VECTORS];
-
     // Sort the bins based on their depth. Closer objects should be rendered
     // first to allow for fragment rejection during the depth test.
     utils::quick_sort<SR_FragmentBin, utils::IsGreater<SR_FragmentBin>>(mBins, mNumBins);
 
-    // local cache
-    const SR_RenderMode mode = mMode;
+    SR_ColorRGBAf pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
+    math::vec4    outVaryings[SR_SHADER_MAX_VARYING_VECTORS];
 
-    switch(mode)
+    switch(mMode)
     {
         case RENDER_MODE_POINTS:
         case RENDER_MODE_INDEXED_POINTS:

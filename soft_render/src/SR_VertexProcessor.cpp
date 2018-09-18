@@ -205,63 +205,21 @@ void SR_VertexProcessor::push_fragments(
     }
 
     // render all lines & triangles
-    //uint32_t lockedBinId = UINT32_MAX;
-    //SR_FragmentBin lockedBin;
-
     for (uint32_t tileId = 0; tileId < numTiles; ++tileId)
     {
         const uint32_t x0 = fboW * (tileId % cols);
         const uint32_t y0 = fboH * ((tileId / cols) % rows);
         const uint32_t x1 = fboW + x0;
         const uint32_t y1 = fboH + y0;
-        const int isFragVisible = !(bboxMaxX < (float)x0 || (float)x1 < bboxMinX || bboxMaxY < (float)y0 || (float)y1 < bboxMinY);
+        const int isFragVisible = (bboxMaxX >= (float)x0 && (float)x1 >= bboxMinX && bboxMaxY >= (float)y0 && (float)y1 >= bboxMinY);
 
         if (isFragVisible)
         {
-            // Atomic spin-locks burn CPU cycles while waiting on an
-            // acquisition. try to minimize this by attempting to do something
-            // useful.
             pLocks[tileId].lock();
             pFragBins[tileId].push_back(bin);
             pLocks[tileId].unlock();
-            /*
-            if (pLocks[tileId].try_lock())
-            {
-                pFragBins[tileId].push_back(bin);
-                pLocks[tileId].unlock();
-            }
-            else
-            {
-                if (lockedBinId != UINT32_MAX)
-                {
-                    pLocks[lockedBinId].lock();
-                    pFragBins[lockedBinId].push_back(lockedBin);
-                    pLocks[lockedBinId].unlock();
-                    lockedBinId = UINT32_MAX;
-                }
-
-                // make one last attempt to push a fragment
-                if (pLocks[tileId].try_lock())
-                {
-                    pFragBins[tileId].push_back(bin);
-                    pLocks[tileId].unlock();
-                }
-                else
-                {
-                    lockedBinId = tileId;
-                    lockedBin = bin;
-                }
-            }
-             */
         }
     }
-
-    //if (lockedBinId != UINT32_MAX)
-    //{
-    //    while (!pLocks[lockedBinId].try_lock());
-    //    pFragBins[lockedBinId].push_back(lockedBin);
-    //    pLocks[lockedBinId].unlock();
-    //}
 }
 
 
