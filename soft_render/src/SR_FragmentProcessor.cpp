@@ -9,6 +9,7 @@
 
 #include "soft_render/SR_Color.hpp" // SR_Color... types
 #include "soft_render/SR_FragmentProcessor.hpp"
+#include "soft_render/SR_ShaderProcessor.hpp"
 #include "soft_render/SR_Texture.hpp"
 
 
@@ -382,7 +383,7 @@ void SR_FragmentProcessor::render_line(
 /*--------------------------------------
  * Triangle Rasterization
 --------------------------------------*/
-#if defined(LS_ARCH_X86)
+#if 1 //defined(LS_ARCH_X86)
 
 void SR_FragmentProcessor::render_triangle(
     const SR_Texture* depthBuffer,
@@ -468,16 +469,11 @@ void SR_FragmentProcessor::render_triangle(
             // depth texture lookup will always be slow
             const math::vec4 z              = depth * bcF;
             const __m128     depthBufTexels = depthBuffer->raw_texel4<float>(x, y).simd;
-            const int        depthTest      = _mm_movemask_ps(_mm_sub_ps(z.simd, depthBufTexels));
-            const int        signBits       = depthTest
-                | ((_mm_movemask_ps(bcF[0].simd) != 0) << 0x00)
-                | ((_mm_movemask_ps(bcF[1].simd) != 0) << 0x01)
-                | ((_mm_movemask_ps(bcF[2].simd) != 0) << 0x02)
-                | ((_mm_movemask_ps(bcF[3].simd) != 0) << 0x03);
+            const int        depthTest      = _mm_movemask_ps(_mm_sub_ps(z.simd, depthBufTexels));;
 
             for (int32_t i = 0; i < 4; ++i)
             {
-                if (signBits & (1 << i))
+                if ((depthTest & (1 << i)) | _mm_movemask_ps(bcF[i].simd))
                 {
                     continue;
                 }
@@ -487,7 +483,7 @@ void SR_FragmentProcessor::render_triangle(
                 const float zf = z[i];
 
                 // perspective correction
-                __m128 bc4 = math::vec4{bcF[i] * persp}.simd;
+                __m128 bc4 = _mm_mul_ps(bcF[i].simd, persp);
                 {
                     // horizontal add
                     const __m128 a = bc4;
@@ -504,7 +500,7 @@ void SR_FragmentProcessor::render_triangle(
                 }
 
                 outCoords[numQueuedFrags] = SR_FragCoord{
-                    bc4,
+                    math::vec4{bc4},
                     (uint16_t)(x+i),
                     (uint16_t)y2,
                     zf
@@ -528,7 +524,7 @@ void SR_FragmentProcessor::render_triangle(
 
 
 
-#elif 0 //defined(LS_ARCH_ARM) // Translating x86 into a NEON implementation.
+#elif 1 //defined(LS_ARCH_ARM) // Translating x86 into a NEON implementation.
 
 void SR_FragmentProcessor::render_triangle(
     const SR_Texture* depthBuffer,
@@ -610,33 +606,26 @@ void SR_FragmentProcessor::render_triangle(
             );
 
             // depth texture lookup will always be slow
-            const math::vec4&& z = depth * bcF;
+            const math::vec4&& z              = depth * bcF;
             const math::vec4&& depthBufTexels = depthBuffer->raw_texel4<float>(x, y);
-
-            const int depthTest = math::sign_bits(z - depthBufTexels);
-            const int signBits  = depthTest
-                | ((math::sign_bits(bcF[0]) != 0) << 0x00)
-                | ((math::sign_bits(bcF[1]) != 0) << 0x01)
-                | ((math::sign_bits(bcF[2]) != 0) << 0x02)
-                | ((math::sign_bits(bcF[3]) != 0) << 0x03);
+            const int          depthTest      = math::sign_bits(z - depthBufTexels);
 
             for (int32_t i = 0; i < 4; ++i)
             {
-                if (signBits & (0x01 << i))
+                if ((depthTest & (0x01 << i)) || math::sign_bits(bcF[i]))
                 {
                     continue;
                 }
 
                 // prefetch
-                const int32_t y2 = y;
                 const float zf = z[i];
 
                 // perspective correction
                 math::vec4&& bc4 = bcF[i] * persp;
-                const float bW = math::rcp(math::sum(bc4));
+                const float bW = math::sum_inv(bc4);
                 bc4 *= bW;
 
-                outCoords[numQueuedFrags] = SR_FragCoord{bc4, (uint16_t)(x+i), (uint16_t)y2, zf};
+                outCoords[numQueuedFrags] = SR_FragCoord{bc4, (uint16_t)(x+i), (uint16_t)y, zf};
                 ++numQueuedFrags;
 
                 if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
