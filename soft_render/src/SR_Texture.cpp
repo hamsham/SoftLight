@@ -18,7 +18,10 @@ namespace
 -------------------------------------*/
 char* _sr_allocate_texture(uint16_t w, uint16_t h, uint16_t d, unsigned bpt)
 {
-    const size_t numBytes = w * h * d * bpt;
+    // 4 pixels can be acquired at a time
+    const uint16_t alignment = 4 - (w%4);
+
+    const size_t numBytes = (w + alignment) * h * d * bpt;
     char* pData = new char[numBytes];
 
     ls::utils::fast_memset(pData, 0, numBytes);
