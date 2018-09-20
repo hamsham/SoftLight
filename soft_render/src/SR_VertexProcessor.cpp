@@ -2,7 +2,7 @@
 #include "lightsky/math/vec4.h"
 #include "lightsky/math/vec_utils.h"
 
-#include "lightsky/utils/Copy.h"
+#include "lightsky/utils/Copy.h" // fast_memset
 #include "lightsky/utils/WorkerThread.hpp"
 
 #include "soft_render/SR_Context.hpp"

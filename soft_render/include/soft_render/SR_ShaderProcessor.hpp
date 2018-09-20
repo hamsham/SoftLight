@@ -8,7 +8,8 @@
 #include "lightsky/utils/Pointer.h"
 #include "lightsky/utils/WorkerThread.hpp"
 
-#include "soft_render/SR_FragmentProcessor.hpp" // SR_FragmentBin
+#include "lightsky/math/vec4.h"
+
 #include "soft_render/SR_Mesh.hpp"
 
 
@@ -20,6 +21,60 @@ class SR_Shader;
 struct SR_ShaderProcessor;
 class SR_Texture;
 class SR_WindowBuffer;
+
+
+
+/*-----------------------------------------------------------------------------
+ * Constants needed for shader operation
+-----------------------------------------------------------------------------*/
+enum SR_ShaderLimits
+{
+    SR_SHADER_MAX_WORLD_COORDS    = 3,
+    SR_SHADER_MAX_SCREEN_COORDS   = 3,
+    SR_SHADER_MAX_VARYING_VECTORS = 4,
+    SR_SHADER_MAX_FRAG_OUTPUTS    = 4,
+    SR_SHADER_MAX_FRAG_QUEUES     = 32
+};
+
+
+
+/*-----------------------------------------------------------------------------
+ * Intermediate Fragment Storage for Binning
+-----------------------------------------------------------------------------*/
+struct alignas(sizeof(ls::math::vec4)) SR_FragmentBin
+{
+    // 4-byte floats * 4-element vector * 3 vectors-per-tri = 48 bytes
+    ls::math::vec4 mScreenCoords[SR_SHADER_MAX_SCREEN_COORDS];
+
+    // 4-byte floats * 4-element vector = 16 bytes
+    ls::math::vec4 mPerspDivide;
+
+    // 4-byte floats * 4-element vector * 3-vectors-per-tri * 4 varyings-per-vertex = 192 bytes
+    ls::math::vec4 mVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS];
+
+    // 256 bytes = 2048 bits
+};
+
+// Comparison operator for sorting fragments by depth
+constexpr bool operator > (const SR_FragmentBin& a, const SR_FragmentBin& b)
+{
+    return a.mPerspDivide[0] > b.mPerspDivide[0];
+}
+
+
+
+/*-----------------------------------------------------------------------------
+ * Helper structure to put a pixel on the screen
+-----------------------------------------------------------------------------*/
+struct alignas(sizeof(ls::math::vec4)) SR_FragCoord
+{
+    ls::math::vec4 bc; // 32*4
+    uint16_t       x; // 16
+    uint16_t       y; // 16
+    float          zf; // 32
+
+    // 192 bits / 24 bytes
+};
 
 
 

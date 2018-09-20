@@ -35,7 +35,7 @@ namespace ls
 
 class SR_Context; // SR_Context.hpp
 class SR_Shader; // SR_Shader.hpp
-struct SR_FragmentBin; // SR_FragmentProcessor.hpp
+struct SR_FragmentBin; // SR_ShaderProcessor.hpp
 
 
 
