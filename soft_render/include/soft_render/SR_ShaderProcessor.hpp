@@ -2,8 +2,8 @@
 #ifndef SR_SHADER_PROCESSOR_HPP
 #define SR_SHADER_PROCESSOR_HPP
 
+#include <array>
 #include <cstdlib> // std::size_t
-#include <vector>
 
 #include "lightsky/utils/Pointer.h"
 #include "lightsky/utils/WorkerThread.hpp"
@@ -33,7 +33,8 @@ enum SR_ShaderLimits
     SR_SHADER_MAX_SCREEN_COORDS   = 3,
     SR_SHADER_MAX_VARYING_VECTORS = 4,
     SR_SHADER_MAX_FRAG_OUTPUTS    = 4,
-    SR_SHADER_MAX_FRAG_QUEUES     = 32
+    SR_SHADER_MAX_FRAG_QUEUES     = 32,
+    SR_SHADER_MAX_FRAG_BINS       = 8192 // guaranteed 2 MB per thread :)
 };
 
 
@@ -87,13 +88,13 @@ class SR_ProcessorPool
   public:
     typedef ls::utils::Worker<SR_ShaderProcessor> Worker;
     typedef ls::utils::WorkerThread<SR_ShaderProcessor> ThreadedWorker;
-    typedef ls::utils::SpinLock LockType;
-    //typedef std::mutex LockType;
 
   private:
-    ls::utils::Pointer<LockType[]> mLocks;
+    std::atomic_uint_fast32_t mFragSemaphore;
 
-    ls::utils::Pointer<std::vector<SR_FragmentBin>[]> mFragBins;
+    ls::utils::Pointer<std::atomic_uint_fast32_t[]> mBinsUsed;
+
+    ls::utils::Pointer<std::array<SR_FragmentBin, SR_SHADER_MAX_FRAG_BINS>[]> mFragBins;
 
     ls::utils::Pointer<Worker*[]> mThreads;
 
@@ -123,8 +124,6 @@ class SR_ProcessorPool
     void execute() noexcept;
 
     void run_shader_processors(const SR_Context* c, const SR_Mesh* m, const SR_Shader* s, SR_Framebuffer* fbo) noexcept;
-
-    void push_fragment_bin(unsigned threadId, const SR_FragmentBin& bin) noexcept;
 
     void clear_fragment_bins() noexcept;
 
@@ -182,25 +181,14 @@ inline void SR_ProcessorPool::execute() noexcept
 
 
 /*-------------------------------------
- * Push a fragment bin to the task list
--------------------------------------*/
-inline void SR_ProcessorPool::push_fragment_bin(unsigned threadId, const SR_FragmentBin& bin) noexcept
-{
-    mLocks[threadId].lock();
-    mFragBins[threadId].push_back(bin);
-    mLocks[threadId].unlock();
-}
-
-
-
-/*-------------------------------------
  * Remove all bins from potential processing
 -------------------------------------*/
 inline void SR_ProcessorPool::clear_fragment_bins() noexcept
 {
     for (uint16_t i = 0; i < mNumThreads; ++i)
     {
-        mFragBins[i].clear();
+        //mFragBins[i].clear();
+        mBinsUsed[i].store(0);
     }
 }
 

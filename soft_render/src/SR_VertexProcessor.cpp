@@ -3,7 +3,6 @@
 #include "lightsky/math/vec_utils.h"
 
 #include "lightsky/utils/Copy.h" // fast_memset
-#include "lightsky/utils/WorkerThread.hpp"
 
 #include "soft_render/SR_Context.hpp"
 #include "soft_render/SR_FragmentProcessor.hpp"
@@ -136,6 +135,44 @@ inline bool cull_triangle(const math::vec4* screenCoords, const math::vec4* worl
 /*-----------------------------------------------------------------------------
  * SR_VertexProcessor Class
 -----------------------------------------------------------------------------*/
+/*-------------------------------------
+ * Execute a fragment processor
+-------------------------------------*/
+void SR_VertexProcessor::flush_fragments(uint_fast32_t tileId, uint_fast32_t numBins) const noexcept
+{
+    // divide the screen into equal parts which can then be rendered by all
+    // available fragment threads.
+    const uint_fast32_t numTiles = mNumTiles;
+
+    uint_fast32_t cols;
+    uint_fast32_t rows;
+    sr_calc_frag_tiles<uint_fast32_t>(numTiles, cols, rows);
+
+    const uint_fast32_t fboW = mFboW / cols;
+    const uint_fast32_t fboH = mFboH / rows;
+    const uint_fast32_t tileX = fboW * (tileId % cols);
+    const uint_fast32_t tileY = fboH * ((tileId / cols) % rows);
+
+    SR_FragmentProcessor fragTask;
+    fragTask.mShader  = mShader;
+    fragTask.mFbo     = mFbo;
+    fragTask.mBins    = mFragBins[tileId].data();
+    fragTask.mBinId   = 0;
+    fragTask.mNumBins = numBins;
+    fragTask.mFboX0   = (float)tileX;
+    fragTask.mFboY0   = (float)tileY;
+    fragTask.mFboX1   = (float)(fboW + tileX - 1);
+    fragTask.mFboY1   = (float)(fboH + tileY - 1);
+    fragTask.mMode    = mMesh.mode;
+
+    fragTask.execute();
+
+    // indicate the bin is available for pushing
+    mBinsUsed[tileId].store(1, std::memory_order_relaxed);
+}
+
+
+
 /*--------------------------------------
  * Publish a vertex to a fragment thread
 --------------------------------------*/
@@ -148,8 +185,8 @@ void SR_VertexProcessor::push_fragments(
 ) const noexcept
 {
     const SR_Mesh m = mMesh;
-    LockType* const pLocks = mLocks;
-    std::vector<SR_FragmentBin>* const pFragBins = mFragBins;
+    std::atomic_uint_fast32_t* const pLocks = mBinsUsed;
+    std::array<SR_FragmentBin, SR_SHADER_MAX_FRAG_BINS>* const pFragBins = mFragBins;
 
     // Copy all per-vertex coordinates and varyings to the fragment bins which
     // will need the data for interpolation
@@ -160,7 +197,7 @@ void SR_VertexProcessor::push_fragments(
 
     // divide the screen into equal parts which can then be rendered by all
     // available fragment threads.
-    uint32_t numTiles = mNumTiles;
+    const uint32_t numTiles = mNumTiles;
     uint32_t cols;
     uint32_t rows;
 
@@ -205,19 +242,37 @@ void SR_VertexProcessor::push_fragments(
     }
 
     // render all lines & triangles
-    while (numTiles --> 0)
+    for (uint16_t threadId = 0; threadId < numTiles; ++threadId)
     {
-        const uint32_t x0 = fboW * (numTiles % cols);
-        const uint32_t y0 = fboH * ((numTiles / cols) % rows);
+        const uint32_t x0 = fboW * (threadId % cols);
+        const uint32_t y0 = fboH * ((threadId / cols) % rows);
         const uint32_t x1 = fboW + x0;
         const uint32_t y1 = fboH + y0;
         const int isFragVisible = (bboxMaxX >= (float)x0 && (float)x1 >= bboxMinX && bboxMaxY >= (float)y0 && (float)y1 >= bboxMinY);
 
         if (isFragVisible)
         {
-            pLocks[numTiles].lock();
-            pFragBins[numTiles].push_back(bin);
-            pLocks[numTiles].unlock();
+            // Check if the  output bin is full
+            uint_fast32_t binId = pLocks[threadId].fetch_add(1, std::memory_order_relaxed);
+
+            if (binId >= SR_SHADER_MAX_FRAG_BINS)
+            {
+                // Execute a fragment processors on the full bin. Don't do
+                // anything if another thread stole the sentinel bin first.
+                if (binId == SR_SHADER_MAX_FRAG_BINS)
+                {
+                    flush_fragments(threadId, SR_SHADER_MAX_FRAG_BINS);
+                    binId = 0;
+                }
+                else
+                {
+                    while (pLocks[threadId].load(std::memory_order_relaxed) >= SR_SHADER_MAX_FRAG_BINS);
+                    binId = pLocks[threadId].fetch_add(1, std::memory_order_relaxed);
+                }
+            }
+
+            // carry one
+            pFragBins[threadId][binId] = bin;
         }
     }
 }
@@ -377,4 +432,11 @@ void SR_VertexProcessor::execute() noexcept
             }
         }
     }
+
+    // Wait for the other fragment processors
+    const uint_fast32_t tileId = mBusyProcessors->fetch_sub(1) - 1;
+
+    while (mBusyProcessors->load(std::memory_order_relaxed));
+
+    flush_fragments(tileId, mBinsUsed[tileId].load(std::memory_order_relaxed));
 }

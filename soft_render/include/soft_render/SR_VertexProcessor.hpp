@@ -2,7 +2,7 @@
 #ifndef SR_VERTEX_PROCESSOR_HPP
 #define SR_VERTEX_PROCESSOR_HPP
 
-#include <vector>
+#include <array>
 
 #include "lightsky/utils/WorkerThread.hpp"
 
@@ -43,7 +43,7 @@ struct SR_FragmentBin; // SR_ShaderProcessor.hpp
  * Calculate the optimal tiling for the fragment shader threads
 --------------------------------------*/
 template <typename data_type>
-inline void sr_calc_frag_tiles(data_type numThreads, data_type& numHoriz, data_type& numVert)
+inline void sr_calc_frag_tiles(data_type numThreads, data_type& numHoriz, data_type& numVert) noexcept
 {
     // Create a set of horizontal and vertical tiles. This method will create
     // more horizontal tiles than vertical ones.
@@ -63,12 +63,10 @@ inline void sr_calc_frag_tiles(data_type numThreads, data_type& numHoriz, data_t
 -----------------------------------------------------------------------------*/
 struct SR_VertexProcessor
 {
-    typedef ls::utils::SpinLock LockType;
-    //typedef std::mutex LockType;
-
-    // 64-128 bits
+    // 96-192 bits
     const SR_Shader*  mShader;
     const SR_Context* mContext;
+    SR_Framebuffer*   mFbo;
 
     // 32 bits
     uint16_t mTileId;
@@ -81,12 +79,14 @@ struct SR_VertexProcessor
     // 128 bits
     SR_Mesh mMesh;
 
-    // 64-128 bits
-    LockType* mLocks;
-    std::vector<SR_FragmentBin>* mFragBins;
+    // 96-192 bits
+    std::atomic_uint_fast32_t* mBinsUsed;
+    std::array<SR_FragmentBin, 8192>* mFragBins;
+    std::atomic_uint_fast32_t* mBusyProcessors;
 
+    // 768 bits (96 bytes) max, padding not included
 
-    // 448 bits (56 bytes) max, padding not included
+    void flush_fragments(uint_fast32_t tileId, uint_fast32_t numBins) const noexcept;
 
     void push_fragments(
         uint32_t fboW,

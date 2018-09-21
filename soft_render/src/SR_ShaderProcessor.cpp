@@ -214,7 +214,7 @@ SR_ProcessorPool::~SR_ProcessorPool() noexcept
  * Constructor
 --------------------------------------*/
 SR_ProcessorPool::SR_ProcessorPool(unsigned numThreads) noexcept :
-    mLocks{},
+    mBinsUsed{},
     mFragBins{},
     mThreads{},
     mNumThreads{0}
@@ -271,7 +271,7 @@ SR_ProcessorPool& SR_ProcessorPool::operator=(SR_ProcessorPool&& p) noexcept
         return *this;
     }
 
-    mLocks = std::move(p.mLocks);
+    mBinsUsed = std::move(p.mBinsUsed);
     mFragBins = std::move(p.mFragBins);
     mThreads = std::move(p.mThreads);
 
@@ -323,13 +323,17 @@ unsigned SR_ProcessorPool::num_threads(unsigned inNumThreads) noexcept
         inNumThreads = 1;
     }
 
+    mBinsUsed.reset(new std::atomic_uint_fast32_t[inNumThreads]);
+    mFragBins.reset(new std::array<SR_FragmentBin, SR_SHADER_MAX_FRAG_BINS>[inNumThreads]);
+    mThreads.reset(new SR_ProcessorPool::Worker*[inNumThreads]);
     mNumThreads = inNumThreads;
-    mThreads.reset(new SR_ProcessorPool::Worker*[mNumThreads]);
 
-    for (unsigned i = 0; i < mNumThreads; ++i)
+    for (unsigned i = 0; i < inNumThreads; ++i)
     {
+        mBinsUsed[i].store(0);
+
         // The last thread is always the main thread
-        if (i == (mNumThreads-1u))
+        if (i == (inNumThreads-1u))
         {
             mThreads[i] = new SR_ProcessorPool::Worker{};
         }
@@ -339,15 +343,12 @@ unsigned SR_ProcessorPool::num_threads(unsigned inNumThreads) noexcept
         }
     }
 
-    mLocks.reset(new SR_ProcessorPool::LockType[mNumThreads]);
-    mFragBins.reset(new std::vector<SR_FragmentBin>[mNumThreads]);
-
     uint16_t c, r;
-    sr_calc_frag_tiles<uint16_t>(mNumThreads, c, r);
+    sr_calc_frag_tiles<uint16_t>(inNumThreads, c, r);
 
     std::cout
         << "Rendering threads updated:"
-        << "\n\tThread Count:       " << mNumThreads
+        << "\n\tThread Count:       " << inNumThreads
         << "\n\tBytes per Task:     " << sizeof(SR_ShaderProcessor)
         << "\n\tBytes of Task Pool: " << sizeof(SR_ProcessorPool)
         << "\n\tVertex Task Size:   " << sizeof(SR_VertexProcessor)
@@ -357,7 +358,7 @@ unsigned SR_ProcessorPool::num_threads(unsigned inNumThreads) noexcept
         << "\n\tFragment tiles:     " << c << 'x' << r
         << std::endl;
 
-    return mNumThreads;
+    return inNumThreads;
 }
 
 
@@ -366,13 +367,12 @@ unsigned SR_ProcessorPool::num_threads(unsigned inNumThreads) noexcept
 -------------------------------------*/
 void SR_ProcessorPool::run_shader_processors(const SR_Context* c, const SR_Mesh* m, const SR_Shader* s, SR_Framebuffer* fbo) noexcept
 {
-    // calculate fragment tiles early on to avoid a delay when flushing the
-    // fragment threads.
-    uint16_t cols;
-    uint16_t rows;
-    sr_calc_frag_tiles<uint16_t>(mNumThreads, cols, rows);
-    const uint16_t fboW = fbo->width() / cols;
-    const uint16_t fboH = fbo->height() / rows;
+    // Reserve enough space for each thread to contain all triangles
+    for (unsigned i = 0; i < mNumThreads; ++i)
+    {
+        mBinsUsed[i].store(0);
+    }
+    mFragSemaphore.store(mNumThreads);
 
     SR_ShaderProcessor task;
     task.mType = SR_VERTEX_SHADER;
@@ -384,63 +384,22 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context* c, const SR_Mesh*
     {
         vertTask.mShader   = s;
         vertTask.mContext  = c;
+        vertTask.mFbo      = fbo;
         vertTask.mTileId   = threadId;
-        vertTask.mNumTiles = mNumThreads;
+        vertTask.mNumTiles = (uint16_t)mNumThreads;
         vertTask.mFboW     = fbo->width();
         vertTask.mFboH     = fbo->height();
         vertTask.mMesh     = *m;
-        vertTask.mLocks    = mLocks.get();
+        vertTask.mBinsUsed = mBinsUsed.get();
         vertTask.mFragBins = mFragBins.get();
+        vertTask.mBusyProcessors = &mFragSemaphore;
 
         // Busy waiting will be enabled the moment the first flush occurs on each
         // thread.
         SR_ProcessorPool::Worker* pWorker = mThreads[threadId];
-        pWorker->busy_waiting(true);
-        pWorker->push(task);
-        //pWorker->flush();
-    }
-
-    // sync-point
-    // Each thread will pause except for the main thread.
-    for (unsigned threadId = 0; threadId < mNumThreads; ++threadId)
-    {
-        SR_ProcessorPool::Worker* const pWorker = mThreads[threadId];
-        pWorker->flush();
-    }
-
-    for (unsigned threadId = 0; threadId < mNumThreads-1u; ++threadId)
-    {
-        SR_ProcessorPool::Worker* const pWorker = mThreads[threadId];
-        //pWorker->wait();
-
-        // spin
-        while (!pWorker->ready())
-        {
-        }
-    }
-
-    task.mType = SR_FRAGMENT_SHADER;
-    SR_FragmentProcessor& fragTask = task.mFragProcessor;
-
-    // Run all remaining fragment processors. Prevent them from busy waiting
-    // after they have completed processing all fragments.
-    for (uint16_t threadId = 0; threadId < mNumThreads; ++threadId)
-    {
-        fragTask.mShader  = s;
-        fragTask.mFbo     = fbo;
-        fragTask.mBins    = mFragBins[threadId].data();
-        fragTask.mNumBins = mFragBins[threadId].size();
-        fragTask.mMode    = m->mode;
-        fragTask.mFboX0   = (float)(fboW * (threadId % cols));
-        fragTask.mFboY0   = (float)(fboH * ((threadId / cols) % rows));
-        fragTask.mFboX1   = ((float)fboW + fragTask.mFboX0 - 1);
-        fragTask.mFboY1   = ((float)fboH + fragTask.mFboY0 - 1);
-        fragTask.mBinId   = 0;
-
-        SR_ProcessorPool::Worker* pWorker = mThreads[threadId];
-        pWorker->push(task);
-        pWorker->flush();
         pWorker->busy_waiting(false);
+        pWorker->push(task);
+        pWorker->flush();
     }
 
     // Each thread should now pause except for the main thread.

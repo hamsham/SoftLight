@@ -465,6 +465,8 @@ utils::Pointer<SR_SceneGraph> create_context()
         abort();
     }
 
+    std::cout << "First frame rendered." << std::endl;
+
     return pGraph;
 }
 
