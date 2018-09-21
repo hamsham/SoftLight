@@ -383,7 +383,7 @@ void SR_FragmentProcessor::render_line(
 /*--------------------------------------
  * Triangle Rasterization
 --------------------------------------*/
-#if 1 //defined(LS_ARCH_X86)
+#if defined(LS_ARCH_X86)
 
 void SR_FragmentProcessor::render_triangle(
     const SR_Texture* depthBuffer,
@@ -469,7 +469,7 @@ void SR_FragmentProcessor::render_triangle(
             // depth texture lookup will always be slow
             const math::vec4 z              = depth * bcF;
             const __m128     depthBufTexels = depthBuffer->raw_texel4<float>(x, y).simd;
-            const int        depthTest      = _mm_movemask_ps(_mm_sub_ps(z.simd, depthBufTexels));;
+            const int        depthTest      = _mm_movemask_ps(_mm_sub_ps(z.simd, depthBufTexels));
 
             for (int32_t i = 0; i < 4; ++i)
             {
@@ -477,10 +477,6 @@ void SR_FragmentProcessor::render_triangle(
                 {
                     continue;
                 }
-
-                // prefetch
-                const int32_t y2 = y;
-                const float zf = z[i];
 
                 // perspective correction
                 __m128 bc4 = _mm_mul_ps(bcF[i].simd, persp);
@@ -502,8 +498,8 @@ void SR_FragmentProcessor::render_triangle(
                 outCoords[numQueuedFrags] = SR_FragCoord{
                     math::vec4{bc4},
                     (uint16_t)(x+i),
-                    (uint16_t)y2,
-                    zf
+                    (uint16_t)y,
+                    z[i]
                 };
                 ++numQueuedFrags;
 
@@ -524,7 +520,7 @@ void SR_FragmentProcessor::render_triangle(
 
 
 
-#elif 1 //defined(LS_ARCH_ARM) // Translating x86 into a NEON implementation.
+#elif 0 //defined(LS_ARCH_ARM) // Translating x86 into a NEON implementation.
 
 void SR_FragmentProcessor::render_triangle(
     const SR_Texture* depthBuffer,
@@ -726,7 +722,7 @@ void SR_FragmentProcessor::render_triangle(
             const float oldDepth = depthBuffer->raw_texel<float>(x, y);
 
             //if (bc.v[0] < 0.f || bc.v[1] < 0.f || bc.v[2] < 0.f)
-            if (math::sign_bits(bc) | math::sign_bit(z - oldDepth))
+            if (math::sign_bits(bc) || math::sign_bit(z - oldDepth))
             {
                 continue;
             }
@@ -779,15 +775,16 @@ void SR_FragmentProcessor::flush_fragments(
 
     while (numQueuedFrags --> 0)
     {
+        const math::vec4 bc = outCoords[numQueuedFrags].bc;
+        const uint16_t   x  = outCoords[numQueuedFrags].x;
+        const uint16_t   y  = outCoords[numQueuedFrags].y;
+        const float      zf = outCoords[numQueuedFrags].zf;
+        const int32_t    zi = (int32_t)zf; // better to do the cast here after all candidate pixels have been rejected
+
         // Interpolate varying variables using the barycentric coordinates
-        interpolate_tri_varyings(outCoords[numQueuedFrags].bc, numVaryings, inVaryings, outVaryings);
+        interpolate_tri_varyings(bc, numVaryings, inVaryings, outVaryings);
 
-        uint_fast32_t  haveOutputs = pShader(outCoords[numQueuedFrags].bc, pUniforms, outVaryings, pOutputs);
-        const uint16_t x           = outCoords[numQueuedFrags].x;
-        const uint16_t y           = outCoords[numQueuedFrags].y;
-        const float    zf          = outCoords[numQueuedFrags].zf;
-        const int32_t  zi          = (int32_t)zf; // better to do the cast here after all candidate pixels have been rejected
-
+        uint_fast32_t  haveOutputs = pShader(bc, pUniforms, outVaryings, pOutputs);
         // branchless select
         switch (-haveOutputs & numOutputs)
         {

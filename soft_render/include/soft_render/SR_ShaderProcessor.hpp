@@ -33,8 +33,16 @@ enum SR_ShaderLimits
     SR_SHADER_MAX_SCREEN_COORDS   = 3,
     SR_SHADER_MAX_VARYING_VECTORS = 4,
     SR_SHADER_MAX_FRAG_OUTPUTS    = 4,
+
+    // Maximum number of fragments that get queued before being placed on a
+    // framebuffer.
     SR_SHADER_MAX_FRAG_QUEUES     = 32,
-    SR_SHADER_MAX_FRAG_BINS       = 8192 // guaranteed 2 MB per thread :)
+
+    // Maximum number of vertex groups which get binned before being sent to a
+    // fragment processor. About 1 MB per thread
+    // (multiplied by sizeof(SR_FragmentBin)). This should be enough for an
+    // average L3 Cache using 4 threads.
+    SR_SHADER_MAX_FRAG_BINS       = 8192
 };
 
 
