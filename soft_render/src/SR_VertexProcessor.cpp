@@ -99,7 +99,7 @@ inline math::vec4_t<uint32_t> get_next_vertex3(const SR_IndexBuffer* pIbo, uint3
 /*--------------------------------------
  * Cull backfaces of a triangle
 --------------------------------------*/
-inline bool cull_triangle(const math::vec4* screenCoords, const math::vec4* worldCoords) noexcept
+constexpr bool cull_triangle(const math::vec4* screenCoords, const math::vec4* worldCoords) noexcept
 {
     // Re-enable the commented section to test screen-space culling
     return /*worldCoords[0][0] < worldCoords[0][3] &&
@@ -123,7 +123,7 @@ inline bool cull_triangle(const math::vec4* screenCoords, const math::vec4* worl
            worldCoords[0][3] > 0.f &&
            worldCoords[1][3] > 0.f &&
            worldCoords[2][3] > 0.f &&
-           (0.f < math::dot(math::vec4{0.f, 0.f, 1.f, 0.f}, math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0])));
+           (0.f < math::dot<float>(math::vec4{0.f, 0.f, 1.f, 0.f}, math::cross<float>(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0])));
 }
 
 
@@ -284,7 +284,7 @@ void SR_VertexProcessor::push_fragments(
 --------------------------------------*/
 void SR_VertexProcessor::execute() noexcept
 {
-    const SR_VertexShader&  vertShader   = mShader->mVertShader;
+    const SR_VertexShader   vertShader   = mShader->mVertShader;
     const SR_UniformBuffer* pUniforms    = mShader->mUniforms.get();
     const size_t            numVaryings  = vertShader.numVaryings;
     const SR_VertexArray&   vao          = mContext->vao(mMesh.vaoId);
@@ -434,7 +434,7 @@ void SR_VertexProcessor::execute() noexcept
     }
 
     // Wait for the other fragment processors
-    const uint_fast32_t tileId = mBusyProcessors->fetch_sub(1) - 1;
+    const uint_fast32_t tileId = mBusyProcessors->fetch_sub(1, std::memory_order_relaxed) - 1;
 
     while (mBusyProcessors->load(std::memory_order_relaxed));
 

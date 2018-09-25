@@ -292,6 +292,7 @@ int main()
                 shouldQuit = true;
             }
 
+
             update_cam_position(camTrans, tickTime, pKeySyms);
 
             if (camTrans.is_dirty())

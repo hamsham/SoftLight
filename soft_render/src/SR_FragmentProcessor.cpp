@@ -388,7 +388,7 @@ void SR_FragmentProcessor::render_line(
 void SR_FragmentProcessor::render_triangle(
     const SR_Texture* depthBuffer,
     SR_ColorRGBAf*    pOutputs,
-    math::vec4*       outVaryings) noexcept
+    math::vec4*       outVaryings) const noexcept
 {
     const __m128      persp        = mBins[mBinId].mPerspDivide.simd;
     const math::vec4* screenCoords = mBins[mBinId].mScreenCoords;
@@ -429,8 +429,6 @@ void SR_FragmentProcessor::render_triangle(
 
     for (int32_t y = bboxMinY; y <= bboxMaxY; ++y)
     {
-        //_mm_prefetch(reinterpret_cast<const char*>(pDepth + (bboxMinX + y * depthWidth)), _MM_HINT_T0);
-
         // calculate the bounds of the current scan-line
         const float  yf         = (float)y;
         const __m128 ty         = _mm_sub_ps(t1[2], _mm_set1_ps(yf));
@@ -451,25 +449,23 @@ void SR_FragmentProcessor::render_triangle(
         for (int32_t x = xMin; x <= xMax; x += 4)
         {
             // calculate barycentric coordinates
-            const math::vec4 xf{_mm_cvtepi32_ps(_mm_add_epi32(_mm_set1_epi32(x), _mm_set_epi32(3, 2, 1, 0)))};
-            const math::vec4 tx{_mm_sub_ps(t0[2], xf.simd)};
-            const math::vec4 u0{_mm_mul_ps(_mm_sub_ps(t01y, _mm_mul_ps(tx.simd, t1[1])), scale)};
-            const math::vec4 u1{_mm_mul_ps(_mm_sub_ps(_mm_mul_ps(tx.simd, t1[0]), t00y), scale)};
+            const __m128 xf = _mm_add_ps(_mm_cvtepi32_ps(_mm_set1_epi32(x)), _mm_set_ps(3.f, 2.f, 1.f, 0.f));
+            const __m128 tx = _mm_sub_ps(t0[2], xf);
+            const __m128 u0 = _mm_mul_ps(_mm_sub_ps(t01y, _mm_mul_ps(tx, t1[1])), scale);
+            const __m128 u1 = _mm_mul_ps(_mm_sub_ps(_mm_mul_ps(tx, t1[0]), t00y), scale);
 
-            //math::vec3   bc {1.f - (u0 + u1), u1, u0};
-            const math::mat4&& bcF = math::transpose<float>(
-                math::mat4{
-                    math::vec4{_mm_sub_ps(_mm_set1_ps(1.f), _mm_add_ps(u0.simd, u1.simd))},
-                    u1,
-                    u0,
-                    _mm_setzero_ps()
-                }
-            );
+            math::mat4 bcF{
+                math::vec4{_mm_sub_ps(_mm_set1_ps(1.f), _mm_add_ps(u0, u1))},
+                math::vec4{u1},
+                math::vec4{u0},
+                math::vec4{_mm_setzero_ps()}
+            };
+            bcF = math::transpose(bcF);
 
             // depth texture lookup will always be slow
-            const math::vec4 z              = depth * bcF;
-            const __m128     depthBufTexels = depthBuffer->raw_texel4<float>(x, y).simd;
-            const int        depthTest      = _mm_movemask_ps(_mm_sub_ps(z.simd, depthBufTexels));
+            const math::vec4 z           = depth * bcF;
+            const __m128     depthTexels = depthBuffer->texel4<float>(x, y).simd;
+            const int        depthTest   = _mm_movemask_ps(_mm_sub_ps(z.simd, depthTexels));
 
             for (int32_t i = 0; i < 4; ++i)
             {
@@ -603,7 +599,7 @@ void SR_FragmentProcessor::render_triangle(
 
             // depth texture lookup will always be slow
             const math::vec4&& z              = depth * bcF;
-            const math::vec4&& depthBufTexels = depthBuffer->raw_texel4<float>(x, y);
+            const math::vec4&& depthBufTexels = depthBuffer->texel4<float>(x, y);
             const int          depthTest      = math::sign_bits(z - depthBufTexels);
 
             for (int32_t i = 0; i < 4; ++i)
@@ -719,7 +715,7 @@ void SR_FragmentProcessor::render_triangle(
             // Ensure the current point is in a triangle by checking the sign
             // bits of all 3 barycentric coordinates.
             const float z = math::dot(depth, bc);
-            const float oldDepth = depthBuffer->raw_texel<float>(x, y);
+            const float oldDepth = depthBuffer->texel<float>(x, y);
 
             //if (bc.v[0] < 0.f || bc.v[1] < 0.f || bc.v[2] < 0.f)
             if (math::sign_bits(bc) || math::sign_bit(z - oldDepth))
@@ -763,7 +759,7 @@ void SR_FragmentProcessor::flush_fragments(
     uint_fast32_t       numQueuedFrags,
     const SR_FragCoord* outCoords,
     SR_ColorRGBAf*      pOutputs,
-    math::vec4*         outVaryings) noexcept
+    math::vec4*         outVaryings) const noexcept
 {
     const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
     const SR_FragmentShader fragShader  = mShader->mFragShader;

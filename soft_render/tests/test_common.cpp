@@ -21,7 +21,7 @@
 
 
 #ifndef SR_TEST_MAX_THREADS
-    #define SR_TEST_MAX_THREADS 4
+    #define SR_TEST_MAX_THREADS 14
 #endif /* SR_TEST_MAX_THREADS */
 
 
@@ -159,7 +159,10 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
         // vectors are faster than colors
         SR_ColorRGB8&&       pixel8 = albedo->nearest<SR_ColorRGB8>(uv[0], uv[1]);
         //const SR_ColorRGBf&& pixelF = color_cast<float, uint8_t>(pixel8);
-        const math::vec4_t<uint8_t> pixelF{pixel8.r, pixel8.g, pixel8.b, 255};
+        math::vec4_t<uint8_t> pixelF{255};
+        pixelF[0] = pixel8.r;
+        pixelF[1] = pixel8.g;
+        pixelF[2] = pixel8.b;
         //pixel = math::vec4{pixelF.r, pixelF.g, pixelF.b, 1.f};
         pixel = (math::vec4)pixelF * math::vec4{0.00392156862745f};
     }

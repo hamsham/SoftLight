@@ -213,8 +213,8 @@ inline bool SR_Framebuffer::test_depth_pixel(
     uint16_t y,
     float depth) noexcept
 {
-    return ((mDepth->type() == SR_COLOR_R_FLOAT) && depth >= mDepth->raw_texel<float>(x, y))
-    || ((mDepth->type() == SR_COLOR_R_DOUBLE) && depth > mDepth->raw_texel<double>(x, y));
+    return ((mDepth->type() == SR_COLOR_R_FLOAT) && depth >= mDepth->texel<float>(x, y))
+    || ((mDepth->type() == SR_COLOR_R_DOUBLE) && depth > mDepth->texel<double>(x, y));
 }
 
 
@@ -225,7 +225,7 @@ inline bool SR_Framebuffer::test_depth_pixel(
 template <>
 inline void SR_Framebuffer::put_depth_pixel<float>(uint16_t x, uint16_t y, float depth) noexcept
 {
-    mDepth->raw_texel<float>(x, y) = depth;
+    mDepth->texel<float>(x, y) = depth;
 }
 
 
@@ -233,7 +233,7 @@ inline void SR_Framebuffer::put_depth_pixel<float>(uint16_t x, uint16_t y, float
 template <>
 inline void SR_Framebuffer::put_depth_pixel<double>(uint16_t x, uint16_t y, double depth) noexcept
 {
-    mDepth->raw_texel<double>(x, y) = depth;
+    mDepth->texel<double>(x, y) = depth;
 }
 
 
