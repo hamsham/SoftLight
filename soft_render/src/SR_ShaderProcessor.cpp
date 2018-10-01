@@ -382,17 +382,17 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context* c, const SR_Mesh*
     // The threads work out between themselves how to partition the data.
     for (uint16_t threadId = 0; threadId < mNumThreads; ++threadId)
     {
-        vertTask.mShader   = s;
-        vertTask.mContext  = c;
-        vertTask.mFbo      = fbo;
-        vertTask.mTileId   = threadId;
-        vertTask.mNumTiles = (uint16_t)mNumThreads;
-        vertTask.mFboW     = fbo->width();
-        vertTask.mFboH     = fbo->height();
-        vertTask.mMesh     = *m;
-        vertTask.mBinsUsed = mBinsUsed.get();
-        vertTask.mFragBins = mFragBins.get();
+        vertTask.mShader         = s;
+        vertTask.mContext        = c;
+        vertTask.mFbo            = fbo;
         vertTask.mBusyProcessors = &mFragSemaphore;
+        vertTask.mTileId         = threadId;
+        vertTask.mNumTiles       = (uint16_t)mNumThreads;
+        vertTask.mFboW           = fbo->width();
+        vertTask.mFboH           = fbo->height();
+        vertTask.mMesh           = *m;
+        vertTask.mBinsUsed       = mBinsUsed.get();
+        vertTask.mFragBins       = mFragBins.get();
 
         // Busy waiting will be enabled the moment the first flush occurs on each
         // thread.

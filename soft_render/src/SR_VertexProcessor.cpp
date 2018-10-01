@@ -123,7 +123,7 @@ constexpr bool cull_triangle(const math::vec4* screenCoords, const math::vec4* w
            worldCoords[0][3] > 0.f &&
            worldCoords[1][3] > 0.f &&
            worldCoords[2][3] > 0.f &&
-           (0.f < math::dot<float>(math::vec4{0.f, 0.f, 1.f, 0.f}, math::cross<float>(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0])));
+           (0.f < math::dot(math::vec4{0.f, 0.f, 1.f, 0.f}, math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0])));
 }
 
 

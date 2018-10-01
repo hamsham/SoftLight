@@ -72,6 +72,8 @@ ExternalProject_Add(
         "https://github.com/assimp/assimp.git"
     GIT_TAG
         "${ASSIMP_BRANCH}"
+    UPDATE_COMMAND
+        ${GIT_EXECUTABLE} fetch
     CMAKE_COMMAND
         ${CMAKE_COMMAND}
     CMAKE_ARGS
@@ -151,6 +153,8 @@ ExternalProject_Add(
         "https://github.com/g-truc/glm.git"
     GIT_TAG
         "${GLM_BRANCH}"
+    UPDATE_COMMAND
+        ${GIT_EXECUTABLE} fetch
     CMAKE_COMMAND
         ${CMAKE_COMMAND}
     CMAKE_CACHE_ARGS

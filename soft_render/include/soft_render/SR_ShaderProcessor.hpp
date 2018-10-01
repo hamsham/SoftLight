@@ -42,7 +42,7 @@ enum SR_ShaderLimits
     // fragment processor. About 1 MB per thread
     // (multiplied by sizeof(SR_FragmentBin)). This should be enough for an
     // average L3 Cache using 4 threads.
-    SR_SHADER_MAX_FRAG_BINS       = 8192
+    SR_SHADER_MAX_FRAG_BINS       = 65535
 };
 
 

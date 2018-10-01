@@ -516,12 +516,12 @@ void SR_FragmentProcessor::render_triangle(
 
 
 
-#elif 0 //defined(LS_ARCH_ARM) // Translating x86 into a NEON implementation.
+#elif 0//defined(LS_ARCH_ARM) // Translating x86 into a NEON implementation.
 
 void SR_FragmentProcessor::render_triangle(
     const SR_Texture* depthBuffer,
     SR_ColorRGBAf*    pOutputs,
-    math::vec4*       outVaryings) noexcept
+    math::vec4*       outVaryings) const noexcept
 {
     const math::vec4  persp        = mBins[mBinId].mPerspDivide;
     const math::vec4* screenCoords = mBins[mBinId].mScreenCoords;
@@ -557,7 +557,7 @@ void SR_FragmentProcessor::render_triangle(
     const float p10xy = p10x * p10y;
     const float p21xy = p21x * p21y;
 
-    unsigned numQueuedFrags = 0;
+    unsigned numQueuedFrags = 0;all
     SR_FragCoord outCoords[SR_SHADER_MAX_FRAG_QUEUES];
 
     for (int32_t y = bboxMinY; y <= bboxMaxY; ++y)
@@ -642,7 +642,7 @@ void SR_FragmentProcessor::render_triangle(
 void SR_FragmentProcessor::render_triangle(
     const SR_Texture* depthBuffer,
     SR_ColorRGBAf*    pOutputs,
-    math::vec4*       outVaryings) noexcept
+    math::vec4*       outVaryings) const noexcept
 {
     const math::vec4* screenCoords = mBins[mBinId].mScreenCoords;
     const math::vec4  depth        {screenCoords[0][2], screenCoords[1][2], screenCoords[2][2], 0.f};
