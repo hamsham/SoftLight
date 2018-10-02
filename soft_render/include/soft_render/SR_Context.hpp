@@ -8,19 +8,8 @@
 
 #include "lightsky/utils/Pointer.h"
 
-#include "soft_render/SR_ShaderProcessor.hpp"
+#include "soft_render/SR_ShaderProcessor.hpp" // SR_ProcessorPool
 
-
-namespace ls
-{
-namespace utils
-{
-
-template <typename T>
-class Worker;
-
-}
-}
 
 
 class SR_Framebuffer;
@@ -181,26 +170,6 @@ class SR_Context
      */
     unsigned num_threads(unsigned inNumThreads) noexcept;
 };
-
-
-
-/*--------------------------------------
- * Retrieve the number of threads
---------------------------------------*/
-inline unsigned SR_Context::num_threads() const noexcept
-{
-    return mProcessors.num_threads();
-}
-
-
-
-/*--------------------------------------
- * Set the number of threads
---------------------------------------*/
-inline unsigned SR_Context::num_threads(unsigned inNumThreads) noexcept
-{
-    return mProcessors.num_threads(inNumThreads);
-}
 
 
 

@@ -5,25 +5,14 @@
 #include <iterator> // std::back_inserter
 #include <utility> // std::move
 
-#include "lightsky/utils/WorkerThread.hpp"
-
 #include "soft_render/SR_Context.hpp"
 #include "soft_render/SR_FragmentProcessor.hpp"
 #include "soft_render/SR_Framebuffer.hpp"
 #include "soft_render/SR_IndexBuffer.hpp"
 #include "soft_render/SR_Shader.hpp"
-#include "soft_render/SR_ShaderProcessor.hpp"
 #include "soft_render/SR_Texture.hpp"
 #include "soft_render/SR_VertexArray.hpp"
 #include "soft_render/SR_VertexBuffer.hpp"
-
-
-
-#define SR_FRAGMENT_SORTING
-
-
-
-namespace utils = ls::utils;
 
 
 
@@ -564,4 +553,24 @@ void SR_Context::draw(const SR_Mesh& m, uint32_t shaderId, uint32_t fboId) noexc
 void SR_Context::blit(SR_WindowBuffer& buffer, uint32_t textureId) noexcept
 {
     mProcessors.run_blit_processors(mTextures[textureId], &buffer);
+}
+
+
+
+/*--------------------------------------
+ * Retrieve the number of threads
+--------------------------------------*/
+unsigned SR_Context::num_threads() const noexcept
+{
+    return mProcessors.num_threads();
+}
+
+
+
+/*--------------------------------------
+ * Set the number of threads
+--------------------------------------*/
+unsigned SR_Context::num_threads(unsigned inNumThreads) noexcept
+{
+    return mProcessors.num_threads(inNumThreads);
 }
