@@ -1,7 +1,7 @@
 
-#include "lightsky/utils/Sort.hpp" // utils::quick_sort
+#include "lightsky/setup/Arch.h" // LS_IMPERATIVE
 
-#include "lightsky/setup/Arch.h"
+#include "lightsky/utils/Sort.hpp" // utils::quick_sort
 
 #include "lightsky/math/mat4.h"
 #include "lightsky/math/mat_utils.h"
@@ -33,7 +33,7 @@ namespace
 /*--------------------------------------
  * Interpolate varying variables across a line
 --------------------------------------*/
-inline void interpolate_line_varyings(
+LS_IMPERATIVE void interpolate_line_varyings(
     const float             percent,
     const uint32_t          numVaryings,
     const math::vec4* const inVaryings,
@@ -55,7 +55,7 @@ inline void interpolate_line_varyings(
 /*--------------------------------------
  * Interpolate varying variables across a triangle
 --------------------------------------*/
-inline void interpolate_tri_varyings(
+LS_IMPERATIVE void interpolate_tri_varyings(
     const math::vec4&       baryCoords,
     const uint_fast32_t     numVaryings,
     const math::vec4* const inVaryings0,
