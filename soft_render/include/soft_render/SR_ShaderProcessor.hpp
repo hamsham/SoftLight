@@ -39,9 +39,8 @@ enum SR_ShaderLimits
     SR_SHADER_MAX_FRAG_QUEUES     = 32,
 
     // Maximum number of vertex groups which get binned before being sent to a
-    // fragment processor. About 1 MB per thread
-    // (multiplied by sizeof(SR_FragmentBin)). This should be enough for an
-    // average L3 Cache using 4 threads.
+    // fragment processor. About 16 MB per thread
+    // (multiplied by sizeof(SR_FragmentBin)).
     SR_SHADER_MAX_FRAG_BINS       = 65535
 };
 
