@@ -1,7 +1,7 @@
 
-#include "lightsky/utils/Sort.hpp" // utils::quick_sort
+#include "lightsky/setup/Arch.h" // LS_IMPERATIVE
 
-#include "lightsky/setup/Arch.h"
+#include "lightsky/utils/Sort.hpp" // utils::quick_sort
 
 #include "lightsky/math/mat4.h"
 #include "lightsky/math/mat_utils.h"
@@ -33,7 +33,7 @@ namespace
 /*--------------------------------------
  * Interpolate varying variables across a line
 --------------------------------------*/
-inline void interpolate_line_varyings(
+LS_IMPERATIVE void interpolate_line_varyings(
     const float             percent,
     const uint32_t          numVaryings,
     const math::vec4* const inVaryings,
@@ -55,27 +55,30 @@ inline void interpolate_line_varyings(
 /*--------------------------------------
  * Interpolate varying variables across a triangle
 --------------------------------------*/
-inline void interpolate_tri_varyings(
-    const math::vec4&       baryCoords,
-    const uint_fast32_t     numVaryings,
-    const math::vec4* const inVaryings0,
-    math::vec4* const       outVaryings) noexcept
+LS_IMPERATIVE void interpolate_tri_varyings(
+    const math::vec4&   baryCoords,
+    const uint_fast32_t numVaryings,
+    const math::vec4*   inVaryings0,
+    math::vec4*         outVaryings) noexcept
 {
-    const math::vec4* const inVaryings1 = inVaryings0 + numVaryings;
-    const math::vec4* const inVaryings2 = inVaryings1 + numVaryings;
+    const math::vec4* inVaryings1 = inVaryings0 + numVaryings;
+    const math::vec4* inVaryings2 = inVaryings1 + numVaryings;
     uint_fast32_t i = numVaryings;
 
-    #ifdef LS_ARCH_X86
+    #if defined(LS_ARCH_X86)
         const __m128 bc0 = _mm_shuffle_ps(baryCoords.simd, baryCoords.simd, 0x00);
         const __m128 bc1 = _mm_shuffle_ps(baryCoords.simd, baryCoords.simd, 0x55);
         const __m128 bc2 = _mm_shuffle_ps(baryCoords.simd, baryCoords.simd, 0xAA);
+        //const __m128 bc0 = _mm_set1_ps(baryCoords.v[0]);
+        //const __m128 bc1 = _mm_set1_ps(baryCoords.v[1]);
+        //const __m128 bc2 = _mm_set1_ps(baryCoords.v[2]);
 
         while (i --> 0u)
         {
-            const __m128 v0 = _mm_mul_ps(inVaryings0[i].simd, bc0);
-            const __m128 v1 = _mm_mul_ps(inVaryings1[i].simd, bc1);
-            const __m128 v2 = _mm_mul_ps(inVaryings2[i].simd, bc2);
-            outVaryings[i].simd = _mm_add_ps(_mm_add_ps(v0, v1), v2);
+            const __m128 v0 = _mm_mul_ps((inVaryings0++)->simd, bc0);
+            const __m128 v1 = _mm_mul_ps((inVaryings1++)->simd, bc1);
+            const __m128 v2 = _mm_mul_ps((inVaryings2++)->simd, bc2);
+            (outVaryings++)->simd = _mm_add_ps(_mm_add_ps(v0, v1), v2);
         }
     #elif defined(LS_ARCH_ARM)
         const float32x4_t bc0 = vdupq_lane_f32(vget_low_f32(baryCoords.simd),  0);
@@ -84,11 +87,10 @@ inline void interpolate_tri_varyings(
 
         while (i --> 0u)
         {
-            const float32x4_t v0 = vmulq_f32(vld1q_f32(inVaryings0[i].v), bc0);
-            const float32x4_t v1 = vmulq_f32(vld1q_f32(inVaryings1[i].v), bc1);
-            const float32x4_t v2 = vmulq_f32(vld1q_f32(inVaryings2[i].v), bc2);
-
-            outVaryings[i].simd = vaddq_f32(vaddq_f32(v0, v1), v2);
+            const float32x4_t v0 = vmulq_f32(vld1q_f32((inVaryings0++)->v), bc0);
+            const float32x4_t v1 = vmulq_f32(vld1q_f32((inVaryings1++)->v), bc1);
+            const float32x4_t v2 = vmulq_f32(vld1q_f32((inVaryings2++)->v), bc2);
+            (outVaryings++)->simd = vaddq_f32(vaddq_f32(v0, v1), v2);
         }
     #else
         const float bc0 = baryCoords.v[0];
@@ -97,10 +99,10 @@ inline void interpolate_tri_varyings(
 
         while (i --> 0u)
         {
-            const math::vec4&& v0 = inVaryings0[i] * bc0;
-            const math::vec4&& v1 = inVaryings1[i] * bc1;
-            const math::vec4&& v2 = inVaryings2[i] * bc2;
-            outVaryings[i] = v0+v1+v2;
+            const math::vec4&& v0 = (*inVaryings0++) * bc0;
+            const math::vec4&& v1 = (*inVaryings1++) * bc1;
+            const math::vec4&& v2 = (*inVaryings2++) * bc2;
+            (*outVaryings++) = v0+v1+v2;
         }
     #endif
 }
@@ -469,15 +471,16 @@ void SR_FragmentProcessor::render_triangle(
 
             for (int32_t i = 0; i < 4; ++i)
             {
-                if ((depthTest & (1 << i)) | _mm_movemask_ps(bcF[i].simd))
+                if ((depthTest & (1 << i)) || _mm_movemask_ps(bcF[i].simd))
                 {
                     continue;
                 }
 
                 // perspective correction
                 __m128 bc4 = _mm_mul_ps(bcF[i].simd, persp);
+
+                // horizontal add
                 {
-                    // horizontal add
                     const __m128 a = bc4;
 
                     // swap the words of each vector
@@ -488,7 +491,7 @@ void SR_FragmentProcessor::render_triangle(
                     const __m128 d = _mm_shuffle_ps(c, c, 0x0F);
                     const __m128 e = _mm_add_ps(c, d);
 
-                    bc4 = _mm_mul_ps(bc4, _mm_rcp_ps(e));
+                    bc4 = _mm_mul_ps(a, _mm_rcp_ps(e));
                 }
 
                 outCoords[numQueuedFrags] = SR_FragCoord{
@@ -557,7 +560,7 @@ void SR_FragmentProcessor::render_triangle(
     const float p10xy = p10x * p10y;
     const float p21xy = p21x * p21y;
 
-    unsigned numQueuedFrags = 0;all
+    unsigned numQueuedFrags = 0;
     SR_FragCoord outCoords[SR_SHADER_MAX_FRAG_QUEUES];
 
     for (int32_t y = bboxMinY; y <= bboxMaxY; ++y)
@@ -588,7 +591,7 @@ void SR_FragmentProcessor::render_triangle(
             const math::vec4&& u1 = ((tx * t1[0]) - t00y) * scale;
 
             //math::vec3   bc {1.f - (u0 + u1), u1, u0};
-            const math::mat4&& bcF = math::transpose<float>(
+            const math::mat4&& bcF = math::transpose(
                 math::mat4{
                     math::vec4{math::vec4{1.f} - (u0 + u1)},
                     u1,

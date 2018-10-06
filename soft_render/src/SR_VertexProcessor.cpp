@@ -1,8 +1,10 @@
 
-#include "lightsky/math/vec4.h"
-#include "lightsky/math/vec_utils.h"
+#include "lightsky/setup/Api.h" // LS_IMPERATIVE
 
 #include "lightsky/utils/Copy.h" // fast_memset
+
+#include "lightsky/math/vec4.h"
+#include "lightsky/math/vec_utils.h"
 
 #include "soft_render/SR_Context.hpp"
 #include "soft_render/SR_FragmentProcessor.hpp"
@@ -99,7 +101,7 @@ inline math::vec4_t<uint32_t> get_next_vertex3(const SR_IndexBuffer* pIbo, uint3
 /*--------------------------------------
  * Cull backfaces of a triangle
 --------------------------------------*/
-constexpr bool cull_triangle(const math::vec4* screenCoords, const math::vec4* worldCoords) noexcept
+inline bool cull_triangle(const math::vec4* screenCoords, const math::vec4* worldCoords) noexcept
 {
     // Re-enable the commented section to test screen-space culling
     return /*worldCoords[0][0] < worldCoords[0][3] &&
@@ -123,7 +125,7 @@ constexpr bool cull_triangle(const math::vec4* screenCoords, const math::vec4* w
            worldCoords[0][3] > 0.f &&
            worldCoords[1][3] > 0.f &&
            worldCoords[2][3] > 0.f &&
-           (1.f < math::dot(math::vec4{0.f, 0.f, 1.f, 0.f}, math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0])));
+           (0.f < math::dot(math::vec4{0.f, 0.f, 1.f, 0.f}, math::normalize(math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0]))));
 }
 
 

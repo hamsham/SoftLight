@@ -22,7 +22,6 @@
 #include <type_traits> // std::is_floating_point
 
 #include "lightsky/math/scalar_utils.h"
-#include "lightsky/math/vec4.h"
 
 
 

@@ -24,7 +24,7 @@ using sr_fixed_type = math::ulong_lowp_t;
  * Nearest-neighbor filtering
 -------------------------------------*/
 void SR_BlitProcessor::blit_nearest(
-    SR_ColorRGBA8* const pOutBuf,
+    unsigned char* const pOutBuf,
     const uint_fast16_t  inW,
     const uint_fast16_t  inH,
     const uint_fast16_t  outW,
@@ -32,14 +32,14 @@ void SR_BlitProcessor::blit_nearest(
 {
     // Only tile data along the y-axis of the render buffer. This will help to
     // make use of the CPU prefetcher when iterating pixels along the x-axis
-    const uint_fast16_t dstH  = outH / mNumThreads;
-    const uint_fast16_t dstY0 = mThreadId * dstH;
-    const uint_fast16_t dstY1 = dstY0 + dstH;
-    const sr_fixed_type finW  = math::fixed_cast<sr_fixed_type>(inW);
-    const sr_fixed_type finH  = math::fixed_cast<sr_fixed_type>(inH);
-    const sr_fixed_type foutW = finW / math::fixed_cast<sr_fixed_type>(outW);
-    const sr_fixed_type foutH = finH / math::fixed_cast<sr_fixed_type>(outH);
-
+    constexpr ptrdiff_t stride    = sizeof(SR_ColorRGBA8);
+    const uint_fast16_t dstH      = outH / mNumThreads;
+    const uint_fast16_t dstY0     = mThreadId * dstH;
+    const uint_fast16_t dstY1     = dstY0 + dstH;
+    const sr_fixed_type finW      = math::fixed_cast<sr_fixed_type>(inW);
+    const sr_fixed_type finH      = math::fixed_cast<sr_fixed_type>(inH);
+    const sr_fixed_type foutW     = finW / math::fixed_cast<sr_fixed_type>(outW);
+    const sr_fixed_type foutH     = finH / math::fixed_cast<sr_fixed_type>(outH);
     const uint_fast16_t numPixels = (outW*outH) - 1;
 
     for (uint_fast16_t y = dstY0; y < dstY1; ++y)
@@ -49,17 +49,17 @@ void SR_BlitProcessor::blit_nearest(
         for (uint_fast16_t x = 0; x < outW; ++x)
         {
             const sr_fixed_type xf   = math::fixed_cast<sr_fixed_type>(x);
-            uint_fast16_t       srcX = (uint_fast16_t)(xf * foutW);
-            uint_fast16_t       srcY = (uint_fast16_t)(yf * foutH);
+            uint_fast16_t       srcX = (uint_fast16_t)math::fixed_cast<sr_fixed_type::base_type, sr_fixed_type::fraction_digits>(xf * foutW);
+            uint_fast16_t       srcY = (uint_fast16_t)math::fixed_cast<sr_fixed_type::base_type, sr_fixed_type::fraction_digits>(yf * foutH);
 
             srcX = ls::math::min<uint_fast16_t>(srcX, inW - 1);
             srcY = ls::math::min<uint_fast16_t>(srcY, inH - 1);
 
-            const uint_fast16_t outIndex = x + outW * y;
             const SR_ColorRGB8  inColor  = mTexture->texel<SR_ColorRGB8>(srcX, srcY);
-            SR_ColorRGBA8&      outColor = pOutBuf[numPixels - outIndex];
+            const uint_fast16_t outIndex = x + outW * y;
+            SR_ColorRGB8* const outColor = reinterpret_cast<SR_ColorRGB8*>(pOutBuf + (numPixels - outIndex) * stride);
 
-            outColor = SR_ColorRGBA8{inColor.r, inColor.g, inColor.b, 255};
+            *outColor = inColor;
         }
     }
 }
@@ -77,7 +77,7 @@ void SR_BlitProcessor::execute() noexcept
     const uint_fast16_t bufferH = mBackBuffer->height();
     const uint_fast16_t texW    = mTexture->width();
     const uint_fast16_t texH    = mTexture->height();
-    SR_ColorRGBA8*      pDest   = mBackBuffer->buffer();
+    unsigned char*      pDest   = reinterpret_cast<unsigned char*>(mBackBuffer->buffer());
 
     blit_nearest(pDest, texW, texH, bufferW, bufferH);
 }

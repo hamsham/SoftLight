@@ -72,6 +72,9 @@ SR_Texture::SR_Texture() noexcept :
     mHeight{0},
     mDepth{0},
     mWrapping{SR_TEXTURE_WRAP_DEFAULT},
+    mWidthf{0.f},
+    mHeightf{0.f},
+    mDepthf{0.f},
     mTexels{nullptr},
     mType{SR_COLOR_RGB_DEFAULT},
     mBytesPerTexel{0}
@@ -87,6 +90,9 @@ SR_Texture::SR_Texture(const SR_Texture& r) noexcept :
     mHeight{r.mHeight},
     mDepth{r.mDepth},
     mWrapping{r.mWrapping},
+    mWidthf{r.mWidthf},
+    mHeightf{r.mHeightf},
+    mDepthf{r.mDepthf},
     mTexels{_sr_copy_texture(r.mWidth, r.mHeight, r.mDepth, r.mBytesPerTexel, r.mTexels)},
     mType{r.mType},
     mBytesPerTexel{r.mBytesPerTexel}
@@ -102,6 +108,9 @@ SR_Texture::SR_Texture(SR_Texture&& r) noexcept :
     mHeight{r.mHeight},
     mDepth{r.mDepth},
     mWrapping{r.mWrapping},
+    mWidthf{r.mWidthf},
+    mHeightf{r.mHeightf},
+    mDepthf{r.mDepthf},
     mTexels{r.mTexels},
     mType{r.mType},
     mBytesPerTexel{r.mBytesPerTexel}
@@ -110,6 +119,9 @@ SR_Texture::SR_Texture(SR_Texture&& r) noexcept :
     r.mHeight = 0;
     r.mDepth = 0;
     r.mWrapping = SR_TEXTURE_WRAP_DEFAULT;
+    r.mWidthf = 0.f;
+    r.mHeightf = 0.f;
+    r.mDepthf = 0.f;
     r.mTexels = nullptr;
     r.mType = SR_COLOR_RGB_DEFAULT;
     r.mBytesPerTexel = 0;
@@ -167,6 +179,15 @@ SR_Texture& SR_Texture::operator=(SR_Texture&& r) noexcept
     mWrapping = r.mWrapping;
     r.mWrapping = SR_TEXTURE_WRAP_DEFAULT;
 
+    mWidth = r.mWidth;
+    r.mWidthf = 0.f;
+
+    mHeightf = r.mHeightf;
+    r.mHeightf = 0.f;
+
+    mDepthf = r.mDepthf;
+    r.mDepthf = 0.f;
+
     mTexels = r.mTexels;
     r.mTexels = nullptr;
 
@@ -216,6 +237,9 @@ int SR_Texture::init(SR_ColorDataType type, uint16_t w, uint16_t h, uint16_t d) 
     mHeight        = h;
     mDepth         = d;
     mWrapping      = SR_TEXTURE_WRAP_DEFAULT;
+    mWidthf        = (float)w;
+    mHeightf       = (float)h;
+    mDepthf        = (float)d;
     mTexels        = pData;
     mType          = type;
     mBytesPerTexel = (uint32_t)bpt;
@@ -288,6 +312,9 @@ void SR_Texture::terminate() noexcept
     mHeight = 0;
     mDepth = 0;
     mWrapping = SR_TEXTURE_WRAP_DEFAULT;
+    mWidthf = 0.f;
+    mHeightf = 0.f;
+    mDepthf = 0.f;
 
     delete [] mTexels;
     mTexels = nullptr;
