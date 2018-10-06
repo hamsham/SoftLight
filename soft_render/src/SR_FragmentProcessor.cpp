@@ -385,7 +385,7 @@ void SR_FragmentProcessor::render_line(
 /*--------------------------------------
  * Triangle Rasterization
 --------------------------------------*/
-#if 1//defined(LS_ARCH_X86)
+#if defined(LS_ARCH_X86)
 
 void SR_FragmentProcessor::render_triangle(
     const SR_Texture* depthBuffer,

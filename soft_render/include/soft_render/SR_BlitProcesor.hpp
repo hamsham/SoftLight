@@ -35,11 +35,11 @@ struct SR_BlitProcessor
     // 160 bits total, 20 bytes
 
     void blit_nearest(
-        SR_ColorRGBAType<uint8_t>* const pOutBuf,
-        const uint_fast16_t inW,
-        const uint_fast16_t inH,
-        const uint_fast16_t outW,
-        const uint_fast16_t outH
+        unsigned char* const pOutBuf,
+        const uint_fast16_t  inW,
+        const uint_fast16_t  inH,
+        const uint_fast16_t  outW,
+        const uint_fast16_t  outH
     ) noexcept;
 
     void execute() noexcept;
