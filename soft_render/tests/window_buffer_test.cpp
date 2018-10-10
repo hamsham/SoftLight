@@ -3,6 +3,8 @@
 #include <memory> // std::move()
 #include <thread>
 
+#include "lightsky/utils/Time.hpp"
+
 #include "soft_render/SR_Animation.hpp"
 #include "soft_render/SR_AnimationChannel.hpp"
 #include "soft_render/SR_AnimationPlayer.hpp"
@@ -137,13 +139,9 @@ int main()
 
     int shouldQuit = pWindow->init(IMAGE_WIDTH, IMAGE_HEIGHT);
 
-    hr_duration::rep tickTime = 0.f;
-    hr_time prevTime = hr_clock::now();
-    hr_duration frameTime{};
-    unsigned currFrames = 0;
+    ls::utils::Clock timer;
     unsigned totalFrames = 0;
     float currSeconds = 0.f;
-    float totalSeconds = 0.f;
     float dx = 0.f;
     float dy = 0.f;
 
@@ -173,6 +171,7 @@ int main()
     }
 
     pWindow->set_keys_repeat(false); // text mode
+    timer.start();
 
     while (!shouldQuit)
     {
@@ -205,7 +204,7 @@ int main()
                         {
                             std::cout << "Space button pressed. Resuming." << std::endl;
                             pWindow->run();
-                            prevTime = hr_clock::now();
+                            timer.pause();
                         }
                         break;
 
@@ -270,20 +269,13 @@ int main()
         }
         else
         {
-            const hr_time&& currTime = hr_clock::now();
-            frameTime                = currTime - prevTime;
-            tickTime                 = frameTime.count();
-            prevTime                 = currTime;
-
-            ++currFrames;
+            timer.update();
+            currSeconds += timer.tick_time();
             ++totalFrames;
-            currSeconds += tickTime;
-            totalSeconds += tickTime;
 
             if (currSeconds >= 0.5f)
             {
-                std::cout << "FPS: " << (float)currFrames/currSeconds << std::endl;
-                currFrames = 0;
+                std::cout << "FPS: " << 1.0/timer.tick_time() << std::endl;
                 currSeconds = 0.f;
             }
 
@@ -293,7 +285,7 @@ int main()
             }
 
 
-            update_cam_position(camTrans, tickTime, pKeySyms);
+            update_cam_position(camTrans, (float)timer.tick_time(), pKeySyms);
 
             if (camTrans.is_dirty())
             {
@@ -314,7 +306,7 @@ int main()
                 pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
             }
 
-            update_animations(*pGraph, animPlayer, currentAnimId, tickTime);
+            update_animations(*pGraph, animPlayer, currentAnimId, (float)timer.tick_time());
             pGraph->update();
 
             //context.framebuffer(0).clear_color_buffer(0, SR_ColorRGB{128, 128, 168});
