@@ -3,6 +3,8 @@
 #include <memory> // std::move()
 #include <thread>
 
+#include "lightsky/utils/Time.hpp"
+
 #include "soft_render/SR_Animation.hpp"
 #include "soft_render/SR_AnimationChannel.hpp"
 #include "soft_render/SR_AnimationPlayer.hpp"
@@ -137,9 +139,7 @@ int main()
 
     int shouldQuit = pWindow->init(IMAGE_WIDTH, IMAGE_HEIGHT);
 
-    hr_duration::rep tickTime = 0.f;
-    hr_time prevTime = hr_clock::now();
-    hr_duration frameTime{};
+    ls::utils::Clock<float> timer;
     unsigned currFrames = 0;
     unsigned totalFrames = 0;
     float currSeconds = 0.f;
@@ -173,6 +173,7 @@ int main()
     }
 
     pWindow->set_keys_repeat(false); // text mode
+    timer.start();
 
     while (!shouldQuit)
     {
@@ -205,7 +206,7 @@ int main()
                         {
                             std::cout << "Space button pressed. Resuming." << std::endl;
                             pWindow->run();
-                            prevTime = hr_clock::now();
+                            timer.start();
                         }
                         break;
 
@@ -270,10 +271,8 @@ int main()
         }
         else
         {
-            const hr_time&& currTime = hr_clock::now();
-            frameTime                = currTime - prevTime;
-            tickTime                 = frameTime.count();
-            prevTime                 = currTime;
+            timer.tick();
+            const float tickTime = timer.tick_time().count();
 
             ++currFrames;
             ++totalFrames;

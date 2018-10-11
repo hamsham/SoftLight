@@ -451,7 +451,7 @@ void SR_FragmentProcessor::render_triangle(
         for (int32_t x = xMin; x <= xMax; x += 4)
         {
             // calculate barycentric coordinates
-            const __m128 xf = _mm_add_ps(_mm_cvtepi32_ps(_mm_set1_epi32(x)), _mm_set_ps(3.f, 2.f, 1.f, 0.f));
+            const __m128 xf = _mm_cvtepi32_ps(_mm_add_epi32(_mm_set1_epi32(x), _mm_set_epi32(3, 2, 1, 0)));
             const __m128 tx = _mm_sub_ps(t0[2], xf);
             const __m128 u0 = _mm_mul_ps(_mm_sub_ps(t01y, _mm_mul_ps(tx, t1[1])), scale);
             const __m128 u1 = _mm_mul_ps(_mm_sub_ps(_mm_mul_ps(tx, t1[0]), t00y), scale);
