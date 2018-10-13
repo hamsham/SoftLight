@@ -30,9 +30,6 @@ struct SR_UniformBuffer;
 class SR_VertexArray;
 class SR_VertexBuffer;
 
-template <typename color_type>
-struct SR_ColorRGBAType;
-
 enum SR_RenderMode : uint16_t; // SR_Geometry.hpp
 
 
@@ -68,7 +65,7 @@ struct SR_FragmentShader
         const ls::math::vec4_t<float>& fragCoord,
         const SR_UniformBuffer*        uniforms,
         const ls::math::vec4_t<float>* varyings,
-        SR_ColorRGBAType<float>*       outputs
+        ls::math::vec4_t<float>*       outputs
     );
 };
 

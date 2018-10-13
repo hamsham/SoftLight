@@ -82,7 +82,8 @@ struct SR_VertexProcessor
 
     // 64-128 bits
     std::atomic_uint_fast32_t* mBinsUsed;
-    std::array<SR_FragmentBin, 65535>* mFragBins;
+    std::array<SR_FragmentBin, 32768>* mFragBins;
+    std::array<SR_FragCoord, 1024>* mFragQueues;
 
     // 768 bits (96 bytes) max, padding not included
 

@@ -61,16 +61,17 @@ SR_VertexShader normal_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-bool _normal_frag_shader_impl(const math::vec4&, const SR_UniformBuffer* uniforms, const math::vec4* varyings, SR_ColorRGBAf* outputs)
+bool _normal_frag_shader_impl(const math::vec4&, const SR_UniformBuffer* uniforms, const math::vec4* varyings, math::vec4* outputs)
 {
     const MeshUniforms* pUniforms     = static_cast<const MeshUniforms*>(uniforms);
     const Light         l             = pUniforms->light;
     const math::vec4    pos           = varyings[0];
     const math::vec4    norm          = math::normalize(varyings[1]);
-    SR_ColorRGBAf&      output        = outputs[0];
+    math::vec4&         output        = outputs[0];
 
     math::vec4          lightDir      = l.pos - pos;
     const float         lightDist     = math::length(lightDir);
+
     lightDir = math::normalize(lightDir);
 
     const float         lightAngle    = math::max(math::dot(lightDir, norm), 0.f);
@@ -85,9 +86,7 @@ bool _normal_frag_shader_impl(const math::vec4&, const SR_UniformBuffer* uniform
     const float         spotIntensity = math::clamp((theta - s.outerCutoff) * s.epsilon, 0.f, 1.f);
     const math::vec4&&  specular      = diffuse + (l.specular * (spotIntensity * attenuation));
 
-    output.r = specular[0];
-    output.g = specular[1];
-    output.b = specular[2];
+    output = specular;
 
     return true;
 }
@@ -144,7 +143,7 @@ SR_VertexShader texture_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* uniforms, const math::vec4* varyings, SR_ColorRGBAf* outputs)
+bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* uniforms, const math::vec4* varyings, math::vec4* outputs)
 {
     const math::vec4     pos       = varyings[0];
     const math::vec4     uv        = varyings[1];
@@ -159,12 +158,12 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
     // normalize the texture colors to within (0.f, 1.f)
     {
         // vectors are faster than colors
-        SR_ColorRGB8&&       pixel8 = albedo->nearest<SR_ColorRGB8>(uv[0], uv[1]);
-        //const SR_ColorRGBf&& pixelF = color_cast<float, uint8_t>(pixel8);
+        math::vec3_t<uint8_t>&& pixel8 = albedo->nearest<math::vec3_t<uint8_t>>(uv[0], uv[1]);
+        //const math::vec4&& pixelF = color_cast<float, uint8_t>(pixel8);
         math::vec4_t<uint8_t> pixelF{255};
-        pixelF[0] = pixel8.r;
-        pixelF[1] = pixel8.g;
-        pixelF[2] = pixel8.b;
+        pixelF[0] = pixel8[0];
+        pixelF[1] = pixel8[1];
+        pixelF[2] = pixel8[2];
         //pixel = math::vec4{pixelF.r, pixelF.g, pixelF.b, 1.f};
         pixel = (math::vec4)pixelF * math::vec4{0.00392156862745f};
     }
@@ -202,10 +201,7 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
         pixel = pixel * (diffuse + specular);
         pixel = math::min(pixel, math::vec4{1.f});
 
-        outputs[0].r = pixel[0];
-        outputs[0].g = pixel[1];
-        outputs[0].b = pixel[2];
-        outputs[0].a = pixel[3];
+        outputs[0] = pixel;
     }
 
     return true;
@@ -262,21 +258,21 @@ inline float geometry_smith(const vec_type& norm, const vec_type& viewDir, const
 
 
 
-bool _texture_frag_shader_pbr(const math::vec4&, const SR_UniformBuffer* uniforms, const math::vec4* varyings, SR_ColorRGBAf* outputs)
+bool _texture_frag_shader_pbr(const math::vec4&, const SR_UniformBuffer* uniforms, const math::vec4* varyings, math::vec4* outputs)
 {
     const MeshUniforms*  pUniforms = static_cast<const MeshUniforms*>(uniforms);
     const math::vec4     pos       = varyings[0];
     const math::vec4     uv        = varyings[1];
     const math::vec4     norm      = math::normalize(varyings[2]);
-    SR_ColorRGBAf&       output    = outputs[0];
+    math::vec4&       output    = outputs[0];
     const SR_Texture*    pTexture  = pUniforms->pTexture;
     math::vec4           pixel;
 
     {
         // vectors are faster than colors
-        SR_ColorRGB8&&       pixel8 = pTexture->nearest<SR_ColorRGB8>(uv[0], uv[1]);
-        //const SR_ColorRGBf&& pixelF = color_cast<float, uint8_t>(pixel8);
-        const math::vec4_t<uint8_t> pixelF{pixel8.r, pixel8.g, pixel8.b, 255};
+        math::vec3_t<uint8_t>&& pixel8 = pTexture->nearest<math::vec3_t<uint8_t>>(uv[0], uv[1]);
+        //const math::vec4&& pixelF = color_cast<float, uint8_t>(pixel8);
+        const math::vec4_t<uint8_t> pixelF{pixel8[0], pixel8[1], pixel8[2], 255};
         //pixel = math::vec4{pixelF.r, pixelF.g, pixelF.b, 1.f};
 
         pixel = (math::vec4)pixelF * math::vec4{0.00392156862745f};
@@ -324,14 +320,10 @@ bool _texture_frag_shader_pbr(const math::vec4&, const SR_UniformBuffer* uniform
     const math::vec4&& ambient           = pUniforms->light.ambient * albedo * ambientIntensity * pixel;
 
     // Color normalization and light contribution
-    float outR = ambient[0] + lightDir0[0];
-    float outG = ambient[1] + lightDir0[1];
-    float outB = ambient[2] + lightDir0[2];
+    const math::vec4 outRGB = ambient + lightDir0;
 
     // Tone mapping
-    output.r /= outR + 1.f;
-    output.g /= outG + 1.f;
-    output.b /= outB + 1.f;
+    output /= outRGB + 1.f;
 
     // HDR Tone mapping
     //const float exposure = 5.f;
@@ -341,9 +333,10 @@ bool _texture_frag_shader_pbr(const math::vec4&, const SR_UniformBuffer* uniform
 
     // Gamma correction
     constexpr float gamma = 1.f / 2.2f;
-    output.r = math::clamp(math::pow(outR, gamma), 0.f, 1.f);
-    output.g = math::clamp(math::pow(outG, gamma), 0.f, 1.f);
-    output.b = math::clamp(math::pow(outB, gamma), 0.f, 1.f);
+    output[0] = math::clamp(math::pow(outRGB[0], gamma), 0.f, 1.f);
+    output[1] = math::clamp(math::pow(outRGB[1], gamma), 0.f, 1.f);
+    output[2] = math::clamp(math::pow(outRGB[2], gamma), 0.f, 1.f);
+    output[3] = 1.f;
 
     return true;
 }
@@ -460,10 +453,10 @@ utils::Pointer<SR_SceneGraph> create_context()
 
     render_scene(pGraph.get(), projMatrix*viewMatrix);
 
-    sr_img_save_ppm(IMAGE_WIDTH, IMAGE_HEIGHT, reinterpret_cast<const SR_ColorRGB8*>(tex.data()), "window_buffer_test.ppm");
+    //sr_img_save_ppm(IMAGE_WIDTH, IMAGE_HEIGHT, reinterpret_cast<const math::vec3_t<uint8_t>*>(tex.data()), "window_buffer_test.ppm");
 
-    SR_Texture& baseTex = context.texture(2);
-    sr_img_save_ppm(baseTex.width(), baseTex.height(), reinterpret_cast<const SR_ColorRGB8*>(baseTex.data()), "window_buffer_texture.ppm");
+    //SR_Texture& baseTex = context.texture(2);
+    //sr_img_save_ppm(baseTex.width(), baseTex.height(), reinterpret_cast<const math::vec3_t<uint8_t>*>(baseTex.data()), "window_buffer_texture.ppm");
 
     if (retCode != 0)
     {

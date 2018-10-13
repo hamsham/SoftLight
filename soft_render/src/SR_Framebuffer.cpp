@@ -24,7 +24,7 @@ inline void assign_pixel(
     uint16_t x,
     uint16_t y,
     uint16_t z,
-    const SR_ColorRGBAf& rgba,
+    const float* rgba,
     SR_Texture* pTexture) noexcept
 {
     // texture objects will truncate excess color components
@@ -35,7 +35,7 @@ inline void assign_pixel(
         SR_ColorRGBType<typename  color_type::value_type> rgb;
         SR_ColorRGType<typename   color_type::value_type> rg;
         SR_ColorRType<typename    color_type::value_type> r;
-    } c{color_cast<typename color_type::value_type, float>(rgba)};
+    } c{color_cast<typename color_type::value_type, float>(*reinterpret_cast<const SR_ColorRGBAf*>(rgba))};
 
     color_type& outTexel = pTexture->texel<color_type>(x, y, z);
 
@@ -422,10 +422,11 @@ bool SR_Framebuffer::put_pixel(
     uint16_t x,
     uint16_t y,
     uint16_t z,
-    const SR_ColorRGBAf& rgba) noexcept
+    const math::vec4& colors) noexcept
 {
-    SR_Texture* const pTexture = mColors[targetId];
-    const SR_ColorDataType type = pTexture->type();
+    const float* const     rgba     = colors.v;
+    SR_Texture* const      pTexture = mColors[targetId];
+    const SR_ColorDataType type     = pTexture->type();
 
     switch (type)
     {

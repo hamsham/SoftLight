@@ -41,6 +41,7 @@ struct SR_FragmentProcessor
     const SR_Shader* mShader;
     SR_Framebuffer* mFbo;
     SR_FragmentBin* mBins;
+    SR_FragCoord* mQueues;
 
     // 128 bits
     uint64_t mBinId;
@@ -58,27 +59,27 @@ struct SR_FragmentProcessor
     // 464 bits = 58 bytes
 
     void render_point(
-        SR_Framebuffer* const    fbo,
-        SR_ColorRGBAType<float>* pOutputs
+        SR_Framebuffer* const fbo,
+        ls::math::vec4*       pOutputs
     ) noexcept;
 
     void render_line(
-        SR_Framebuffer* const    fbo,
-        SR_ColorRGBAType<float>* pOutputs,
-        ls::math::vec4*          outVaryings
+        SR_Framebuffer* const fbo,
+        ls::math::vec4*       pOutputs,
+        ls::math::vec4*       outVaryings
     ) noexcept;
 
     void render_triangle(
-        const SR_Texture*        depthBuffer,
-        SR_ColorRGBAType<float>* pOutputs,
-        ls::math::vec4*          outVaryings
+        const SR_Texture* depthBuffer,
+        ls::math::vec4*   pOutputs,
+        ls::math::vec4*   outVaryings
     ) const noexcept;
 
     void flush_fragments(
-        uint_fast32_t            numQueuedFrags,
-        const SR_FragCoord*      outCoords,
-        SR_ColorRGBAType<float>* pOutputs,
-        ls::math::vec4*          outVaryings) const noexcept;
+        uint_fast32_t       numQueuedFrags,
+        const SR_FragCoord* outCoords,
+        ls::math::vec4*     pOutputs,
+        ls::math::vec4*     outVaryings) const noexcept;
 
     void execute() noexcept;
 };

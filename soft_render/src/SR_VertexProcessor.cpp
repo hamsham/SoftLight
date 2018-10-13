@@ -103,28 +103,7 @@ inline math::vec4_t<uint32_t> get_next_vertex3(const SR_IndexBuffer* pIbo, uint3
 --------------------------------------*/
 inline bool cull_triangle(const math::vec4* screenCoords, const math::vec4* worldCoords) noexcept
 {
-    // Re-enable the commented section to test screen-space culling
-    return /*worldCoords[0][0] < worldCoords[0][3] &&
-           worldCoords[0][1] < worldCoords[0][3] &&
-           worldCoords[0][2] < worldCoords[0][3] &&
-           worldCoords[1][0] < worldCoords[1][3] &&
-           worldCoords[1][1] < worldCoords[1][3] &&
-           worldCoords[1][2] < worldCoords[1][3] &&
-           worldCoords[2][0] < /worldCoords[2][3] &&
-           worldCoords[2][1] < worldCoords[2][3] &&
-           worldCoords[2][2] < worldCoords[2][3] &&
-           worldCoords[0][0] > -worldCoords[0][3] &&
-           worldCoords[0][1] > -worldCoords[0][3] &&
-           worldCoords[0][2] > -worldCoords[0][3] &&
-           worldCoords[1][0] > -worldCoords[1][3] &&
-           worldCoords[1][1] > -worldCoords[1][3] &&
-           worldCoords[1][2] > -worldCoords[1][3] &&
-           worldCoords[2][0] > -worldCoords[2][3] &&
-           worldCoords[2][1] > -worldCoords[2][3] &&
-           worldCoords[2][2] > -worldCoords[2][3] &&*/
-           worldCoords[0][3] > 0.f &&
-           worldCoords[1][3] > 0.f &&
-           worldCoords[2][3] > 0.f &&
+    return math::min(worldCoords[0][3], worldCoords[1][3], worldCoords[2][3]) > 0.f &&
            (0.f < math::dot(math::vec4{0.f, 0.f, 1.f, 0.f}, math::normalize(math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0]))));
 }
 
@@ -159,6 +138,7 @@ void SR_VertexProcessor::flush_fragments(uint_fast32_t tileId, uint_fast32_t num
     fragTask.mShader  = mShader;
     fragTask.mFbo     = mFbo;
     fragTask.mBins    = mFragBins[tileId].data();
+    fragTask.mQueues  = mFragQueues[tileId].data();
     fragTask.mBinId   = 0;
     fragTask.mNumBins = numBins;
     fragTask.mFboX0   = (float)tileX;

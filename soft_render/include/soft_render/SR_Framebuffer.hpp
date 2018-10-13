@@ -11,7 +11,6 @@
 #include "lightsky/math/vec3.h"
 #include "lightsky/math/vec4.h"
 
-#include "soft_render/SR_Color.hpp"
 #include "soft_render/SR_Texture.hpp"
 
 
@@ -77,7 +76,7 @@ class SR_Framebuffer
         uint16_t x,
         uint16_t y,
         uint16_t z,
-        const SR_ColorRGBAf& rgba) noexcept;
+        const ls::math::vec4& rgba) noexcept;
 
     bool test_depth_pixel(
         uint16_t x,

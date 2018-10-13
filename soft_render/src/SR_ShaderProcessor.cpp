@@ -325,6 +325,7 @@ unsigned SR_ProcessorPool::num_threads(unsigned inNumThreads) noexcept
 
     mBinsUsed.reset(new std::atomic_uint_fast32_t[inNumThreads]);
     mFragBins.reset(new std::array<SR_FragmentBin, SR_SHADER_MAX_FRAG_BINS>[inNumThreads]);
+    mFragQueues.reset(new std::array<SR_FragCoord, SR_SHADER_MAX_FRAG_QUEUES>[inNumThreads]);
     mThreads.reset(new SR_ProcessorPool::Worker*[inNumThreads]);
     mNumThreads = inNumThreads;
 
@@ -393,6 +394,7 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context* c, const SR_Mesh*
         vertTask.mMesh           = *m;
         vertTask.mBinsUsed       = mBinsUsed.get();
         vertTask.mFragBins       = mFragBins.get();
+        vertTask.mFragQueues     = mFragQueues.get();
 
         // Busy waiting will be enabled the moment the first flush occurs on each
         // thread.

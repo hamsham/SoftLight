@@ -7,7 +7,6 @@
 #include "lightsky/math/mat_utils.h"
 #include "lightsky/math/vec_utils.h"
 
-#include "soft_render/SR_Color.hpp" // SR_Color... types
 #include "soft_render/SR_FragmentProcessor.hpp"
 #include "soft_render/SR_ShaderProcessor.hpp"
 #include "soft_render/SR_Texture.hpp"
@@ -33,7 +32,7 @@ namespace
 /*--------------------------------------
  * Interpolate varying variables across a line
 --------------------------------------*/
-LS_IMPERATIVE void interpolate_line_varyings(
+void LS_IMPERATIVE interpolate_line_varyings(
     const float             percent,
     const uint32_t          numVaryings,
     const math::vec4* const inVaryings,
@@ -55,7 +54,7 @@ LS_IMPERATIVE void interpolate_line_varyings(
 /*--------------------------------------
  * Interpolate varying variables across a triangle
 --------------------------------------*/
-LS_IMPERATIVE void interpolate_tri_varyings(
+void LS_IMPERATIVE interpolate_tri_varyings(
     const math::vec4&   baryCoords,
     const uint_fast32_t numVaryings,
     const math::vec4*   inVaryings0,
@@ -121,7 +120,7 @@ LS_IMPERATIVE void interpolate_tri_varyings(
 --------------------------------------*/
 void SR_FragmentProcessor::render_point(
     SR_Framebuffer* const fbo,
-    SR_ColorRGBAf*        pOutputs) noexcept
+    math::vec4*        pOutputs) noexcept
 {
     const SR_FragmentShader fragShader  = mShader->mFragShader;
     const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
@@ -153,7 +152,7 @@ void SR_FragmentProcessor::render_point(
                 case 3: fbo->put_pixel(2, x0, y0, z, pOutputs[2]);
                 case 2: fbo->put_pixel(1, x0, y0, z, pOutputs[1]);
                 case 1: fbo->put_pixel(0, x0, y0, z, pOutputs[0]);
-                //case 1: fbo->put_pixel(0, x0, y0, z, SR_ColorRGBAf{1.f, 0, 1.f, 1.f});
+                //case 1: fbo->put_pixel(0, x0, y0, z, math::vec4{1.f, 0, 1.f, 1.f});
                     fbo->put_depth_pixel<float>(x0, y0, depth);
             }
         }
@@ -178,7 +177,7 @@ void SR_FragmentProcessor::render_point(
 --------------------------------------*/
 void SR_FragmentProcessor::render_line(
     SR_Framebuffer* fbo,
-    SR_ColorRGBAf*  pOutputs,
+    math::vec4*     pOutputs,
     math::vec4*     outVaryings) noexcept
 {
     const SR_FragmentShader fragShader  = mShader->mFragShader;
@@ -389,19 +388,19 @@ void SR_FragmentProcessor::render_line(
 
 void SR_FragmentProcessor::render_triangle(
     const SR_Texture* depthBuffer,
-    SR_ColorRGBAf*    pOutputs,
+    math::vec4*       pOutputs,
     math::vec4*       outVaryings) const noexcept
 {
     const __m128      persp        = mBins[mBinId].mPerspDivide.simd;
     const math::vec4* screenCoords = mBins[mBinId].mScreenCoords;
-    math::vec2        p0           = *reinterpret_cast<const math::vec2*>(screenCoords[0].v);
-    math::vec2        p1           = *reinterpret_cast<const math::vec2*>(screenCoords[1].v);
-    math::vec2        p2           = *reinterpret_cast<const math::vec2*>(screenCoords[2].v);
+    math::vec4        p0           = screenCoords[0];
+    math::vec4        p1           = screenCoords[1];
+    math::vec4        p2           = screenCoords[2];
     const int32_t     bboxMinX     = math::min(mFboX1, math::max(mFboX0, math::min(p0[0], p1[0], p2[0])));
     const int32_t     bboxMinY     = math::min(mFboY1, math::max(mFboY0, math::min(p0[1], p1[1], p2[1])));
     const int32_t     bboxMaxX     = math::max(mFboX0, math::min(mFboX1, math::max(p0[0], p1[0], p2[0])));
     const int32_t     bboxMaxY     = math::max(mFboY0, math::min(mFboY1, math::max(p0[1], p1[1], p2[1])));
-    const math::vec4  depth        {screenCoords[0][2], screenCoords[1][2], screenCoords[2][2], 0.f};
+    const math::vec4  depth        {p0[2], p1[2], p2[2], 0.f};
     const __m128      t0[3]        {_mm_set1_ps(p2[0]-p0[0]), _mm_set1_ps(p1[0]-p0[0]), _mm_set1_ps(p0[0])};
     const __m128      t1[3]        {_mm_set1_ps(p2[1]-p0[1]), _mm_set1_ps(p1[1]-p0[1]), _mm_set1_ps(p0[1])};
     const __m128      scaleInv     = _mm_sub_ps(_mm_mul_ps(t0[0], t1[1]), _mm_mul_ps(t0[1], t1[0]));
@@ -427,7 +426,7 @@ void SR_FragmentProcessor::render_triangle(
     const float p21xy = p21x * p21y;
 
     unsigned numQueuedFrags = 0;
-    SR_FragCoord outCoords[SR_SHADER_MAX_FRAG_QUEUES];
+    SR_FragCoord* outCoords = mQueues;
 
     for (int32_t y = bboxMinY; y <= bboxMaxY; ++y)
     {
@@ -523,7 +522,7 @@ void SR_FragmentProcessor::render_triangle(
 
 void SR_FragmentProcessor::render_triangle(
     const SR_Texture* depthBuffer,
-    SR_ColorRGBAf*    pOutputs,
+    math::vec4*       pOutputs,
     math::vec4*       outVaryings) const noexcept
 {
     const math::vec4  persp        = mBins[mBinId].mPerspDivide;
@@ -561,7 +560,7 @@ void SR_FragmentProcessor::render_triangle(
     const float p21xy = p21x * p21y;
 
     unsigned numQueuedFrags = 0;
-    SR_FragCoord outCoords[SR_SHADER_MAX_FRAG_QUEUES];
+    SR_FragCoord* outCoords = mQueues;
 
     for (int32_t y = bboxMinY; y <= bboxMaxY; ++y)
     {
@@ -644,7 +643,7 @@ void SR_FragmentProcessor::render_triangle(
 
 void SR_FragmentProcessor::render_triangle(
     const SR_Texture* depthBuffer,
-    SR_ColorRGBAf*    pOutputs,
+    math::vec4*       pOutputs,
     math::vec4*       outVaryings) const noexcept
 {
     const math::vec4* screenCoords = mBins[mBinId].mScreenCoords;
@@ -682,7 +681,7 @@ void SR_FragmentProcessor::render_triangle(
     const float p21xy = p21x * p21y;
 
     unsigned numQueuedFrags = 0;
-    SR_FragCoord outCoords[SR_SHADER_MAX_FRAG_QUEUES];
+    SR_FragCoord* outCoords = mQueues;
 
     for (int32_t y = bboxMinY; y <= bboxMaxY; ++y)
     {
@@ -761,7 +760,7 @@ void SR_FragmentProcessor::render_triangle(
 void SR_FragmentProcessor::flush_fragments(
     uint_fast32_t       numQueuedFrags,
     const SR_FragCoord* outCoords,
-    SR_ColorRGBAf*      pOutputs,
+    math::vec4*         pOutputs,
     math::vec4*         outVaryings) const noexcept
 {
     const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
@@ -807,8 +806,8 @@ void SR_FragmentProcessor::execute() noexcept
     // first to allow for fragment rejection during the depth test.
     utils::quick_sort<SR_FragmentBin, utils::IsGreater<SR_FragmentBin>>(mBins, mNumBins);
 
-    SR_ColorRGBAf pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
-    math::vec4    outVaryings[SR_SHADER_MAX_VARYING_VECTORS];
+    math::vec4 pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
+    math::vec4 outVaryings[SR_SHADER_MAX_VARYING_VECTORS];
 
     switch(mMode)
     {

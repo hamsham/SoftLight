@@ -36,12 +36,12 @@ enum SR_ShaderLimits
 
     // Maximum number of fragments that get queued before being placed on a
     // framebuffer.
-    SR_SHADER_MAX_FRAG_QUEUES     = 32,
+    SR_SHADER_MAX_FRAG_QUEUES     = 1024,
 
     // Maximum number of vertex groups which get binned before being sent to a
     // fragment processor. About 16 MB per thread
     // (multiplied by sizeof(SR_FragmentBin)).
-    SR_SHADER_MAX_FRAG_BINS       = 65535
+    SR_SHADER_MAX_FRAG_BINS       = 32768
 };
 
 
@@ -102,6 +102,8 @@ class SR_ProcessorPool
     ls::utils::Pointer<std::atomic_uint_fast32_t[]> mBinsUsed;
 
     ls::utils::Pointer<std::array<SR_FragmentBin, SR_SHADER_MAX_FRAG_BINS>[]> mFragBins;
+
+    ls::utils::Pointer<std::array<SR_FragCoord, SR_SHADER_MAX_FRAG_QUEUES>[]> mFragQueues;
 
     ls::utils::Pointer<Worker*[]> mThreads;
 
