@@ -94,7 +94,7 @@ int sr_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SR_ColorRG
         for(coord_shrt_t j = 0; j < w; ++j)
         {
             const SR_ColorRG8&& c = color_cast<uint8_t, colorType>(colors[w * i + j]);
-            const SR_ColorRGB8 temp{c.r, c.g, 0};
+            const SR_ColorRGB8 temp{c[0], c[1], 0};
             f.write(reinterpret_cast<const char*>(&temp), sizeof(SR_ColorRGB8));
         }
     }

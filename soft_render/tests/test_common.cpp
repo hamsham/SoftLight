@@ -157,15 +157,9 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
 
     // normalize the texture colors to within (0.f, 1.f)
     {
-        // vectors are faster than colors
         math::vec3_t<uint8_t>&& pixel8 = albedo->nearest<math::vec3_t<uint8_t>>(uv[0], uv[1]);
-        //const math::vec4&& pixelF = color_cast<float, uint8_t>(pixel8);
-        math::vec4_t<uint8_t> pixelF{255};
-        pixelF[0] = pixel8[0];
-        pixelF[1] = pixel8[1];
-        pixelF[2] = pixel8[2];
-        //pixel = math::vec4{pixelF.r, pixelF.g, pixelF.b, 1.f};
-        pixel = (math::vec4)pixelF * math::vec4{0.00392156862745f};
+        math::vec4_t<uint8_t> pixelF{pixel8[0], pixel8[1], pixel8[2], 255};
+        pixel = color_cast<float, uint8_t>(pixelF);
     }
 
     // Light direction calculation
@@ -199,9 +193,7 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
     // output composition
     {
         pixel = pixel * (diffuse + specular);
-        pixel = math::min(pixel, math::vec4{1.f});
-
-        outputs[0] = pixel;
+        outputs[0] = math::min(pixel, math::vec4{1.f});
     }
 
     return true;

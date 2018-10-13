@@ -9,12 +9,6 @@
 /*-----------------------------------------------------------------------------
  * Forward Declarations
 -----------------------------------------------------------------------------*/
-template<typename color_t>
-struct SR_ColorRGBType;
-
-template<typename color_t>
-struct SR_ColorRGBAType;
-
 class SR_Texture;
 class SR_WindowBuffer;
 

@@ -12,6 +12,9 @@
 
 
 
+/*-----------------------------------------------------------------------------
+ * Win32 Render Window
+-----------------------------------------------------------------------------*/
 class SR_RenderWindowWin32 final : public SR_RenderWindow
 {
     friend class SR_WindowBufferWin32;

@@ -7,14 +7,28 @@
 #include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Copy.h" // utils::fast_memset, fast_fill
 
-#include "lightsky/math/vec2.h"
-#include "lightsky/math/vec3.h"
-#include "lightsky/math/vec4.h"
-
 #include "soft_render/SR_Texture.hpp"
 
 
 
+
+/*-----------------------------------------------------------------------------
+ * Forward Declarations
+-----------------------------------------------------------------------------*/
+namespace ls
+{
+namespace math
+{
+template <typename color_type>
+union vec4_t;
+}
+}
+
+
+
+/*-----------------------------------------------------------------------------
+ * Framebuffer Abstraction
+-----------------------------------------------------------------------------*/
 class SR_Framebuffer
 {
   private:
@@ -76,7 +90,7 @@ class SR_Framebuffer
         uint16_t x,
         uint16_t y,
         uint16_t z,
-        const ls::math::vec4& rgba) noexcept;
+        const ls::math::vec4_t<float>& rgba) noexcept;
 
     bool test_depth_pixel(
         uint16_t x,

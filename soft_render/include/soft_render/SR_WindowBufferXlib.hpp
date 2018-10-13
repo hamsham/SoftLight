@@ -7,7 +7,21 @@
 
 
 /*-----------------------------------------------------------------------------
- *
+ * Forward Declarations
+-----------------------------------------------------------------------------*/
+namespace ls
+{
+namespace math
+{
+template <typename color_type>
+union vec4_t;
+}
+}
+
+
+
+/*-----------------------------------------------------------------------------
+ * Xlib Render Window
 -----------------------------------------------------------------------------*/
 class SR_WindowBufferXlib : public SR_WindowBuffer
 {
@@ -43,9 +57,9 @@ class SR_WindowBufferXlib : public SR_WindowBuffer
 
     virtual void* native_handle() noexcept override;
 
-    virtual const SR_ColorRGBAType<uint8_t>* buffer() const noexcept override;
+    virtual const ls::math::vec4_t<uint8_t>* buffer() const noexcept override;
 
-    virtual SR_ColorRGBAType<uint8_t>* buffer() noexcept override;
+    virtual ls::math::vec4_t<uint8_t>* buffer() noexcept override;
 };
 
 

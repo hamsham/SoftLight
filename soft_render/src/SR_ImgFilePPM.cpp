@@ -40,8 +40,8 @@ int sr_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SR_ColorRG
     {
         for(coord_shrt_t j = 0; j < w; ++j)
         {
-            const SR_ColorRGB8* const c = &colors[w * i + j];
-            f.write(reinterpret_cast<const char*>(c), sizeof(SR_ColorRGB8));
+            const SR_ColorRGB8& c = colors[w * i + j];
+            f.write(reinterpret_cast<const char*>(c.v), sizeof(SR_ColorRGB8));
         }
     }
 
@@ -161,16 +161,12 @@ SR_ColorRGB8* sr_img_load_ppm(coord_shrt_t& w, coord_shrt_t& h, const char* cons
             // PPM Images can be 8-bits or 16-bits per component.
             if (pixelMaxVal < 256)
             {
-                f.read(reinterpret_cast<char*>(&p->r), sizeof(uint8_t));
-                f.read(reinterpret_cast<char*>(&p->g), sizeof(uint8_t));
-                f.read(reinterpret_cast<char*>(&p->b), sizeof(uint8_t));
+                f.read(reinterpret_cast<char*>(p->v), sizeof(uint8_t)*SR_ColorRGB8::num_components());
             }
             else
             {
                 SR_ColorRGB16 p2;
-                f.read(reinterpret_cast<char*>(&p2.r), sizeof(uint16_t));
-                f.read(reinterpret_cast<char*>(&p2.g), sizeof(uint16_t));
-                f.read(reinterpret_cast<char*>(&p2.b), sizeof(uint16_t));
+                f.read(reinterpret_cast<char*>(p2.v), sizeof(uint16_t)*SR_ColorRGB16::num_components());
                 *p = color_cast<uint8_t, uint16_t>(p2);
             }
         }

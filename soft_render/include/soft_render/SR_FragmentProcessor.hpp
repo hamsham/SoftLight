@@ -24,8 +24,6 @@ namespace ls
     } // end utils namespace
 } // end ls namespace
 
-template<typename color_t>
-struct SR_ColorRGBAType;
 struct SR_FragCoord; // SR_ShaderProcessor.hpp
 struct SR_FragmentBin; // SR_ShaderProcessor.hpp
 struct SR_ShaderProcessor;
@@ -58,28 +56,13 @@ struct SR_FragmentProcessor
 
     // 464 bits = 58 bytes
 
-    void render_point(
-        SR_Framebuffer* const fbo,
-        ls::math::vec4*       pOutputs
-    ) noexcept;
+    void render_point(SR_Framebuffer* const fbo) noexcept;
 
-    void render_line(
-        SR_Framebuffer* const fbo,
-        ls::math::vec4*       pOutputs,
-        ls::math::vec4*       outVaryings
-    ) noexcept;
+    void render_line(SR_Framebuffer* const fbo, ls::math::vec4* outVaryings) noexcept;
 
-    void render_triangle(
-        const SR_Texture* depthBuffer,
-        ls::math::vec4*   pOutputs,
-        ls::math::vec4*   outVaryings
-    ) const noexcept;
+    void render_triangle(const SR_Texture* depthBuffer, ls::math::vec4* outVaryings) const noexcept;
 
-    void flush_fragments(
-        uint_fast32_t       numQueuedFrags,
-        const SR_FragCoord* outCoords,
-        ls::math::vec4*     pOutputs,
-        ls::math::vec4*     outVaryings) const noexcept;
+    void flush_fragments(uint_fast32_t numQueuedFrags, const SR_FragCoord* outCoords, ls::math::vec4* outVaryings) const noexcept;
 
     void execute() noexcept;
 };

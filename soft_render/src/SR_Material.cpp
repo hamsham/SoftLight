@@ -42,29 +42,29 @@ SR_MaterialStatus validate(const SR_Material& m) noexcept
         }
     }
 
-    if (m.ambient.r < 0.f
-    || m.ambient.g < 0.f
-    || m.ambient.b < 0.f
-    || m.diffuse.r < 0.f
-    || m.diffuse.g < 0.f
-    || m.diffuse.b < 0.f
-    || m.specular.r < 0.f
-    || m.specular.g < 0.f
-    || m.specular.b < 0.f
+    if (m.ambient[0] < 0.f
+    || m.ambient[1] < 0.f
+    || m.ambient[2] < 0.f
+    || m.diffuse[0] < 0.f
+    || m.diffuse[1] < 0.f
+    || m.diffuse[2] < 0.f
+    || m.specular[0] < 0.f
+    || m.specular[1] < 0.f
+    || m.specular[2] < 0.f
     || m.shininess < 0.f)
     {
         return SR_MATERIAL_STATUS_VALUE_UNDERFLOW;
     }
 
-    if (m.ambient.r > 1.f
-    || m.ambient.g > 1.f
-    || m.ambient.b > 1.f
-    || m.diffuse.r > 1.f
-    || m.diffuse.g > 1.f
-    || m.diffuse.b > 1.f
-    || m.specular.r > 1.f
-    || m.specular.g > 1.f
-    || m.specular.b > 1.f
+    if (m.ambient[0] > 1.f
+    || m.ambient[1] > 1.f
+    || m.ambient[2] > 1.f
+    || m.diffuse[0] > 1.f
+    || m.diffuse[1] > 1.f
+    || m.diffuse[2] > 1.f
+    || m.specular[0] > 1.f
+    || m.specular[1] > 1.f
+    || m.specular[2] > 1.f
     || m.shininess > 1.f)
     {
         return SR_MATERIAL_STATUS_VALUE_OVERFLOW;

@@ -7,7 +7,21 @@
 
 
 /*-----------------------------------------------------------------------------
- *
+ * Forward Declarations
+-----------------------------------------------------------------------------*/
+namespace ls
+{
+namespace math
+{
+template <typename color_type>
+union vec4_t;
+}
+}
+
+
+
+/*-----------------------------------------------------------------------------
+ * Win32 Window Backbuffer
 -----------------------------------------------------------------------------*/
 class SR_WindowBufferWin32 : public SR_WindowBuffer
 {
@@ -16,7 +30,7 @@ class SR_WindowBufferWin32 : public SR_WindowBuffer
   private:
     void* mBitmapInfo; // PBITMAPINFO
 
-    SR_ColorRGBAType<uint8_t>* mBuffer; // SR_ColorRGBA8[]
+    ls::math::vec4_t<uint8_t>* mBuffer; // SR_ColorRGBA8[]
 
     unsigned mWidth;
 
@@ -47,9 +61,9 @@ class SR_WindowBufferWin32 : public SR_WindowBuffer
 
     void* native_handle() noexcept override;
 
-    const SR_ColorRGBAType<uint8_t>* buffer() const noexcept override;
+    const ls::math::vec4_t<uint8_t>* buffer() const noexcept override;
 
-    SR_ColorRGBAType<uint8_t>* buffer() noexcept override;
+    ls::math::vec4_t<uint8_t>* buffer() noexcept override;
 };
 
 

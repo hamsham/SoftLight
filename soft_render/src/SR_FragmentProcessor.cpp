@@ -118,9 +118,7 @@ void LS_IMPERATIVE interpolate_tri_varyings(
 /*--------------------------------------
  * Determine if a point can be rendered.
 --------------------------------------*/
-void SR_FragmentProcessor::render_point(
-    SR_Framebuffer* const fbo,
-    math::vec4*        pOutputs) noexcept
+void SR_FragmentProcessor::render_point(SR_Framebuffer* const fbo) noexcept
 {
     const SR_FragmentShader fragShader  = mShader->mFragShader;
     const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
@@ -133,6 +131,8 @@ void SR_FragmentProcessor::render_point(
     const float             fboY        = mFboY0;
     const float             w           = mFboX1;
     const float             h           = mFboY1;
+
+    math::vec4 pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
 
     if (fragCoord.v[0] >= fboX && fragCoord.v[0] <= w && fragCoord.v[1] >= fboY && fragCoord.v[1] <= h)
     {
@@ -175,11 +175,9 @@ void SR_FragmentProcessor::render_point(
  * Graphics Gems I (1990):
  * ftp://ftp.isc.org/pub/usenet/comp.sources.unix/volume26/line3d
 --------------------------------------*/
-void SR_FragmentProcessor::render_line(
-    SR_Framebuffer* fbo,
-    math::vec4*     pOutputs,
-    math::vec4*     outVaryings) noexcept
+void SR_FragmentProcessor::render_line(SR_Framebuffer* fbo, math::vec4* outVaryings) noexcept
 {
+    math::vec4              pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
     const SR_FragmentShader fragShader  = mShader->mFragShader;
     const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
     const uint32_t          numVaryings = fragShader.numVaryings;
@@ -386,10 +384,7 @@ void SR_FragmentProcessor::render_line(
 --------------------------------------*/
 #if defined(LS_ARCH_X86)
 
-void SR_FragmentProcessor::render_triangle(
-    const SR_Texture* depthBuffer,
-    math::vec4*       pOutputs,
-    math::vec4*       outVaryings) const noexcept
+void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::vec4* outVaryings) const noexcept
 {
     const __m128      persp        = mBins[mBinId].mPerspDivide.simd;
     const math::vec4* screenCoords = mBins[mBinId].mScreenCoords;
@@ -504,7 +499,7 @@ void SR_FragmentProcessor::render_triangle(
                 if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
                 {
                     numQueuedFrags = 0;
-                    flush_fragments(SR_SHADER_MAX_FRAG_QUEUES, outCoords, pOutputs, outVaryings);
+                    flush_fragments(SR_SHADER_MAX_FRAG_QUEUES, outCoords, outVaryings);
                 }
             }
         }
@@ -512,7 +507,7 @@ void SR_FragmentProcessor::render_triangle(
 
     if (numQueuedFrags)
     {
-        flush_fragments(numQueuedFrags, outCoords, pOutputs, outVaryings);
+        flush_fragments(numQueuedFrags, outCoords, outVaryings);
     }
 }
 
@@ -520,10 +515,7 @@ void SR_FragmentProcessor::render_triangle(
 
 #elif 0//defined(LS_ARCH_ARM) // Translating x86 into a NEON implementation.
 
-void SR_FragmentProcessor::render_triangle(
-    const SR_Texture* depthBuffer,
-    math::vec4*       pOutputs,
-    math::vec4*       outVaryings) const noexcept
+void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::vec4* outVaryings) const noexcept
 {
     const math::vec4  persp        = mBins[mBinId].mPerspDivide;
     const math::vec4* screenCoords = mBins[mBinId].mScreenCoords;
@@ -625,7 +617,7 @@ void SR_FragmentProcessor::render_triangle(
                 if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
                 {
                     numQueuedFrags = 0;
-                    flush_fragments(SR_SHADER_MAX_FRAG_QUEUES, outCoords, pOutputs, outVaryings);
+                    flush_fragments(SR_SHADER_MAX_FRAG_QUEUES, outCoords, outVaryings);
                 }
             }
         }
@@ -633,7 +625,7 @@ void SR_FragmentProcessor::render_triangle(
 
     if (numQueuedFrags)
     {
-        flush_fragments(numQueuedFrags, outCoords, pOutputs, outVaryings);
+        flush_fragments(numQueuedFrags, outCoords, outVaryings);
     }
 }
 
@@ -641,10 +633,7 @@ void SR_FragmentProcessor::render_triangle(
 
 #else
 
-void SR_FragmentProcessor::render_triangle(
-    const SR_Texture* depthBuffer,
-    math::vec4*       pOutputs,
-    math::vec4*       outVaryings) const noexcept
+void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::vec4* outVaryings) const noexcept
 {
     const math::vec4* screenCoords = mBins[mBinId].mScreenCoords;
     const math::vec4  depth        {screenCoords[0][2], screenCoords[1][2], screenCoords[2][2], 0.f};
@@ -736,7 +725,7 @@ void SR_FragmentProcessor::render_triangle(
             if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
             {
                 numQueuedFrags = 0;
-                flush_fragments(SR_SHADER_MAX_FRAG_QUEUES, outCoords, pOutputs, outVaryings);
+                flush_fragments(SR_SHADER_MAX_FRAG_QUEUES, outCoords, outVaryings);
             }
         }
     }
@@ -744,7 +733,7 @@ void SR_FragmentProcessor::render_triangle(
     // cleanup remaining fragments
     if (numQueuedFrags > 0)
     {
-        flush_fragments(numQueuedFrags, outCoords, pOutputs, outVaryings);
+        flush_fragments(numQueuedFrags, outCoords, outVaryings);
     }
 }
 
@@ -760,7 +749,6 @@ void SR_FragmentProcessor::render_triangle(
 void SR_FragmentProcessor::flush_fragments(
     uint_fast32_t       numQueuedFrags,
     const SR_FragCoord* outCoords,
-    math::vec4*         pOutputs,
     math::vec4*         outVaryings) const noexcept
 {
     const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
@@ -770,6 +758,7 @@ void SR_FragmentProcessor::flush_fragments(
     const uint32_t          numOutputs  = fragShader.numOutputs;
     SR_Framebuffer*         fbo         = mFbo;
     math::vec4* const       inVaryings  = mBins[mBinId].mVaryings;
+    math::vec4              pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
 
     while (numQueuedFrags --> 0)
     {
@@ -805,8 +794,6 @@ void SR_FragmentProcessor::execute() noexcept
     // Sort the bins based on their depth. Closer objects should be rendered
     // first to allow for fragment rejection during the depth test.
     utils::quick_sort<SR_FragmentBin, utils::IsGreater<SR_FragmentBin>>(mBins, mNumBins);
-
-    math::vec4 pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
     math::vec4 outVaryings[SR_SHADER_MAX_VARYING_VECTORS];
 
     switch(mMode)
@@ -815,7 +802,7 @@ void SR_FragmentProcessor::execute() noexcept
         case RENDER_MODE_INDEXED_POINTS:
             while (mBinId < mNumBins)
             {
-                render_point(mFbo, pOutputs);
+                render_point(mFbo);
                 ++mBinId;
             }
             break;
@@ -823,7 +810,7 @@ void SR_FragmentProcessor::execute() noexcept
         case RENDER_MODE_INDEXED_LINES:
             while (mBinId < mNumBins)
             {
-                render_line(mFbo, pOutputs, outVaryings);
+                render_line(mFbo, outVaryings);
                 ++mBinId;
             }
             break;
@@ -831,7 +818,7 @@ void SR_FragmentProcessor::execute() noexcept
         case RENDER_MODE_INDEXED_TRIANGLES:
             while (mBinId < mNumBins)
             {
-                render_triangle(mFbo->get_depth_buffer(), pOutputs, outVaryings);
+                render_triangle(mFbo->get_depth_buffer(), outVaryings);
                 ++mBinId;
             }
             break;

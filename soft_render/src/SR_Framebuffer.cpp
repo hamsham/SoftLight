@@ -2,6 +2,8 @@
 #include <cstddef> // ptrdiff_t
 #include <utility> // std::move
 
+#include "soft_render/SR_Color.hpp"
+
 #include "soft_render/SR_Framebuffer.hpp"
 #include "soft_render/SR_Texture.hpp"
 
@@ -34,7 +36,7 @@ inline void assign_pixel(
         SR_ColorRGBAType<typename color_type::value_type> rgba;
         SR_ColorRGBType<typename  color_type::value_type> rgb;
         SR_ColorRGType<typename   color_type::value_type> rg;
-        SR_ColorRType<typename    color_type::value_type> r;
+        typename color_type::value_type                   r;
     } c{color_cast<typename color_type::value_type, float>(*reinterpret_cast<const SR_ColorRGBAf*>(rgba))};
 
     color_type& outTexel = pTexture->texel<color_type>(x, y, z);
@@ -45,7 +47,7 @@ inline void assign_pixel(
         case 4: *reinterpret_cast<SR_ColorRGBAType<ConvertedType>*>((void*)&outTexel) = c.rgba; break;
         case 3: *reinterpret_cast<SR_ColorRGBType<ConvertedType>*>((void*)&outTexel)  = c.rgb; break;
         case 2: *reinterpret_cast<SR_ColorRGType<ConvertedType>*>((void*)&outTexel)   = c.rg; break;
-        case 1: *reinterpret_cast<SR_ColorRType<ConvertedType>*>((void*)&outTexel)    = c.r; break;
+        case 1: *reinterpret_cast<ConvertedType*>((void*)&outTexel)                   = c.r; break;
     }
 }
 

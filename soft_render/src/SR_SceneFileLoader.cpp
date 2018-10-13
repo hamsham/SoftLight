@@ -835,23 +835,23 @@ void SR_SceneFileLoader::import_texture_path(
 
     if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_COLOR_AMBIENT, inMatColor))
     {
-        outMaterial.ambient.r = inMatColor.r;
-        outMaterial.ambient.g = inMatColor.g;
-        outMaterial.ambient.b = inMatColor.b;
+        outMaterial.ambient[0] = inMatColor.r;
+        outMaterial.ambient[1] = inMatColor.g;
+        outMaterial.ambient[2] = inMatColor.b;
     }
 
     if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, inMatColor))
     {
-        outMaterial.diffuse.r = inMatColor.r;
-        outMaterial.diffuse.g = inMatColor.g;
-        outMaterial.diffuse.b = inMatColor.b;
+        outMaterial.diffuse[0] = inMatColor.r;
+        outMaterial.diffuse[1] = inMatColor.g;
+        outMaterial.diffuse[2] = inMatColor.b;
     }
 
     if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_COLOR_SPECULAR, inMatColor))
     {
-        outMaterial.specular.r = inMatColor.r;
-        outMaterial.specular.g = inMatColor.g;
-        outMaterial.specular.b = inMatColor.b;
+        outMaterial.specular[0] = inMatColor.r;
+        outMaterial.specular[1] = inMatColor.g;
+        outMaterial.specular[2] = inMatColor.b;
     }
 
     if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_SHININESS, inShininess))

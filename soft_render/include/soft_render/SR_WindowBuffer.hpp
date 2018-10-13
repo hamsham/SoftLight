@@ -11,8 +11,15 @@
 /*-----------------------------------------------------------------------------
  * Forward Declarations
 -----------------------------------------------------------------------------*/
-template <typename color_type>
-struct SR_ColorRGBAType;
+namespace ls
+{
+    namespace math
+    {
+        template <typename color_type>
+        union vec4_t;
+    }
+}
+
 class SR_RenderWindow;
 class SR_Texture;
 
@@ -51,9 +58,9 @@ class SR_WindowBuffer
 
     virtual void* native_handle() noexcept = 0;
 
-    virtual const SR_ColorRGBAType<uint8_t>* buffer() const noexcept = 0;
+    virtual const ls::math::vec4_t<uint8_t>* buffer() const noexcept = 0;
 
-    virtual SR_ColorRGBAType<uint8_t>* buffer() noexcept = 0;
+    virtual ls::math::vec4_t<uint8_t>* buffer() noexcept = 0;
 };
 
 
