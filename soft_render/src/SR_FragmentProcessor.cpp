@@ -513,15 +513,15 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::
 
 
 
-#elif 0//defined(LS_ARCH_ARM) // Translating x86 into a NEON implementation.
+#elif defined(LS_ARCH_ARM) // Translating x86 into a NEON implementation.
 
 void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::vec4* outVaryings) const noexcept
 {
     const math::vec4  persp        = mBins[mBinId].mPerspDivide;
     const math::vec4* screenCoords = mBins[mBinId].mScreenCoords;
-    math::vec2        p0           = *reinterpret_cast<const math::vec2*>(screenCoords[0].v);
-    math::vec2        p1           = *reinterpret_cast<const math::vec2*>(screenCoords[1].v);
-    math::vec2        p2           = *reinterpret_cast<const math::vec2*>(screenCoords[2].v);
+    math::vec4        p0           = *reinterpret_cast<const math::vec4*>(screenCoords[0].v);
+    math::vec4        p1           = *reinterpret_cast<const math::vec4*>(screenCoords[1].v);
+    math::vec4        p2           = *reinterpret_cast<const math::vec4*>(screenCoords[2].v);
     const int32_t     bboxMinX     = math::min(mFboX1, math::max(mFboX0, math::min(p0[0], p1[0], p2[0])));
     const int32_t     bboxMinY     = math::min(mFboY1, math::max(mFboY0, math::min(p0[1], p1[1], p2[1])));
     const int32_t     bboxMaxX     = math::max(mFboX0, math::min(mFboX1, math::max(p0[0], p1[0], p2[0])));

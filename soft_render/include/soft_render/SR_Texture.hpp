@@ -10,7 +10,6 @@
 #include "lightsky/utils/Copy.h"
 
 #include "lightsky/math/scalar_utils.h"
-#include "lightsky/math/vec4.h"
 
 #include "soft_render/SR_Color.hpp" // SR_ColorDataType
 #include "soft_render/SR_Geometry.hpp"
