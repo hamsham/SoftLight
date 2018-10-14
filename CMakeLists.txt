@@ -45,14 +45,15 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_definitions(-ftree-vectorize)
     add_definitions(-ffast-math)
     add_definitions(-funsafe-math-optimizations)
-    add_definitions(-fomit-frame-pointer)
     add_definitions(-fno-stack-protector)
 
     if (ENABLE_PROFILING)
         message("-- Profiling enabled")
         add_definitions(-Og -pg)
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg -Og") # failsafe
-    endif(ENABLE_PROFILING)
+    else()
+        add_definitions(-fomit-frame-pointer)
+    endif()
 
     if (ENABLE_ARM_OPTIMIZATIONS)
         message("-- ARM compiler optimizations enabled.")
@@ -61,7 +62,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         add_definitions(-mfpu=neon-vfpv4)
         add_definitions(-march=armv7-a)
         add_definitions(-faligned-new)
-    endif(ENABLE_ARM_OPTIMIZATIONS)
+    endif()
 
     if (ENABLE_X86_OPTIMIZATIONS)
         message("-- x86 compiler optimizations enabled.")
@@ -75,12 +76,12 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
             add_definitions(-mfpmath=both)
             #add_definitions(-march=core2)
         endif()
-    endif(ENABLE_X86_OPTIMIZATIONS)
+    endif()
     
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     if (ENABLE_X86_OPTIMIZATIONS)
         add_definitions(/arch:SSE2) # enable SSE
-    endif(ENABLE_X86_OPTIMIZATIONS)
+    endif()
     
     add_definitions(/GL) # global program optimization
     add_definitions(/Oi) # enable instrinsic functions
@@ -105,7 +106,20 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     add_definitions(/wd4774) # Format string is not a string literal in sprintf_s
     add_definitions(/wd4868) # compiler may not enforce left-to-right evaluation order in braced initializer list
     add_definitions(/wd5039) # An 'extern "C"' function contains something which might throw an exception
-    add_definitions(/wd4244) # possible loss of data when converting between time_t and unsigned int    
+    add_definitions(/wd4244) # possible loss of data when converting between time_t and unsigned int
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
+    add_definitions(-xAVX)
+    add_definitions(-msse)
+    add_definitions(-msse2)
+    add_definitions(-msse3)
+    add_definitions(-mavx)
+    add_definitions(-mtune=core2)
+    add_definitions(-march=core2)
+    add_definitions(-ip)
+    add_definitions(-vecabi=gcc)
+    add_definitions(-fp-model fast=2)
+    add_definitions(-finline)
+    add_definitions(-gcc)
 else()
     message(FATAL_ERROR "Your compiler is currently unsupported: ${CMAKE_CXX_COMPILER_ID}")
 endif()

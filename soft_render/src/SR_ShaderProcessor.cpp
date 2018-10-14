@@ -401,12 +401,10 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context* c, const SR_Mesh*
         SR_ProcessorPool::Worker* pWorker = mThreads[threadId];
         pWorker->busy_waiting(false);
         pWorker->push(task);
-        //pWorker->flush();
     }
 
     // Each thread should now pause except for the main thread.
-    flush();
-    wait();
+    execute();
     clear_fragment_bins();
 }
 

@@ -517,11 +517,141 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::
 
 void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::vec4* outVaryings) const noexcept
 {
+    const float32x4_t persp        = mBins[mBinId].mPerspDivide.simd;
+    const math::vec4* screenCoords = mBins[mBinId].mScreenCoords;
+    math::vec4        p0           = screenCoords[0];
+    math::vec4        p1           = screenCoords[1];
+    math::vec4        p2           = screenCoords[2];
+    const int32_t     bboxMinX     = math::min(mFboX1, math::max(mFboX0, math::min(p0[0], p1[0], p2[0])));
+    const int32_t     bboxMinY     = math::min(mFboY1, math::max(mFboY0, math::min(p0[1], p1[1], p2[1])));
+    const int32_t     bboxMaxX     = math::max(mFboX0, math::min(mFboX1, math::max(p0[0], p1[0], p2[0])));
+    const int32_t     bboxMaxY     = math::max(mFboY0, math::min(mFboY1, math::max(p0[1], p1[1], p2[1])));
+    const math::vec4  depth       {p0[2], p1[2], p2[2], 0.f};
+    const float32x4_t t0[3]       {vdupq_n_f32(p2[0]-p0[0]), vdupq_n_f32(p1[0]-p0[0]), vdupq_n_f32(p0[0])};
+    const float32x4_t t1[3]       {vdupq_n_f32(p2[1]-p0[1]), vdupq_n_f32(p1[1]-p0[1]), vdupq_n_f32(p0[1])};
+    const float32x4_t scaleInv    = vsubq_f32(vmulq_f32(t0[0], t1[1]), vmulq_f32(t0[1], t1[0]));
+    const float32x4_t scale       = vrecpeq_f32(scaleInv);
+
+    // Don't render triangles which are too small to see
+    if (std::fabs(vgetq_lane_f32(scaleInv, 0)) < 1.f)
+    {
+        return;
+    }
+
+    if (p0[1] < p1[1]) std::swap(p0, p1);
+    if (p0[1] < p2[1]) std::swap(p0, p2);
+    if (p1[1] < p2[1]) std::swap(p1, p2);
+
+    const float p10x  = p1[0] - p0[0];
+    const float p20x  = p2[0] - p0[0];
+    const float p21x  = p2[0] - p1[0];
+    const float p10y  = math::rcp(p1[1] - p0[1]);
+    const float p21y  = math::rcp(p2[1] - p1[1]);
+    const float p20y  = math::rcp(p2[1] - p0[1]);
+    const float p10xy = p10x * p10y;
+    const float p21xy = p21x * p21y;
+
+    unsigned numQueuedFrags = 0;
+    SR_FragCoord* outCoords = mQueues;
+
+    for (int32_t y = bboxMinY; y <= bboxMaxY; ++y)
+    {
+        // calculate the bounds of the current scan-line
+        const float       yf         = (float)y;
+        const float32x4_t ty         = vsubq_f32(t1[2], vdupq_n_f32(yf));
+        const float32x4_t t00y       = vmulq_f32(t0[0], ty);
+        const float32x4_t t01y       = vmulq_f32(t0[1], ty);
+        const float       d0         = yf - p0[1];
+        const float       d1         = yf - p1[1];
+        const float       alpha      = d0 * p20y;
+        const int         secondHalf = math::sign_bit(d1);
+        int32_t           xMin       = (int32_t)(p0[0] + (p20x * alpha));
+        int32_t           xMax       = (int32_t)(secondHalf ? (p1[0] + p21xy * d1) : (p0[0] + p10xy * d0));
+
+        // Get the beginning and end of the scan-line
+        if (xMin > xMax) std::swap(xMin, xMax);
+        xMin = math::clamp<int32_t>(xMin, bboxMinX, bboxMaxX);
+        xMax = math::clamp<int32_t>(xMax, bboxMinX, bboxMaxX);
+
+        for (int32_t x = xMin; x <= xMax; x += 4)
+        {
+            // calculate barycentric coordinates
+            constexpr int32_t lanes[4] = {0, 1, 2, 3};
+            const int32x4_t   xi       = vaddq_s32(vdupq_n_s32(x), vld1q_s32(lanes));
+            const float32x4_t xf       = vcvtq_f32_s32(xi);
+            const float32x4_t tx       = vsubq_f32(t0[2], xf);
+            const float32x4_t u0       = vmulq_f32(vsubq_f32(t01y, vmulq_f32(tx, t1[1])), scale);
+            const float32x4_t u1       = vmulq_f32(vsubq_f32(vmulq_f32(tx, t1[0]), t00y), scale);
+
+            math::mat4 bcF{
+                math::vec4{vsubq_f32(vdupq_n_f32(1.f), vaddq_f32(u0, u1))},
+                math::vec4{u1},
+                math::vec4{u0},
+                math::vec4{vdupq_n_f32(0.f)}
+            };
+            bcF = math::transpose(bcF);
+
+            // depth texture lookup will always be slow
+            const math::vec4&& z           = depth * bcF;
+            const math::vec4&& depthTexels = depthBuffer->texel4<float>(x, y);
+            const int          depthTest   = math::sign_bits(z - depthTexels);
+
+            for (int32_t i = 0; i < 4; ++i)
+            {
+                if ((depthTest & (1 << i)) || math::sign_bits(bcF[i]))
+                {
+                    continue;
+                }
+
+                // perspective correction
+                float32x4_t bc4 = vmulq_f32(bcF[i].simd, persp);
+
+                // horizontal add
+                {
+                    const float32x4_t a = bc4;
+                    const float32x2_t b = vadd_f32(vget_high_f32(a), vget_low_f32(a));
+                    const float32x2_t c = vpadd_f32(b, b);
+                    const float32x4_t d = vcombine_f32(c, c);
+                    const float32x4_t recip0 = vrecpeq_f32(d);
+                    const float32x4_t recip1 = vmulq_f32(vrecpsq_f32(d, recip0), recip0);
+
+                    bc4 = vmulq_f32(a, recip1);
+                }
+
+                outCoords[numQueuedFrags] = SR_FragCoord{
+                    math::vec4{bc4},
+                    (uint16_t)(x+i),
+                    (uint16_t)y,
+                    z[i]
+                };
+                ++numQueuedFrags;
+
+                if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
+                {
+                    numQueuedFrags = 0;
+                    flush_fragments(SR_SHADER_MAX_FRAG_QUEUES, outCoords, outVaryings);
+                }
+            }
+        }
+    }
+
+    if (numQueuedFrags)
+    {
+        flush_fragments(numQueuedFrags, outCoords, outVaryings);
+    }
+}
+
+
+
+#elif 1
+
+void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::vec4* outVaryings) const noexcept
+{
     const math::vec4  persp        = mBins[mBinId].mPerspDivide;
     const math::vec4* screenCoords = mBins[mBinId].mScreenCoords;
-    math::vec4        p0           = *reinterpret_cast<const math::vec4*>(screenCoords[0].v);
-    math::vec4        p1           = *reinterpret_cast<const math::vec4*>(screenCoords[1].v);
-    math::vec4        p2           = *reinterpret_cast<const math::vec4*>(screenCoords[2].v);
+    math::vec4        p0           = screenCoords[0];
+    math::vec4        p1           = screenCoords[1];
+    math::vec4        p2           = screenCoords[2];
     const int32_t     bboxMinX     = math::min(mFboX1, math::max(mFboX0, math::min(p0[0], p1[0], p2[0])));
     const int32_t     bboxMinY     = math::min(mFboY1, math::max(mFboY0, math::min(p0[1], p1[1], p2[1])));
     const int32_t     bboxMaxX     = math::max(mFboX0, math::min(mFboX1, math::max(p0[0], p1[0], p2[0])));

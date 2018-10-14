@@ -122,8 +122,8 @@ set(ASSIMP_LIBS assimp)
 # #####################################
 # External build for GLM (for testing only)
 # #####################################
-set(GLM_BRANCH "master" CACHE STRING "Git branch or tag for checking out GLM.")
-#set(GLM_BRANCH "0.9.9.0" CACHE STRING "Git branch or tag for checking out GLM.")
+#set(GLM_BRANCH "master" CACHE STRING "Git branch or tag for checking out GLM.")
+set(GLM_BRANCH "0.9.9.2" CACHE STRING "Git branch or tag for checking out GLM.")
 mark_as_advanced(GLM_BRANCH)
 
 # Configure build options
@@ -138,6 +138,8 @@ set(GLM_BUILD_FLAGS
     -DGLM_TEST_ENABLE_CXX_11:BOOL=ON
     -DGLM_TEST_ENABLE_CXX_14:BOOL=OFF
     -DGLM_TEST_ENABLE_CXX_17:BOOL=OFF
+    -DGLM_TEST_ENABLE_CXX_20:BOOL=OFF
+    -DGLM_TEST_ENABLE_LANG_EXTENSIONS:BOOL=OFF
     -DGLM_TEST_ENABLE_FAST_MATH:BOOL=OFF)
 mark_as_advanced(GLM_BUILD_FLAGS)
 
