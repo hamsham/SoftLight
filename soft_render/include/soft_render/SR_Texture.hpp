@@ -192,7 +192,7 @@ class SR_Texture
 /*-------------------------------------
  * Convert an X/Y coordinate to a Z-ordered coordinate.
 -------------------------------------*/
-LS_IMPERATIVE ptrdiff_t SR_Texture::map_coordinate(uint_fast32_t x, uint_fast32_t y) const noexcept
+inline ptrdiff_t SR_Texture::map_coordinate(uint_fast32_t x, uint_fast32_t y) const noexcept
 {
     #ifdef SR_TEXTURE_Z_ORDERING
         constexpr uint_fast32_t idsPerBlock = SR_TEXELS_PER_CHUNK*SR_TEXELS_PER_CHUNK;
@@ -217,7 +217,7 @@ LS_IMPERATIVE ptrdiff_t SR_Texture::map_coordinate(uint_fast32_t x, uint_fast32_
 /*-------------------------------------
  * Convert an X/Y coordinate to 4 Z-ordered coordinates.
 -------------------------------------*/
-LS_IMPERATIVE ls::math::vec4_t<ptrdiff_t> SR_Texture::map_coordinates(uint_fast32_t x, uint_fast32_t y) const noexcept
+inline ls::math::vec4_t<ptrdiff_t> SR_Texture::map_coordinates(uint_fast32_t x, uint_fast32_t y) const noexcept
 {
     #ifdef SR_TEXTURE_Z_ORDERING
         constexpr uint_fast32_t idsPerBlock = SR_TEXELS_PER_CHUNK*SR_TEXELS_PER_CHUNK;
@@ -264,7 +264,7 @@ LS_IMPERATIVE ls::math::vec4_t<ptrdiff_t> SR_Texture::map_coordinates(uint_fast3
 /*-------------------------------------
  * Convert an X/Y/Z coordinate to a Z-ordered coordinate.
 -------------------------------------*/
-LS_IMPERATIVE ptrdiff_t SR_Texture::map_coordinate(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
+inline ptrdiff_t SR_Texture::map_coordinate(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
 {
     #ifdef SR_TEXTURE_Z_ORDERING
         return map_coordinate(x, y) + (z * mWidth * mHeight);
@@ -278,7 +278,7 @@ LS_IMPERATIVE ptrdiff_t SR_Texture::map_coordinate(uint_fast32_t x, uint_fast32_
 /*-------------------------------------
  * Convert an X/Y/Z coordinate to 4 Z-ordered coordinates.
 -------------------------------------*/
-LS_IMPERATIVE ls::math::vec4_t<ptrdiff_t> SR_Texture::map_coordinates(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
+inline ls::math::vec4_t<ptrdiff_t> SR_Texture::map_coordinates(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
 {
     #ifdef SR_TEXTURE_Z_ORDERING
         return map_coordinates(x, y) + (ptrdiff_t)(z * mWidth * mHeight);
@@ -292,7 +292,7 @@ LS_IMPERATIVE ls::math::vec4_t<ptrdiff_t> SR_Texture::map_coordinates(uint_fast3
 /*-------------------------------------
  * Get the texture width
 -------------------------------------*/
-LS_IMPERATIVE uint16_t SR_Texture::width() const noexcept
+inline uint16_t SR_Texture::width() const noexcept
 {
     return mWidth;
 }
@@ -302,7 +302,7 @@ LS_IMPERATIVE uint16_t SR_Texture::width() const noexcept
 /*-------------------------------------
  * Get the texture height
 -------------------------------------*/
-LS_IMPERATIVE uint16_t SR_Texture::height() const noexcept
+inline uint16_t SR_Texture::height() const noexcept
 {
     return mHeight;
 }
@@ -312,7 +312,7 @@ LS_IMPERATIVE uint16_t SR_Texture::height() const noexcept
 /*-------------------------------------
  * Get the texture depth
 -------------------------------------*/
-LS_IMPERATIVE uint16_t SR_Texture::depth() const noexcept
+inline uint16_t SR_Texture::depth() const noexcept
 {
     return mDepth;
 }
@@ -322,7 +322,7 @@ LS_IMPERATIVE uint16_t SR_Texture::depth() const noexcept
 /*-------------------------------------
  * Get the bytes per pixel
 -------------------------------------*/
-LS_IMPERATIVE uint32_t SR_Texture::bpp() const noexcept
+inline uint32_t SR_Texture::bpp() const noexcept
 {
     return mBytesPerTexel;
 }
@@ -332,7 +332,7 @@ LS_IMPERATIVE uint32_t SR_Texture::bpp() const noexcept
 /*-------------------------------------
  * Get the current wrapping mode
 -------------------------------------*/
-LS_IMPERATIVE SR_TexWrapMode SR_Texture::wrap_mode() const noexcept
+inline SR_TexWrapMode SR_Texture::wrap_mode() const noexcept
 {
     return mWrapping;
 }
@@ -342,7 +342,7 @@ LS_IMPERATIVE SR_TexWrapMode SR_Texture::wrap_mode() const noexcept
 /*-------------------------------------
  * Set the current wrapping mode
 -------------------------------------*/
-LS_IMPERATIVE void SR_Texture::set_wrap_mode(const SR_TexWrapMode wrapMode) noexcept
+inline void SR_Texture::set_wrap_mode(const SR_TexWrapMode wrapMode) noexcept
 {
     mWrapping = wrapMode;
 }
@@ -352,7 +352,7 @@ LS_IMPERATIVE void SR_Texture::set_wrap_mode(const SR_TexWrapMode wrapMode) noex
 /*-------------------------------------
  * Get the texture mType
 -------------------------------------*/
-LS_IMPERATIVE SR_ColorDataType SR_Texture::type() const noexcept
+inline SR_ColorDataType SR_Texture::type() const noexcept
 {
     return mType;
 }
@@ -362,7 +362,7 @@ LS_IMPERATIVE SR_ColorDataType SR_Texture::type() const noexcept
 /*-------------------------------------
  * Retrieve the raw texels
 -------------------------------------*/
-LS_IMPERATIVE const void* SR_Texture::data() const noexcept
+inline const void* SR_Texture::data() const noexcept
 {
     return mTexels;
 }
@@ -372,7 +372,7 @@ LS_IMPERATIVE const void* SR_Texture::data() const noexcept
 /*-------------------------------------
  * Retrieve the raw texels
 -------------------------------------*/
-LS_IMPERATIVE void* SR_Texture::data() noexcept
+inline void* SR_Texture::data() noexcept
 {
     return mTexels;
 }
@@ -382,7 +382,7 @@ LS_IMPERATIVE void* SR_Texture::data() noexcept
 /*-------------------------------------
  * Retrieve a raw texels
 -------------------------------------*/
-LS_IMPERATIVE void SR_Texture::set_texel(uint16_t x, uint16_t y, uint16_t z, const void* pData) noexcept
+inline void SR_Texture::set_texel(uint16_t x, uint16_t y, uint16_t z, const void* pData) noexcept
 {
     const ptrdiff_t index = map_coordinate(x, y, z);
     const size_t bytesPerColor = mBytesPerTexel;
@@ -396,7 +396,7 @@ LS_IMPERATIVE void SR_Texture::set_texel(uint16_t x, uint16_t y, uint16_t z, con
 /*-------------------------------------
  * Keep all UV values within the (0.f, 1.f) range.
 -------------------------------------*/
-LS_IMPERATIVE float SR_Texture::wrap_coordinate(float uvw) const noexcept
+inline float SR_Texture::wrap_coordinate(float uvw) const noexcept
 {
     return (mWrapping == SR_TEXTURE_WRAP_REPEAT)
            ? ((uvw < 0.f ? 1.f : 0.f) + ls::math::fmod_1(uvw))
@@ -408,7 +408,7 @@ LS_IMPERATIVE float SR_Texture::wrap_coordinate(float uvw) const noexcept
 /*-------------------------------------
  * Keep all UV values within the range (0, maxVal).
 -------------------------------------*/
-LS_IMPERATIVE int SR_Texture::wrap_coordinate(int uvw, int maxVal) const noexcept
+inline int SR_Texture::wrap_coordinate(int uvw, int maxVal) const noexcept
 {
     return (mWrapping == SR_TEXTURE_WRAP_REPEAT)
            //? ((-(uvw < 0) & maxVal) + (uvw % maxVal))
@@ -422,7 +422,7 @@ LS_IMPERATIVE int SR_Texture::wrap_coordinate(int uvw, int maxVal) const noexcep
  * Retrieve a swizzled texel (const)
 -------------------------------------*/
 template <typename color_type>
-LS_IMPERATIVE const color_type SR_Texture::texel(uint16_t x, uint16_t y, uint16_t z) const noexcept
+inline const color_type SR_Texture::texel(uint16_t x, uint16_t y, uint16_t z) const noexcept
 {
     const ptrdiff_t index = map_coordinate(x, y, z);
     return reinterpret_cast<const color_type*>(mTexels)[index];
@@ -434,7 +434,7 @@ LS_IMPERATIVE const color_type SR_Texture::texel(uint16_t x, uint16_t y, uint16_
  * Retrieve a swizzled texel
 -------------------------------------*/
 template <typename color_type>
-LS_IMPERATIVE color_type& SR_Texture::texel(uint16_t x, uint16_t y, uint16_t z) noexcept
+inline color_type& SR_Texture::texel(uint16_t x, uint16_t y, uint16_t z) noexcept
 {
     const ptrdiff_t index = map_coordinate(x, y, z);
     return reinterpret_cast<color_type*>(mTexels)[index];
@@ -446,7 +446,7 @@ LS_IMPERATIVE color_type& SR_Texture::texel(uint16_t x, uint16_t y, uint16_t z) 
  * Retrieve a swizzled texel (const)
 -------------------------------------*/
 template <typename color_type>
-LS_IMPERATIVE const color_type SR_Texture::texel(uint16_t x, uint16_t y) const noexcept
+inline const color_type SR_Texture::texel(uint16_t x, uint16_t y) const noexcept
 {
     const ptrdiff_t index = map_coordinate(x, y);
     return reinterpret_cast<const color_type*>(mTexels)[index];
@@ -458,7 +458,7 @@ LS_IMPERATIVE const color_type SR_Texture::texel(uint16_t x, uint16_t y) const n
  * Retrieve a swizzled texel
 -------------------------------------*/
 template <typename color_type>
-LS_IMPERATIVE color_type& SR_Texture::texel(uint16_t x, uint16_t y) noexcept
+inline color_type& SR_Texture::texel(uint16_t x, uint16_t y) noexcept
 {
     const ptrdiff_t index = map_coordinate(x, y);
     return reinterpret_cast<color_type*>(mTexels)[index];
@@ -471,7 +471,7 @@ LS_IMPERATIVE color_type& SR_Texture::texel(uint16_t x, uint16_t y) noexcept
 -------------------------------------*/
 #ifndef SR_TEXTURE_Z_ORDERING
 template <>
-LS_IMPERATIVE const ls::math::vec4_t<float> SR_Texture::texel4<float>(uint16_t x, uint16_t y) const noexcept
+inline const ls::math::vec4_t<float> SR_Texture::texel4<float>(uint16_t x, uint16_t y) const noexcept
 {
     const ptrdiff_t index = map_coordinate(x, y);
     const float* pTexels = reinterpret_cast<const float*>(mTexels) + index;
@@ -494,7 +494,7 @@ LS_IMPERATIVE const ls::math::vec4_t<float> SR_Texture::texel4<float>(uint16_t x
 
 
 template <typename color_type>
-LS_IMPERATIVE const ls::math::vec4_t<color_type> SR_Texture::texel4(uint16_t x, uint16_t y) const noexcept
+inline const ls::math::vec4_t<color_type> SR_Texture::texel4(uint16_t x, uint16_t y) const noexcept
 {
     #ifdef SR_TEXTURE_Z_ORDERING
         const ls::math::vec4_t<ptrdiff_t>&& index = map_coordinates(x, y);
@@ -523,7 +523,7 @@ LS_IMPERATIVE const ls::math::vec4_t<color_type> SR_Texture::texel4(uint16_t x, 
  * Retrieve 4 swizzled texels (const)
 -------------------------------------*/
 template <typename color_type>
-LS_IMPERATIVE const ls::math::vec4_t<color_type> SR_Texture::texel4(uint16_t x, uint16_t y, uint16_t z) const noexcept
+inline const ls::math::vec4_t<color_type> SR_Texture::texel4(uint16_t x, uint16_t y, uint16_t z) const noexcept
 {
     #ifdef SR_TEXTURE_Z_ORDERING
         const ls::math::vec4_t<ptrdiff_t>&& index = map_coordinates(x, y, z);
@@ -552,7 +552,7 @@ LS_IMPERATIVE const ls::math::vec4_t<color_type> SR_Texture::texel4(uint16_t x, 
  * Retrieve 4 raw texels (const)
 -------------------------------------*/
 template <typename data_t>
-LS_IMPERATIVE ls::math::vec4_t<data_t> SR_Texture::raw_texel4(uint16_t x, uint16_t y) const noexcept
+inline ls::math::vec4_t<data_t> SR_Texture::raw_texel4(uint16_t x, uint16_t y) const noexcept
 {
     const ptrdiff_t index = x + mWidth * y;
     const data_t* pBuffer = reinterpret_cast<data_t*>(mTexels) + index;
@@ -562,7 +562,7 @@ LS_IMPERATIVE ls::math::vec4_t<data_t> SR_Texture::raw_texel4(uint16_t x, uint16
 
 
 template <>
-LS_IMPERATIVE ls::math::vec4_t<float> SR_Texture::raw_texel4<float>(uint16_t x, uint16_t y) const noexcept
+inline ls::math::vec4_t<float> SR_Texture::raw_texel4<float>(uint16_t x, uint16_t y) const noexcept
 {
     const ptrdiff_t index = x + mWidth * y;
     const float* pBuffer = reinterpret_cast<const float*>(mTexels) + index;
@@ -582,7 +582,7 @@ LS_IMPERATIVE ls::math::vec4_t<float> SR_Texture::raw_texel4<float>(uint16_t x, 
  * Retrieve 4 raw texels (const)
 -------------------------------------*/
 template <typename data_t>
-LS_IMPERATIVE ls::math::vec4_t<data_t> SR_Texture::raw_texel4(uint16_t x, uint16_t y, uint16_t z) const noexcept
+inline ls::math::vec4_t<data_t> SR_Texture::raw_texel4(uint16_t x, uint16_t y, uint16_t z) const noexcept
 {
     const ptrdiff_t index = x + mWidth * (y + mHeight * z);
     const data_t* pBuffer = reinterpret_cast<data_t*>(mTexels) + index;
@@ -592,7 +592,7 @@ LS_IMPERATIVE ls::math::vec4_t<data_t> SR_Texture::raw_texel4(uint16_t x, uint16
 
 
 template <>
-LS_IMPERATIVE ls::math::vec4_t<float> SR_Texture::raw_texel4<float>(uint16_t x, uint16_t y, uint16_t z) const noexcept
+inline ls::math::vec4_t<float> SR_Texture::raw_texel4<float>(uint16_t x, uint16_t y, uint16_t z) const noexcept
 {
     const ptrdiff_t index = x + mWidth * (y + mHeight * z);
     const float* pBuffer = reinterpret_cast<const float*>(mTexels) + index;
@@ -612,7 +612,7 @@ LS_IMPERATIVE ls::math::vec4_t<float> SR_Texture::raw_texel4<float>(uint16_t x, 
  * Retrieve a raw texel (const)
 -------------------------------------*/
 template <typename color_type>
-LS_IMPERATIVE const color_type SR_Texture::raw_texel(uint16_t x, uint16_t y, uint16_t z) const noexcept
+inline const color_type SR_Texture::raw_texel(uint16_t x, uint16_t y, uint16_t z) const noexcept
 {
     const ptrdiff_t index = x + mWidth * (y + mHeight * z);
     return reinterpret_cast<const color_type*>(mTexels)[index];
@@ -624,7 +624,7 @@ LS_IMPERATIVE const color_type SR_Texture::raw_texel(uint16_t x, uint16_t y, uin
  * Retrieve a raw texel
 -------------------------------------*/
 template <typename color_type>
-LS_IMPERATIVE color_type& SR_Texture::raw_texel(uint16_t x, uint16_t y, uint16_t z) noexcept
+inline color_type& SR_Texture::raw_texel(uint16_t x, uint16_t y, uint16_t z) noexcept
 {
     const ptrdiff_t index = x + mWidth * (y + mHeight * z);
     return reinterpret_cast<color_type*>(mTexels)[index];
@@ -636,7 +636,7 @@ LS_IMPERATIVE color_type& SR_Texture::raw_texel(uint16_t x, uint16_t y, uint16_t
  * Retrieve a raw texel (const)
 -------------------------------------*/
 template <typename color_type>
-LS_IMPERATIVE const color_type SR_Texture::raw_texel(uint16_t x, uint16_t y) const noexcept
+inline const color_type SR_Texture::raw_texel(uint16_t x, uint16_t y) const noexcept
 {
     const ptrdiff_t index = x + mWidth * y;
     return reinterpret_cast<const color_type*>(mTexels)[index];
@@ -648,7 +648,7 @@ LS_IMPERATIVE const color_type SR_Texture::raw_texel(uint16_t x, uint16_t y) con
  * Retrieve a raw texel
 -------------------------------------*/
 template <typename color_type>
-LS_IMPERATIVE color_type& SR_Texture::raw_texel(uint16_t x, uint16_t y) noexcept
+inline color_type& SR_Texture::raw_texel(uint16_t x, uint16_t y) noexcept
 {
     const ptrdiff_t index = x + mWidth * y;
     return reinterpret_cast<color_type*>(mTexels)[index];
@@ -660,7 +660,7 @@ LS_IMPERATIVE color_type& SR_Texture::raw_texel(uint16_t x, uint16_t y) noexcept
  * Retrieve a raw texel (const)
 -------------------------------------*/
 template <typename color_type>
-LS_IMPERATIVE const color_type SR_Texture::raw_texel(ptrdiff_t index) const noexcept
+inline const color_type SR_Texture::raw_texel(ptrdiff_t index) const noexcept
 {
     return reinterpret_cast<const color_type*>(mTexels)[index];
 }
@@ -671,7 +671,7 @@ LS_IMPERATIVE const color_type SR_Texture::raw_texel(ptrdiff_t index) const noex
  * Retrieve a raw texel
 -------------------------------------*/
 template <typename color_type>
-LS_IMPERATIVE color_type& SR_Texture::raw_texel(ptrdiff_t index) noexcept
+inline color_type& SR_Texture::raw_texel(ptrdiff_t index) noexcept
 {
     return reinterpret_cast<color_type*>(mTexels)[index];
 }

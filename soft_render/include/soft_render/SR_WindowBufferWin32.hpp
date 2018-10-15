@@ -111,7 +111,7 @@ inline void* SR_WindowBufferWin32::native_handle() noexcept
 /*-------------------------------------
  *
 -------------------------------------*/
-inline const SR_ColorRGBAType<uint8_t>* SR_WindowBufferWin32::buffer() const noexcept
+inline const ls::math::vec4_t<uint8_t>* SR_WindowBufferWin32::buffer() const noexcept
 {
     return mBuffer;
 }
@@ -121,7 +121,7 @@ inline const SR_ColorRGBAType<uint8_t>* SR_WindowBufferWin32::buffer() const noe
 /*-------------------------------------
  *
 -------------------------------------*/
-inline SR_ColorRGBAType<uint8_t>* SR_WindowBufferWin32::buffer() noexcept
+inline ls::math::vec4_t<uint8_t>* SR_WindowBufferWin32::buffer() noexcept
 {
     return mBuffer;
 }

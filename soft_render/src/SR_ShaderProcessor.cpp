@@ -2,11 +2,30 @@
 #include <iostream>
 #include <utility> // std::move()
 
+#include "lightsky/setup/Arch.h"
+#include "lightsky/setup/Compiler.h"
+
 #include "soft_render/SR_BlitProcesor.hpp"
 #include "soft_render/SR_FragmentProcessor.hpp"
 #include "soft_render/SR_ShaderProcessor.hpp"
 #include "soft_render/SR_VertexProcessor.hpp"
 #include "soft_render/SR_WindowBuffer.hpp"
+
+
+
+/*-----------------------------------------------------------------------------
+ * I've been having issues with allocated allocation on GCC and MAVC.
+-----------------------------------------------------------------------------*/
+template <typename data_t>
+static inline data_t* _aligned_alloc(size_t numElements) noexcept
+{
+    #ifdef LS_ARCH_X86
+        return reinterpret_cast<data_t*>(_mm_malloc(sizeof(data_t)*numElements, sizeof(__m128)));
+    #else
+        return reinterpret_cast<data_t*>(malloc(sizeof(data_t)*numElements));
+    #endif
+}
+
 
 
 
@@ -301,6 +320,33 @@ void SR_ProcessorPool::flush() noexcept
 
 
 
+/*-------------------------------------
+ * Wait for the threads to finish
+-------------------------------------*/
+void SR_ProcessorPool::wait() noexcept
+{
+    // Each thread will pause except for the main thread.
+    for (unsigned threadId = 0; threadId < mNumThreads - 1u; ++threadId)
+    {
+        SR_ProcessorPool::Worker* const pWorker = mThreads[threadId];
+        pWorker->wait();
+    }
+
+    /*
+    for (unsigned threadId = 0; threadId < mNumThreads-1u; ++threadId)
+    {
+        SR_ProcessorPool::Worker* const pWorker = mThreads[threadId];
+
+        while (!pWorker->ready())
+        {
+            continue;
+        }
+    }
+    */
+}
+
+
+
 /*--------------------------------------
  * Set the number of threads
 --------------------------------------*/
@@ -323,10 +369,11 @@ unsigned SR_ProcessorPool::num_threads(unsigned inNumThreads) noexcept
         inNumThreads = 1;
     }
 
-    mBinsUsed.reset(new std::atomic_uint_fast32_t[inNumThreads]);
-    mFragBins.reset(new std::array<SR_FragmentBin, SR_SHADER_MAX_FRAG_BINS>[inNumThreads]);
-    mFragQueues.reset(new std::array<SR_FragCoord, SR_SHADER_MAX_FRAG_QUEUES>[inNumThreads]);
-    mThreads.reset(new SR_ProcessorPool::Worker*[inNumThreads]);
+    mBinsUsed.reset(_aligned_alloc <std::atomic_uint_fast32_t>(inNumThreads));
+    mFragBins.reset(_aligned_alloc<std::array<SR_FragmentBin, SR_SHADER_MAX_FRAG_BINS>>(inNumThreads));
+    mFragQueues.reset(_aligned_alloc<std::array<SR_FragCoord, SR_SHADER_MAX_FRAG_QUEUES>>(inNumThreads));
+    mThreads.reset(_aligned_alloc<SR_ProcessorPool::Worker*>(inNumThreads));
+
     mNumThreads = inNumThreads;
 
     for (unsigned i = 0; i < inNumThreads; ++i)
