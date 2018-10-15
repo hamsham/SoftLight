@@ -43,7 +43,7 @@ int main()
     retCode = depth.init(SR_ColorDataType::SR_COLOR_R_FLOAT, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     assert(retCode == 0);
 
-    const math::mat4&& viewMatrix = math::look_from(math::vec3{30.f, 45.f, 45.f}, math::vec3{75.f, 0.f, 45.f}, math::vec3{0.f, 1.f, 0.f});
+    const math::mat4&& viewMatrix = math::look_at(math::vec3{0.f}, math::vec3{3.f, -5.f, 0.f}, math::vec3{0.f, 1.f, 0.f});
     const math::mat4&& projMatrix = math::infinite_perspective(LS_DEG2RAD(45.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
 
     constexpr int numFrames = 30;

@@ -23,8 +23,9 @@
 --------------------------------------*/
 math::vec4 _line_vert_shader_impl(const uint32_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer*, math::vec4*)
 {
+    // Using a value of 1000 for the w-component to help with perspective correction.
     const math::vec3& vert = *vbo.element<const math::vec3>(vao.offset(0, vertId));
-    return math::vec4{vert[0], vert[1], vert[2], 1.f};
+    return math::vec4{vert[0], vert[1], vert[2], 1000.f};
 }
 
 
@@ -43,14 +44,9 @@ SR_VertexShader line_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-bool _line_frag_shader_impl(const math::vec4&, const SR_UniformBuffer*, const math::vec4*, ls::math::vec4* outputs)
+bool _line_frag_shader_impl(const math::vec4&, const SR_UniformBuffer*, const math::vec4*, ls::math::vec4* pFragColors)
 {
-    ls::math::vec4& output = outputs[0];
-    output[0] = 0.f;
-    output[1] = 255.f;
-    output[2] = 0.f;
-    output[3] = 1.f;
-
+    pFragColors[0] = ls::math::vec4{0.f, 1.f, 0.f, 1.f}; // green
     return true;
 }
 
@@ -169,7 +165,7 @@ int main()
     m.elementBegin = 0;
     m.elementEnd = context.ibos().begin()->count();
     m.vaoId = vaoId;
-    m.mode = RENDER_MODE_INDEXED_TRIANGLES;
+    m.mode = RENDER_MODE_INDEXED_LINES;
 
     context.draw(m, shaderId, fboId);
 
