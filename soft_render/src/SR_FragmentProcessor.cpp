@@ -1,5 +1,5 @@
 
- #include "lightsky/setup/Arch.h" // LS_IMPERATIVE
+ #include "lightsky/setup/Api.h" // LS_IMPERATIVE
 
 #include "lightsky/utils/Sort.hpp" // utils::quick_sort
 
@@ -10,6 +10,13 @@
 #include "soft_render/SR_FragmentProcessor.hpp"
 #include "soft_render/SR_ShaderProcessor.hpp"
 #include "soft_render/SR_Texture.hpp"
+
+
+
+/*-----------------------------------------------------------------------------
+ * Rendering setup
+-----------------------------------------------------------------------------*/
+#define SR_RENDER_4_PIXELS
 
 
 
@@ -32,7 +39,7 @@ namespace
 /*--------------------------------------
  * Interpolate varying variables across a line
 --------------------------------------*/
-inline void interpolate_line_varyings(
+inline void LS_IMPERATIVE interpolate_line_varyings(
     const float             percent,
     const uint32_t          numVaryings,
     const math::vec4* const inVaryings,
@@ -54,7 +61,7 @@ inline void interpolate_line_varyings(
 /*--------------------------------------
  * Interpolate varying variables across a triangle
 --------------------------------------*/
-inline void interpolate_tri_varyings(
+inline void LS_IMPERATIVE interpolate_tri_varyings(
     const math::vec4&   baryCoords,
     const uint_fast32_t numVaryings,
     const math::vec4*   inVaryings0,
@@ -64,7 +71,7 @@ inline void interpolate_tri_varyings(
     const math::vec4* inVaryings2 = inVaryings1 + numVaryings;
     uint_fast32_t i = numVaryings;
 
-    #if defined(LS_ARCH_X86)
+    #if defined(SR_RENDER_4_PIXELS) && defined(LS_ARCH_X86)
         const __m128 bc0 = _mm_shuffle_ps(baryCoords.simd, baryCoords.simd, 0x00);
         const __m128 bc1 = _mm_shuffle_ps(baryCoords.simd, baryCoords.simd, 0x55);
         const __m128 bc2 = _mm_shuffle_ps(baryCoords.simd, baryCoords.simd, 0xAA);
@@ -78,8 +85,9 @@ inline void interpolate_tri_varyings(
             const __m128 v1 = _mm_mul_ps((inVaryings1++)->simd, bc1);
             const __m128 v2 = _mm_mul_ps((inVaryings2++)->simd, bc2);
             (outVaryings++)->simd = _mm_add_ps(_mm_add_ps(v0, v1), v2);
+            //_mm_store_ps((outVaryings++)->v, _mm_add_ps(_mm_add_ps(v0, v1), v2));
         }
-    #elif defined(LS_ARCH_ARM)
+    #elif defined(SR_RENDER_4_PIXELS) && defined(LS_ARCH_ARM)
         const float32x4_t bc0 = vdupq_lane_f32(vget_low_f32(baryCoords.simd),  0);
         const float32x4_t bc1 = vdupq_lane_f32(vget_low_f32(baryCoords.simd),  1);
         const float32x4_t bc2 = vdupq_lane_f32(vget_high_f32(baryCoords.simd), 0);
@@ -175,7 +183,7 @@ void SR_FragmentProcessor::render_point(SR_Framebuffer* const fbo) noexcept
  * Graphics Gems I (1990):
  * ftp://ftp.isc.org/pub/usenet/comp.sources.unix/volume26/line3d
 --------------------------------------*/
-void SR_FragmentProcessor::render_line(SR_Framebuffer* fbo, math::vec4* outVaryings) noexcept
+void SR_FragmentProcessor::render_line(SR_Framebuffer* fbo) noexcept
 {
     math::vec4              pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
     const SR_FragmentShader fragShader  = mShader->mFragShader;
@@ -186,6 +194,7 @@ void SR_FragmentProcessor::render_line(SR_Framebuffer* fbo, math::vec4* outVaryi
     const math::vec4& screenCoord0 = mBins[mBinId].mScreenCoords[0];
     const math::vec4& screenCoord1 = mBins[mBinId].mScreenCoords[1];
     math::vec4* const inVaryings   = mBins[mBinId].mVaryings;
+    alignas(sizeof(math::vec4)) math::vec4 outVaryings[SR_SHADER_MAX_VARYING_VECTORS];
 
     int   pointX = (int)screenCoord0[0];
     int   pointY = (int)screenCoord0[1];
@@ -382,9 +391,9 @@ void SR_FragmentProcessor::render_line(SR_Framebuffer* fbo, math::vec4* outVaryi
 /*--------------------------------------
  * Triangle Rasterization
 --------------------------------------*/
-#if defined(LS_ARCH_X86)
+#if defined(SR_RENDER_4_PIXELS) && defined(LS_ARCH_X86)
 
-void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::vec4* outVaryings) const noexcept
+void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const noexcept
 {
     const __m128      persp        = mBins[mBinId].mPerspDivide.simd;
     const math::vec4* screenCoords = mBins[mBinId].mScreenCoords;
@@ -459,9 +468,9 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::
             bcF = math::transpose(bcF);
 
             // depth texture lookup will always be slow
-            const math::vec4 z           = depth * bcF;
-            const __m128     depthTexels = depthBuffer->texel4<float>(x, y).simd;
-            const int        depthTest   = _mm_movemask_ps(_mm_sub_ps(z.simd, depthTexels));
+            const math::vec4      z           = depth * bcF;
+            const __m128          depthTexels = depthBuffer->texel4<float>(x, y).simd;
+            alignas(16) const int depthTest   = _mm_movemask_ps(_mm_sub_ps(z.simd, depthTexels));
 
             for (int32_t i = 0; i < 4; ++i)
             {
@@ -499,7 +508,7 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::
                 if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
                 {
                     numQueuedFrags = 0;
-                    flush_fragments(SR_SHADER_MAX_FRAG_QUEUES, outCoords, outVaryings);
+                    flush_fragments(SR_SHADER_MAX_FRAG_QUEUES, outCoords);
                 }
             }
         }
@@ -507,15 +516,15 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::
 
     if (numQueuedFrags)
     {
-        flush_fragments(numQueuedFrags, outCoords, outVaryings);
+        flush_fragments(numQueuedFrags, outCoords);
     }
 }
 
 
 
-#elif defined(LS_ARCH_ARM) // Translating x86 into a NEON implementation.
+#elif defined(SR_RENDER_4_PIXELS) && defined(LS_ARCH_ARM) // Translating x86 into a NEON implementation.
 
-void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::vec4* outVaryings) const noexcept
+void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const noexcept
 {
     const float32x4_t persp        = mBins[mBinId].mPerspDivide.simd;
     const math::vec4* screenCoords = mBins[mBinId].mScreenCoords;
@@ -629,7 +638,7 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::
                 if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
                 {
                     numQueuedFrags = 0;
-                    flush_fragments(SR_SHADER_MAX_FRAG_QUEUES, outCoords, outVaryings);
+                    flush_fragments(SR_SHADER_MAX_FRAG_QUEUES, outCoords);
                 }
             }
         }
@@ -637,15 +646,15 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::
 
     if (numQueuedFrags)
     {
-        flush_fragments(numQueuedFrags, outCoords, outVaryings);
+        flush_fragments(numQueuedFrags, outCoords);
     }
 }
 
 
 
-#elif 1
+#elif defined(SR_RENDER_4_PIXELS)
 
-void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::vec4* outVaryings) const noexcept
+void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const noexcept
 {
     const math::vec4  persp        = mBins[mBinId].mPerspDivide;
     const math::vec4* screenCoords = mBins[mBinId].mScreenCoords;
@@ -747,7 +756,7 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::
                 if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
                 {
                     numQueuedFrags = 0;
-                    flush_fragments(SR_SHADER_MAX_FRAG_QUEUES, outCoords, outVaryings);
+                    flush_fragments(SR_SHADER_MAX_FRAG_QUEUES, outCoords);
                 }
             }
         }
@@ -755,7 +764,7 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::
 
     if (numQueuedFrags)
     {
-        flush_fragments(numQueuedFrags, outCoords, outVaryings);
+        flush_fragments(numQueuedFrags, outCoords);
     }
 }
 
@@ -763,7 +772,7 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::
 
 #else
 
-void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::vec4* outVaryings) const noexcept
+void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const noexcept
 {
     const math::vec4* screenCoords = mBins[mBinId].mScreenCoords;
     const math::vec4  depth        {screenCoords[0][2], screenCoords[1][2], screenCoords[2][2], 0.f};
@@ -849,13 +858,13 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::
             const float bW = math::rcp(math::sum(bc));
             bc *= bW;
 
-            outCoords[numQueuedFrags] = {bc, (uint16_t)(x), (uint16_t)y, z};
+            outCoords[numQueuedFrags] = {bc, (uint16_t)x, (uint16_t)y, z};
             ++numQueuedFrags;
 
             if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
             {
                 numQueuedFrags = 0;
-                flush_fragments(SR_SHADER_MAX_FRAG_QUEUES, outCoords, outVaryings);
+                flush_fragments(SR_SHADER_MAX_FRAG_QUEUES, outCoords);
             }
         }
     }
@@ -863,7 +872,7 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::
     // cleanup remaining fragments
     if (numQueuedFrags > 0)
     {
-        flush_fragments(numQueuedFrags, outCoords, outVaryings);
+        flush_fragments(numQueuedFrags, outCoords);
     }
 }
 
@@ -878,17 +887,18 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer, math::
 --------------------------------------*/
 void SR_FragmentProcessor::flush_fragments(
     uint_fast32_t       numQueuedFrags,
-    const SR_FragCoord* outCoords,
-    math::vec4*         outVaryings) const noexcept
+    const SR_FragCoord* outCoords) const noexcept
 {
     const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
-    const SR_FragmentShader fragShader  = mShader->mFragShader;
+    alignas(sizeof(math::vec4)) const SR_FragmentShader fragShader  = mShader->mFragShader;
     const auto              pShader     = fragShader.shader;
     const uint32_t          numVaryings = fragShader.numVaryings;
     const uint32_t          numOutputs  = fragShader.numOutputs;
     SR_Framebuffer*         fbo         = mFbo;
     math::vec4* const       inVaryings  = mBins[mBinId].mVaryings;
-    math::vec4              pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
+
+    alignas(sizeof(math::vec4)) math::vec4 pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
+    alignas(sizeof(math::vec4)) math::vec4 outVaryings[SR_SHADER_MAX_VARYING_VECTORS];
 
     while (numQueuedFrags --> 0)
     {
@@ -924,7 +934,6 @@ void SR_FragmentProcessor::execute() noexcept
     // Sort the bins based on their depth. Closer objects should be rendered
     // first to allow for fragment rejection during the depth test.
     utils::quick_sort<SR_FragmentBin, utils::IsGreater<SR_FragmentBin>>(mBins, mNumBins);
-    math::vec4 outVaryings[SR_SHADER_MAX_VARYING_VECTORS];
 
     switch(mMode)
     {
@@ -940,7 +949,7 @@ void SR_FragmentProcessor::execute() noexcept
         case RENDER_MODE_INDEXED_LINES:
             while (mBinId < mNumBins)
             {
-                render_line(mFbo, outVaryings);
+                render_line(mFbo);
                 ++mBinId;
             }
             break;
@@ -948,7 +957,7 @@ void SR_FragmentProcessor::execute() noexcept
         case RENDER_MODE_INDEXED_TRIANGLES:
             while (mBinId < mNumBins)
             {
-                render_triangle(mFbo->get_depth_buffer(), outVaryings);
+                render_triangle(mFbo->get_depth_buffer());
                 ++mBinId;
             }
             break;

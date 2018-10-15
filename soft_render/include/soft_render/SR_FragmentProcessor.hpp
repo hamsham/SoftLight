@@ -58,11 +58,11 @@ struct SR_FragmentProcessor
 
     void render_point(SR_Framebuffer* const fbo) noexcept;
 
-    void render_line(SR_Framebuffer* const fbo, ls::math::vec4* outVaryings) noexcept;
+    void render_line(SR_Framebuffer* const fbo) noexcept;
 
-    void render_triangle(const SR_Texture* depthBuffer, ls::math::vec4* outVaryings) const noexcept;
+    void render_triangle(const SR_Texture* depthBuffer) const noexcept;
 
-    void flush_fragments(uint_fast32_t numQueuedFrags, const SR_FragCoord* outCoords, ls::math::vec4* outVaryings) const noexcept;
+    void flush_fragments(uint_fast32_t numQueuedFrags, const SR_FragCoord* outCoords) const noexcept;
 
     void execute() noexcept;
 };

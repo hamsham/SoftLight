@@ -2,8 +2,6 @@
 #ifndef PROJECT_TEST_COMMON_HPP
 #define PROJECT_TEST_COMMON_HPP
 
-#include <chrono>
-
 #include "lightsky/math/mat_utils.h"
 #include "lightsky/math/quat_utils.h"
 
@@ -26,12 +24,6 @@
 
 namespace utils = ls::utils;
 namespace math = ls::math;
-namespace chrono = std::chrono;
-
-typedef chrono::steady_clock hr_clock;
-typedef hr_clock::time_point hr_time;
-typedef std::chrono::duration<float> hr_duration;
-typedef chrono::seconds hr_prec;
 
 
 

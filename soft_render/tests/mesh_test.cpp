@@ -1,5 +1,9 @@
 
 #include <iostream>
+#include <iomanip> // std::setprecision
+#include <limits>
+
+#include "lightsky/utils/Time.hpp"
 
 #include "soft_render/SR_Context.hpp"
 #include "soft_render/SR_Framebuffer.hpp"
@@ -46,17 +50,22 @@ int main()
     const math::mat4&& viewMatrix = math::look_at(math::vec3{0.f}, math::vec3{3.f, -5.f, 0.f}, math::vec3{0.f, 1.f, 0.f});
     const math::mat4&& projMatrix = math::infinite_perspective(LS_DEG2RAD(45.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
 
-    constexpr int numFrames = 30;
-    const hr_time t1 = hr_clock::now();
+    ls::utils::Clock<float> timer;
+    timer.start();
+
+    constexpr int numFrames = 600;
     for (int i = 0; i < numFrames; ++i)
     {
         context.framebuffer(0).clear_color_buffers();
         context.framebuffer(0).clear_depth_buffer();
         render_scene(pGraph.get(), projMatrix*viewMatrix);
     }
-    const hr_time t2 = hr_clock::now();
+    timer.tick();
 
-    std::cout << " Rendered " << numFrames << " frames in " << chrono::duration_cast<hr_prec>(t2 - t1).count() << " seconds." << std::endl;
+    std::cout
+        << "Rendered " << numFrames << " frames in "
+        << std::setprecision(std::numeric_limits<float>::digits10) << timer.tick_time().count()
+        << " seconds." << std::endl;
 
     retCode = sr_img_save_ppm(IMAGE_WIDTH, IMAGE_HEIGHT, reinterpret_cast<const SR_ColorRGB8*>(tex.data()), "mesh_test_image.ppm");
     assert(retCode == 0);
