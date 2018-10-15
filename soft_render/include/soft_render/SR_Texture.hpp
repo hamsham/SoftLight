@@ -477,7 +477,7 @@ inline const ls::math::vec4_t<float> SR_Texture::texel4<float>(uint16_t x, uint1
     const float* pTexels = reinterpret_cast<const float*>(mTexels) + index;
 
     #ifdef LS_ARCH_X86
-        return ls::math::vec4_t<float>{_mm_load_ps(pTexels)};
+        return ls::math::vec4_t<float>{_mm_loadu_ps(pTexels)};
     #elif defined(LS_ARCH_ARM)
         return ls::math::vec4_t<float>{vld1q_f32(pTexels)};
     #else
@@ -568,7 +568,7 @@ inline ls::math::vec4_t<float> SR_Texture::raw_texel4<float>(uint16_t x, uint16_
     const float* pBuffer = reinterpret_cast<const float*>(mTexels) + index;
 
     #ifdef LS_ARCH_X86
-        return ls::math::vec4_t<float>{_mm_load_ps(pBuffer)};
+        return ls::math::vec4_t<float>{_mm_loadu_ps(pBuffer)};
     #elif defined(LS_ARCH_ARM)
         return ls::math::vec4_t<float>{vld1q_f32(pBuffer)};
     #else

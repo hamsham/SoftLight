@@ -96,25 +96,28 @@ class SR_ProcessorPool
     typedef ls::utils::Worker<SR_ShaderProcessor> Worker;
     typedef ls::utils::WorkerThread<SR_ShaderProcessor> ThreadedWorker;
 
-    static inline void ProcessorDeleter(void* p)
+    struct ProcessorDeleter
     {
-        #ifdef LS_ARCH_X86
-            _mm_free(p);
-        #else
-            free(p);
-        #endif
+        inline void operator()(void* p)
+        {
+            #ifdef LS_ARCH_X86
+                _mm_free(p);
+            #else
+                free(p);
+            #endif
+        }
     };
 
   private:
     std::atomic_uint_fast32_t mFragSemaphore;
 
-    ls::utils::Pointer<std::atomic_uint_fast32_t[], decltype(&ProcessorDeleter)> mBinsUsed;
+    ls::utils::Pointer<std::atomic_uint_fast32_t[], ProcessorDeleter> mBinsUsed;
 
-    ls::utils::Pointer<std::array<SR_FragmentBin, SR_SHADER_MAX_FRAG_BINS>[], decltype(&ProcessorDeleter)> mFragBins;
+    ls::utils::Pointer<std::array<SR_FragmentBin, SR_SHADER_MAX_FRAG_BINS>[], ProcessorDeleter> mFragBins;
 
-    ls::utils::Pointer<std::array<SR_FragCoord, SR_SHADER_MAX_FRAG_QUEUES>[], decltype(&ProcessorDeleter)> mFragQueues;
+    ls::utils::Pointer<std::array<SR_FragCoord, SR_SHADER_MAX_FRAG_QUEUES>[], ProcessorDeleter> mFragQueues;
 
-    ls::utils::Pointer<Worker*[], decltype(&ProcessorDeleter)> mThreads;
+    ls::utils::Pointer<Worker*[], ProcessorDeleter> mThreads;
 
     unsigned mNumThreads;
 
