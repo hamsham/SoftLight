@@ -915,10 +915,10 @@ void SR_FragmentProcessor::flush_fragments(
         // branchless select
         switch (-haveOutputs & numOutputs)
         {
-            case 4: fbo->put_pixel(3, x, y, (uint16_t)zi, pOutputs[3]);
-            case 3: fbo->put_pixel(2, x, y, (uint16_t)zi, pOutputs[2]);
-            case 2: fbo->put_pixel(1, x, y, (uint16_t)zi, pOutputs[1]);
-            case 1: fbo->put_pixel(0, x, y, (uint16_t)zi, pOutputs[0]);
+            case 4: /*zi < fbo->depth() && */fbo->put_pixel(3, x, y, (uint16_t)zi, pOutputs[3]);
+            case 3: /*zi < fbo->depth() && */fbo->put_pixel(2, x, y, (uint16_t)zi, pOutputs[2]);
+            case 2: /*zi < fbo->depth() && */fbo->put_pixel(1, x, y, (uint16_t)zi, pOutputs[1]);
+            case 1: /*zi < fbo->depth() && */fbo->put_pixel(0, x, y, (uint16_t)zi, pOutputs[0]);
                 fbo->put_depth_pixel<float>(x, y, zf);
         }
     }

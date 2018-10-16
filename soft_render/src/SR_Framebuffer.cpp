@@ -39,7 +39,9 @@ inline void assign_pixel(
         typename color_type::value_type                   r;
     } c{color_cast<typename color_type::value_type, float>(*reinterpret_cast<const SR_ColorRGBAf*>(rgba))};
 
-    color_type& outTexel = pTexture->texel<color_type>(x, y, z);
+    // whoopsie
+    color_type& outTexel = pTexture->texel<color_type>(x, y, math::min(pTexture->depth()-1, z));
+    //color_type& outTexel = pTexture->texel<color_type>(x, y, z);
 
     // Should be optimized by the compiler
     switch (color_type::num_components())

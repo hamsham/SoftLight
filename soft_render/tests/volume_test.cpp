@@ -34,7 +34,8 @@
 --------------------------------------*/
 struct VolumeUniforms : SR_UniformBuffer
 {
-    const SR_Texture* pTexture;
+    const SR_Texture* pCubeMap;
+    const SR_Texture* pDestTex;
     math::mat4 modelMatrix;
     math::mat4 mvpMatrix;
     math::mat4 viewMatrix;
@@ -57,6 +58,7 @@ math::vec4 _volume_vert_shader(const uint32_t vertId, const SR_VertexArray& vao,
     vert[2] *= 0.75f;
 
     varyings[0] = pUniforms->modelMatrix * math::vec4{vert[0], vert[1], vert[2], 1.f};
+    //varyings[1] = math::vec4{uv[0]*2.f - 0.5f, uv[1]*2.f - 0.5f, uv[2]*2.f - 0.5f, 1.f};
     varyings[1] = math::vec4{uv[0], uv[1], uv[2], 1.f};
 
     return pUniforms->mvpMatrix * math::vec4{vert[0], vert[1], vert[2], 1.f};
@@ -84,38 +86,36 @@ bool _volume_frag_shader(const math::vec4&, const SR_UniformBuffer* uniforms, co
     math::vec4 uv  = varyings[1];
 
     const VolumeUniforms* pUniforms = static_cast<const VolumeUniforms*>(uniforms);
-    const SR_Texture*     volumeTex = pUniforms->pTexture;
+    const SR_Texture*     volumeTex = pUniforms->pCubeMap;
     const math::mat4      camTrans  = pUniforms->viewMatrix;
     const math::vec4      camPos    = math::vec4{-camTrans[0][2], -camTrans[1][2], -camTrans[2][2], -camTrans[3][2]};
 
-    const float step = 1.f / 48.f;
-    const math::vec4 rayDir = math::normalize(camPos - pos) / pos[3];
+    const float step = 1.f / 64.f;
+    const math::vec4 rayDir = camPos / pos[3];
 
     unsigned dstTexel = 0;
-    unsigned srcTexel;
+    unsigned srcTexel = 0;
 
-    for (unsigned i = 0; i < 48; ++i)
+    for (unsigned i = 0; i < 64; ++i)
     {
-        srcTexel = volumeTex->bilinear<SR_ColorR8>(uv[0], uv[1], uv[2]).r;
-        srcTexel = (srcTexel > 32) ? srcTexel : 0;
-        //srcTexel.r /= 4; // increase alpha
+        srcTexel = volumeTex->nearest<SR_ColorR8>(uv[0], uv[1], uv[2]).r;
+        const unsigned hit = (srcTexel > 16);
+        srcTexel = -hit & srcTexel;
+        i -= !hit;
 
-        const unsigned dstA = 255 - dstTexel;
-        const unsigned srcA = 255 - srcTexel + 1;
-
-        dstTexel += (dstA / srcA) << 2;
-
-        //dstTexel += -(srcTexel.r > 32) & (srcTexel.r/4);
+        const unsigned dstA = 255u - dstTexel;
+        const unsigned srcA = 255u - srcTexel + 1u;
+        dstTexel += (dstA / srcA) << 3u;
 
         uv += rayDir * step;
 
-        if (dstTexel >= 255 || uv >= 1.f || uv <= 0.f)
+        if (dstTexel >= 255 || math::max(uv[0],uv[1], uv[2]) >= 1.f || math::min(uv[0],uv[1], uv[2]) <= 0.f)
         {
             break;
         }
     }
 
-    dstTexel = math::min(dstTexel, 255);
+    dstTexel = math::min<unsigned>(dstTexel, 255u);
 
     const math::vec4&& pixel = color_cast<float, uint8_t>(math::vec4_t<uint8_t>{(uint8_t)dstTexel});
 
@@ -332,7 +332,8 @@ utils::Pointer<SR_SceneGraph> init_volume_context()
     const SR_VertexShader&&   volVertShader = volume_vert_shader();
     const SR_FragmentShader&& volFragShader = volume_frag_shader();
     std::shared_ptr<VolumeUniforms> pUniforms{new VolumeUniforms};
-    pUniforms->pTexture = context.textures().back();
+    pUniforms->pCubeMap = context.textures().back();
+    pUniforms->pDestTex = fbo.get_color_buffer(0);
 
     uint32_t volShaderId = context.create_shader(volVertShader, volFragShader, pUniforms);
     assert(volShaderId == 0);
@@ -341,7 +342,8 @@ utils::Pointer<SR_SceneGraph> init_volume_context()
     pGraph->update();
 
     const math::mat4&& viewMatrix = math::look_at(math::vec3{3.f}, math::vec3{0.f}, math::vec3{0.f, 1.f, 0.f});
-    const math::mat4&& projMatrix = math::infinite_perspective(LS_DEG2RAD(45.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
+    //const math::mat4&& projMatrix = math::infinite_perspective(LS_DEG2RAD(45.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
+    const math::mat4&& projMatrix = math::ortho((float)-1, (float)1, (float)-1, (float)1, 0.0001f, 0.1f);
     pUniforms->viewMatrix = viewMatrix;
 
     render_volume(pGraph.get(), projMatrix*viewMatrix);
@@ -441,7 +443,8 @@ int main()
     SR_Transform camTrans;
     camTrans.set_type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
     camTrans.extract_transforms(math::look_from(math::vec3{3.f}, math::vec3{0.f}, math::vec3{0.f, 1.f, 0.f}));
-    const math::mat4&& projMatrix = math::infinite_perspective(LS_DEG2RAD(45.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
+    //const math::mat4&& projMatrix = math::infinite_perspective(LS_DEG2RAD(45.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
+    const math::mat4&& projMatrix = math::ortho(-16.f/9.f, 16.f/9.f, -1.f, 1.f, 0.0001f, 0.1f);
 
     if (shouldQuit)
     {
