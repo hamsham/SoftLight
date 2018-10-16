@@ -26,6 +26,33 @@
 
 
 
+/*
+        pos.w = 0;
+        value = tex3Dlod(VolumeS, pos).r;
+
+        src = (float4)value;
+        src.a *= .5f; //reduce the alpha to have a more transparent result
+
+        //Front to back blending
+        // dst.rgb = dst.rgb + (1 - dst.a) * src.a * src.rgb
+        // dst.a   = dst.a   + (1 - dst.a) * src.a
+        src.rgb *= src.a;
+        dst = (1.0f - dst.a)*src + dst;
+
+        //break from the loop when alpha gets high enough
+        if(dst.a >= .95f)
+            break;
+
+        //advance the current position
+        pos.xyz += Step;
+
+        //break if the position is greater than <1, 1, 1>
+        if(pos.x > 1.0f  pos.y > 1.0f  pos.z > 1.0f)
+            break;
+ */
+
+
+
 /*-----------------------------------------------------------------------------
  * Shader to display vertices with a position and normal
 -----------------------------------------------------------------------------*/

@@ -49,13 +49,15 @@ math::vec4 _volume_vert_shader(const uint32_t vertId, const SR_VertexArray& vao,
 {
     const VolumeUniforms* pUniforms = static_cast<const VolumeUniforms*>(uniforms);
 
-    const math::vec3& vert = *vbo.element<const math::vec3>(vao.offset(0, vertId));
+    math::vec3 vert = *vbo.element<const math::vec3>(vao.offset(0, vertId));
     const math::vec3& uv   = *vbo.element<const math::vec3>(vao.offset(1, vertId));
-    const math::vec3& norm = *vbo.element<const math::vec3>(vao.offset(2, vertId));
+    //const math::vec3& norm = *vbo.element<const math::vec3>(vao.offset(2, vertId));
+
+    // voxel spacing adjustment
+    vert[2] *= 0.75f;
 
     varyings[0] = pUniforms->modelMatrix * math::vec4{vert[0], vert[1], vert[2], 1.f};
-    varyings[1] = math::vec4{uv[0], uv[1], uv[2], 0.f};
-    varyings[2] = math::normalize(pUniforms->modelMatrix * math::vec4{norm[0], norm[1], norm[2], 0.f});
+    varyings[1] = math::vec4{uv[0], uv[1], uv[2], 1.f};
 
     return pUniforms->mvpMatrix * math::vec4{vert[0], vert[1], vert[2], 1.f};
 }
@@ -65,7 +67,7 @@ math::vec4 _volume_vert_shader(const uint32_t vertId, const SR_VertexArray& vao,
 SR_VertexShader volume_vert_shader()
 {
     SR_VertexShader shader;
-    shader.numVaryings = 3;
+    shader.numVaryings = 2;
     shader.shader = _volume_vert_shader;
 
     return shader;
@@ -84,34 +86,43 @@ bool _volume_frag_shader(const math::vec4&, const SR_UniformBuffer* uniforms, co
     const VolumeUniforms* pUniforms = static_cast<const VolumeUniforms*>(uniforms);
     const SR_Texture*     volumeTex = pUniforms->pTexture;
     const math::mat4      camTrans  = pUniforms->viewMatrix;
-    const math::vec4      camPos    = math::vec4{camTrans[0][2], camTrans[1][2], camTrans[2][2], 0.f};
+    const math::vec4      camPos    = math::vec4{-camTrans[0][2], -camTrans[1][2], -camTrans[2][2], -camTrans[3][2]};
 
-    const float step = 1.f / 64.f;
-    const math::vec4 rayDir = math::normalize(camPos - pos);
+    const float step = 1.f / 48.f;
+    const math::vec4 rayDir = math::normalize(camPos - pos) / pos[3];
 
-    unsigned texel = 0;
+    unsigned dstTexel = 0;
+    unsigned srcTexel;
 
-    for (unsigned i = 0; i < 32; ++i)
+    for (unsigned i = 0; i < 48; ++i)
     {
-        const uint8_t threshold = volumeTex->nearest<uint8_t>(uv[0], uv[1], uv[2]);
-        texel += -(threshold > 24) & (threshold/4);
+        srcTexel = volumeTex->bilinear<SR_ColorR8>(uv[0], uv[1], uv[2]).r;
+        srcTexel = (srcTexel > 32) ? srcTexel : 0;
+        //srcTexel.r /= 4; // increase alpha
 
-        if (texel >= 255 || uv >= 1.f || uv <= 0.f)
+        const unsigned dstA = 255 - dstTexel;
+        const unsigned srcA = 255 - srcTexel + 1;
+
+        dstTexel += (dstA / srcA) << 2;
+
+        //dstTexel += -(srcTexel.r > 32) & (srcTexel.r/4);
+
+        uv += rayDir * step;
+
+        if (dstTexel >= 255 || uv >= 1.f || uv <= 0.f)
         {
             break;
         }
-
-        uv += rayDir * step;
     }
 
-    texel = math::min(texel, 255);
+    dstTexel = math::min(dstTexel, 255);
 
-    const math::vec4&& pixel = color_cast<float, uint8_t>(math::vec4_t<uint8_t>{(uint8_t)texel});
+    const math::vec4&& pixel = color_cast<float, uint8_t>(math::vec4_t<uint8_t>{(uint8_t)dstTexel});
 
     // output composition
     outputs[0] = math::min(pixel, math::vec4{1.f});
 
-    return texel > 0;
+    return dstTexel > 0;
 }
 
 
@@ -119,7 +130,7 @@ bool _volume_frag_shader(const math::vec4&, const SR_UniformBuffer* uniforms, co
 SR_FragmentShader volume_frag_shader()
 {
     SR_FragmentShader shader;
-    shader.numVaryings = 3;
+    shader.numVaryings = 2;
     shader.numOutputs = 1;
     shader.shader = _volume_frag_shader;
 
@@ -540,8 +551,8 @@ int main()
                 if (pWindow->is_mouse_captured())
                 {
                     SR_MousePosEvent& mouse = evt.mousePos;
-                    dx = ((float)mouse.dx / (float)pWindow->width()) * 0.05f;
-                    dy = ((float)mouse.dy / (float)pWindow->height()) * -0.05f;
+                    dx = ((float)mouse.dx / (float)pWindow->width()) * 0.25f;
+                    dy = ((float)mouse.dy / (float)pWindow->height()) * -0.25f;
                     camTrans.rotate(math::vec3{dx, dy, 0.f});
                 }
             }

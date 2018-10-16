@@ -188,6 +188,9 @@ class SR_Texture
 
     template <typename color_type>
     color_type bilinear(float x, float y) const noexcept;
+
+    template <typename color_type>
+    color_type bilinear(float x, float y, float z) const noexcept;
 };
 
 
@@ -732,6 +735,46 @@ color_type SR_Texture::bilinear(float x, float y) const noexcept
     const color_type pixel1  = this->texel<color_type>(xi0, yi1);
     const color_type pixel2  = this->texel<color_type>(xi1, yi0);
     const color_type pixel3  = this->texel<color_type>(xi1, yi1);
+    const float      weight0 = omdx * omdy;
+    const float      weight1 = omdx * dy;
+    const float      weight2 = dx * omdy;
+    const float      weight3 = dx * dy;
+    color_type       ret;
+
+    switch (color_type::num_components())
+    {
+        case 4: ret[3] = (weight0*pixel0[3]) + (weight1*pixel1[3]) + (weight2*pixel2[3]) + (weight3*pixel3[3]);
+        case 3: ret[2] = (weight0*pixel0[2]) + (weight1*pixel1[2]) + (weight2*pixel2[2]) + (weight3*pixel3[2]);
+        case 2: ret[1] = (weight0*pixel0[1]) + (weight1*pixel1[1]) + (weight2*pixel2[1]) + (weight3*pixel3[1]);
+        case 1: ret[0] = (weight0*pixel0[0]) + (weight1*pixel1[0]) + (weight2*pixel2[0]) + (weight3*pixel3[0]);
+    }
+
+    return ret;
+}
+
+
+
+/*-------------------------------------
+ * Bilinear Texture Lookup
+-------------------------------------*/
+template <typename color_type>
+color_type SR_Texture::bilinear(float x, float y, float z) const noexcept
+{
+    const float      xf      = wrap_coordinate(x) * mWidthf;
+    const float      yf      = wrap_coordinate(y) * mHeightf;
+    const uint16_t   zi      = (uint16_t)ls::math::round(wrap_coordinate(z) * mDepthf);
+    const uint16_t   xi0     = (uint16_t)xf;
+    const uint16_t   yi0     = (uint16_t)yf;
+    const uint16_t   xi1     = ls::math::clamp<uint16_t>(xi0+1u, 0u, mWidth);
+    const uint16_t   yi1     = ls::math::clamp<uint16_t>(yi0+1u, 0u, mHeight);
+    const float      dx      = xf - (float)xi0;
+    const float      dy      = yf - (float)yi0;
+    const float      omdx    = 1.f - dx;
+    const float      omdy    = 1.f - dy;
+    const color_type pixel0  = this->texel<color_type>(xi0, yi0, zi);
+    const color_type pixel1  = this->texel<color_type>(xi0, yi1, zi);
+    const color_type pixel2  = this->texel<color_type>(xi1, yi0, zi);
+    const color_type pixel3  = this->texel<color_type>(xi1, yi1, zi);
     const float      weight0 = omdx * omdy;
     const float      weight1 = omdx * dy;
     const float      weight2 = dx * omdy;
