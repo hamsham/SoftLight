@@ -184,6 +184,9 @@ class SR_Texture
     color_type nearest(float x, float y) const noexcept;
 
     template <typename color_type>
+    color_type nearest(float x, float y, float z) const noexcept;
+
+    template <typename color_type>
     color_type bilinear(float x, float y) const noexcept;
 };
 
@@ -688,6 +691,22 @@ inline color_type SR_Texture::nearest(float x, float y) const noexcept
     const uint_fast32_t yi = (uint_fast32_t)(mHeightf * wrap_coordinate(y));
     const ptrdiff_t index = map_coordinate(xi, yi);
 
+    return reinterpret_cast<color_type*>(mTexels)[index];
+}
+
+
+
+/*-------------------------------------
+ * Nearest-neighbor lookup
+-------------------------------------*/
+template <typename color_type>
+inline color_type SR_Texture::nearest(float x, float y, float z) const noexcept
+{
+    const uint_fast32_t xi = (uint_fast32_t)(mWidthf  * wrap_coordinate(x));
+    const uint_fast32_t yi = (uint_fast32_t)(mHeightf * wrap_coordinate(y));
+    const uint_fast32_t zi = (uint_fast32_t)(mDepthf  * wrap_coordinate(z));
+
+    const ptrdiff_t index = map_coordinate(xi, yi, zi);
     return reinterpret_cast<color_type*>(mTexels)[index];
 }
 

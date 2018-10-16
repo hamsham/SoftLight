@@ -68,6 +68,8 @@ configure_file(testdata/sibenik/mramor6x6.png      testdata/sibenik/mramor6x6.pn
 configure_file(testdata/sibenik/sibenik.mtl        testdata/sibenik/sibenik.mtl        COPYONLY)
 configure_file(testdata/sibenik/sibenik.obj        testdata/sibenik/sibenik.obj        COPYONLY)
 
+configure_file(testdata/head256x256x109            testdata/head256x256x109            COPYONLY)
+
 
 
 # -------------------------------------
@@ -98,10 +100,11 @@ function(sr_add_test target sources)
     target_link_libraries(${target} soft_render lsmath lsutils lssetup ${SR_EXTERNAL_LIBS})
 endfunction(sr_add_test)
 
-sr_add_test(color_convert       color_convert.cpp)
-sr_add_test(line_drawing        line_drawing.cpp)
-sr_add_test(sr_vertex_info      sr_vertex_info.cpp)
-sr_add_test(window_test         test_common.hpp test_common.cpp window_test.cpp)
-sr_add_test(draw_test           test_common.hpp test_common.cpp draw_test.cpp)
-sr_add_test(mesh_test           test_common.hpp test_common.cpp mesh_test.cpp)
-sr_add_test(window_buffer_test  test_common.hpp test_common.cpp window_buffer_test.cpp)
+sr_add_test(color_convert      color_convert.cpp)
+sr_add_test(line_drawing       line_drawing.cpp)
+sr_add_test(sr_vertex_info     sr_vertex_info.cpp)
+sr_add_test(window_test        test_common.hpp test_common.cpp window_test.cpp)
+sr_add_test(draw_test          test_common.hpp test_common.cpp draw_test.cpp)
+sr_add_test(mesh_test          test_common.hpp test_common.cpp mesh_test.cpp)
+sr_add_test(window_buffer_test test_common.hpp test_common.cpp window_buffer_test.cpp)
+sr_add_test(volume_test        volume_test.cpp)
