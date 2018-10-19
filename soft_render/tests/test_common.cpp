@@ -53,6 +53,34 @@
 
 
 
+/*
+    vec3 rayDirection;
+    rayDirection.xy = 2.0 * gl_FragCoord.xy / WindowSize - 1.0;
+    rayDirection.z = -FocalLength;
+    rayDirection = (vec4(rayDirection, 0) * Modelview).xyz;
+
+    Ray eye = Ray( RayOrigin, normalize(rayDirection) );
+    AABB aabb = AABB(vec3(-1.0), vec3(+1.0));
+
+    float tnear, tfar;
+    IntersectBox(eye, aabb, tnear, tfar);
+    if (tnear < 0.0) tnear = 0.0;
+
+    vec3 rayStart = eye.Origin + eye.Dir * tnear;
+    vec3 rayStop = eye.Origin + eye.Dir * tfar;
+
+    // Transform from object space to texture coordinate space:
+    rayStart = 0.5 * (rayStart + 1.0);
+    rayStop = 0.5 * (rayStop + 1.0);
+
+    // Perform the ray marching:
+    vec3 pos = rayStart;
+    vec3 step = normalize(rayStop-rayStart) * stepSize;
+    float travel = distance(rayStop, rayStart);
+ */
+
+
+
 /*-----------------------------------------------------------------------------
  * Shader to display vertices with a position and normal
 -----------------------------------------------------------------------------*/

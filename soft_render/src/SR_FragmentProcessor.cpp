@@ -454,10 +454,10 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
         for (int32_t x = xMin; x <= xMax; x += 4)
         {
             // calculate barycentric coordinates
-            const __m128 xf = _mm_cvtepi32_ps(_mm_add_epi32(_mm_set1_epi32(x), _mm_set_epi32(3, 2, 1, 0)));
-            const __m128 tx = _mm_sub_ps(t0[2], xf);
-            const __m128 u0 = _mm_mul_ps(_mm_sub_ps(t01y, _mm_mul_ps(tx, t1[1])), scale);
-            const __m128 u1 = _mm_mul_ps(_mm_sub_ps(_mm_mul_ps(tx, t1[0]), t00y), scale);
+            const math::vec4 xf {_mm_cvtepi32_ps(_mm_add_epi32(_mm_set1_epi32(x), _mm_set_epi32(3, 2, 1, 0)))};
+            const __m128     tx = _mm_sub_ps(t0[2], xf.simd);
+            const __m128     u0 = _mm_mul_ps(_mm_sub_ps(t01y, _mm_mul_ps(tx, t1[1])), scale);
+            const __m128     u1 = _mm_mul_ps(_mm_sub_ps(_mm_mul_ps(tx, t1[0]), t00y), scale);
 
             math::mat4 bcF{
                 math::vec4{_mm_sub_ps(_mm_set1_ps(1.f), _mm_add_ps(u0, u1))},
@@ -501,6 +501,8 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
                     math::vec4{bc4},
                     (uint16_t)(x+i),
                     (uint16_t)y,
+                    xf[i],
+                    yf,
                     z[i]
                 };
                 ++numQueuedFrags;
@@ -587,8 +589,8 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
             // calculate barycentric coordinates
             constexpr int32_t lanes[4] = {0, 1, 2, 3};
             const int32x4_t   xi       = vaddq_s32(vdupq_n_s32(x), vld1q_s32(lanes));
-            const float32x4_t xf       = vcvtq_f32_s32(xi);
-            const float32x4_t tx       = vsubq_f32(t0[2], xf);
+            const math::vec4  xf       {vcvtq_f32_s32(xi)};
+            const float32x4_t tx       = vsubq_f32(t0[2], xf.simd);
             const float32x4_t u0       = vmulq_f32(vsubq_f32(t01y, vmulq_f32(tx, t1[1])), scale);
             const float32x4_t u1       = vmulq_f32(vsubq_f32(vmulq_f32(tx, t1[0]), t00y), scale);
 
@@ -631,6 +633,8 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
                     math::vec4{bc4},
                     (uint16_t)(x+i),
                     (uint16_t)y,
+                    xf[i],
+                    yf,
                     z[i]
                 };
                 ++numQueuedFrags;
@@ -750,7 +754,14 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
                 const float bW = math::sum_inv(bc4);
                 bc4 *= bW;
 
-                outCoords[numQueuedFrags] = SR_FragCoord{bc4, (uint16_t)(x+i), (uint16_t)y, zf};
+                outCoords[numQueuedFrags] = SR_FragCoord{
+                    bc4,
+                    (uint16_t)(x+i),
+                    (uint16_t)y,
+                    xf[i],
+                    yf,
+                    zf
+                };
                 ++numQueuedFrags;
 
                 if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
@@ -858,7 +869,14 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
             const float bW = math::rcp(math::sum(bc));
             bc *= bW;
 
-            outCoords[numQueuedFrags] = {bc, (uint16_t)x, (uint16_t)y, z};
+            outCoords[numQueuedFrags] = SR_FragCoord{
+                bc,
+                (uint16_t)x,
+                (uint16_t)y,
+                xf,
+                yf
+                z
+            };
             ++numQueuedFrags;
 
             if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
@@ -905,13 +923,13 @@ void SR_FragmentProcessor::flush_fragments(
         const math::vec4 bc = outCoords[numQueuedFrags].bc;
         const uint16_t   x  = outCoords[numQueuedFrags].x;
         const uint16_t   y  = outCoords[numQueuedFrags].y;
-        const float      zf = outCoords[numQueuedFrags].zf;
-        const int32_t    zi = (int32_t)zf; // better to do the cast here after all candidate pixels have been rejected
+        const math::vec4 fc {outCoords[numQueuedFrags].xf, outCoords[numQueuedFrags].yf, outCoords[numQueuedFrags].zf, 1.f};
+        const int32_t    zi = (int32_t)outCoords[numQueuedFrags].zf; // better to do the cast here after all candidate pixels have been rejected
 
         // Interpolate varying variables using the barycentric coordinates
         interpolate_tri_varyings(bc, numVaryings, inVaryings, outVaryings);
 
-        uint_fast32_t  haveOutputs = pShader(bc, pUniforms, outVaryings, pOutputs);
+        uint_fast32_t  haveOutputs = pShader(fc, pUniforms, outVaryings, pOutputs);
         // branchless select
         switch (-haveOutputs & numOutputs)
         {
@@ -919,7 +937,7 @@ void SR_FragmentProcessor::flush_fragments(
             case 3: /*zi < fbo->depth() && */fbo->put_pixel(2, x, y, (uint16_t)zi, pOutputs[2]);
             case 2: /*zi < fbo->depth() && */fbo->put_pixel(1, x, y, (uint16_t)zi, pOutputs[1]);
             case 1: /*zi < fbo->depth() && */fbo->put_pixel(0, x, y, (uint16_t)zi, pOutputs[0]);
-                fbo->put_depth_pixel<float>(x, y, zf);
+                fbo->put_depth_pixel<float>(x, y, fc[2]);
         }
     }
 }

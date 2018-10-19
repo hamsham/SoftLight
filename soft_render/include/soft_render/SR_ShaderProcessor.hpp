@@ -79,9 +79,11 @@ struct alignas(sizeof(ls::math::vec4)) SR_FragCoord
     ls::math::vec4 bc; // 32*4
     uint16_t       x; // 16
     uint16_t       y; // 16
+    float          xf; // 32
+    float          yf; // 32
     float          zf; // 32
 
-    // 192 bits / 24 bytes
+    // 256 bits / 32 bytes
 };
 
 
