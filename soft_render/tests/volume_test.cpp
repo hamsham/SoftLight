@@ -52,16 +52,15 @@ math::vec4 _volume_vert_shader(const uint32_t vertId, const SR_VertexArray& vao,
 
     const math::vec3& vert     = *vbo.element<const math::vec3>(vao.offset(0, vertId));
     const math::vec3& uvs      = *vbo.element<const math::vec3>(vao.offset(1, vertId));
-    const math::vec4  worldPos = math::vec4{vert[0], vert[1], vert[2], 1.f};
+    const math::vec4  worldPos = math::vec4{vert[0], vert[1], vert[2]*0.75f, 1.f};
     const math::vec4  modelPos = math::vec4{uvs[0],  uvs[1],  uvs[2],  1.f};
 
+    varyings[0] = modelPos;
+    varyings[1] = math::normalize(modelPos - pUniforms->camPos);
 
     //const math::vec3  scaling3 = math::vec3{1.6821f, 1.6821f, 2.86f};
     const math::vec3 scaling3 = math::vec3{1.f};
     const math::vec4 screenPos = pUniforms->mvpMatrix * math::scale(math::mat4{1.f}, scaling3) * worldPos;
-
-    varyings[0] = modelPos;
-    varyings[1] = screenPos;
 
     return screenPos;
 }
@@ -117,10 +116,11 @@ bool _volume_frag_shader(const math::vec4&, const SR_UniformBuffer* uniforms, co
 {
     constexpr float       step      = 1.f / 48.f;
     const VolumeUniforms* pUniforms = static_cast<const VolumeUniforms*>(uniforms);
-    const SR_Texture*     volumeTex = pUniforms->pCubeMap;
-    const math::vec4      rayPos    = pUniforms->camPos;
-    math::vec4            rayDir    = math::normalize(pUniforms->viewDir) * step;
     math::vec4            texPos    = math::vec4{varyings[0][0], varyings[0][1], varyings[0][2], 0.f};
+    const SR_Texture*     volumeTex = pUniforms->pCubeMap;
+    //const math::vec4      rayPos    = pUniforms->camPos;
+    //math::vec4            rayDir    = math::normalize(pUniforms->viewDir) * step;
+    math::vec4            rayDir    = math::normalize(varyings[1]) * step;
     math::vec4_t<uint32_t>dstTexel  = {0};
     unsigned              srcTexel  = 0;
 
@@ -431,7 +431,7 @@ void render_volume(SR_SceneGraph* pGraph, const math::mat4& viewMatrix, const ma
     SR_Context&      context   = pGraph->mContext;
     VolumeUniforms*  pUniforms = static_cast<VolumeUniforms*>(context.shader(0).uniforms().get());
     const math::mat4 modelMat  = math::mat4{1.f};
-    pUniforms->mvMatrix        = viewMatrix;
+    pUniforms->mvMatrix        = viewMatrix * modelMat;
     pUniforms->mvpMatrix       = vpMatrix * modelMat;
 
     context.draw(pGraph->mMeshes.back(), 0, 0);
@@ -654,7 +654,7 @@ int main()
                 const math::vec3&& camPos = camTrans.get_abs_position();
                 const math::mat4& camMat = camTrans.get_transform();
                 pUniforms->camPos = math::vec4{camPos[0], camPos[1], camPos[2], 0.f};
-                pUniforms->viewDir = math::normalize(math::vec4{-camMat[0][2], -camMat[1][2], -camMat[2][2], 0.f});
+                pUniforms->viewDir = math::normalize(math::vec4{-camMat[0][2], -camMat[1][2], -camMat[2][2], 1.f});
             }
             const math::mat4&& vpMatrix = projMatrix * camTrans.get_transform();
 
