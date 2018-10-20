@@ -35,6 +35,7 @@
 struct VolumeUniforms : SR_UniformBuffer
 {
     const SR_Texture* pCubeMap;
+    math::mat4 modelMatrix;
     math::mat4 mvMatrix;
     math::mat4 mvpMatrix;
     math::vec4 camPos;
@@ -56,9 +57,7 @@ math::vec4 _volume_vert_shader(const uint32_t vertId, const SR_VertexArray& vao,
     const math::vec4  modelPos = math::vec4{uvs[0],  uvs[1],  uvs[2],  1.f};
 
     varyings[0] = modelPos;
-    varyings[1] = math::normalize(modelPos - pUniforms->camPos);
 
-    //const math::vec3  scaling3 = math::vec3{1.6821f, 1.6821f, 2.86f};
     const math::vec3 scaling3 = math::vec3{1.f};
     const math::vec4 screenPos = pUniforms->mvpMatrix * math::scale(math::mat4{1.f}, scaling3) * worldPos;
 
@@ -70,7 +69,7 @@ math::vec4 _volume_vert_shader(const uint32_t vertId, const SR_VertexArray& vao,
 SR_VertexShader volume_vert_shader()
 {
     SR_VertexShader shader;
-    shader.numVaryings = 2;
+    shader.numVaryings = 1;
     shader.shader = _volume_vert_shader;
 
     return shader;
@@ -81,46 +80,13 @@ SR_VertexShader volume_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-inline bool intersect_box(
-    const math::vec4& viewDir,
-    const math::vec4& camPos,
-    const math::vec4& boxMin,
-    const math::vec4& boxMax,
-    float& t0,
-    float& t1)
-{
-    const math::vec4 invR = math::rcp(math::vec4{viewDir[0], viewDir[1], viewDir[2], 1.f});
-    const math::vec4 tbot = invR * (boxMin - camPos);
-    const math::vec4 ttop = invR * (boxMax - camPos);
-    const math::vec4 tmin = math::min(ttop, tbot);
-    const math::vec4 tmax = math::max(ttop, tbot);
-
-    const math::vec2 tMinXX{tmin[0], tmin[0]};
-    const math::vec2 tMinYZ{tmin[1], tmin[2]};
-
-    const math::vec2 tMaxXX{tmax[0], tmax[0]};
-    const math::vec2 tMaxYZ{tmax[1], tmax[2]};
-
-    math::vec2 t = math::max(tMinXX, tMinYZ);
-
-    t0 = math::max(t[0], t[1]);
-    t  = math::min(tMaxXX, tMaxYZ);
-    t1 = math::min(t[0], t[1]);
-
-    return t0 <= t1;
-}
-
-
-
 bool _volume_frag_shader(const math::vec4&, const SR_UniformBuffer* uniforms, const math::vec4* varyings, math::vec4* outputs)
 {
     constexpr float       step      = 1.f / 48.f;
     const VolumeUniforms* pUniforms = static_cast<const VolumeUniforms*>(uniforms);
     math::vec4            texPos    = math::vec4{varyings[0][0], varyings[0][1], varyings[0][2], 0.f};
     const SR_Texture*     volumeTex = pUniforms->pCubeMap;
-    //const math::vec4      rayPos    = pUniforms->camPos;
-    //math::vec4            rayDir    = math::normalize(pUniforms->viewDir) * step;
-    math::vec4            rayDir    = math::normalize(varyings[1]) * step;
+    math::vec4            rayDir    = math::normalize(pUniforms->viewDir) * step;
     math::vec4_t<uint32_t>dstTexel  = {0};
     unsigned              srcTexel  = 0;
 
@@ -180,7 +146,7 @@ bool _volume_frag_shader(const math::vec4&, const SR_UniformBuffer* uniforms, co
 SR_FragmentShader volume_frag_shader()
 {
     SR_FragmentShader shader;
-    shader.numVaryings = 2;
+    shader.numVaryings = 1;
     shader.numOutputs = 1;
     shader.shader = _volume_frag_shader;
 
@@ -198,12 +164,6 @@ int read_volume_file(SR_SceneGraph& graph)
     const unsigned h = 256;
     const unsigned d = 109;
     const std::string volFile = "testdata/head256x256x109";
-    /*
-    const unsigned w = 294;
-    const unsigned h = 138;
-    const unsigned d = 218;
-    const std::string volFile = "/home/geeds/Desktop/volume_294x138x218.raw";
-    */
 
     std::ifstream fin{volFile, std::ios::in | std::ios::binary};
     if (!fin.good())
@@ -405,8 +365,8 @@ utils::Pointer<SR_SceneGraph> init_volume_context()
     //constexpr float w = 2.f * 16.f / 9.f;
     //constexpr float h = 2.f * 1.f;
     //const math::mat4&& projMatrix = math::ortho(-w, w, -h, h, 0.0001f, 0.1f);
-    pUniforms->camPos = math::vec4{3.f, 3.f, 3.f, 1.f / math::const_tan(45.f) * 0.5f};
-    pUniforms->viewDir = math::normalize(math::vec4{-viewMatrix[0][2], -viewMatrix[1][2], -viewMatrix[2][2], -viewMatrix[3][2]});
+    pUniforms->camPos = math::vec4{3.f, 3.f, 3.f, 1.f};
+    pUniforms->viewDir = math::normalize(math::vec4{-viewMatrix[0][2], -viewMatrix[1][2], -viewMatrix[2][2], 0.f});
 
     //render_volume(pGraph.get(), projMatrix*viewMatrix);
     //sr_img_save_ppm(IMAGE_WIDTH, IMAGE_HEIGHT, reinterpret_cast<const math::vec3_t<uint8_t>*>(tex.data()), "volume_test.ppm");
@@ -431,6 +391,7 @@ void render_volume(SR_SceneGraph* pGraph, const math::mat4& viewMatrix, const ma
     SR_Context&      context   = pGraph->mContext;
     VolumeUniforms*  pUniforms = static_cast<VolumeUniforms*>(context.shader(0).uniforms().get());
     const math::mat4 modelMat  = math::mat4{1.f};
+    pUniforms->modelMatrix     = modelMat;
     pUniforms->mvMatrix        = viewMatrix * modelMat;
     pUniforms->mvpMatrix       = vpMatrix * modelMat;
 
@@ -651,10 +612,10 @@ int main()
                 SR_Context&      context   = pGraph->mContext;
                 VolumeUniforms*  pUniforms = static_cast<VolumeUniforms*>(context.shader(0).uniforms().get());
 
-                const math::vec3&& camPos = camTrans.get_abs_position();
+                const math::vec3&& camPos = -camTrans.get_abs_position();
                 const math::mat4& camMat = camTrans.get_transform();
-                pUniforms->camPos = math::vec4{camPos[0], camPos[1], camPos[2], 0.f};
-                pUniforms->viewDir = math::normalize(math::vec4{-camMat[0][2], -camMat[1][2], -camMat[2][2], 1.f});
+                pUniforms->camPos = math::vec4{camPos[0], camPos[1], camPos[2], 1.f};
+                pUniforms->viewDir = math::normalize(math::vec4{-camMat[0][2], -camMat[1][2], -camMat[2][2], 0.f});
             }
             const math::mat4&& vpMatrix = projMatrix * camTrans.get_transform();
 
