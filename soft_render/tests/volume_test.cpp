@@ -34,12 +34,12 @@
 --------------------------------------*/
 struct VolumeUniforms : SR_UniformBuffer
 {
+    math::vec2 windowSize;
+    float focalLen;
     const SR_Texture* pCubeMap;
-    math::mat4 modelMatrix;
+    math::vec4 camPos;
     math::mat4 mvMatrix;
     math::mat4 mvpMatrix;
-    math::vec4 camPos;
-    math::vec4 viewDir;
 };
 
 
@@ -80,17 +80,71 @@ SR_VertexShader volume_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-bool _volume_frag_shader(const math::vec4&, const SR_UniformBuffer* uniforms, const math::vec4* varyings, math::vec4* outputs)
+inline bool intersect_ray_box(
+    const math::vec4& rayPos,
+    const math::vec4& rayDir,
+    const math::vec4& boxMin,
+    const math::vec4& boxMax,
+    float& texNear,
+    float& texFar)
 {
-    constexpr float       step      = 1.f / 48.f;
+    const math::vec4&& invR    = math::rcp(rayDir);
+    const math::vec4&& tbot    = invR * (boxMin-rayPos);
+    const math::vec4&& ttop    = invR * (boxMax-rayPos);
+    const math::vec4&& tmin    = math::min(ttop, tbot);
+    const math::vec4&& tmax    = math::max(ttop, tbot);
+    const math::vec2   minXX   = {tmin[0], tmin[0]};
+    const math::vec2   minYZ   = {tmin[1], tmin[2]};
+    const math::vec2   maxXX   = {tmax[0], tmax[0]};
+    const math::vec2   maxYZ   = {tmax[1], tmax[2]};
+    const math::vec2&& nearVal = math::max(minXX, minYZ);
+    const math::vec2&& farVal  = math::min(maxXX, maxYZ);
+
+    texNear = math::max(nearVal[0], nearVal[1]);
+    texFar = math::min(farVal[0], farVal[1]);
+
+    return texNear <= texFar;
+}
+
+
+
+bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* uniforms, const math::vec4* varyings, math::vec4* outputs)
+{
+    constexpr float       step      = 1.f / 256.f;
     const VolumeUniforms* pUniforms = static_cast<const VolumeUniforms*>(uniforms);
     math::vec4            texPos    = math::vec4{varyings[0][0], varyings[0][1], varyings[0][2], 0.f};
+    const math::vec4&&    winDimens = math::rcp(math::vec4{pUniforms->windowSize[0], pUniforms->windowSize[1], 1.f, 1.f});
+    const float           focalLen  = -pUniforms->focalLen;
     const SR_Texture*     volumeTex = pUniforms->pCubeMap;
-    math::vec4            rayDir    = math::normalize(pUniforms->viewDir) * step;
-    math::vec4_t<uint32_t>dstTexel  = {0};
-    unsigned              srcTexel  = 0;
+    const math::vec4      camPos    = pUniforms->camPos;
+    const math::vec4      viewDir   = math::vec4{2.f * (winDimens[0]*fragCoords[0]) - 1.f, 2.f * (winDimens[1]*fragCoords[1]) - 1.f, focalLen, 0.f} * pUniforms->mvMatrix;
+    math::vec4            rayDir    = math::normalize(viewDir);
+    math::vec4            rayStart;
+    math::vec4            rayStop;
+    math::vec4            rayStep;
+    float                 near;
+    float                 far;
 
-    for (unsigned i = 0; i < 64; ++i)
+    if (!intersect_ray_box(camPos, rayDir, math::vec4{-1.f}, math::vec4{1.f}, near, far))
+    {
+        float temp = near;
+        near = far;
+        far = temp;
+    }
+    near = math::max(near, 0.f);
+
+    rayStart    = camPos + rayDir * near;
+    rayStop     = camPos + rayDir * far;
+    rayStart    = 0.5f * (rayStart + 1.f);
+    rayStop     = 0.5f * (rayStop + 1.f);
+    rayStart[3] = 0.f;
+    rayStop[3]  = 0.f;
+    rayStep     = math::normalize(rayStop - rayStart) * step;
+
+    math::vec4_t<uint32_t>dstTexel = {0};
+    unsigned srcTexel  = 0;
+
+    while (true)
     {
         srcTexel = volumeTex->bilinear<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
         //srcTexel = volumeTex->nearest<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
@@ -106,24 +160,19 @@ bool _volume_frag_shader(const math::vec4&, const SR_UniformBuffer* uniforms, co
 
             if (srcTexel < 85)
             {
-                dstTexel[0] += newAlpha;
+                dstTexel[1] += newAlpha;
             }
             else if (srcTexel < 170)
             {
-                dstTexel[1] += newAlpha;
+                dstTexel[0] += newAlpha;
             }
             else
             {
                 dstTexel[2] += newAlpha;
             }
         }
-        else
-        {
-            // do another iteration if the ray didn't hit anything
-            i -= 1;
-        }
 
-        texPos += rayDir;
+        texPos += rayStep;
 
         if (dstTexel[3] >= 255 || !(texPos <= 1.f) || !(texPos >= 0.f))
         {
@@ -360,17 +409,6 @@ utils::Pointer<SR_SceneGraph> init_volume_context()
 
     pGraph->update();
 
-    const math::mat4&& viewMatrix = math::look_at(math::vec3{3.f}, math::vec3{0.f}, math::vec3{0.f, 1.f, 0.f});
-    //const math::mat4&& projMatrix = math::infinite_perspective(LS_DEG2RAD(45.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
-    //constexpr float w = 2.f * 16.f / 9.f;
-    //constexpr float h = 2.f * 1.f;
-    //const math::mat4&& projMatrix = math::ortho(-w, w, -h, h, 0.0001f, 0.1f);
-    pUniforms->camPos = math::vec4{3.f, 3.f, 3.f, 1.f};
-    pUniforms->viewDir = math::normalize(math::vec4{-viewMatrix[0][2], -viewMatrix[1][2], -viewMatrix[2][2], 0.f});
-
-    //render_volume(pGraph.get(), projMatrix*viewMatrix);
-    //sr_img_save_ppm(IMAGE_WIDTH, IMAGE_HEIGHT, reinterpret_cast<const math::vec3_t<uint8_t>*>(tex.data()), "volume_test.ppm");
-
     if (retCode != 0)
     {
         abort();
@@ -386,13 +424,14 @@ utils::Pointer<SR_SceneGraph> init_volume_context()
 /*-------------------------------------
  * Render a scene
 -------------------------------------*/
-void render_volume(SR_SceneGraph* pGraph, const math::mat4& viewMatrix, const math::mat4& vpMatrix)
+void render_volume(SR_SceneGraph* pGraph, const SR_Transform& viewMatrix, const math::mat4& vpMatrix)
 {
-    SR_Context&      context   = pGraph->mContext;
-    VolumeUniforms*  pUniforms = static_cast<VolumeUniforms*>(context.shader(0).uniforms().get());
-    const math::mat4 modelMat  = math::mat4{1.f};
-    pUniforms->modelMatrix     = modelMat;
-    pUniforms->mvMatrix        = viewMatrix * modelMat;
+    SR_Context&        context   = pGraph->mContext;
+    VolumeUniforms*    pUniforms = static_cast<VolumeUniforms*>(context.shader(0).uniforms().get());
+    const math::vec3&& camPos    = viewMatrix.get_abs_position();
+    const math::mat4   modelMat  = math::mat4{1.f};
+    pUniforms->camPos          = math::vec4{camPos[0], camPos[1], camPos[2], 0.f};
+    pUniforms->mvMatrix        = viewMatrix.get_transform() * modelMat;
     pUniforms->mvpMatrix       = vpMatrix * modelMat;
 
     context.draw(pGraph->mMeshes.back(), 0, 0);
@@ -445,14 +484,15 @@ void update_cam_position(SR_Transform& camTrans, float tickTime, utils::Pointer<
 -----------------------------------------------------------------------------*/
 int main()
 {
-    ls::utils::Pointer<SR_RenderWindow> pWindow{std::move(SR_RenderWindow::create())};
-    ls::utils::Pointer<SR_WindowBuffer> pRenderBuf{SR_WindowBuffer::create()};
-    ls::utils::Pointer<SR_SceneGraph>   pGraph{std::move(init_volume_context())};
-    ls::utils::Pointer<bool[]>          pKeySyms{new bool[256]};
+    ls::utils::Pointer<SR_RenderWindow> pWindow    {std::move(SR_RenderWindow::create())};
+    ls::utils::Pointer<SR_WindowBuffer> pRenderBuf {SR_WindowBuffer::create()};
+    ls::utils::Pointer<SR_SceneGraph>   pGraph     {std::move(init_volume_context())};
+    SR_Context&                         context    = pGraph->mContext;
+    VolumeUniforms* const               pUniforms  {static_cast<VolumeUniforms*>(context.shader(0).uniforms().get())};
+    ls::utils::Pointer<bool[]>          pKeySyms   {new bool[256]};
 
     std::fill_n(pKeySyms.get(), 256, false);
 
-    SR_Context& context = pGraph->mContext;
     int shouldQuit = pWindow->init(IMAGE_WIDTH, IMAGE_HEIGHT);
 
     ls::utils::Clock<float> timer;
@@ -460,13 +500,14 @@ int main()
     float currSeconds = 0.f;
     float dx = 0.f;
     float dy = 0.f;
-
     unsigned numThreads = context.num_threads();
 
+    constexpr float viewAngle = LS_DEG2RAD(30.f);
+    constexpr float focalLen = 1.f / math::const_tan(viewAngle * 0.5f);
     SR_Transform camTrans;
     camTrans.set_type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
     camTrans.extract_transforms(math::look_from(math::vec3{3.f}, math::vec3{0.f}, math::vec3{0.f, 1.f, 0.f}));
-    const math::mat4&& projMatrix = math::infinite_perspective(LS_DEG2RAD(45.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
+    const math::mat4&& projMatrix = math::infinite_perspective(viewAngle, (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
 
     //constexpr float w = 2.f * 16.f / 9.f;
     //constexpr float h = 2.f * 1.f;
@@ -490,9 +531,12 @@ int main()
     {
         return -2;
     }
-
-    pWindow->set_keys_repeat(false); // text mode
-    timer.start();
+    else
+    {
+        pUniforms->windowSize = math::vec2{(float)pWindow->width(), (float)pWindow->height()};
+        pWindow->set_keys_repeat(false); // text mode
+        timer.start();
+    }
 
     while (!shouldQuit)
     {
@@ -608,14 +652,7 @@ int main()
             if (camTrans.is_dirty())
             {
                 camTrans.apply_transform();
-
-                SR_Context&      context   = pGraph->mContext;
-                VolumeUniforms*  pUniforms = static_cast<VolumeUniforms*>(context.shader(0).uniforms().get());
-
-                const math::vec3&& camPos = -camTrans.get_abs_position();
-                const math::mat4& camMat = camTrans.get_transform();
-                pUniforms->camPos = math::vec4{camPos[0], camPos[1], camPos[2], 1.f};
-                pUniforms->viewDir = math::normalize(math::vec4{-camMat[0][2], -camMat[1][2], -camMat[2][2], 0.f});
+                pUniforms->focalLen = focalLen;
             }
             const math::mat4&& vpMatrix = projMatrix * camTrans.get_transform();
 
@@ -623,6 +660,7 @@ int main()
             {
                 pRenderBuf->terminate();
                 pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
+                pUniforms->windowSize = math::vec2{(float)pWindow->width(), (float)pWindow->height()};
             }
 
             pGraph->update();
@@ -631,7 +669,7 @@ int main()
             context.framebuffer(0).clear_color_buffers();
             context.framebuffer(0).clear_depth_buffer();
 
-            render_volume(pGraph.get(), camTrans.get_transform(), vpMatrix);
+            render_volume(pGraph.get(), camTrans, vpMatrix);
 
             context.blit(*pRenderBuf, 0);
             pWindow->render(*pRenderBuf);
