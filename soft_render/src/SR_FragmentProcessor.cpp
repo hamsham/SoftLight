@@ -874,7 +874,7 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
                 (uint16_t)x,
                 (uint16_t)y,
                 xf,
-                yf
+                yf,
                 z
             };
             ++numQueuedFrags;

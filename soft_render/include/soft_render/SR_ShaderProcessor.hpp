@@ -5,7 +5,7 @@
 #include <array>
 #include <cstdlib> // std::size_t
 
-#include "lightsky/utils/Pointer.h"
+#include "lightsky/utils/Pointer.h" // Pointer, AlignedPointerDeleter
 #include "lightsky/utils/WorkerThread.hpp"
 
 #include "lightsky/math/vec4.h"
@@ -98,28 +98,16 @@ class SR_ProcessorPool
     typedef ls::utils::Worker<SR_ShaderProcessor> Worker;
     typedef ls::utils::WorkerThread<SR_ShaderProcessor> ThreadedWorker;
 
-    struct ProcessorDeleter
-    {
-        inline void operator()(void* p)
-        {
-            #ifdef LS_ARCH_X86
-                _mm_free(p);
-            #else
-                free(p);
-            #endif
-        }
-    };
-
   private:
     std::atomic_uint_fast32_t mFragSemaphore;
 
-    ls::utils::Pointer<std::atomic_uint_fast32_t[], ProcessorDeleter> mBinsUsed;
+    ls::utils::Pointer<std::atomic_uint_fast32_t[], ls::utils::AlignedDeleter> mBinsUsed;
 
-    ls::utils::Pointer<std::array<SR_FragmentBin, SR_SHADER_MAX_FRAG_BINS>[], ProcessorDeleter> mFragBins;
+    ls::utils::Pointer<std::array<SR_FragmentBin, SR_SHADER_MAX_FRAG_BINS>[], ls::utils::AlignedDeleter> mFragBins;
 
-    ls::utils::Pointer<std::array<SR_FragCoord, SR_SHADER_MAX_FRAG_QUEUES>[], ProcessorDeleter> mFragQueues;
+    ls::utils::Pointer<std::array<SR_FragCoord, SR_SHADER_MAX_FRAG_QUEUES>[], ls::utils::AlignedDeleter> mFragQueues;
 
-    ls::utils::Pointer<Worker*[], ProcessorDeleter> mThreads;
+    ls::utils::Pointer<Worker*[], ls::utils::AlignedDeleter> mThreads;
 
     unsigned mNumThreads;
 

@@ -14,16 +14,12 @@
 
 
 /*-----------------------------------------------------------------------------
- * I've been having issues with allocated allocation on GCC and MAVC.
+ * I've been having issues with allocated allocation on GCC and MSVC.
 -----------------------------------------------------------------------------*/
 template <typename data_t>
 static inline data_t* _aligned_alloc(size_t numElements) noexcept
 {
-    #ifdef LS_ARCH_X86
-        return reinterpret_cast<data_t*>(_mm_malloc(sizeof(data_t)*numElements, sizeof(__m128)));
-    #else
-        return reinterpret_cast<data_t*>(malloc(sizeof(data_t)*numElements));
-    #endif
+    return reinterpret_cast<data_t*>(ls::utils::aligned_malloc(sizeof(data_t)*numElements));
 }
 
 

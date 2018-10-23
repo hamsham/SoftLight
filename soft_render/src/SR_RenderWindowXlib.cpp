@@ -270,9 +270,9 @@ int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
     Display* pDisplay = nullptr;
     Window windowId = None;
     Atom atomDelete = None;
-    XVisualInfo visualInfo;
+    alignas(16) XVisualInfo visualInfo;
     XVisualInfo* pVisualInfo = nullptr;
-    XSetWindowAttributes windowAttribs;
+    alignas(16) XSetWindowAttributes windowAttribs;
     Colormap colorMap;
     XEvent* pEvent = nullptr;
     int x, y;

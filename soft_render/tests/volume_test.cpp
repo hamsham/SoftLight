@@ -142,7 +142,7 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
     math::vec4_t<uint32_t>dstTexel = {0};
     unsigned srcTexel  = 0;
 
-    while (true)
+    do
     {
         srcTexel = volumeTex->bilinear<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
         //srcTexel = volumeTex->nearest<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
@@ -172,12 +172,8 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
         }
 
         texPos += rayStep;
-
-        if (dstTexel[3] >= 255 || !(texPos <= 1.f) || !(texPos >= 0.f))
-        {
-            break;
-        }
     }
+    while ((dstTexel[3] <= 255) && (texPos <= 1.f) && (texPos >= 0.f));
 
     dstTexel = math::min(dstTexel, math::vec4_t<unsigned>{255});
 
