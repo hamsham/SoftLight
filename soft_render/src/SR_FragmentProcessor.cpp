@@ -1,7 +1,7 @@
 
  #include "lightsky/setup/Api.h" // LS_IMPERATIVE
 
-#include "lightsky/utils/Sort.hpp" // utils::quick_sort
+#include "lightsky/utils/Sort.hpp" // utils::sort_quick
 
 #include "lightsky/math/mat4.h"
 #include "lightsky/math/mat_utils.h"
@@ -951,7 +951,8 @@ void SR_FragmentProcessor::execute() noexcept
 {
     // Sort the bins based on their depth. Closer objects should be rendered
     // first to allow for fragment rejection during the depth test.
-    utils::quick_sort<SR_FragmentBin, utils::IsGreater<SR_FragmentBin>>(mBins, mNumBins);
+    //utils::sort_quick<SR_FragmentBin, utils::IsGreater<SR_FragmentBin>>(mBins, mNumBins);
+    utils::sort_quick_iterative<SR_FragmentBin, utils::IsGreater<SR_FragmentBin>>(mBins, mNumBins);
 
     switch(mMode)
     {
