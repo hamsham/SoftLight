@@ -16,7 +16,7 @@
 /*-----------------------------------------------------------------------------
  * Rendering setup
 -----------------------------------------------------------------------------*/
-#define SR_RENDER_4_PIXELS
+//#define SR_RENDER_4_PIXELS
 
 
 
@@ -951,8 +951,8 @@ void SR_FragmentProcessor::execute() noexcept
 {
     // Sort the bins based on their depth. Closer objects should be rendered
     // first to allow for fragment rejection during the depth test.
-    //utils::sort_quick<SR_FragmentBin, utils::IsGreater<SR_FragmentBin>>(mBins, mNumBins);
-    utils::sort_quick_iterative<SR_FragmentBin, utils::IsGreater<SR_FragmentBin>>(mBins, mNumBins);
+    utils::sort_quick<SR_FragmentBin, utils::IsGreater<SR_FragmentBin>>(mBins, mNumBins);
+    //utils::sort_quick_iterative<SR_FragmentBin, utils::IsGreater<SR_FragmentBin>>(mBins, mNumBins);
 
     switch(mMode)
     {

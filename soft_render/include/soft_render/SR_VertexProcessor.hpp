@@ -47,13 +47,10 @@ inline void sr_calc_frag_tiles(data_type numThreads, data_type& numHoriz, data_t
 {
     // Create a set of horizontal and vertical tiles. This method will create
     // more horizontal tiles than vertical ones.
-    const float tileCountf = ls::math::fast_sqrt((float)numThreads);
-    data_type   tileCount  = (data_type)tileCountf;
-
+    data_type tileCount = ls::math::fast_sqrt<data_type>(numThreads);
     tileCount += (numThreads % tileCount) != 0;
-
-    numHoriz = ls::math::gcd(numThreads, tileCount);
-    numVert = numThreads / numHoriz;
+    numHoriz  = ls::math::gcd(numThreads, tileCount);
+    numVert   = numThreads / numHoriz;
 }
 
 
