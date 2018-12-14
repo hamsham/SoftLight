@@ -113,11 +113,13 @@ int SR_WindowBufferXlib::init(SR_RenderWindow& win, unsigned width, unsigned hei
         return -3;
     }
 
+    /*
     char* pData = (char*)malloc(width*height*sizeof(uint8_t)*4);
     if (!pData)
     {
         return -4;
     }
+    */
 
     //XImage* pImg = XCreateImage(pWin->mDisplay, pVisual, 24, ZPixmap, 0, pData, width, height, 32, 0);
 
@@ -126,7 +128,7 @@ int SR_WindowBufferXlib::init(SR_RenderWindow& win, unsigned width, unsigned hei
 
     if (!pImg)
     {
-        free(pData);
+        //free(pData);
         return -4;
     }
 
@@ -147,7 +149,7 @@ int SR_WindowBufferXlib::init(SR_RenderWindow& win, unsigned width, unsigned hei
 
     if (shmctl(pShm->shmid, IPC_RMID, nullptr) < 0 || XShmAttach(pWin->mDisplay, pShm) == False)
     {
-        free(pData);
+        //free(pData);
         XDestroyImage(pImg);
         return -5;
     }

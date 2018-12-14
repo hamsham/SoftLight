@@ -229,9 +229,11 @@ SR_ProcessorPool::~SR_ProcessorPool() noexcept
  * Constructor
 --------------------------------------*/
 SR_ProcessorPool::SR_ProcessorPool(unsigned numThreads) noexcept :
-    mBinsUsed{},
-    mFragBins{},
-    mThreads{},
+    mFragSemaphore{0},
+    mBinsUsed{nullptr},
+    mFragBins{nullptr},
+    mFragQueues{nullptr},
+    mThreads{nullptr},
     mNumThreads{0}
 {
     num_threads(numThreads);
@@ -286,8 +288,12 @@ SR_ProcessorPool& SR_ProcessorPool::operator=(SR_ProcessorPool&& p) noexcept
         return *this;
     }
 
+    mFragSemaphore.store(p.mFragSemaphore.load());
+    p.mFragSemaphore.store(0);
+
     mBinsUsed = std::move(p.mBinsUsed);
     mFragBins = std::move(p.mFragBins);
+    mFragQueues = std::move(p.mFragQueues);
     mThreads = std::move(p.mThreads);
 
     mNumThreads = p.mNumThreads;
