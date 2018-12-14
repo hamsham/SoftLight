@@ -18,7 +18,7 @@ function freeimage_configure()
     pushd @EXTERNAL_PROJECT_PREFIX@/src/FreeImage
 
     # Freeimage attempts to give root permissions to the installed files. No
-    sed -i -r 's/([ \t]+install)[ \t]+\-m[ \t]+.+root[ \t]+(\$.+)/\1 \2/g' Makefile.gnu
+    sed -i -r 's/([ \t]{1,}install)[ \t]{1,}\-m[ \t]{1,}.{1,}root[ \t]{1,}(\$.{1,})/\1 \2/g' Makefile.gnu
 
     # Rename functions which conflict with GLibC
     set +e
@@ -41,7 +41,7 @@ function freeimage_configure_mingw()
 
     # Fix hard-coded build configurations
     sed -i -E 's/CC = gcc/CC ?=/g' "./Makefile.mingw"
-    sed -i -E 's/LD = g\+\+/LD ?=/g' "./Makefile.mingw"
+    sed -i -E 's/LD = g\{1,}\{1,}/LD ?=/g' "./Makefile.mingw"
     sed -i -E 's/RC = windres/RC ?=/g' "./Makefile.mingw"
     sed -i -E 's/DLLTOOL = dlltool/DLLTOOL ?=/g' "./Makefile.mingw"
     sed -i -E 's/LIBRARIES = -lws2_32/LIBRARIES ?=/g' "./Makefile.mingw"
@@ -54,8 +54,8 @@ function freeimage_configure_mingw()
     sed -i -E 's/unsigned long( trailingBits = \(\()unsigned long/unsigned long long\1unsigned long long/g' "./Source/OpenEXR/IlmImf/ImfOptimizedPixelReading.h"
 
     # Remove posix_memalign from OpenEXR
-    sed -i -E 's/posix_memalign.+/_aligned_malloc(size, alignment);/g' "./Source/OpenEXR/IlmImf/ImfSystemSpecific.h"
-    sed -i -E 's/([ \t]+)free\(ptr\);/\1_aligned_free(ptr);/g' "./Source/OpenEXR/IlmImf/ImfSystemSpecific.h"
+    sed -i -E 's/posix_memalign.{1,}/_aligned_malloc(size, alignment);/g' "./Source/OpenEXR/IlmImf/ImfSystemSpecific.h"
+    sed -i -E 's/([ \t]{1,})free\(ptr\);/\1_aligned_free(ptr);/g' "./Source/OpenEXR/IlmImf/ImfSystemSpecific.h"
 
     # LibJXR defines conflicting pointer sizes and functions
     sed -i -E 's/#define PLATFORM_ANSI//g' ".//Source/LibJXR/image/sys/strcodec.h"
@@ -76,8 +76,8 @@ function freeimage_make()
     pushd @EXTERNAL_PROJECT_PREFIX@/src/FreeImage
 
     local dllTool=`echo "@CMAKE_RC_COMPILER@" | sed -E 's/windres/dlltool/'`
-    local libs=`echo "@CMAKE_RC_COMPILER@"    | sed -E 's/(.+)\/bin(.+)-windres/\1\2/'`
-    local linker=`echo "@CMAKE_RC_COMPILER@"  | sed -E 's/windres/g++/'`
+    local libs=`echo "@CMAKE_RC_COMPILER@"    | sed -E 's/(.{1,})\/bin(.{1,})-windres/\1\2/'`
+    local linker=`echo "@CMAKE_RC_COMPILER@"  | sed -E 's/windres/g{1,}+/'`
 
     if [[ @CMAKE_SYSTEM_NAME@ = "Windows" ]]; then
         export CFLAGS="${CFLAGS}"\ -D\ WIN32\ -D\ CINTERFACE\ -DFREEIMAGE_LIB\ -DLIBRAW_NODLL\ -DOPJ_STATIC\ -DDISABLE_PERF_MEASUREMENT\ -DLIBRAW_LIBRARY_BUILD
