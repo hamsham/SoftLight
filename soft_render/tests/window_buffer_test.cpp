@@ -286,12 +286,10 @@ int main()
                 currSeconds = 0.f;
             }
 
-            /*
             if (totalFrames >= 600)
             {
                 shouldQuit = true;
             }
-            */
 
 
             update_cam_position(camTrans, tickTime, pKeySyms);
