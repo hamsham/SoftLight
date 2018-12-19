@@ -281,15 +281,17 @@ int main()
 
             if (currSeconds >= 0.5f)
             {
-                std::cout << "MS/Frame: " << 1000.f*tickTime << std::endl;
+                std::cout << "FPS: " << (float)currFrames/currSeconds << std::endl;
                 currFrames = 0;
                 currSeconds = 0.f;
             }
 
+            /*
             if (totalFrames >= 600)
             {
                 shouldQuit = true;
             }
+            */
 
 
             update_cam_position(camTrans, tickTime, pKeySyms);

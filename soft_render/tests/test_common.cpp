@@ -21,7 +21,7 @@
 
 
 #ifndef SR_TEST_MAX_THREADS
-    #define SR_TEST_MAX_THREADS 4
+    #define SR_TEST_MAX_THREADS 8
 #endif /* SR_TEST_MAX_THREADS */
 
 

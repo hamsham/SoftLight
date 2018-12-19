@@ -36,12 +36,12 @@ enum SR_ShaderLimits
 
     // Maximum number of fragments that get queued before being placed on a
     // framebuffer.
-    SR_SHADER_MAX_FRAG_QUEUES     = 1024,
+    SR_SHADER_MAX_FRAG_QUEUES     = 4096,
 
     // Maximum number of vertex groups which get binned before being sent to a
-    // fragment processor. About 16 MB per thread
-    // (multiplied by sizeof(SR_FragmentBin)).
-    SR_SHADER_MAX_FRAG_BINS       = 32768
+    // fragment processor. About 16 MB (when multiplied by
+    // sizeof(SR_FragmentBin)).
+    SR_SHADER_MAX_FRAG_BINS       = 65535
 };
 
 
@@ -99,11 +99,13 @@ class SR_ProcessorPool
     typedef ls::utils::WorkerThread<SR_ShaderProcessor> ThreadedWorker;
 
   private:
-    std::atomic_uint_fast32_t mFragSemaphore;
+    std::atomic_uint_fast64_t mFragSemaphore;
 
-    ls::utils::Pointer<std::atomic_uint_fast32_t[], ls::utils::AlignedDeleter> mBinsUsed;
+    std::atomic_uint_fast64_t mShadingSemaphore;
 
-    ls::utils::Pointer<std::array<SR_FragmentBin, SR_SHADER_MAX_FRAG_BINS>[], ls::utils::AlignedDeleter> mFragBins;
+    std::atomic_uint_fast64_t mBinsUsed;
+
+    ls::utils::Pointer<SR_FragmentBin[], ls::utils::AlignedDeleter> mFragBins;
 
     ls::utils::Pointer<std::array<SR_FragCoord, SR_SHADER_MAX_FRAG_QUEUES>[], ls::utils::AlignedDeleter> mFragQueues;
 
@@ -172,7 +174,7 @@ inline void SR_ProcessorPool::clear_fragment_bins() noexcept
     for (uint16_t i = 0; i < mNumThreads; ++i)
     {
         //mFragBins[i].clear();
-        mBinsUsed[i].store(0);
+        mBinsUsed.store(0);
     }
 }
 

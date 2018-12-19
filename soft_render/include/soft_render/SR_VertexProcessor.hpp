@@ -64,11 +64,12 @@ struct SR_VertexProcessor
     const SR_Shader*  mShader;
     const SR_Context* mContext;
     SR_Framebuffer*   mFbo;
-    std::atomic_uint_fast32_t* mBusyProcessors;
+    std::atomic_uint_fast64_t* mFragProcessors;
+    std::atomic_uint_fast64_t* mBusyProcessors;
 
     // 32 bits
-    uint16_t mTileId;
-    uint16_t mNumTiles;
+    uint16_t mThreadId;
+    uint16_t mNumThreads;
 
     // 32-bits
     uint16_t mFboW;
@@ -78,17 +79,17 @@ struct SR_VertexProcessor
     SR_Mesh mMesh;
 
     // 64-128 bits
-    std::atomic_uint_fast32_t* mBinsUsed;
-    std::array<SR_FragmentBin, 32768>* mFragBins;
-    std::array<SR_FragCoord, 1024>* mFragQueues;
+    std::atomic_uint_fast64_t* mBinsUsed;
+    SR_FragmentBin* mFragBins;
+    std::array<SR_FragCoord, 4096>* mFragQueues;
 
     // 768 bits (96 bytes) max, padding not included
 
-    void flush_fragments(uint_fast32_t tileId, uint_fast32_t numBins) const noexcept;
+    void flush_fragments() const noexcept;
 
     void push_fragments(
-        uint32_t fboW,
-        uint32_t fboH,
+        float fboW,
+        float fboH,
         ls::math::vec4_t<float>*       screenCoords,
         ls::math::vec4_t<float>*       worldCoords,
         const ls::math::vec4_t<float>* varyings

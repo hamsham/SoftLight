@@ -2,6 +2,7 @@
 #ifndef SR_FRAGMENT_PROCESSOR_HPP
 #define SR_FRAGMENT_PROCESSOR_HPP
 
+#include <atomic>
 #include "lightsky/math/vec4.h"
 
 #include "soft_render/SR_Mesh.hpp"
@@ -35,34 +36,35 @@ struct SR_ShaderProcessor;
 -----------------------------------------------------------------------------*/
 struct SR_FragmentProcessor
 {
-    // 192 bits
+    // 32 bits
+    uint16_t mThreadId;
+    SR_RenderMode mMode;
+
+    // 32-bits
+    uint32_t mNumProcessors;
+
+    // 64-bits
+    float mFboW;
+    float mFboH;
+
+    // 64 bits
+    uint_fast64_t mNumBins;
+
+    // 256 bits
     const SR_Shader* mShader;
     SR_Framebuffer* mFbo;
     SR_FragmentBin* mBins;
     SR_FragCoord* mQueues;
 
-    // 128 bits
-    uint64_t mBinId;
-    uint64_t mNumBins;
+    // 448 bits = 56 bytes
 
-    // 128-bits
-    float mFboX0;
-    float mFboY0;
-    float mFboX1;
-    float mFboY1;
+    void render_point(const uint_fast64_t binId, SR_Framebuffer* const fbo) noexcept;
 
-    // 16 bits
-    SR_RenderMode mMode;
+    void render_line(const uint_fast64_t binId, SR_Framebuffer* const fbo) noexcept;
 
-    // 464 bits = 58 bytes
+    void render_triangle(const uint_fast64_t binId, const SR_Texture* depthBuffer) const noexcept;
 
-    void render_point(SR_Framebuffer* const fbo) noexcept;
-
-    void render_line(SR_Framebuffer* const fbo) noexcept;
-
-    void render_triangle(const SR_Texture* depthBuffer) const noexcept;
-
-    void flush_fragments(uint_fast32_t numQueuedFrags, const SR_FragCoord* outCoords) const noexcept;
+    void flush_fragments(const uint_fast64_t binId, uint32_t numQueuedFrags, const SR_FragCoord* outCoords) const noexcept;
 
     void execute() noexcept;
 };

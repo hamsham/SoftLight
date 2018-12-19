@@ -2,6 +2,7 @@
 #include "lightsky/setup/Api.h" // LS_IMPERATIVE
 
 #include "lightsky/utils/Copy.h" // fast_memset
+#include "lightsky/utils/Sort.hpp" // utils::sort_quick
 
 #include "lightsky/math/vec4.h"
 #include "lightsky/math/vec_utils.h"
@@ -119,38 +120,48 @@ inline bool cull_triangle(const math::vec4* screenCoords, const math::vec4* worl
 /*-------------------------------------
  * Execute a fragment processor
 -------------------------------------*/
-void SR_VertexProcessor::flush_fragments(uint_fast32_t tileId, uint_fast32_t numBins) const noexcept
+void SR_VertexProcessor::flush_fragments() const noexcept
 {
-    // divide the screen into equal parts which can then be rendered by all
-    // available fragment threads.
-    const uint_fast32_t numTiles = mNumTiles;
+    // sync before running the fragment shaders. The fragment processor will
+    // return this number back to 0
+    uint_fast64_t tileId = mFragProcessors->fetch_add(1);
 
-    uint_fast32_t cols;
-    uint_fast32_t rows;
-    sr_calc_frag_tiles<uint_fast32_t>(numTiles, cols, rows);
+    // Sort the bins based on their depth. Closer objects should be rendered
+    // first to allow for fragment rejection during the depth test.
+    const uint_fast64_t syncPoint2 = 2u * mNumThreads;
+    if (tileId == mNumThreads-1u)
+    {
+        ls::utils::sort_quick<SR_FragmentBin, ls::utils::IsGreater<SR_FragmentBin>>(mFragBins, math::min(mBinsUsed->load(), SR_SHADER_MAX_FRAG_BINS));
+        mFragProcessors->store(syncPoint2);
+    }
 
-    const uint_fast32_t fboW = mFboW / cols;
-    const uint_fast32_t fboH = mFboH / rows;
-    const uint_fast32_t tileX = fboW * (tileId % cols);
-    const uint_fast32_t tileY = fboH * ((tileId / cols) % rows);
+    while (mFragProcessors->load() < syncPoint2);
 
     SR_FragmentProcessor fragTask;
-    fragTask.mShader  = mShader;
-    fragTask.mFbo     = mFbo;
-    fragTask.mBins    = mFragBins[tileId].data();
-    fragTask.mQueues  = mFragQueues[tileId].data();
-    fragTask.mBinId   = 0;
-    fragTask.mNumBins = numBins;
-    fragTask.mFboX0   = (float)tileX;
-    fragTask.mFboY0   = (float)tileY;
-    fragTask.mFboX1   = (float)(fboW + tileX - 1);
-    fragTask.mFboY1   = (float)(fboH + tileY - 1);
-    fragTask.mMode    = mMesh.mode;
+    fragTask.mThreadId       = (uint16_t)tileId;
+    fragTask.mMode           = mMesh.mode;
+    fragTask.mNumProcessors  = mNumThreads;
+    fragTask.mNumBins        = math::min(mBinsUsed->load(), SR_SHADER_MAX_FRAG_BINS);
+    fragTask.mShader         = mShader;
+    fragTask.mFbo            = mFbo;
+    fragTask.mBins           = mFragBins;
+    fragTask.mQueues         = mFragQueues[tileId].data();
+    fragTask.mFboW           = (float)(mFboW - 1);
+    fragTask.mFboH           = (float)(mFboH - 1);
 
     fragTask.execute();
 
-    // indicate the bin is available for pushing
-    mBinsUsed[tileId].store(1, std::memory_order_relaxed);
+    // indicate the bins are available for pushing
+    const uint_fast64_t syncPoint3 = 3u * mNumThreads - 1;
+    tileId = mFragProcessors->fetch_add(1);
+
+    if (tileId == syncPoint3)
+    {
+        mBinsUsed->store(0);
+        mFragProcessors->store(0);
+    }
+
+    while (mFragProcessors->load() != 0);
 }
 
 
@@ -159,16 +170,16 @@ void SR_VertexProcessor::flush_fragments(uint_fast32_t tileId, uint_fast32_t num
  * Publish a vertex to a fragment thread
 --------------------------------------*/
 void SR_VertexProcessor::push_fragments(
-    uint32_t fboW,
-    uint32_t fboH,
+    float fboW,
+    float fboH,
     ls::math::vec4* screenCoords,
     ls::math::vec4* worldCoords,
     const ls::math::vec4* varyings
 ) const noexcept
 {
     const SR_Mesh m = mMesh;
-    std::atomic_uint_fast32_t* const pLocks = mBinsUsed;
-    std::array<SR_FragmentBin, SR_SHADER_MAX_FRAG_BINS>* const pFragBins = mFragBins;
+    std::atomic_uint_fast64_t* const pLocks = mBinsUsed;
+    SR_FragmentBin* const pFragBins = mFragBins;
 
     // Copy all per-vertex coordinates and varyings to the fragment bins which
     // will need the data for interpolation
@@ -176,16 +187,6 @@ void SR_VertexProcessor::push_fragments(
     ls::utils::fast_memcpy(bin.mScreenCoords, screenCoords, sizeof(bin.mScreenCoords));
     bin.mPerspDivide = math::rcp(math::vec4{worldCoords[0][3], worldCoords[1][3], worldCoords[2][3], 1.f});
     ls::utils::fast_memcpy(bin.mVaryings, varyings, sizeof(bin.mVaryings));
-
-    // divide the screen into equal parts which can then be rendered by all
-    // available fragment threads.
-    const uint32_t numTiles = mNumTiles;
-    uint32_t cols;
-    uint32_t rows;
-
-    sr_calc_frag_tiles<uint32_t>(numTiles, cols, rows);
-    fboW /= cols;
-    fboH /= rows;
 
     const math::vec4& p0 = screenCoords[0];
     const math::vec4& p1 = screenCoords[1];
@@ -223,39 +224,29 @@ void SR_VertexProcessor::push_fragments(
         bboxMaxY = math::max(p0[1], p1[1], p2[1]);
     }
 
-    // render all lines & triangles
-    for (uint16_t threadId = 0; threadId < numTiles; ++threadId)
+    const int isFragVisible = (bboxMaxX >= 0.f && fboW >= bboxMinX && bboxMaxY >= 0.f && fboH >= bboxMinY);
+
+    if (isFragVisible)
     {
-        const uint32_t x0 = fboW * (threadId % cols);
-        const uint32_t y0 = fboH * ((threadId / cols) % rows);
-        const uint32_t x1 = fboW + x0;
-        const uint32_t y1 = fboH + y0;
-        const int isFragVisible = (bboxMaxX >= (float)x0 && (float)x1 >= bboxMinX && bboxMaxY >= (float)y0 && (float)y1 >= bboxMinY);
+        // Check if the output bin is full
+        uint_fast64_t binId = pLocks->fetch_add(1);
 
-        if (isFragVisible)
+        // flush the bins if they've filled up
+        if (binId >= SR_SHADER_MAX_FRAG_BINS)
         {
-            // Check if the  output bin is full
-            uint_fast32_t binId = pLocks[threadId].fetch_add(1, std::memory_order_relaxed);
+            flush_fragments();
 
-            if (binId >= SR_SHADER_MAX_FRAG_BINS)
-            {
-                // Execute a fragment processors on the full bin. Don't do
-                // anything if another thread stole the sentinel bin first.
-                if (binId == SR_SHADER_MAX_FRAG_BINS)
-                {
-                    flush_fragments(threadId, SR_SHADER_MAX_FRAG_BINS);
-                    binId = 0;
-                }
-                else
-                {
-                    while (pLocks[threadId].load(std::memory_order_relaxed) >= SR_SHADER_MAX_FRAG_BINS);
-                    binId = pLocks[threadId].fetch_add(1, std::memory_order_relaxed);
-                }
-            }
-
-            // carry one
-            pFragBins[threadId][binId] = bin;
+            // Attempt to grab another bin index
+            binId = pLocks->fetch_add(1);
         }
+
+        // place a triangle into the next available bin
+        pFragBins[binId] = bin;
+    }
+
+    if (pLocks->load() >= SR_SHADER_MAX_FRAG_BINS)
+    {
+        flush_fragments();
     }
 }
 
@@ -271,10 +262,10 @@ void SR_VertexProcessor::execute() noexcept
     const size_t            numVaryings  = vertShader.numVaryings;
     const SR_VertexArray&   vao          = mContext->vao(mMesh.vaoId);
     const SR_VertexBuffer&  vbo          = mContext->vbo(vao.get_vertex_buffer());
-    uint16_t                fboW         = mFboW;
-    uint16_t                fboH         = mFboH;
-    const float             widthScale   = (float)fboW * 0.5f;
-    const float             heightScale  = (float)fboH * 0.5f;
+    float                   fboW         = (float)mFboW;
+    float                   fboH         = (float)mFboH;
+    const float             widthScale   = fboW * 0.5f;
+    const float             heightScale  = fboH * 0.5f;
     uint32_t                begin        = mMesh.elementBegin;
     uint32_t                end          = mMesh.elementEnd;
     const SR_IndexBuffer*   pIbo         = nullptr;
@@ -289,8 +280,8 @@ void SR_VertexProcessor::execute() noexcept
 
     if (mMesh.mode == RENDER_MODE_INDEXED_POINTS)
     {
-        begin += mTileId;
-        const uint32_t step = mNumTiles;
+        begin += mThreadId;
+        const uint32_t step = mNumThreads;
         for (uint32_t i = begin; i < end; i += step)
         {
             const uint32_t vertId = get_next_vertex(pIbo, i);
@@ -305,8 +296,8 @@ void SR_VertexProcessor::execute() noexcept
     }
     else if (mMesh.mode == RENDER_MODE_POINTS)
     {
-        begin += mTileId;
-        const uint32_t step = mNumTiles;
+        begin += mThreadId;
+        const uint32_t step = mNumThreads;
 
         for (uint32_t i = begin; i < end; i += step)
         {
@@ -322,8 +313,8 @@ void SR_VertexProcessor::execute() noexcept
     else if (mMesh.mode == RENDER_MODE_INDEXED_LINES)
     {
         // 3 vertices per set of lines
-        begin += mTileId * 3u;
-        const uint32_t step = mNumTiles * 3u;
+        begin += mThreadId * 3u;
+        const uint32_t step = mNumThreads * 3u;
 
         for (uint32_t i = begin; i < end; i += step)
         {
@@ -348,8 +339,8 @@ void SR_VertexProcessor::execute() noexcept
     else if (mMesh.mode == RENDER_MODE_LINES)
     {
         // 3 vertices per set of lines
-        begin += mTileId * 3u;
-        const uint32_t step = mNumTiles * 3u;
+        begin += mThreadId * 3u;
+        const uint32_t step = mNumThreads * 3u;
         for (uint32_t i = begin; i < end; i += step)
         {
             for (uint32_t j = 0; j < 3; ++j)
@@ -371,8 +362,8 @@ void SR_VertexProcessor::execute() noexcept
     else if (mMesh.mode == RENDER_MODE_INDEXED_TRIANGLES)
     {
         // 3 vertices per triangle
-        begin += mTileId * 3u;
-        const uint32_t step = mNumTiles * 3u;
+        begin += mThreadId * 3u;
+        const uint32_t step = mNumThreads * 3u;
         for (uint32_t i = begin; i < end; i += step)
         {
             const math::vec4_t<uint32_t>&& vertId = get_next_vertex3(pIbo, i);
@@ -393,8 +384,8 @@ void SR_VertexProcessor::execute() noexcept
     else if (mMesh.mode == RENDER_MODE_TRIANGLES)
     {
         // 3 vertices per triangle
-        begin += mTileId * 3u;
-        const uint32_t step = mNumTiles * 3u;
+        begin += mThreadId * 3u;
+        const uint32_t step = mNumThreads * 3u;
         for (uint32_t i = begin; i < end; i += step)
         {
             const uint32_t vertId0 = i;
@@ -415,10 +406,17 @@ void SR_VertexProcessor::execute() noexcept
         }
     }
 
-    // Wait for the other fragment processors
-    const uint_fast32_t tileId = mBusyProcessors->fetch_sub(1, std::memory_order_relaxed) - 1;
+    mBusyProcessors->fetch_sub(1);
+    while (mBusyProcessors->load() > 0)
+    {
+        if (mFragProcessors->load())
+        {
+            flush_fragments();
+        }
+    }
 
-    while (mBusyProcessors->load(std::memory_order_relaxed));
-
-    flush_fragments(tileId, mBinsUsed[tileId].load(std::memory_order_relaxed));
+    if (mBinsUsed->load())
+    {
+        flush_fragments();
+    }
 }
