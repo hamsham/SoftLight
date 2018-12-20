@@ -281,7 +281,7 @@ int main()
 
             if (currSeconds >= 0.5f)
             {
-                std::cout << "FPS: " << (float)currFrames/currSeconds << std::endl;
+                std::cout << "MS/F: " << 1000.f*(currSeconds/(float)currFrames) << std::endl;
                 currFrames = 0;
                 currSeconds = 0.f;
             }
@@ -290,7 +290,6 @@ int main()
             {
                 shouldQuit = true;
             }
-
 
             update_cam_position(camTrans, tickTime, pKeySyms);
 

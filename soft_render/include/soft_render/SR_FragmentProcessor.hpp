@@ -32,7 +32,41 @@ struct SR_ShaderProcessor;
 
 
 /*-----------------------------------------------------------------------------
+ * Helper Functions
+-----------------------------------------------------------------------------*/
+/**
+ * @brief Retrieve the offset to a threads first renderable scanline.
+ *
+ * @tparam data_t
+ * The requested data type.
+ *
+ * @param numThreads
+ * The number of threads which are currently being used for rendering.
+ *
+ * @param threadId
+ * The current thread's ID (0-based index).
+ *
+ * @param fragmentY
+ * The initial scanline for a line or triangle being rendered.
+ */
+template <typename data_t>
+constexpr data_t sr_scanline_offset(
+    const data_t numThreads,
+    const data_t threadId,
+    const data_t fragmentY)
+{
+    return numThreads - 1 - (((fragmentY % numThreads) + threadId) % numThreads);
+}
+
+
+
+/*-----------------------------------------------------------------------------
  * Encapsulation of fragment processing on another thread.
+ *
+ * Point rasterization will divide the output framebuffer into equal parts,
+ * so all threads will be assigned a specific region of the screen.
+ *
+ * Line rasterization will
 -----------------------------------------------------------------------------*/
 struct SR_FragmentProcessor
 {
@@ -58,9 +92,15 @@ struct SR_FragmentProcessor
 
     // 448 bits = 56 bytes
 
-    void render_point(const uint_fast64_t binId, SR_Framebuffer* const fbo) noexcept;
+    void render_point(
+        const uint_fast64_t binId,
+        SR_Framebuffer* const fbo,
+        const ls::math::vec4_t<int32_t> dimens) noexcept;
 
-    void render_line(const uint_fast64_t binId, SR_Framebuffer* const fbo) noexcept;
+    void render_line(
+        const uint_fast64_t binId,
+        SR_Framebuffer* const fbo,
+        const ls::math::vec4_t<int32_t> dimens) noexcept;
 
     void render_triangle(const uint_fast64_t binId, const SR_Texture* depthBuffer) const noexcept;
 

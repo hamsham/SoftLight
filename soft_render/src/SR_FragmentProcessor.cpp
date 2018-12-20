@@ -8,13 +8,14 @@
 #include "soft_render/SR_FragmentProcessor.hpp"
 #include "soft_render/SR_ShaderProcessor.hpp"
 #include "soft_render/SR_Texture.hpp"
+#include "soft_render/SR_VertexProcessor.hpp" // sr_calc_frag_tiles()
 
 
 
 /*-----------------------------------------------------------------------------
  * Rendering setup
 -----------------------------------------------------------------------------*/
-#define SR_RENDER_4_PIXELS
+//#define SR_RENDER_4_PIXELS
 
 
 
@@ -31,6 +32,34 @@ namespace utils = ls::utils;
 -----------------------------------------------------------------------------*/
 namespace
 {
+
+
+
+/*--------------------------------------
+ * Subdivide an FBO into equally spaced regions
+--------------------------------------*/
+inline ls::math::vec4_t<int32_t> subdivide_fbo_region(
+    const SR_Framebuffer* pFbo,
+    const int32_t numThreads,
+    const int32_t threadId
+) noexcept
+{
+    int32_t w = pFbo->width();
+    int32_t h = pFbo->height();
+    int32_t cols;
+    int32_t rows;
+
+    sr_calc_frag_tiles<int32_t>(numThreads, cols, rows);
+    w = w / cols;
+    h = h / rows;
+
+    const int32_t x0 = w * (threadId % cols);
+    const int32_t y0 = h * ((threadId / cols) % rows);
+    const int32_t x1 = w + x0;
+    const int32_t y1 = h + y0;
+
+    return math::vec4_t<int32_t>{x0, x1, y0, y1};
+}
 
 
 
@@ -124,7 +153,10 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
 /*--------------------------------------
  * Determine if a point can be rendered.
 --------------------------------------*/
-void SR_FragmentProcessor::render_point(const uint_fast64_t binId, SR_Framebuffer* const fbo) noexcept
+void SR_FragmentProcessor::render_point(
+    const uint_fast64_t binId,
+    SR_Framebuffer* const fbo,
+    const ls::math::vec4_t<int32_t> dimens) noexcept
 {
     const SR_FragmentShader fragShader  = mShader->mFragShader;
     const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
@@ -133,12 +165,10 @@ void SR_FragmentProcessor::render_point(const uint_fast64_t binId, SR_Framebuffe
     const math::vec4        screenCoord = mBins[binId].mScreenCoords[0];
     const math::vec4        fragCoord   {screenCoord[0], screenCoord[1], screenCoord[2], 1.f};
     const math::vec4*       varyings    = mBins[binId].mVaryings;
-    const float             w           = mFboW;
-    const float             h           = mFboH;
 
     math::vec4 pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
 
-    if (fragCoord.v[0] >= 0.f && fragCoord.v[0] <= w && fragCoord.v[1] >= 0.f && fragCoord.v[1] <= h)
+    if (fragCoord.v[0] >= dimens[0] && fragCoord.v[0] <= dimens[1] && fragCoord.v[1] >= dimens[2] && fragCoord.v[1] <= dimens[3])
     {
         const uint16_t x0    = (uint16_t)fragCoord[0];
         const uint16_t y0    = (uint16_t)fragCoord[1];
@@ -179,7 +209,10 @@ void SR_FragmentProcessor::render_point(const uint_fast64_t binId, SR_Framebuffe
  * Graphics Gems I (1990):
  * ftp://ftp.isc.org/pub/usenet/comp.sources.unix/volume26/line3d
 --------------------------------------*/
-void SR_FragmentProcessor::render_line(const uint_fast64_t binId, SR_Framebuffer* fbo) noexcept
+void SR_FragmentProcessor::render_line(
+    const uint_fast64_t binId,
+    SR_Framebuffer* fbo,
+    const ls::math::vec4_t<int32_t> dimens) noexcept
 {
     math::vec4              pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
     const SR_FragmentShader fragShader  = mShader->mFragShader;
@@ -190,29 +223,25 @@ void SR_FragmentProcessor::render_line(const uint_fast64_t binId, SR_Framebuffer
     const math::vec4& screenCoord0 = mBins[binId].mScreenCoords[0];
     const math::vec4& screenCoord1 = mBins[binId].mScreenCoords[1];
     math::vec4* const inVaryings   = mBins[binId].mVaryings;
+
     alignas(sizeof(math::vec4)) math::vec4 outVaryings[SR_SHADER_MAX_VARYING_VECTORS];
 
-    int   pointX = (int)screenCoord0[0];
-    int   pointY = (int)screenCoord0[1];
-    float pointZ = screenCoord0[2];
+    int32_t       pointX = (int32_t)screenCoord0[0];
+    int32_t       pointY = (int32_t)screenCoord0[1];
+    float         pointZ = screenCoord0[2];
+    const float   dx     = screenCoord1[0] - screenCoord0[0];
+    const float   dy     = screenCoord1[1] - screenCoord0[1];
+    const float   dz     = screenCoord1[2] - screenCoord0[2];
+    const int32_t l      = (int32_t)std::abs(dx);
+    const int32_t m      = (int32_t)std::abs(dy);
+    const int32_t n      = (int32_t)std::abs(dz);
+    const int32_t dx2    = l << 1;
+    const int32_t dy2    = m << 1;
+    const int32_t dz2    = n << 1;
+    const int32_t x_inc  = (dx < 0.f) ? -1 : 1;
+    const int32_t y_inc  = (dy < 0.f) ? -1 : 1;
 
-    const float w     = mFboW;
-    const float h     = mFboH;
-    const float dx    = screenCoord1[0] - screenCoord0[0];
-    const float dy    = screenCoord1[1] - screenCoord0[1];
-    const float dz    = screenCoord1[2] - screenCoord0[2];
-    const int   l     = (int)std::abs(dx);
-    const int   m     = (int)std::abs(dy);
-    const int   n     = (int)std::abs(dz);
-    const int   dx2   = l << 1;
-    const int   dy2   = m << 1;
-    const int   dz2   = n << 1;
-    const int   x_inc = (dx < 0.f) ? -1 : 1;
-    const int   y_inc = (dy < 0.f) ? -1 : 1;
-
-    const int   drawIndex = (int)mNumProcessors;
-
-    int err_1, err_2;
+    int32_t err_1, err_2;
 
     if ((l >= m) && (l >= n))
     {
@@ -221,11 +250,9 @@ void SR_FragmentProcessor::render_line(const uint_fast64_t binId, SR_Framebuffer
         err_1 = dy2 - l;
         err_2 = dz2 - l;
 
-        for (int i = 0; i < l; ++i)
+        for (int32_t i = 0; i < l; ++i)
         {
-            const bool visible = (pointX >= 0.f && pointX <= w) && (pointY >= 0.f && pointY <= h);
-
-            if (visible && !(i % drawIndex))
+            if (pointX >= dimens[0] && pointX <= dimens[1] && pointY >= dimens[2] && pointY <= dimens[3])
             {
                 interpolate_line_varyings(pointZ, numVaryings, inVaryings, outVaryings);
 
@@ -269,11 +296,9 @@ void SR_FragmentProcessor::render_line(const uint_fast64_t binId, SR_Framebuffer
         err_1 = dx2 - m;
         err_2 = dz2 - m;
 
-        for (int i = 0; i < m; ++i)
+        for (int32_t i = 0; i < m; ++i)
         {
-            const bool visible = (pointX >= 0.f && pointX <= w) && (pointY >= 0.f && pointY <= h);
-
-            if (visible && !(i % drawIndex))
+            if (pointX >= dimens[0] && pointX <= dimens[1] && pointY >= dimens[2] && pointY <= dimens[3])
             {
                 interpolate_line_varyings(pointZ, numVaryings, inVaryings, outVaryings);
 
@@ -317,11 +342,9 @@ void SR_FragmentProcessor::render_line(const uint_fast64_t binId, SR_Framebuffer
         err_1 = dy2 - n;
         err_2 = dx2 - n;
 
-        for (int i = 0; i < n; ++i)
+        for (int32_t i = 0; i < n; ++i)
         {
-            const bool visible = (pointX >= 0.f && pointX <= w) && (pointY >= 0.f && pointY <= h);
-
-            if (visible && !(i % drawIndex))
+            if (pointX >= dimens[0] && pointX <= dimens[1] && pointY >= dimens[2] && pointY <= dimens[3])
             {
                 interpolate_line_varyings(pointZ, numVaryings, inVaryings, outVaryings);
 
@@ -359,9 +382,7 @@ void SR_FragmentProcessor::render_line(const uint_fast64_t binId, SR_Framebuffer
         }
     }
 
-    const bool visible = (pointX >= 0.f && pointX <= w) && (pointY >= 0.f && pointY <= h);
-
-    if (visible && !mThreadId)
+    if (pointX >= dimens[0] && pointX <= dimens[1] && pointY >= dimens[2] && pointY <= dimens[3])
     {
         interpolate_line_varyings(pointZ, numVaryings, inVaryings, outVaryings);
 
@@ -467,13 +488,13 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             bcF = math::transpose(bcF);
 
             // depth texture lookup will always be slow
-            const math::vec4      z           = depth * bcF;
-            const __m128          depthTexels = depthBuffer->texel4<float>(x, y).simd;
-            alignas(16) const int depthTest   = _mm_movemask_ps(_mm_sub_ps(z.simd, depthTexels));
+            const math::vec4 z           = depth * bcF;
+            const __m128     depthTexels = depthBuffer->texel4<float>(x, y).simd;
+            const math::vec4 depthTest   {_mm_cmplt_ps(z.simd, depthTexels)};
 
             for (int32_t i = 0; i < 4; ++i)
             {
-                if ((depthTest & (1 << i)) || _mm_movemask_ps(bcF[i].simd))
+                if (depthTest[i] > 0.f || _mm_movemask_ps(bcF[i].simd))
                 {
                     continue;
                 }
@@ -791,8 +812,8 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
 void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_Texture* depthBuffer) const noexcept
 {
     uint32_t  numQueuedFrags = 0;
-    const uint32_t    yOffset      = (uint32_t)mThreadId;
-    const uint32_t    increment    = (uint32_t)mNumProcessors;
+    const int32_t     yOffset      = (uint32_t)mThreadId;
+    const int32_t     increment    = (int32_t)mNumProcessors;
     const math::vec4* screenCoords = mBins[binId].mScreenCoords;
     const math::vec4  depth        {screenCoords[0][2], screenCoords[1][2], screenCoords[2][2], 0.f};
     math::vec2        p0           {screenCoords[0][0], screenCoords[0][1]};
@@ -829,7 +850,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     const float p21xy = p21x * p21y;
 
     // Let each thread start rendering at whichever scanline it's assigned to
-    const int32_t scanlineOffset = mNumProcessors - 1 - (((bboxMinY%mNumProcessors) + yOffset) % mNumProcessors);
+    const int32_t scanlineOffset = sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
 
     for (int32_t y = bboxMinY+scanlineOffset; y <= bboxMaxY; y += increment)
     {
@@ -884,14 +905,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             const float bW = math::rcp(math::sum(bc));
             bc *= bW;
 
-            outCoords[numQueuedFrags] = SR_FragCoord{
-                bc,
-                (uint16_t)x,
-                (uint16_t)y,
-                xf,
-                yf,
-                z
-            };
+            outCoords[numQueuedFrags] = SR_FragCoord{bc, (uint16_t)x, (uint16_t)y, xf, yf, z};
             ++numQueuedFrags;
 
             if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
@@ -965,27 +979,44 @@ void SR_FragmentProcessor::flush_fragments(
 -------------------------------------*/
 void SR_FragmentProcessor::execute() noexcept
 {
-    for (uint64_t numBinsProcessed = 0; numBinsProcessed < mNumBins; ++numBinsProcessed)
+    switch(mMode)
     {
-        switch(mMode)
+        case RENDER_MODE_POINTS:
+        case RENDER_MODE_INDEXED_POINTS:
         {
-            case RENDER_MODE_POINTS:
-            case RENDER_MODE_INDEXED_POINTS:
-                if (mThreadId == 0)
-                {
-                    render_point(numBinsProcessed, mFbo);
-                }
-                break;
+            // divide the screen into equal parts which can then be rendered by all
+            // available fragment threads.
+            const math::vec4_t<int32_t> dimens = subdivide_fbo_region(mFbo, mNumProcessors, mThreadId);
 
-            case RENDER_MODE_LINES:
-            case RENDER_MODE_INDEXED_LINES:
-                render_line(numBinsProcessed, mFbo);
-                break;
-
-            case RENDER_MODE_TRIANGLES:
-            case RENDER_MODE_INDEXED_TRIANGLES:
-                render_triangle(numBinsProcessed, mFbo->get_depth_buffer());
-                break;
+            for (uint64_t numBinsProcessed = 0; numBinsProcessed < mNumBins; ++numBinsProcessed)
+            {
+                render_point(numBinsProcessed, mFbo, dimens);
+            }
+            break;
         }
+
+        case RENDER_MODE_LINES:
+        case RENDER_MODE_INDEXED_LINES:
+        {
+            // divide the screen into equal parts which can then be rendered by all
+            // available fragment threads.
+            const math::vec4_t<int32_t> dimens = subdivide_fbo_region(mFbo, mNumProcessors, mThreadId);
+
+            for (uint64_t numBinsProcessed = 0; numBinsProcessed < mNumBins; ++numBinsProcessed)
+            {
+                render_line(numBinsProcessed, mFbo, dimens);
+            }
+            break;
+        }
+
+        case RENDER_MODE_TRIANGLES:
+        case RENDER_MODE_INDEXED_TRIANGLES:
+            // Triangles assign scan-lines per thread for rasterization.
+            // There's No need to subdivide the output framebuffer
+            for (uint64_t numBinsProcessed = 0; numBinsProcessed < mNumBins; ++numBinsProcessed)
+            {
+                render_triangle(numBinsProcessed, mFbo->get_depth_buffer());
+            }
+            break;
     }
 }
