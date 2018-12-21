@@ -60,6 +60,50 @@ constexpr data_t sr_scanline_offset(
 
 
 
+/**
+ * Calculate the optimal tiling for the fragment shader threads
+ */
+template <typename data_type>
+inline void sr_calc_frag_tiles(data_type numThreads, data_type& numHoriz, data_type& numVert) noexcept
+{
+    // Create a set of horizontal and vertical tiles. This method will create
+    // more horizontal tiles than vertical ones.
+    data_type tileCount = ls::math::fast_sqrt<data_type>(numThreads);
+    tileCount += (numThreads % tileCount) != 0;
+    numHoriz  = ls::math::gcd(numThreads, tileCount);
+    numVert   = numThreads / numHoriz;
+}
+
+
+
+/**
+ * Subdivide a rectangular region into equally spaced areas
+ */
+template <typename data_t>
+inline ls::math::vec4_t<data_t> sr_subdivide_region(
+    data_t w,
+    data_t h,
+    const data_t numThreads,
+    const data_t threadId
+) noexcept
+{
+    data_t cols;
+    data_t rows;
+
+    sr_calc_frag_tiles<data_t>(numThreads, cols, rows);
+    w = w / cols;
+    h = h / rows;
+
+    const data_t x0 = w * (threadId % cols);
+    const data_t y0 = h * ((threadId / cols) % rows);
+    const data_t x1 = w + x0;
+    const data_t y1 = h + y0;
+
+    return ls::math::vec4_t<data_t>{x0, x1, y0, y1};
+}
+
+
+
 /*-----------------------------------------------------------------------------
  * Encapsulation of fragment processing on another thread.
  *

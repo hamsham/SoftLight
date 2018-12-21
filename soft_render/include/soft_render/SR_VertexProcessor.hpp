@@ -39,22 +39,6 @@ struct SR_FragmentBin; // SR_ShaderProcessor.hpp
 
 
 
-/*--------------------------------------
- * Calculate the optimal tiling for the fragment shader threads
---------------------------------------*/
-template <typename data_type>
-inline void sr_calc_frag_tiles(data_type numThreads, data_type& numHoriz, data_type& numVert) noexcept
-{
-    // Create a set of horizontal and vertical tiles. This method will create
-    // more horizontal tiles than vertical ones.
-    data_type tileCount = ls::math::fast_sqrt<data_type>(numThreads);
-    tileCount += (numThreads % tileCount) != 0;
-    numHoriz  = ls::math::gcd(numThreads, tileCount);
-    numVert   = numThreads / numHoriz;
-}
-
-
-
 /*-----------------------------------------------------------------------------
  * Encapsulation of vertex processing on another thread.
 -----------------------------------------------------------------------------*/

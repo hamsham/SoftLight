@@ -399,9 +399,6 @@ unsigned SR_ProcessorPool::num_threads(unsigned inNumThreads) noexcept
         }
     }
 
-    uint16_t c, r;
-    sr_calc_frag_tiles<uint16_t>(inNumThreads, c, r);
-
     std::cout
         << "Rendering threads updated:"
         << "\n\tThread Count:       " << inNumThreads
@@ -411,7 +408,6 @@ unsigned SR_ProcessorPool::num_threads(unsigned inNumThreads) noexcept
         << "\n\tFragment Task Size: " << sizeof(SR_FragmentProcessor)
         << "\n\tFragment Bin Size:  " << sizeof(SR_FragmentBin)
         << "\n\tBlitter Task Size:  " << sizeof(SR_BlitProcessor)
-        << "\n\tFragment tiles:     " << c << 'x' << r
         << std::endl;
 
     return inNumThreads;

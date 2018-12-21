@@ -36,34 +36,6 @@ namespace
 
 
 /*--------------------------------------
- * Subdivide an FBO into equally spaced regions
---------------------------------------*/
-inline ls::math::vec4_t<int32_t> subdivide_fbo_region(
-    const SR_Framebuffer* pFbo,
-    const int32_t numThreads,
-    const int32_t threadId
-) noexcept
-{
-    int32_t w = pFbo->width();
-    int32_t h = pFbo->height();
-    int32_t cols;
-    int32_t rows;
-
-    sr_calc_frag_tiles<int32_t>(numThreads, cols, rows);
-    w = w / cols;
-    h = h / rows;
-
-    const int32_t x0 = w * (threadId % cols);
-    const int32_t y0 = h * ((threadId / cols) % rows);
-    const int32_t x1 = w + x0;
-    const int32_t y1 = h + y0;
-
-    return math::vec4_t<int32_t>{x0, x1, y0, y1};
-}
-
-
-
-/*--------------------------------------
  * Interpolate varying variables across a line
 --------------------------------------*/
 inline void LS_IMPERATIVE interpolate_line_varyings(
@@ -982,7 +954,9 @@ void SR_FragmentProcessor::execute() noexcept
         {
             // divide the screen into equal parts which can then be rendered by all
             // available fragment threads.
-            const math::vec4_t<int32_t> dimens = subdivide_fbo_region(mFbo, mNumProcessors, mThreadId);
+            const int32_t w = mFbo->width();
+            const int32_t h = mFbo->height();
+            const math::vec4_t<int32_t> dimens = sr_subdivide_region<int32_t>(w, h, mNumProcessors, mThreadId);
 
             for (uint64_t numBinsProcessed = 0; numBinsProcessed < mNumBins; ++numBinsProcessed)
             {
@@ -996,7 +970,9 @@ void SR_FragmentProcessor::execute() noexcept
         {
             // divide the screen into equal parts which can then be rendered by all
             // available fragment threads.
-            const math::vec4_t<int32_t> dimens = subdivide_fbo_region(mFbo, mNumProcessors, mThreadId);
+            const int32_t w = mFbo->width();
+            const int32_t h = mFbo->height();
+            const math::vec4_t<int32_t> dimens = sr_subdivide_region<int32_t>(w, h, mNumProcessors, mThreadId);
 
             for (uint64_t numBinsProcessed = 0; numBinsProcessed < mNumBins; ++numBinsProcessed)
             {
