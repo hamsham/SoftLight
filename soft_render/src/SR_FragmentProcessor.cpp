@@ -15,7 +15,7 @@
 /*-----------------------------------------------------------------------------
  * Rendering setup
 -----------------------------------------------------------------------------*/
-//#define SR_RENDER_4_PIXELS
+#define SR_RENDER_4_PIXELS
 
 
 
@@ -98,13 +98,10 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
     const math::vec4* inVaryings2 = inVaryings1 + numVaryings;
     uint_fast32_t i = numVaryings;
 
-    #if defined(SR_RENDER_4_PIXELS) && defined(LS_ARCH_X86)
+    #if defined(LS_ARCH_X86)
         const __m128 bc0 = _mm_shuffle_ps(baryCoords.simd, baryCoords.simd, 0x00);
         const __m128 bc1 = _mm_shuffle_ps(baryCoords.simd, baryCoords.simd, 0x55);
         const __m128 bc2 = _mm_shuffle_ps(baryCoords.simd, baryCoords.simd, 0xAA);
-        //const __m128 bc0 = _mm_set1_ps(baryCoords.v[0]);
-        //const __m128 bc1 = _mm_set1_ps(baryCoords.v[1]);
-        //const __m128 bc2 = _mm_set1_ps(baryCoords.v[2]);
 
         while (i --> 0u)
         {
@@ -112,9 +109,8 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
             const __m128 v1 = _mm_mul_ps((inVaryings1++)->simd, bc1);
             const __m128 v2 = _mm_mul_ps((inVaryings2++)->simd, bc2);
             (outVaryings++)->simd = _mm_add_ps(_mm_add_ps(v0, v1), v2);
-            //_mm_store_ps((outVaryings++)->v, _mm_add_ps(_mm_add_ps(v0, v1), v2));
         }
-    #elif defined(SR_RENDER_4_PIXELS) && defined(LS_ARCH_ARM)
+    #elif defined(LS_ARCH_ARM)
         const float32x4_t bc0 = vdupq_lane_f32(vget_low_f32(baryCoords.simd),  0);
         const float32x4_t bc1 = vdupq_lane_f32(vget_low_f32(baryCoords.simd),  1);
         const float32x4_t bc2 = vdupq_lane_f32(vget_high_f32(baryCoords.simd), 0);

@@ -60,16 +60,18 @@ inline void sr_calc_frag_tiles(data_type numThreads, data_type& numHoriz, data_t
 -----------------------------------------------------------------------------*/
 struct SR_VertexProcessor
 {
+    // 32 bits
+    uint16_t mThreadId;
+    uint16_t mNumThreads;
+
+    // 128 bits
+    std::atomic_uint_fast64_t* mFragProcessors;
+    std::atomic_uint_fast64_t* mBusyProcessors;
+
     // 128-256 bits
     const SR_Shader*  mShader;
     const SR_Context* mContext;
     SR_Framebuffer*   mFbo;
-    std::atomic_uint_fast64_t* mFragProcessors;
-    std::atomic_uint_fast64_t* mBusyProcessors;
-
-    // 32 bits
-    uint16_t mThreadId;
-    uint16_t mNumThreads;
 
     // 32-bits
     uint16_t mFboW;

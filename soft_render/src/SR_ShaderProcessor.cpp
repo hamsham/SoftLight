@@ -436,13 +436,13 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context* c, const SR_Mesh*
     // The threads work out between themselves how to partition the data.
     for (uint16_t threadId = 0; threadId < mNumThreads; ++threadId)
     {
+        vertTask.mThreadId       = threadId;
+        vertTask.mNumThreads     = (uint16_t)mNumThreads;
+        vertTask.mFragProcessors = &mFragSemaphore;
+        vertTask.mBusyProcessors = &mShadingSemaphore;
         vertTask.mShader         = s;
         vertTask.mContext        = c;
         vertTask.mFbo            = fbo;
-        vertTask.mFragProcessors = &mFragSemaphore;
-        vertTask.mBusyProcessors = &mShadingSemaphore;
-        vertTask.mThreadId       = threadId;
-        vertTask.mNumThreads     = (uint16_t)mNumThreads;
         vertTask.mFboW           = fbo->width();
         vertTask.mFboH           = fbo->height();
         vertTask.mMesh           = *m;

@@ -125,6 +125,10 @@ void SR_VertexProcessor::flush_fragments() const noexcept
     // Sync Point 1 indicates that all triangles have been sorted
     const uint_fast64_t syncPoint1 = 2u * mNumThreads;
 
+    // Sync point 2 indicates that all fragments have been rasterized and the
+    // vertex processors can now take over again
+    const uint_fast64_t syncPoint2 = 3u * mNumThreads - 1;
+
     // sync before running the fragment shaders. The fragment processor will
     // return this number back to 0
     uint_fast64_t tileId = mFragProcessors->fetch_add(1, std::memory_order_acq_rel);
@@ -143,7 +147,7 @@ void SR_VertexProcessor::flush_fragments() const noexcept
     fragTask.mThreadId       = (uint16_t)tileId;
     fragTask.mMode           = mMesh.mode;
     fragTask.mNumProcessors  = mNumThreads;
-    fragTask.mNumBins        = math::min(mBinsUsed->load(), SR_SHADER_MAX_FRAG_BINS);
+    fragTask.mNumBins        = math::min(mBinsUsed->load(std::memory_order_relaxed), SR_SHADER_MAX_FRAG_BINS);
     fragTask.mShader         = mShader;
     fragTask.mFbo            = mFbo;
     fragTask.mBins           = mFragBins;
@@ -152,10 +156,6 @@ void SR_VertexProcessor::flush_fragments() const noexcept
     fragTask.mFboH           = (float)(mFboH - 1);
 
     fragTask.execute();
-
-    // Sync point 2 indicates that all fragments have been rasterized and the
-    // vertex processors can now take over again
-    const uint_fast64_t syncPoint2 = 3u * mNumThreads - 1;
 
     // indicate the bins are available for pushing
     tileId = mFragProcessors->fetch_add(1, std::memory_order_acq_rel);
@@ -169,7 +169,7 @@ void SR_VertexProcessor::flush_fragments() const noexcept
     while (mFragProcessors->load(std::memory_order_relaxed) != 0)
     {
         #ifdef LS_ARCH_X86
-            _mm_pause();
+            //_mm_pause();
         #endif
     }
 }
@@ -424,7 +424,7 @@ void SR_VertexProcessor::execute() noexcept
             flush_fragments();
         }
         #ifdef LS_ARCH_X86
-            _mm_pause();
+            //_mm_pause();
         #endif
     }
 
