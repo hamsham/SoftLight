@@ -58,7 +58,7 @@ math::vec4 _volume_vert_shader(const uint32_t vertId, const SR_VertexArray& vao,
 
     varyings[0] = modelPos;
 
-    constexpr math::vec4 spacing = {1.f, 1.f, 1.f, 1.f};
+    math::vec4 spacing = {1.f, 1.f, 1.f, 1.f};
     return pUniforms->mvpMatrix * (worldPos * spacing);
 }
 

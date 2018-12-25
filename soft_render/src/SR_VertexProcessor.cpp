@@ -137,7 +137,7 @@ void SR_VertexProcessor::flush_fragments() const noexcept
     // first to allow for fragment rejection during the depth test.
     if (tileId == mNumThreads-1u)
     {
-        ls::utils::sort_quick<SR_FragmentBin, ls::utils::IsGreater<SR_FragmentBin>>(mFragBins, math::min(mBinsUsed->load(), SR_SHADER_MAX_FRAG_BINS));
+        ls::utils::sort_quick<SR_FragmentBin, ls::utils::IsGreater<SR_FragmentBin>>(mFragBins, math::min<uint64_t>(mBinsUsed->load(), SR_SHADER_MAX_FRAG_BINS));
         mFragProcessors->store(syncPoint1, std::memory_order_release);
     }
 
@@ -147,7 +147,7 @@ void SR_VertexProcessor::flush_fragments() const noexcept
     fragTask.mThreadId       = (uint16_t)tileId;
     fragTask.mMode           = mMesh.mode;
     fragTask.mNumProcessors  = mNumThreads;
-    fragTask.mNumBins        = math::min(mBinsUsed->load(std::memory_order_relaxed), SR_SHADER_MAX_FRAG_BINS);
+    fragTask.mNumBins        = math::min<uint64_t>(mBinsUsed->load(std::memory_order_relaxed), SR_SHADER_MAX_FRAG_BINS);
     fragTask.mShader         = mShader;
     fragTask.mFbo            = mFbo;
     fragTask.mBins           = mFragBins;

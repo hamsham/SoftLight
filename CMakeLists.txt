@@ -62,6 +62,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         add_definitions(-mfpu=neon-vfpv4)
         add_definitions(-march=armv7-a)
         add_definitions(-faligned-new)
+        add_definitions(-mno-unaligned-access)
     endif()
 
     if (ENABLE_X86_OPTIMIZATIONS)

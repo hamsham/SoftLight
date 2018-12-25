@@ -256,7 +256,7 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
 
 // Calculate the metallic component of a surface
 template <class vec_type = math::vec4>
-constexpr inline vec_type fresnel_schlick(float cosTheta, const vec_type& surfaceReflection)
+inline vec_type fresnel_schlick(float cosTheta, const vec_type& surfaceReflection)
 {
     return surfaceReflection + (vec_type{1.f} - surfaceReflection) * math::pow(1.f - cosTheta, 5.f);
 }
@@ -329,7 +329,7 @@ bool _texture_frag_shader_pbr(const math::vec4&, const SR_UniformBuffer* uniform
     // surface model
     const math::vec4     camPos           = pUniforms->light.pos;
     const math::vec4&&   viewDir          = math::normalize(camPos - pos);
-    constexpr math::vec4 lightPos         = {30.f, 45.f, 45.f, 0.f};
+    const math::vec4     lightPos         = {30.f, 45.f, 45.f, 0.f};
     const math::vec4     albedo           = {1.f};
     constexpr float      metallic         = 0.4f;
     constexpr float      roughness        = 0.15f;
@@ -337,7 +337,7 @@ bool _texture_frag_shader_pbr(const math::vec4&, const SR_UniformBuffer* uniform
 
     // Metallic reflectance at a normal incidence
     // 0.04f should be close to plastic.
-    constexpr math::vec4 surfaceConstant   = {0.04f, 0.04f, 0.04f, 1.f};
+    const math::vec4   surfaceConstant   = {0.04f, 0.04f, 0.04f, 1.f};
     const math::vec4&& surfaceReflection = math::mix(surfaceConstant, albedo, metallic);
 
     math::vec4         lightDir0         = {0.f};

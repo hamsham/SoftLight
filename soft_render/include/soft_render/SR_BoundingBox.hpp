@@ -32,7 +32,7 @@ class SR_BoundingBox
     /**
      * @brief Constructor
      */
-    constexpr SR_BoundingBox() noexcept;
+    SR_BoundingBox() noexcept;
 
     /**
      * @brief Copy Constructor
@@ -43,7 +43,7 @@ class SR_BoundingBox
      * A constant reference to a fully constructed bounding box
      * object.
      */
-    constexpr SR_BoundingBox(const SR_BoundingBox& bb) noexcept;
+    SR_BoundingBox(const SR_BoundingBox& bb) noexcept;
 
     /**
      * @brief Move Constructor
@@ -185,7 +185,7 @@ class SR_BoundingBox
 /*-------------------------------------
     Constructor
 -------------------------------------*/
-constexpr SR_BoundingBox::SR_BoundingBox() noexcept :
+inline SR_BoundingBox::SR_BoundingBox() noexcept :
     mTopRearRight{1.f, 1.f, 1.f, 0.f},
     mBotFrontLeft{-1.f, -1.f, -1.f, 0.f}
 {}
@@ -195,7 +195,7 @@ constexpr SR_BoundingBox::SR_BoundingBox() noexcept :
 /*-------------------------------------
     Copy Constructor
 -------------------------------------*/
-constexpr SR_BoundingBox::SR_BoundingBox(const SR_BoundingBox& bb) noexcept :
+inline SR_BoundingBox::SR_BoundingBox(const SR_BoundingBox& bb) noexcept :
     mTopRearRight{bb.mTopRearRight},
     mBotFrontLeft{bb.mBotFrontLeft}
 {}

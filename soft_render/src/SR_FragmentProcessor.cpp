@@ -15,7 +15,7 @@
 /*-----------------------------------------------------------------------------
  * Rendering setup
 -----------------------------------------------------------------------------*/
-#define SR_RENDER_4_PIXELS
+//#define SR_RENDER_4_PIXELS
 
 
 
@@ -192,7 +192,7 @@ void SR_FragmentProcessor::render_line(
     const math::vec4& screenCoord1 = mBins[binId].mScreenCoords[1];
     math::vec4* const inVaryings   = mBins[binId].mVaryings;
 
-    alignas(sizeof(math::vec4)) math::vec4 outVaryings[SR_SHADER_MAX_VARYING_VECTORS];
+    math::vec4 outVaryings[SR_SHADER_MAX_VARYING_VECTORS];
 
     int32_t       pointX = (int32_t)screenCoord0[0];
     int32_t       pointY = (int32_t)screenCoord0[1];
@@ -906,15 +906,15 @@ void SR_FragmentProcessor::flush_fragments(
     const SR_FragCoord* outCoords) const noexcept
 {
     const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
-    alignas(sizeof(math::vec4)) const SR_FragmentShader fragShader  = mShader->mFragShader;
+    const SR_FragmentShader fragShader  = mShader->mFragShader;
     const auto              pShader     = fragShader.shader;
     const uint32_t          numVaryings = fragShader.numVaryings;
     const uint32_t          numOutputs  = fragShader.numOutputs;
     SR_Framebuffer*         fbo         = mFbo;
     math::vec4* const       inVaryings  = mBins[binId].mVaryings;
 
-    alignas(sizeof(math::vec4)) math::vec4 pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
-    alignas(sizeof(math::vec4)) math::vec4 outVaryings[SR_SHADER_MAX_VARYING_VECTORS];
+    math::vec4 pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
+    math::vec4 outVaryings[SR_SHADER_MAX_VARYING_VECTORS];
 
     while (numQueuedFrags --> 0)
     {
