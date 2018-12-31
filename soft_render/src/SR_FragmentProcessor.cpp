@@ -582,8 +582,8 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             const int32x4_t   xi       = vaddq_s32(vdupq_n_s32(x), vld1q_s32(lanes));
             const math::vec4  xf       {vcvtq_f32_s32(xi)};
             const float32x4_t tx       = vsubq_f32(t0[2], xf.simd);
-            const float32x4_t u0       = vmulq_f32(vsubq_f32(t01y, vmulq_f32(tx, t1[1])), scale);
-            const float32x4_t u1       = vmulq_f32(vsubq_f32(vmulq_f32(tx, t1[0]), t00y), scale);
+            const float32x4_t u0       = vmlsq_f32(scale, t01y, vmulq_f32(tx, t1[1]));
+            const float32x4_t u1       = vmlsq_f32(scale, vmulq_f32(tx, t1[0]), t00y);
 
             math::mat4 bcF{
                 math::vec4{vsubq_f32(vdupq_n_f32(1.f), vaddq_f32(u0, u1))},
@@ -630,7 +630,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
                 };
                 ++numQueuedFrags;
 
-                if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
+                if (!(numQueuedFrags ^ SR_SHADER_MAX_FRAG_QUEUES))
                 {
                     numQueuedFrags = 0;
                     flush_fragments(binId, SR_SHADER_MAX_FRAG_QUEUES, outCoords);
