@@ -2,6 +2,7 @@
 #include <cstddef> // ptrdiff_t
 
 #include "lightsky/utils/Assertions.h"
+#include "lightsky/utils/Pointer.h" // aligned allocation
 
 #include "soft_render/SR_ImgFile.hpp"
 #include "soft_render/SR_Texture.hpp"
@@ -18,11 +19,11 @@ namespace
 -------------------------------------*/
 char* _sr_allocate_texture(uint16_t w, uint16_t h, uint16_t d, unsigned bpt)
 {
-    // 4 pixels can be acquired at a time
-    const uint16_t alignment = 4 - (w%4);
+    // 8 pixels can be acquired at a time
+    const uint16_t alignment = 8 - (w%8);
 
     const size_t numBytes = (w + alignment) * h * d * bpt;
-    char* pData = new char[numBytes];
+    char* pData = (char*)ls::utils::aligned_malloc(numBytes);
 
     ls::utils::fast_memset(pData, 0, numBytes);
 
@@ -42,7 +43,7 @@ char* _sr_copy_texture(size_t w, size_t h, size_t d, size_t bpt, const char* pDa
 
     ptrdiff_t numBytes = w * h * d * bpt;
 
-    char* pTexture = new char[numBytes];
+    char* pTexture = (char*)ls::utils::aligned_malloc(numBytes);
     ls::utils::fast_memcpy(pTexture, pData, numBytes);
 
     return pTexture;
@@ -316,7 +317,7 @@ void SR_Texture::terminate() noexcept
     mHeightf = 0.f;
     mDepthf = 0.f;
 
-    delete [] mTexels;
+    ls::utils::aligned_free(mTexels);
     mTexels = nullptr;
 
     mType = SR_COLOR_RGB_DEFAULT;
