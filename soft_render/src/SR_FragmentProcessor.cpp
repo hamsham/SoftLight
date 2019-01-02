@@ -870,7 +870,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
 
             // perspective correction
             bc *= persp;
-            const float bW = math::rcp(math::sum(bc));
+            const float bW = math::sum_inv(bc);
             bc *= bW;
 
             outCoords[numQueuedFrags] = SR_FragCoord{bc, (uint16_t)x, (uint16_t)y, xf, yf, z};
