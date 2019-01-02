@@ -43,8 +43,8 @@ enum SR_TexWrapMode : uint16_t
 
 enum SR_TexChunkInfo : uint_fast32_t
 {
-    SR_TEXELS_PER_CHUNK = 2,
-    SR_TEXEL_SHIFTS_PER_CHUNK = 1 // 2^SR_TEXEL_SHIFTS_PER_CHUNK = SR_TEXELS_PER_CHUNK
+    SR_TEXELS_PER_CHUNK = 4,
+    SR_TEXEL_SHIFTS_PER_CHUNK = 2 // 2^SR_TEXEL_SHIFTS_PER_CHUNK = SR_TEXELS_PER_CHUNK
 };
 
 
@@ -494,6 +494,16 @@ inline const ls::math::vec4_t<float> SR_Texture::texel4<float>(uint16_t x, uint1
             pTexels[3]
         };
     #endif
+}
+#elif defined(LS_ARCH_X86)
+template <>
+inline const ls::math::vec4_t<float> SR_Texture::texel4<float>(uint16_t x, uint16_t y) const noexcept
+{
+    const ls::math::vec4_t<ptrdiff_t> index = map_coordinates(x, y);
+    const __m128i indices = _mm_set_epi32(index[3], index[2], index[1], index[0]);
+    const float* pTexels = reinterpret_cast<const float*>(mTexels);
+
+    return ls::math::vec4_t<float>{_mm_i32gather_ps(pTexels, indices, 4)};
 }
 #endif
 
