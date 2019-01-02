@@ -75,6 +75,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         add_definitions(-msse4)
         add_definitions(-msse4.1)
         add_definitions(-msse4.2)
+        add_definitions(-mfma)
         add_definitions(-mavx)
         add_definitions(-mavx2)
 
