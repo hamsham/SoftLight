@@ -15,7 +15,7 @@
 /*-----------------------------------------------------------------------------
  * Rendering setup
 -----------------------------------------------------------------------------*/
-//#define SR_RENDER_4_PIXELS
+#define SR_RENDER_4_PIXELS
 
 
 
@@ -458,11 +458,11 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             // depth texture lookup will always be slow
             const math::vec4 z           = depth * bcF;
             const __m128     depthTexels = depthBuffer->texel4<float>(x, y).simd;
-            const math::vec4 depthTest   {_mm_cmplt_ps(z.simd, depthTexels)};
+            const math::vec4 depthTest   {_mm_sub_ps(z.simd, depthTexels)};
 
             for (int32_t i = 0; i < 4; ++i)
             {
-                if (depthTest[i] > 0.f || _mm_movemask_ps(bcF[i].simd))
+                if (depthTest[i] < 0.f || _mm_movemask_ps(bcF[i].simd))
                 {
                     continue;
                 }
