@@ -68,12 +68,12 @@ ExternalProject_Add(
     Assimp
     PREFIX
         ${EXTERNAL_PROJECT_PREFIX}
-#    GIT_REPOSITORY
-#        "https://github.com/assimp/assimp.git"
-#    GIT_TAG
-#        "${ASSIMP_BRANCH}"
-#    UPDATE_COMMAND
-#        ${GIT_EXECUTABLE} fetch
+    GIT_REPOSITORY
+        "https://github.com/assimp/assimp.git"
+    GIT_TAG
+        "${ASSIMP_BRANCH}"
+    UPDATE_COMMAND
+        ${GIT_EXECUTABLE} fetch
     CMAKE_COMMAND
         ${CMAKE_COMMAND}
     CMAKE_ARGS
@@ -151,12 +151,12 @@ ExternalProject_Add(
     Glm
     PREFIX
         ${EXTERNAL_PROJECT_PREFIX}
-#    GIT_REPOSITORY
-#        "https://github.com/g-truc/glm.git"
-#    GIT_TAG
-#        "${GLM_BRANCH}"
-#    UPDATE_COMMAND
-#        ${GIT_EXECUTABLE} fetch
+    GIT_REPOSITORY
+        "https://github.com/g-truc/glm.git"
+    GIT_TAG
+        "${GLM_BRANCH}"
+    UPDATE_COMMAND
+        ${GIT_EXECUTABLE} fetch
     CMAKE_COMMAND
         ${CMAKE_COMMAND}
     CMAKE_CACHE_ARGS
@@ -233,12 +233,12 @@ else()
         FreeImage
         PREFIX
             ${EXTERNAL_PROJECT_PREFIX}
-#        GIT_REPOSITORY
-#            "https://github.com/MonoGame/FreeImage.git"
-#        GIT_TAG
-#            "${FIMG_BRANCH}"
-#        UPDATE_COMMAND
-#            ${GIT_EXECUTABLE} fetch
+        GIT_REPOSITORY
+            "https://github.com/MonoGame/FreeImage.git"
+        GIT_TAG
+            "${FIMG_BRANCH}"
+        UPDATE_COMMAND
+            ${GIT_EXECUTABLE} fetch
         CONFIGURE_COMMAND
             bash ${EXTERNAL_PROJECT_PREFIX}/build_freeimage.sh --configure
         BUILD_COMMAND
