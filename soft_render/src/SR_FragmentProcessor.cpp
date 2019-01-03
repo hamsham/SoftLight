@@ -414,12 +414,12 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     if (p0[1] < p2[1]) std::swap(p0, p2);
     if (p1[1] < p2[1]) std::swap(p1, p2);
 
-    const __m128i p0x = _mm_set1_ps(p0[0]);
-    const __m128i p0y = _mm_set1_ps(p0[1]);
-    const __m128i p1x = _mm_set1_ps(p1[0]);
-    const __m128i p1y = _mm_set1_ps(p1[1]);
-    const __m128i p2x = _mm_set1_ps(p2[0]);
-    const __m128i p2y = _mm_set1_ps(p2[1]);
+    const __m128 p0x   = _mm_set1_ps(p0[0]);
+    const __m128 p0y   = _mm_set1_ps(p0[1]);
+    const __m128 p1x   = _mm_set1_ps(p1[0]);
+    const __m128 p1y   = _mm_set1_ps(p1[1]);
+    const __m128 p2x   = _mm_set1_ps(p2[0]);
+    const __m128 p2y   = _mm_set1_ps(p2[1]);
     const __m128 p10x  = _mm_sub_ps(p1x, p0x);
     const __m128 p20x  = _mm_sub_ps(p2x, p0x);
     const __m128 p21x  = _mm_sub_ps(p2x, p1x);
