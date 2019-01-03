@@ -8,7 +8,6 @@
 #include "soft_render/SR_FragmentProcessor.hpp"
 #include "soft_render/SR_ShaderProcessor.hpp"
 #include "soft_render/SR_Texture.hpp"
-#include "soft_render/SR_VertexProcessor.hpp" // sr_calc_frag_tiles()
 
 
 
@@ -391,6 +390,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     const uint32_t    increment    = (uint32_t)mNumProcessors;
     const __m128      persp        = mBins[binId].mPerspDivide.simd;
     const math::vec4* screenCoords = mBins[binId].mScreenCoords;
+    SR_FragCoord*     outCoords    = mQueues;
     math::vec4        p0           = screenCoords[0];
     math::vec4        p1           = screenCoords[1];
     math::vec4        p2           = screenCoords[2];
@@ -414,36 +414,41 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     if (p0[1] < p2[1]) std::swap(p0, p2);
     if (p1[1] < p2[1]) std::swap(p1, p2);
 
-    const float p10x  = p1[0] - p0[0];
-    const float p20x  = p2[0] - p0[0];
-    const float p21x  = p2[0] - p1[0];
-    const float p10y  = math::rcp(p1[1] - p0[1]);
-    const float p21y  = math::rcp(p2[1] - p1[1]);
-    const float p20y  = math::rcp(p2[1] - p0[1]);
-    const float p10xy = p10x * p10y;
-    const float p21xy = p21x * p21y;
+    const __m128i p0x = _mm_set1_ps(p0[0]);
+    const __m128i p0y = _mm_set1_ps(p0[1]);
+    const __m128i p1x = _mm_set1_ps(p1[0]);
+    const __m128i p1y = _mm_set1_ps(p1[1]);
+    const __m128i p2x = _mm_set1_ps(p2[0]);
+    const __m128i p2y = _mm_set1_ps(p2[1]);
+    const __m128 p10x  = _mm_sub_ps(p1x, p0x);
+    const __m128 p20x  = _mm_sub_ps(p2x, p0x);
+    const __m128 p21x  = _mm_sub_ps(p2x, p1x);
+    const __m128 p10y  = _mm_rcp_ps(_mm_sub_ps(p1y, p0y));
+    const __m128 p21y  = _mm_rcp_ps(_mm_sub_ps(p2y, p1y));
+    const __m128 p20y  = _mm_rcp_ps(_mm_sub_ps(p2y, p0y));
+    const __m128 p10xy = _mm_mul_ps(p10x, p10y);
+    const __m128 p21xy = _mm_mul_ps(p21x, p21y);
 
     unsigned numQueuedFrags = 0;
-    SR_FragCoord* outCoords = mQueues;
-    const int32_t scanlineOffset = mNumProcessors - 1 - (((bboxMinY%mNumProcessors) + yOffset) % mNumProcessors);
+    const int32_t scanlineOffset = sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
 
     for (int32_t y = bboxMinY+scanlineOffset; y <= bboxMaxY; y += increment)
     {
         // calculate the bounds of the current scan-line
         const float  yf         = (float)y;
-        const __m128 ty         = _mm_sub_ps(t1[2], _mm_set1_ps(yf));
+        const __m128 yf4        = _mm_set1_ps(yf);
+        const __m128 ty         = _mm_sub_ps(t1[2], yf4);
         const __m128 t00y       = _mm_mul_ps(t0[0], ty);
         const __m128 t01y       = _mm_mul_ps(t0[1], ty);
-        const float  d0         = yf - p0[1];
-        const float  d1         = yf - p1[1];
-        const float  alpha      = d0 * p20y;
-        const int    secondHalf = _mm_movemask_ps(_mm_set_ss(d1));
-        int32_t      xMin       = (int32_t)(p0[0] + (p20x * alpha));
-        int32_t      xMax       = (int32_t)(secondHalf ? (p1[0] + p21xy * d1) : (p0[0] + p10xy * d0));
+        const __m128 d0         = _mm_sub_ps(yf4, p0y);
+        const __m128 d1         = _mm_sub_ps(yf4, p1y);
+        const __m128 alpha      = _mm_mul_ps(d0, p20y);
+        const int    secondHalf = _mm_movemask_ps(d1);
+        int32_t      xMin       = _mm_cvtss_si32(_mm_fmadd_ps(p20x, alpha, p0x));
+        int32_t      xMax       = _mm_cvtss_si32(secondHalf ? _mm_fmadd_ps(p21xy, d1, p1x) : _mm_fmadd_ps(p10xy, d0, p0x));
 
         // Get the beginning and end of the scan-line
         if (xMin > xMax) std::swap(xMin, xMax);
-
         xMin = math::clamp<int32_t>(xMin, bboxMinX, bboxMaxX);
         xMax = math::clamp<int32_t>(xMax, bboxMinX, bboxMaxX);
 
@@ -452,7 +457,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             // calculate barycentric coordinates
             const math::vec4 xf {_mm_cvtepi32_ps(_mm_add_epi32(_mm_set1_epi32(x), _mm_set_epi32(3, 2, 1, 0)))};
             const __m128     tx = _mm_sub_ps(t0[2], xf.simd);
-            const __m128     u0 = _mm_mul_ps(_mm_sub_ps(t01y, _mm_mul_ps(tx, t1[1])), scale);
+            const __m128     u0 = _mm_mul_ps(_mm_fnmadd_ps(tx, t1[1], t01y), scale);
             const __m128     u1 = _mm_mul_ps(_mm_fmsub_ps(tx, t1[0], t00y), scale);
 
             math::mat4 bcF{
@@ -466,7 +471,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             // depth texture lookup will always be slow
             const math::vec4 z           = depth * bcF;
             const __m128     depthTexels = depthBuffer->texel4<float>(x, y).simd;
-            const int        depthTest   = _mm_movemask_ps(_mm_cmplt_ps(z.simd, depthTexels));
+            const int        depthTest = _mm_movemask_ps(_mm_cmplt_ps(z.simd, depthTexels));
 
             for (int32_t i = 0; i < 4; ++i)
             {
@@ -482,11 +487,10 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
                 {
                     const __m128 a = bc4;
 
-                    // swap the words of each vector
+                    // swap each half of the vector, add, then swap the words
+                    // of each vector before adding again
                     const __m128 b = _mm_shuffle_ps(a, a, 0xB1);
                     const __m128 c = _mm_add_ps(a, b);
-
-                    // swap each half of the vector
                     const __m128 d = _mm_shuffle_ps(c, c, 0x0F);
                     const __m128 e = _mm_add_ps(c, d);
 
