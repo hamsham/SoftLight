@@ -77,10 +77,17 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
 
         while (i --> 0u)
         {
+            #if 0
             const __m128 v0 = _mm_mul_ps((inVaryings0++)->simd, bc0);
             const __m128 v1 = _mm_mul_ps((inVaryings1++)->simd, bc1);
             const __m128 v2 = _mm_mul_ps((inVaryings2++)->simd, bc2);
             (outVaryings++)->simd = _mm_add_ps(_mm_add_ps(v0, v1), v2);
+            #else
+            const __m128 v0 = _mm_mul_ps((inVaryings0++)->simd, bc0);
+            const __m128 v1 = _mm_fmadd_ps((inVaryings1++)->simd, bc1, v0);
+            const __m128 v2 = _mm_fmadd_ps((inVaryings2++)->simd, bc2, v1);
+            (outVaryings++)->simd = v2;
+            #endif
         }
     #elif defined(LS_ARCH_ARM)
         const float32x4_t bc0 = vdupq_lane_f32(vget_low_f32(baryCoords.simd),  0);
@@ -394,7 +401,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     const math::vec4  depth        {p0[2], p1[2], p2[2], 0.f};
     const __m128      t0[3]        {_mm_set1_ps(p2[0]-p0[0]), _mm_set1_ps(p1[0]-p0[0]), _mm_set1_ps(p0[0])};
     const __m128      t1[3]        {_mm_set1_ps(p2[1]-p0[1]), _mm_set1_ps(p1[1]-p0[1]), _mm_set1_ps(p0[1])};
-    const __m128      scaleInv     = _mm_sub_ps(_mm_mul_ps(t0[0], t1[1]), _mm_mul_ps(t0[1], t1[0]));
+    const __m128      scaleInv     = _mm_fmsub_ps(t0[0], t1[1], _mm_mul_ps(t0[1], t1[0]));
     const __m128      scale        = _mm_rcp_ps(scaleInv);
 
     // Don't render triangles which are too small to see
@@ -436,6 +443,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
 
         // Get the beginning and end of the scan-line
         if (xMin > xMax) std::swap(xMin, xMax);
+
         xMin = math::clamp<int32_t>(xMin, bboxMinX, bboxMaxX);
         xMax = math::clamp<int32_t>(xMax, bboxMinX, bboxMaxX);
 
@@ -445,7 +453,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             const math::vec4 xf {_mm_cvtepi32_ps(_mm_add_epi32(_mm_set1_epi32(x), _mm_set_epi32(3, 2, 1, 0)))};
             const __m128     tx = _mm_sub_ps(t0[2], xf.simd);
             const __m128     u0 = _mm_mul_ps(_mm_sub_ps(t01y, _mm_mul_ps(tx, t1[1])), scale);
-            const __m128     u1 = _mm_mul_ps(_mm_sub_ps(_mm_mul_ps(tx, t1[0]), t00y), scale);
+            const __m128     u1 = _mm_mul_ps(_mm_fmsub_ps(tx, t1[0], t00y), scale);
 
             math::mat4 bcF{
                 math::vec4{_mm_sub_ps(_mm_set1_ps(1.f), _mm_add_ps(u0, u1))},
@@ -458,11 +466,11 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             // depth texture lookup will always be slow
             const math::vec4 z           = depth * bcF;
             const __m128     depthTexels = depthBuffer->texel4<float>(x, y).simd;
-            const math::vec4 depthTest   {_mm_sub_ps(z.simd, depthTexels)};
+            const int        depthTest   = _mm_movemask_ps(_mm_cmplt_ps(z.simd, depthTexels));
 
             for (int32_t i = 0; i < 4; ++i)
             {
-                if (depthTest[i] < 0.f || _mm_movemask_ps(bcF[i].simd))
+                if ((depthTest & (0x01 << i)) | _mm_movemask_ps(bcF[i].simd))
                 {
                     continue;
                 }
