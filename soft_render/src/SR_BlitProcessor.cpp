@@ -3,9 +3,6 @@
 #include "lightsky/math/fixed.h"
 
 #include "soft_render/SR_BlitProcesor.hpp"
-#include "soft_render/SR_Color.hpp"
-#include "soft_render/SR_Texture.hpp"
-#include "soft_render/SR_WindowBuffer.hpp"
 
 
 
@@ -13,7 +10,6 @@
  * Anonymous helper functions and namespaces
 -----------------------------------------------------------------------------*/
 namespace math = ls::math;
-using sr_fixed_type = math::ulong_lowp_t;
 
 
 
@@ -21,48 +17,35 @@ using sr_fixed_type = math::ulong_lowp_t;
  * SR_BlitProcessor Class
 -----------------------------------------------------------------------------*/
 /*-------------------------------------
- * Nearest-neighbor filtering
+ * External function declarations to keep compile times short
 -------------------------------------*/
-void SR_BlitProcessor::blit_nearest(
-    unsigned char* const pOutBuf,
-    const uint_fast16_t  inW,
-    const uint_fast16_t  inH,
-    const uint_fast16_t  outW,
-    const uint_fast16_t  outH) noexcept
-{
-    // Only tile data along the y-axis of the render buffer. This will help to
-    // make use of the CPU prefetcher when iterating pixels along the x-axis
-    constexpr ptrdiff_t stride    = sizeof(SR_ColorRGBA8);
-    const uint_fast16_t dstH      = outH / mNumThreads;
-    const uint_fast16_t dstY0     = mThreadId * dstH;
-    const uint_fast16_t dstY1     = dstY0 + dstH;
-    const sr_fixed_type finW      = math::fixed_cast<sr_fixed_type>(inW);
-    const sr_fixed_type finH      = math::fixed_cast<sr_fixed_type>(inH);
-    const sr_fixed_type foutW     = finW / math::fixed_cast<sr_fixed_type>(outW);
-    const sr_fixed_type foutH     = finH / math::fixed_cast<sr_fixed_type>(outH);
-    const uint_fast16_t numPixels = (outW*outH) - 1;
+template void SR_BlitProcessor::blit_nearest_r<uint8_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_r<uint16_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_r<uint32_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_r<uint64_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_r<float>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_r<double>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
 
-    for (uint_fast16_t y = dstY0; y < dstY1; ++y)
-    {
-        const sr_fixed_type yf = math::fixed_cast<sr_fixed_type>(y);
+template void SR_BlitProcessor::blit_nearest_rg<uint8_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_rg<uint16_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_rg<uint32_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_rg<uint64_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_rg<float>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_rg<double>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
 
-        for (uint_fast16_t x = 0; x < outW; ++x)
-        {
-            const sr_fixed_type xf   = math::fixed_cast<sr_fixed_type>(x);
-            uint_fast16_t       srcX = (uint_fast16_t)math::fixed_cast<sr_fixed_type::base_type, sr_fixed_type::fraction_digits>(xf * foutW);
-            uint_fast16_t       srcY = (uint_fast16_t)math::fixed_cast<sr_fixed_type::base_type, sr_fixed_type::fraction_digits>(yf * foutH);
+template void SR_BlitProcessor::blit_nearest_rgb<uint8_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_rgb<uint16_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_rgb<uint32_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_rgb<uint64_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_rgb<float>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_rgb<double>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
 
-            srcX = ls::math::min<uint_fast16_t>(srcX, inW - 1);
-            srcY = ls::math::min<uint_fast16_t>(srcY, inH - 1);
-
-            const SR_ColorRGB8  inColor  = mTexture->texel<SR_ColorRGB8>(srcX, srcY);
-            const uint_fast16_t outIndex = x + outW * y;
-            SR_ColorRGB8* const outColor = reinterpret_cast<SR_ColorRGB8*>(pOutBuf + (numPixels - outIndex) * stride);
-
-            *outColor = inColor;
-        }
-    }
-}
+template void SR_BlitProcessor::blit_nearest_rgba<uint8_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_rgba<uint16_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_rgba<uint32_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_rgba<uint64_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_rgba<float>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_rgba<double>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
 
 
 
@@ -77,7 +60,36 @@ void SR_BlitProcessor::execute() noexcept
     const uint_fast16_t bufferH = mBackBuffer->height();
     const uint_fast16_t texW    = mTexture->width();
     const uint_fast16_t texH    = mTexture->height();
-    unsigned char*      pDest   = reinterpret_cast<unsigned char*>(mBackBuffer->buffer());
+    SR_ColorRGBA8*      pDest   = mBackBuffer->buffer();
 
-    blit_nearest(pDest, texW, texH, bufferW, bufferH);
+    switch (mTexture->type())
+    {
+        case SR_COLOR_R_8U:        blit_nearest_r<uint8_t>(pDest, texW, texH, bufferW, bufferH);  break;
+        case SR_COLOR_R_16U:       blit_nearest_r<uint16_t>(pDest, texW, texH, bufferW, bufferH); break;
+        case SR_COLOR_R_32U:       blit_nearest_r<uint32_t>(pDest, texW, texH, bufferW, bufferH); break;
+        case SR_COLOR_R_64U:       blit_nearest_r<uint64_t>(pDest, texW, texH, bufferW, bufferH); break;
+        case SR_COLOR_R_FLOAT:     blit_nearest_r<float>(pDest, texW, texH, bufferW, bufferH);    break;
+        case SR_COLOR_R_DOUBLE:    blit_nearest_r<double>(pDest, texW, texH, bufferW, bufferH);   break;
+
+        case SR_COLOR_RG_8U:       blit_nearest_rg<uint8_t>(pDest, texW, texH, bufferW, bufferH);  break;
+        case SR_COLOR_RG_16U:      blit_nearest_rg<uint16_t>(pDest, texW, texH, bufferW, bufferH); break;
+        case SR_COLOR_RG_32U:      blit_nearest_rg<uint32_t>(pDest, texW, texH, bufferW, bufferH); break;
+        case SR_COLOR_RG_64U:      blit_nearest_rg<uint64_t>(pDest, texW, texH, bufferW, bufferH); break;
+        case SR_COLOR_RG_FLOAT:    blit_nearest_rg<float>(pDest, texW, texH, bufferW, bufferH);    break;
+        case SR_COLOR_RG_DOUBLE:   blit_nearest_rg<double>(pDest, texW, texH, bufferW, bufferH);   break;
+
+        case SR_COLOR_RGB_8U:      blit_nearest_rgb<uint8_t>(pDest, texW, texH, bufferW, bufferH);  break;
+        case SR_COLOR_RGB_16U:     blit_nearest_rgb<uint16_t>(pDest, texW, texH, bufferW, bufferH); break;
+        case SR_COLOR_RGB_32U:     blit_nearest_rgb<uint32_t>(pDest, texW, texH, bufferW, bufferH); break;
+        case SR_COLOR_RGB_64U:     blit_nearest_rgb<uint64_t>(pDest, texW, texH, bufferW, bufferH); break;
+        case SR_COLOR_RGB_FLOAT:   blit_nearest_rgb<float>(pDest, texW, texH, bufferW, bufferH);    break;
+        case SR_COLOR_RGB_DOUBLE:  blit_nearest_rgb<double>(pDest, texW, texH, bufferW, bufferH);   break;
+
+        case SR_COLOR_RGBA_8U:     blit_nearest_rgba<uint8_t>(pDest, texW, texH, bufferW, bufferH);  break;
+        case SR_COLOR_RGBA_16U:    blit_nearest_rgba<uint16_t>(pDest, texW, texH, bufferW, bufferH); break;
+        case SR_COLOR_RGBA_32U:    blit_nearest_rgba<uint32_t>(pDest, texW, texH, bufferW, bufferH); break;
+        case SR_COLOR_RGBA_64U:    blit_nearest_rgba<uint64_t>(pDest, texW, texH, bufferW, bufferH); break;
+        case SR_COLOR_RGBA_FLOAT:  blit_nearest_rgba<float>(pDest, texW, texH, bufferW, bufferH);    break;
+        case SR_COLOR_RGBA_DOUBLE: blit_nearest_rgba<double>(pDest, texW, texH, bufferW, bufferH);   break;
+    }
 }

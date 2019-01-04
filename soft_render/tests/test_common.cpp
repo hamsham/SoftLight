@@ -425,7 +425,7 @@ utils::Pointer<SR_SceneGraph> create_context()
     assert(retCode == SR_TEST_MAX_THREADS);
 
     SR_Texture& tex = context.texture(texId);
-    retCode = tex.init(SR_ColorDataType::SR_COLOR_RGB_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = tex.init(SR_ColorDataType::SR_COLOR_RGBA_FLOAT, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     assert(retCode == 0);
 
     SR_Texture& depth = context.texture(depthId);
