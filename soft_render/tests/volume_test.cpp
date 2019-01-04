@@ -192,6 +192,7 @@ SR_FragmentShader volume_frag_shader()
     SR_FragmentShader shader;
     shader.numVaryings = 1;
     shader.numOutputs = 1;
+    shader.blend = true;
     shader.shader = _volume_frag_shader;
 
     return shader;

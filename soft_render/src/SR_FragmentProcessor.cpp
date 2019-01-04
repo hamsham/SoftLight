@@ -919,37 +919,67 @@ void SR_FragmentProcessor::flush_fragments(
 {
     const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
     const SR_FragmentShader fragShader  = mShader->mFragShader;
-    const auto              pShader     = fragShader.shader;
     const uint32_t          numVaryings = fragShader.numVaryings;
     const uint32_t          numOutputs  = fragShader.numOutputs;
+    const bool              blendFrags  = fragShader.blend;
+    const auto              pShader     = fragShader.shader;
     SR_Framebuffer*         fbo         = mFbo;
     math::vec4* const       inVaryings  = mBins[binId].mVaryings;
 
     math::vec4 pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
     math::vec4 outVaryings[SR_SHADER_MAX_VARYING_VECTORS];
 
-    while (numQueuedFrags --> 0)
+    if (blendFrags)
     {
-        const math::vec4 bc = outCoords[numQueuedFrags].bc;
-        const uint16_t   x  = outCoords[numQueuedFrags].x;
-        const uint16_t   y  = outCoords[numQueuedFrags].y;
-        const math::vec4 fc {outCoords[numQueuedFrags].xf, outCoords[numQueuedFrags].yf, outCoords[numQueuedFrags].zf, 1.f};
-        const int32_t    zi = (int32_t)outCoords[numQueuedFrags].zf; // better to do the cast here after all candidate pixels have been rejected
-
-        // Interpolate varying variables using the barycentric coordinates
-        interpolate_tri_varyings(bc, numVaryings, inVaryings, outVaryings);
-
-        uint_fast32_t  haveOutputs = pShader(fc, pUniforms, outVaryings, pOutputs);
-        // branchless select
-        switch (-haveOutputs & numOutputs)
+        while (numQueuedFrags --> 0)
         {
-            case 4: /*zi < fbo->depth() && */fbo->put_pixel(3, x, y, (uint16_t)zi, pOutputs[3]);
-            case 3: /*zi < fbo->depth() && */fbo->put_pixel(2, x, y, (uint16_t)zi, pOutputs[2]);
-            case 2: /*zi < fbo->depth() && */fbo->put_pixel(1, x, y, (uint16_t)zi, pOutputs[1]);
-            case 1: /*zi < fbo->depth() && */fbo->put_pixel(0, x, y, (uint16_t)zi, pOutputs[0]);
-                fbo->put_depth_pixel<float>(x, y, fc[2]);
+            const math::vec4 bc = outCoords[numQueuedFrags].bc;
+            const uint16_t   x  = outCoords[numQueuedFrags].x;
+            const uint16_t   y  = outCoords[numQueuedFrags].y;
+            const math::vec4 fc {outCoords[numQueuedFrags].xf, outCoords[numQueuedFrags].yf, outCoords[numQueuedFrags].zf, 1.f};
+            const int32_t    zi = (int32_t)outCoords[numQueuedFrags].zf; // better to do the cast here after all candidate pixels have been rejected
+
+            // Interpolate varying variables using the barycentric coordinates
+            interpolate_tri_varyings(bc, numVaryings, inVaryings, outVaryings);
+
+            uint_fast32_t  haveOutputs = pShader(fc, pUniforms, outVaryings, pOutputs);
+            // branchless select
+            switch (-haveOutputs & numOutputs)
+            {
+                case 4: fbo->put_alpha_pixel(3, x, y, (uint16_t)zi, pOutputs[3]);
+                case 3: fbo->put_alpha_pixel(2, x, y, (uint16_t)zi, pOutputs[2]);
+                case 2: fbo->put_alpha_pixel(1, x, y, (uint16_t)zi, pOutputs[1]);
+                case 1: fbo->put_alpha_pixel(0, x, y, (uint16_t)zi, pOutputs[0]);
+                    fbo->put_depth_pixel<float>(x, y, fc[2]);
+            }
         }
+        return;
     }
+    else
+    {
+        while (numQueuedFrags --> 0)
+        {
+            const math::vec4 bc = outCoords[numQueuedFrags].bc;
+            const uint16_t   x  = outCoords[numQueuedFrags].x;
+            const uint16_t   y  = outCoords[numQueuedFrags].y;
+            const math::vec4 fc {outCoords[numQueuedFrags].xf, outCoords[numQueuedFrags].yf, outCoords[numQueuedFrags].zf, 1.f};
+            const int32_t    zi = (int32_t)outCoords[numQueuedFrags].zf; // better to do the cast here after all candidate pixels have been rejected
+
+            // Interpolate varying variables using the barycentric coordinates
+            interpolate_tri_varyings(bc, numVaryings, inVaryings, outVaryings);
+
+            uint_fast32_t  haveOutputs = pShader(fc, pUniforms, outVaryings, pOutputs);
+            // branchless select
+            switch (-haveOutputs & numOutputs)
+            {
+                case 4: fbo->put_pixel(3, x, y, (uint16_t)zi, pOutputs[3]);
+                case 3: fbo->put_pixel(2, x, y, (uint16_t)zi, pOutputs[2]);
+                case 2: fbo->put_pixel(1, x, y, (uint16_t)zi, pOutputs[1]);
+                case 1: fbo->put_pixel(0, x, y, (uint16_t)zi, pOutputs[0]);
+                    fbo->put_depth_pixel<float>(x, y, fc[2]);
+            }
+        }
+        }
 }
 
 

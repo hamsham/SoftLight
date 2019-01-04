@@ -137,7 +137,16 @@ void SR_VertexProcessor::flush_fragments() const noexcept
     // first to allow for fragment rejection during the depth test.
     if (tileId == mNumThreads-1u)
     {
-        ls::utils::sort_quick<SR_FragmentBin, ls::utils::IsGreater<SR_FragmentBin>>(mFragBins, math::min<uint64_t>(mBinsUsed->load(), SR_SHADER_MAX_FRAG_BINS));
+        // Alpha-blended fragments get sorted from nearest to furthest for
+        // corrected coloring
+        if (mShader->fragment_shader().blend)
+        {
+            ls::utils::sort_quick<SR_FragmentBin, ls::utils::IsLess<SR_FragmentBin>>(mFragBins, math::min<uint64_t>(mBinsUsed->load(), SR_SHADER_MAX_FRAG_BINS));
+        }
+        else
+        {
+            ls::utils::sort_quick<SR_FragmentBin, ls::utils::IsGreater<SR_FragmentBin>>(mFragBins, math::min<uint64_t>(mBinsUsed->load(), SR_SHADER_MAX_FRAG_BINS));
+        }
         mFragProcessors->store(syncPoint1, std::memory_order_release);
     }
 

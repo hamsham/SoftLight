@@ -63,6 +63,12 @@ struct alignas(sizeof(ls::math::vec4)) SR_FragmentBin
     // 256 bytes = 2048 bits
 };
 
+// Comparison operator for sorting blended fragments by depth
+constexpr bool operator < (const SR_FragmentBin& a, const SR_FragmentBin& b)
+{
+    return a.mPerspDivide[0] < b.mPerspDivide[0];
+}
+
 // Comparison operator for sorting fragments by depth
 constexpr bool operator > (const SR_FragmentBin& a, const SR_FragmentBin& b)
 {

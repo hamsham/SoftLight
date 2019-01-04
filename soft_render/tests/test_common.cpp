@@ -153,6 +153,7 @@ SR_FragmentShader normal_frag_shader()
     SR_FragmentShader shader;
     shader.numVaryings = 2;
     shader.numOutputs = 1;
+    shader.blend = false;
     shader.shader = _normal_frag_shader_impl;
 
     return shader;
@@ -393,6 +394,7 @@ SR_FragmentShader texture_frag_shader()
     SR_FragmentShader shader;
     shader.numVaryings = 3;
     shader.numOutputs = 1;
+    shader.blend = false;
     shader.shader = _texture_frag_shader_spot;
     //shader.shader = _texture_frag_shader_pbr;
 

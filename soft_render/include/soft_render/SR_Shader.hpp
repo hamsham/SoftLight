@@ -58,8 +58,8 @@ struct SR_VertexShader
 struct SR_FragmentShader
 {
     uint8_t numVaryings;
-
     uint8_t numOutputs;
+    bool    blend;
 
     bool (*shader)(
         const ls::math::vec4_t<float>& fragCoord,
