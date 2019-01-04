@@ -17,8 +17,17 @@ class SR_Texture;
 class SR_WindowBuffer;
 
 
-/*-----------------------------------------------------------------------------
- * Encapsulation of texture blitting on another thread.
+/**----------------------------------------------------------------------------
+ * @brief The Blit Processor helps to perform texture blitting to the native
+ * window backbuffer on another thread.
+ *
+ * Much of the blitting routines are templated to support conversion between
+ * possible texture types and the backbuffer (which is an 8-bit RGBA buffer).
+ *
+ * Texture blitting uses nearest-neighbor filtering to increase or decrease the
+ * resolution and fit the backbuffer. Fixed-point calculation is used to avoid
+ * precision errors and increase ALU throughput. Benchmarks on x86 and ARM has
+ * shown that floating-point logic performs worse in this area.
 -----------------------------------------------------------------------------*/
 struct SR_BlitProcessor
 {
@@ -34,33 +43,37 @@ struct SR_BlitProcessor
 
     // 160 bits total, 20 bytes
 
+    // Blit a single R channel
     template <typename color_type>
     void blit_nearest_r(
-        SR_ColorRGBA8* const pOutBuf,
+        unsigned char* const pOutBuf,
         const uint_fast16_t  inW,
         const uint_fast16_t  inH,
         const uint_fast16_t  outW,
         const uint_fast16_t  outH
     ) noexcept;
 
+    // Blit a texture with only RG color channels
     template <typename color_type>
     void blit_nearest_rg(
-        SR_ColorRGBA8* const pOutBuf,
+        unsigned char* const pOutBuf,
         const uint_fast16_t  inW,
         const uint_fast16_t  inH,
         const uint_fast16_t  outW,
         const uint_fast16_t  outH
     ) noexcept;
 
+    // Blit an RGB texture
     template <typename color_type>
     void blit_nearest_rgb(
-        SR_ColorRGBA8* const pOutBuf,
+        unsigned char* const pOutBuf,
         const uint_fast16_t  inW,
         const uint_fast16_t  inH,
         const uint_fast16_t  outW,
         const uint_fast16_t  outH
     ) noexcept;
 
+    // Blit all 4 color components
     template <typename color_type>
     void blit_nearest_rgba(
         SR_ColorRGBA8* const pOutBuf,
@@ -78,26 +91,27 @@ struct SR_BlitProcessor
 /*-------------------------------------
  * External function declarations to keep compile times short
 -------------------------------------*/
-extern template void SR_BlitProcessor::blit_nearest_r<uint8_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-extern template void SR_BlitProcessor::blit_nearest_r<uint16_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-extern template void SR_BlitProcessor::blit_nearest_r<uint32_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-extern template void SR_BlitProcessor::blit_nearest_r<uint64_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-extern template void SR_BlitProcessor::blit_nearest_r<float>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-extern template void SR_BlitProcessor::blit_nearest_r<double>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+/*
+extern template void SR_BlitProcessor::blit_nearest_r<uint8_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+extern template void SR_BlitProcessor::blit_nearest_r<uint16_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+extern template void SR_BlitProcessor::blit_nearest_r<uint32_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+extern template void SR_BlitProcessor::blit_nearest_r<uint64_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+extern template void SR_BlitProcessor::blit_nearest_r<float>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+extern template void SR_BlitProcessor::blit_nearest_r<double>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
 
-extern template void SR_BlitProcessor::blit_nearest_rg<uint8_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-extern template void SR_BlitProcessor::blit_nearest_rg<uint16_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-extern template void SR_BlitProcessor::blit_nearest_rg<uint32_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-extern template void SR_BlitProcessor::blit_nearest_rg<uint64_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-extern template void SR_BlitProcessor::blit_nearest_rg<float>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-extern template void SR_BlitProcessor::blit_nearest_rg<double>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+extern template void SR_BlitProcessor::blit_nearest_rg<uint8_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+extern template void SR_BlitProcessor::blit_nearest_rg<uint16_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+extern template void SR_BlitProcessor::blit_nearest_rg<uint32_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+extern template void SR_BlitProcessor::blit_nearest_rg<uint64_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+extern template void SR_BlitProcessor::blit_nearest_rg<float>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+extern template void SR_BlitProcessor::blit_nearest_rg<double>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
 
-extern template void SR_BlitProcessor::blit_nearest_rgb<uint8_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-extern template void SR_BlitProcessor::blit_nearest_rgb<uint16_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-extern template void SR_BlitProcessor::blit_nearest_rgb<uint32_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-extern template void SR_BlitProcessor::blit_nearest_rgb<uint64_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-extern template void SR_BlitProcessor::blit_nearest_rgb<float>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-extern template void SR_BlitProcessor::blit_nearest_rgb<double>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+extern template void SR_BlitProcessor::blit_nearest_rgb<uint8_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+extern template void SR_BlitProcessor::blit_nearest_rgb<uint16_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+extern template void SR_BlitProcessor::blit_nearest_rgb<uint32_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+extern template void SR_BlitProcessor::blit_nearest_rgb<uint64_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+extern template void SR_BlitProcessor::blit_nearest_rgb<float>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+extern template void SR_BlitProcessor::blit_nearest_rgb<double>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
 
 extern template void SR_BlitProcessor::blit_nearest_rgba<uint8_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
 extern template void SR_BlitProcessor::blit_nearest_rgba<uint16_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
@@ -105,6 +119,7 @@ extern template void SR_BlitProcessor::blit_nearest_rgba<uint32_t>(SR_ColorRGBA8
 extern template void SR_BlitProcessor::blit_nearest_rgba<uint64_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
 extern template void SR_BlitProcessor::blit_nearest_rgba<float>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
 extern template void SR_BlitProcessor::blit_nearest_rgba<double>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+*/
 
 
 
@@ -113,7 +128,7 @@ extern template void SR_BlitProcessor::blit_nearest_rgba<double>(SR_ColorRGBA8* 
 -------------------------------------*/
 template <typename color_type>
 void SR_BlitProcessor::blit_nearest_r(
-    SR_ColorRGBA8* const pOutBuf,
+    unsigned char* const pOutBuf,
     const uint_fast16_t  inW,
     const uint_fast16_t  inH,
     const uint_fast16_t  outW,
@@ -121,6 +136,7 @@ void SR_BlitProcessor::blit_nearest_r(
 {
     // Only tile data along the y-axis of the render buffer. This will help to
     // make use of the CPU prefetcher when iterating pixels along the x-axis
+    constexpr ptrdiff_t stride    = sizeof(SR_ColorRGBA8);
     const uint_fast16_t dstH      = outH / mNumThreads;
     const uint_fast16_t dstY0     = mThreadId * dstH;
     const uint_fast16_t dstY1     = dstY0 + dstH;
@@ -139,17 +155,16 @@ void SR_BlitProcessor::blit_nearest_r(
 
         for (uint_fast16_t x = 0; x < outW; ++x)
         {
-            const sr_fixed_type xf = ls::math::fixed_cast<sr_fixed_type>(x);
-            uint_fast16_t srcX = (uint_fast16_t)ls::math::fixed_cast<sr_fixed_type::base_type, sr_fixed_type::fraction_digits>(xf * foutW);
+            const sr_fixed_type xf = ls::math::fixed_cast<sr_fixed_type>(x) * foutW;
+            uint_fast16_t srcX = (uint_fast16_t)ls::math::fixed_cast<sr_fixed_type::base_type, sr_fixed_type::fraction_digits>(xf);
             srcX = ls::math::min<uint_fast16_t>(srcX, inW - 1);
 
             // Copy 4 color components at once
             const color_type                   inR      = mTexture->texel<color_type>(srcX,   srcY);
             const SR_ColorRGBAType<color_type> inColor  {color_type{0}, color_type{0}, inR, color_type{1}}; // BGRA
             const uint_fast16_t                outIndex = x + yOffset;
-            SR_ColorRGBA8&                     outColor = reinterpret_cast<SR_ColorRGBA8*>(pOutBuf)[numPixels - outIndex];
 
-            outColor = color_cast<uint8_t, color_type>(inColor);
+            *reinterpret_cast<SR_ColorRGBA8*>(pOutBuf + (numPixels - outIndex) * stride) = color_cast<uint8_t, color_type>(inColor);
         }
     }
 }
@@ -161,7 +176,7 @@ void SR_BlitProcessor::blit_nearest_r(
 -------------------------------------*/
 template <typename color_type>
 void SR_BlitProcessor::blit_nearest_rg(
-    SR_ColorRGBA8* const pOutBuf,
+    unsigned char* const pOutBuf,
     const uint_fast16_t  inW,
     const uint_fast16_t  inH,
     const uint_fast16_t  outW,
@@ -169,6 +184,7 @@ void SR_BlitProcessor::blit_nearest_rg(
 {
     // Only tile data along the y-axis of the render buffer. This will help to
     // make use of the CPU prefetcher when iterating pixels along the x-axis
+    constexpr ptrdiff_t stride    = sizeof(SR_ColorRGBA8);
     const uint_fast16_t dstH      = outH / mNumThreads;
     const uint_fast16_t dstY0     = mThreadId * dstH;
     const uint_fast16_t dstY1     = dstY0 + dstH;
@@ -187,8 +203,8 @@ void SR_BlitProcessor::blit_nearest_rg(
 
         for (uint_fast16_t x = 0; x < outW; ++x)
         {
-            const sr_fixed_type xf = ls::math::fixed_cast<sr_fixed_type>(x);
-            uint_fast16_t srcX = (uint_fast16_t)ls::math::fixed_cast<sr_fixed_type::base_type, sr_fixed_type::fraction_digits>(xf * foutW);
+            const sr_fixed_type xf = ls::math::fixed_cast<sr_fixed_type>(x) * foutW;
+            uint_fast16_t srcX = (uint_fast16_t)ls::math::fixed_cast<sr_fixed_type::base_type, sr_fixed_type::fraction_digits>(xf);
             srcX = ls::math::min<uint_fast16_t>(srcX, inW - 1);
 
             // Copy 4 color components at once
@@ -196,7 +212,7 @@ void SR_BlitProcessor::blit_nearest_rg(
             const SR_ColorRGBAType<color_type> inColor  {color_type{0}, inRG[1], inRG[0], color_type{1}}; // BGRA
             const uint_fast16_t                outIndex = x + yOffset;
 
-            pOutBuf[numPixels - outIndex] = color_cast<uint8_t, color_type>(inColor);
+            *reinterpret_cast<SR_ColorRGBA8*>(pOutBuf + (numPixels - outIndex) * stride) = color_cast<uint8_t, color_type>(inColor);
         }
     }
 }
@@ -208,7 +224,7 @@ void SR_BlitProcessor::blit_nearest_rg(
 -------------------------------------*/
 template <typename color_type>
 void SR_BlitProcessor::blit_nearest_rgb(
-    SR_ColorRGBA8* const pOutBuf,
+    unsigned char* const pOutBuf,
     const uint_fast16_t  inW,
     const uint_fast16_t  inH,
     const uint_fast16_t  outW,
@@ -216,6 +232,7 @@ void SR_BlitProcessor::blit_nearest_rgb(
 {
     // Only tile data along the y-axis of the render buffer. This will help to
     // make use of the CPU prefetcher when iterating pixels along the x-axis
+    constexpr ptrdiff_t stride    = sizeof(SR_ColorRGBA8);
     const uint_fast16_t dstH      = outH / mNumThreads;
     const uint_fast16_t dstY0     = mThreadId * dstH;
     const uint_fast16_t dstY1     = dstY0 + dstH;
@@ -234,16 +251,15 @@ void SR_BlitProcessor::blit_nearest_rgb(
 
         for (uint_fast16_t x = 0; x < outW; ++x)
         {
-            const sr_fixed_type xf = ls::math::fixed_cast<sr_fixed_type>(x);
-            uint_fast16_t srcX = (uint_fast16_t)ls::math::fixed_cast<sr_fixed_type::base_type, sr_fixed_type::fraction_digits>(xf * foutW);
+            const sr_fixed_type xf = ls::math::fixed_cast<sr_fixed_type>(x) * foutW;
+            uint_fast16_t srcX = (uint_fast16_t)ls::math::fixed_cast<sr_fixed_type::base_type, sr_fixed_type::fraction_digits>(xf);
             srcX = ls::math::min<uint_fast16_t>(srcX, inW - 1);
 
             // Copy 4 color components
-            const SR_ColorRGBType<color_type>  inRGB   = mTexture->texel<SR_ColorRGBType<color_type>>(srcX, srcY);
-            const SR_ColorRGBAType<color_type> inColor {inRGB[0], inRGB[1], inRGB[2], color_type{1}};
-            const uint_fast16_t                outIndex = x + yOffset;
+            const SR_ColorRGBType<color_type> inColor  = mTexture->texel<SR_ColorRGBType<color_type>>(srcX, srcY);
+            const uint_fast16_t               outIndex = x + yOffset;
 
-            pOutBuf[numPixels - outIndex] = color_cast<uint8_t, color_type>(inColor);
+            *reinterpret_cast<SR_ColorRGB8*>(pOutBuf + (numPixels - outIndex) * stride) = color_cast<uint8_t, color_type>(inColor);
         }
     }
 }
@@ -281,8 +297,8 @@ void SR_BlitProcessor::blit_nearest_rgba(
 
         for (uint_fast16_t x = 0; x < outW; ++x)
         {
-            const sr_fixed_type xf = ls::math::fixed_cast<sr_fixed_type>(x);
-            uint_fast16_t srcX = (uint_fast16_t)ls::math::fixed_cast<sr_fixed_type::base_type, sr_fixed_type::fraction_digits>(xf * foutW);
+            const sr_fixed_type xf = ls::math::fixed_cast<sr_fixed_type>(x) * foutW;
+            uint_fast16_t srcX = (uint_fast16_t)ls::math::fixed_cast<sr_fixed_type::base_type, sr_fixed_type::fraction_digits>(xf);
             srcX = ls::math::min<uint_fast16_t>(srcX, inW - 1);
 
             const SR_ColorRGBAType<color_type> inColor  = mTexture->texel<SR_ColorRGBAType<color_type>>(srcX, srcY);

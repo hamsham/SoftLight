@@ -6,6 +6,8 @@
 
 #include "lightsky/utils/Pointer.h"
 
+#include "soft_render/SR_Color.hpp"
+
 
 
 /*-----------------------------------------------------------------------------
@@ -25,8 +27,10 @@ class SR_Texture;
 
 
 
-/*-----------------------------------------------------------------------------
- *
+/**----------------------------------------------------------------------------
+ * @brief The SR_WindowBuffer class encapsulates the native windowing system's
+ * backbuffer. This class gets passed into an SR_RenderWindow for blitting to
+ * the front buffer.
 -----------------------------------------------------------------------------*/
 class SR_WindowBuffer
 {
@@ -61,7 +65,19 @@ class SR_WindowBuffer
     virtual const ls::math::vec4_t<uint8_t>* buffer() const noexcept = 0;
 
     virtual ls::math::vec4_t<uint8_t>* buffer() noexcept = 0;
+
+    inline SR_ColorDataType type() const;
 };
+
+
+
+/*-------------------------------------
+ * Retrieve the native color type of the backbuffer.
+-------------------------------------*/
+inline SR_ColorDataType SR_WindowBuffer::type() const
+{
+    return SR_ColorDataType::SR_COLOR_RGBA_8U;
+}
 
 
 
