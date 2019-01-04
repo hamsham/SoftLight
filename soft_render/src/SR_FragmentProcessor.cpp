@@ -14,7 +14,7 @@
 /*-----------------------------------------------------------------------------
  * Rendering setup
 -----------------------------------------------------------------------------*/
-#define SR_RENDER_4_PIXELS
+//#define SR_RENDER_4_PIXELS
 
 
 
@@ -469,13 +469,13 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             bcF = math::transpose(bcF);
 
             // depth texture lookup will always be slow
-            const math::vec4 z           = depth * bcF;
-            const __m128     depthTexels = depthBuffer->texel4<float>(x, y).simd;
-            const int        depthTest = _mm_movemask_ps(_mm_cmplt_ps(z.simd, depthTexels));
+            const math::vec4&& z           = depth * bcF;
+            const __m128       depthTexels = depthBuffer->texel4<float>(x, y).simd;
+            const int          depthTest   = _mm_movemask_ps(_mm_cmplt_ps(z.simd, depthTexels));
 
             for (int32_t i = 0; i < 4; ++i)
             {
-                if ((depthTest & (0x01 << i)) | _mm_movemask_ps(bcF[i].simd))
+                if ((depthTest & (0x01 << i)) || _mm_movemask_ps(bcF[i].simd))
                 {
                     continue;
                 }
@@ -667,6 +667,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     const uint32_t    increment    = (uint32_t)mNumProcessors;
     const math::vec4  persp        = mBins[binId].mPerspDivide;
     const math::vec4* screenCoords = mBins[binId].mScreenCoords;
+    SR_FragCoord*     outCoords    = mQueues;
     math::vec4        p0           = screenCoords[0];
     math::vec4        p1           = screenCoords[1];
     math::vec4        p2           = screenCoords[2];
@@ -700,8 +701,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     const float p21xy = p21x * p21y;
 
     unsigned numQueuedFrags = 0;
-    SR_FragCoord* outCoords = mQueues;
-    const int32_t scanlineOffset = mNumProcessors - 1 - (((bboxMinY%mNumProcessors) + yOffset) % mNumProcessors);
+    const int32_t scanlineOffset = sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
 
     for (int32_t y = bboxMinY+scanlineOffset; y <= bboxMaxY; y += increment)
     {
