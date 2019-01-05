@@ -50,6 +50,14 @@ endif()
 
 
 # -------------------------------------
+# 3rd-party libraries
+# -------------------------------------
+include(assimpConfig.cmake)
+include(FreeImageConfig.cmake)
+
+
+
+# -------------------------------------
 # Source Paths
 # -------------------------------------
 include_directories(include)
@@ -178,8 +186,8 @@ if (NOT MSVC)
         lsmath
         lsutils
         lssetup
-        ${ASSIMP_LIBS}
-        ${FREEIMAGE_LIBS}
+        ${assimp_LIBRARIES}
+        ${FREEIMAGE_LIBRARIES}
         ${X11_LIBRARIES}
         pthread
     )
@@ -189,8 +197,8 @@ else()
         lsmath
         lsutils
         lssetup
-        ${ASSIMP_LIBS}
-        ${FREEIMAGE_LIBS}
+        ${assimp_LIBRARIES}
+        ${FREEIMAGE_LIBRARIES}
     )
 endif()
 

@@ -77,16 +77,16 @@ configure_file(testdata/head256x256x109            testdata/head256x256x109     
 # -------------------------------------
 if (NOT MSVC)
 	set(SR_EXTERNAL_LIBS
-		${ASSIMP_LIBS}
-		${FREEIMAGE_LIBS}
+		${assimp_LIBRARIES}
+		${FREEIMAGE_LIBRARIES}
         ${X11_LIBRARIES}
         ${X11_Xext_LIB}
 		pthread
 	)
 else()
 	set(SR_EXTERNAL_LIBS
-        ${ASSIMP_LIBS}
-        ${FREEIMAGE_LIBS}
+        ${assimp_LIBRARIES}
+        ${FREEIMAGE_LIBRARIES}
 	)
 endif()
 
@@ -95,6 +95,8 @@ endif()
 # -------------------------------------
 # Building and Linking Targets
 # -------------------------------------
+add_library(sr_test_common OBJECT test_common.hpp test_common.cpp)
+
 function(sr_add_test target sources)
     add_executable(${target} ${sources} ${ARGN})
     target_link_libraries(${target} soft_render lsmath lsutils lssetup ${SR_EXTERNAL_LIBS})
@@ -103,10 +105,10 @@ endfunction(sr_add_test)
 sr_add_test(color_convert        color_convert.cpp)
 sr_add_test(line_drawing         line_drawing.cpp)
 sr_add_test(sr_vertex_info       sr_vertex_info.cpp)
-sr_add_test(window_test          test_common.hpp test_common.cpp window_test.cpp)
-sr_add_test(draw_test            test_common.hpp test_common.cpp draw_test.cpp)
-sr_add_test(mesh_test            test_common.hpp test_common.cpp mesh_test.cpp)
-sr_add_test(window_buffer_test   test_common.hpp test_common.cpp window_buffer_test.cpp)
+sr_add_test(window_test          $<TARGET_OBJECTS:sr_test_common> window_test.cpp)
+sr_add_test(draw_test            $<TARGET_OBJECTS:sr_test_common> draw_test.cpp)
+sr_add_test(mesh_test            $<TARGET_OBJECTS:sr_test_common> mesh_test.cpp)
+sr_add_test(window_buffer_test   $<TARGET_OBJECTS:sr_test_common> window_buffer_test.cpp)
 sr_add_test(volume_test          volume_test.cpp)
 sr_add_test(scanline_offset_test scanline_offset_test.cpp)
 sr_add_test(screen_tile_test     screen_tile_test.cpp)

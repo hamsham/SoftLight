@@ -476,11 +476,7 @@ utils::Pointer<SR_SceneGraph> create_context()
     const SR_FragmentShader&& texFragShader  = texture_frag_shader();
 
     // I keep getting this weird error about alignment so I'm using malloc
-    #ifndef LS_ARCH_X86
-    std::shared_ptr<MeshUniforms>  pUniforms{(MeshUniforms*)malloc(sizeof(MeshUniforms)), [](MeshUniforms* p)->void {free(p);}};
-    #else
-    std::shared_ptr<MeshUniforms>  pUniforms{(MeshUniforms*)_mm_malloc(sizeof(MeshUniforms), sizeof(__m128)), [](MeshUniforms* p)->void {_mm_free(p);}};
-    #endif
+    std::shared_ptr<MeshUniforms>  pUniforms{(MeshUniforms*)ls::utils::aligned_malloc(sizeof(MeshUniforms)), [](MeshUniforms* p)->void {ls::utils::aligned_free(p);}};
 
     pUniforms->light.pos        = math::vec4{30.f, 45.f, 45.f, 1.f};
     pUniforms->light.ambient    = math::vec4{1.f};

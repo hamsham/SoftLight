@@ -480,9 +480,6 @@ void SR_VertexProcessor::execute() noexcept
         {
             flush_fragments();
         }
-        #ifdef LS_ARCH_X86
-            //_mm_pause();
-        #endif
     }
 
     if (mBinsUsed->load(std::memory_order_consume))
