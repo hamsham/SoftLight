@@ -135,6 +135,7 @@ void SR_FragmentProcessor::render_point(
     const SR_FragmentShader fragShader  = mShader->mFragShader;
     const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
     const uint32_t          numOutputs  = fragShader.numOutputs;
+    const bool              depthMask   = fragShader.depthMask == SR_DEPTH_MASK_ON;
     const auto              pShader     = fragShader.shader;
     const math::vec4        screenCoord = mBins[binId].mScreenCoords[0];
     const math::vec4        fragCoord   {screenCoord[0], screenCoord[1], screenCoord[2], 1.f};
@@ -148,7 +149,7 @@ void SR_FragmentProcessor::render_point(
         const uint16_t y0    = (uint16_t)fragCoord[1];
         const float    depth = fragCoord[2];
 
-        if (fbo->test_depth_pixel(x0, y0, depth))
+        if (fragShader.depthTest == SR_DEPTH_TEST_OFF || (fragShader.depthTest == SR_DEPTH_TEST_ON && fbo->test_depth_pixel(x0, y0, depth)))
         {
             const uint16_t z = (uint16_t)depth;
             const uint_fast32_t haveOutputs = pShader(fragCoord, pUniforms, varyings, pOutputs);
@@ -161,7 +162,11 @@ void SR_FragmentProcessor::render_point(
                 case 2: fbo->put_pixel(1, x0, y0, z, pOutputs[1]);
                 case 1: fbo->put_pixel(0, x0, y0, z, pOutputs[0]);
                 //case 1: fbo->put_pixel(0, x0, y0, z, math::vec4{1.f, 0, 1.f, 1.f});
-                    fbo->put_depth_pixel<float>(x0, y0, depth);
+            }
+
+            if (depthMask)
+            {
+                fbo->put_depth_pixel<float>(x0, y0, z);
             }
         }
     }
@@ -190,9 +195,12 @@ void SR_FragmentProcessor::render_line(
 {
     math::vec4              pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
     const SR_FragmentShader fragShader  = mShader->mFragShader;
-    const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
     const uint32_t          numVaryings = fragShader.numVaryings;
     const uint32_t          numOutputs  = fragShader.numOutputs;
+    const bool              noDepthTest = fragShader.depthTest == SR_DEPTH_TEST_OFF;
+    const bool              depthMask   = fragShader.depthMask == SR_DEPTH_MASK_ON;
+    const auto              shader      = fragShader.shader;
+    const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
 
     const math::vec4& screenCoord0 = mBins[binId].mScreenCoords[0];
     const math::vec4& screenCoord1 = mBins[binId].mScreenCoords[1];
@@ -230,13 +238,16 @@ void SR_FragmentProcessor::render_line(
             {
                 interpolate_line_varyings(pointZ, numVaryings, inVaryings, outVaryings);
 
-                if (fbo->test_depth_pixel(pointX, pointY, pointZ))
+                if (noDepthTest || (fragShader.depthTest == SR_DEPTH_TEST_ON && fbo->test_depth_pixel(pointX, pointY, pointZ)))
                 {
                     const math::vec4 fragCoord{(float)pointX, (float)pointY, pointZ, 1.f};
 
-                    if (fragShader.shader(fragCoord, pUniforms, outVaryings, pOutputs))
+                    if (shader(fragCoord, pUniforms, outVaryings, pOutputs))
                     {
-                        fbo->put_depth_pixel(pointX, pointY, pointZ);
+                        if (depthMask)
+                        {
+                            fbo->put_depth_pixel<float>(pointX, pointY, pointZ);
+                        }
 
                         for (std::size_t targetId = 0; targetId < numOutputs; ++targetId)
                         {
@@ -276,13 +287,16 @@ void SR_FragmentProcessor::render_line(
             {
                 interpolate_line_varyings(pointZ, numVaryings, inVaryings, outVaryings);
 
-                if (fbo->test_depth_pixel(pointX, pointY, pointZ))
+                if (noDepthTest || (fragShader.depthTest == SR_DEPTH_TEST_ON && fbo->test_depth_pixel(pointX, pointY, pointZ)))
                 {
                     const math::vec4 fragCoord{(float)pointX, (float)pointY, pointZ, 1.f};
 
-                    if (fragShader.shader(fragCoord, pUniforms, outVaryings, pOutputs))
+                    if (shader(fragCoord, pUniforms, outVaryings, pOutputs))
                     {
-                        fbo->put_depth_pixel(pointX, pointY, pointZ);
+                        if (depthMask)
+                        {
+                            fbo->put_depth_pixel<float>(pointX, pointY, pointZ);
+                        }
 
                         for (std::size_t targetId = 0; targetId < numOutputs; ++targetId)
                         {
@@ -322,13 +336,16 @@ void SR_FragmentProcessor::render_line(
             {
                 interpolate_line_varyings(pointZ, numVaryings, inVaryings, outVaryings);
 
-                if (fbo->test_depth_pixel(pointX, pointY, pointZ))
+                if (noDepthTest || (fragShader.depthTest == SR_DEPTH_TEST_ON && fbo->test_depth_pixel(pointX, pointY, pointZ)))
                 {
                     const math::vec4 fragCoord{(float)pointX, (float)pointY, pointZ, 1.f};
 
-                    if (fragShader.shader(fragCoord, pUniforms, outVaryings, pOutputs))
+                    if (shader(fragCoord, pUniforms, outVaryings, pOutputs))
                     {
-                        fbo->put_depth_pixel(pointX, pointY, pointZ);
+                        if (depthMask)
+                        {
+                            fbo->put_depth_pixel<float>(pointX, pointY, pointZ);
+                        }
 
                         for (std::size_t targetId = 0; targetId < numOutputs; ++targetId)
                         {
@@ -360,13 +377,16 @@ void SR_FragmentProcessor::render_line(
     {
         interpolate_line_varyings(pointZ, numVaryings, inVaryings, outVaryings);
 
-        if (fbo->test_depth_pixel(pointX, pointY, pointZ))
+        if (noDepthTest || (fragShader.depthTest == SR_DEPTH_TEST_ON && fbo->test_depth_pixel(pointX, pointY, pointZ)))
         {
             const math::vec4 fragCoord{(float)pointX, (float)pointY, pointZ, 1.f};
 
-            if (fragShader.shader(fragCoord, pUniforms, outVaryings, pOutputs))
+            if (shader(fragCoord, pUniforms, outVaryings, pOutputs))
             {
-                fbo->put_depth_pixel(pointX, pointY, pointZ);
+                if (depthMask)
+                {
+                    fbo->put_depth_pixel<float>(pointX, pointY, pointZ);
+                }
 
                 for (std::size_t targetId = 0; targetId < numOutputs; ++targetId)
                 {
@@ -394,6 +414,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     math::vec4        p0           = screenCoords[0];
     math::vec4        p1           = screenCoords[1];
     math::vec4        p2           = screenCoords[2];
+    const int         depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON);
     const int32_t     bboxMinX     = math::min(mFboW, math::max(0.f, math::min(p0[0], p1[0], p2[0])));
     const int32_t     bboxMinY     = math::min(mFboH, math::max(0.f, math::min(p0[1], p1[1], p2[1])));
     const int32_t     bboxMaxX     = math::max(0.f, math::min(mFboW, math::max(p0[0], p1[0], p2[0])));
@@ -471,7 +492,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             // depth texture lookup will always be slow
             const math::vec4&& z           = depth * bcF;
             const __m128       depthTexels = depthBuffer->texel4<float>(x, y).simd;
-            const int          depthTest   = _mm_movemask_ps(_mm_cmplt_ps(z.simd, depthTexels));
+            const int          depthTest   = depthTesting & _mm_movemask_ps(_mm_cmplt_ps(z.simd, depthTexels));
 
             for (int32_t i = 0; i < 4; ++i)
             {
@@ -535,6 +556,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     math::vec4        p0           = screenCoords[0];
     math::vec4        p1           = screenCoords[1];
     math::vec4        p2           = screenCoords[2];
+    const int         depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON);
     const int32_t     bboxMinX     = math::min(mFboW, math::max(0.f, math::min(p0[0], p1[0], p2[0])));
     const int32_t     bboxMinY     = math::min(mFboH, math::max(0.f, math::min(p0[1], p1[1], p2[1])));
     const int32_t     bboxMaxX     = math::max(0.f, math::min(mFboW, math::max(p0[0], p1[0], p2[0])));
@@ -608,7 +630,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             // depth texture lookup will always be slow
             const math::vec4&& z           = depth * bcF;
             const math::vec4&& depthTexels = depthBuffer->texel4<float>(x, y);
-            const int          depthTest   = math::sign_bits(z - depthTexels);
+            const int          depthTest   = depthTesting & math::sign_bits(z - depthTexels);
 
             for (int32_t i = 0; i < 4; ++i)
             {
@@ -671,6 +693,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     math::vec4        p0           = screenCoords[0];
     math::vec4        p1           = screenCoords[1];
     math::vec4        p2           = screenCoords[2];
+    const int         depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON);
     const int32_t     bboxMinX     = math::min(mFboW, math::max(0.f, math::min(p0[0], p1[0], p2[0])));
     const int32_t     bboxMinY     = math::min(mFboH, math::max(0.f, math::min(p0[1], p1[1], p2[1])));
     const int32_t     bboxMaxX     = math::max(0.f, math::min(mFboW, math::max(p0[0], p1[0], p2[0])));
@@ -743,7 +766,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             // depth texture lookup will always be slow
             const math::vec4&& z              = depth * bcF;
             const math::vec4&& depthBufTexels = depthBuffer->texel4<float>(x, y);
-            const int          depthTest      = math::sign_bits(z - depthBufTexels);
+            const int          depthTest      = depthTesting & math::sign_bits(z - depthBufTexels);
 
             for (int32_t i = 0; i < 4; ++i)
             {
@@ -800,6 +823,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     math::vec2        p1           {screenCoords[1][0], screenCoords[1][1]};
     math::vec2        p2           {screenCoords[2][0], screenCoords[2][1]};
     const math::vec4  persp        = mBins[binId].mPerspDivide;
+    const bool        depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON;
     const int32_t     bboxMinX     = (int32_t)math::min(mFboW, math::max(0.f, math::min(p0[0], p1[0], p2[0])));
     const int32_t     bboxMinY     = (int32_t)math::min(mFboH, math::max(0.f, math::min(p0[1], p1[1], p2[1])));
     const int32_t     bboxMaxX     = (int32_t)math::max(0.f, math::min(mFboW, math::max(p0[0], p1[0], p2[0])));
@@ -875,7 +899,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             const float oldDepth = depthBuffer->texel<float>(x, y);
 
             //if (bc.v[0] < 0.f || bc.v[1] < 0.f || bc.v[2] < 0.f)
-            if (math::sign_bits(bc) || z < oldDepth)
+            if (math::sign_bits(bc) || (depthTesting && (z < oldDepth)))
             {
                 continue;
             }
@@ -922,6 +946,7 @@ void SR_FragmentProcessor::flush_fragments(
     const uint32_t          numVaryings = fragShader.numVaryings;
     const uint32_t          numOutputs  = fragShader.numOutputs;
     const bool              blendFrags  = fragShader.blend;
+    const bool              depthMask   = fragShader.depthMask == SR_DEPTH_MASK_ON;
     const auto              pShader     = fragShader.shader;
     SR_Framebuffer*         fbo         = mFbo;
     math::vec4* const       inVaryings  = mBins[binId].mVaryings;
@@ -943,6 +968,7 @@ void SR_FragmentProcessor::flush_fragments(
             interpolate_tri_varyings(bc, numVaryings, inVaryings, outVaryings);
 
             uint_fast32_t  haveOutputs = pShader(fc, pUniforms, outVaryings, pOutputs);
+
             // branchless select
             switch (-haveOutputs & numOutputs)
             {
@@ -950,7 +976,11 @@ void SR_FragmentProcessor::flush_fragments(
                 case 3: fbo->put_alpha_pixel(2, x, y, (uint16_t)zi, pOutputs[2]);
                 case 2: fbo->put_alpha_pixel(1, x, y, (uint16_t)zi, pOutputs[1]);
                 case 1: fbo->put_alpha_pixel(0, x, y, (uint16_t)zi, pOutputs[0]);
-                    fbo->put_depth_pixel<float>(x, y, fc[2]);
+            }
+
+            if (depthMask)
+            {
+                fbo->put_depth_pixel<float>(x, y, fc[2]);
             }
         }
         return;
@@ -969,6 +999,7 @@ void SR_FragmentProcessor::flush_fragments(
             interpolate_tri_varyings(bc, numVaryings, inVaryings, outVaryings);
 
             uint_fast32_t  haveOutputs = pShader(fc, pUniforms, outVaryings, pOutputs);
+
             // branchless select
             switch (-haveOutputs & numOutputs)
             {
@@ -976,10 +1007,14 @@ void SR_FragmentProcessor::flush_fragments(
                 case 3: fbo->put_pixel(2, x, y, (uint16_t)zi, pOutputs[2]);
                 case 2: fbo->put_pixel(1, x, y, (uint16_t)zi, pOutputs[1]);
                 case 1: fbo->put_pixel(0, x, y, (uint16_t)zi, pOutputs[0]);
-                    fbo->put_depth_pixel<float>(x, y, fc[2]);
+            }
+
+            if (depthMask)
+            {
+                fbo->put_depth_pixel<float>(x, y, fc[2]);
             }
         }
-        }
+    }
 }
 
 

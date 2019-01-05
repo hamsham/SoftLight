@@ -37,9 +37,55 @@ enum SR_RenderMode : uint16_t; // SR_Geometry.hpp
 /*-----------------------------------------------------------------------------
  *
 -----------------------------------------------------------------------------*/
+enum SR_BlendMode : uint8_t
+{
+    SR_BLEND_OFF,
+    SR_BLEND_PREMULTIPLED_ALPHA
+};
+
+
+
+/*-----------------------------------------------------------------------------
+ *
+-----------------------------------------------------------------------------*/
+enum SR_DepthMask : uint8_t
+{
+    SR_DEPTH_MASK_OFF,
+    SR_DEPTH_MASK_ON
+};
+
+
+
+/*-----------------------------------------------------------------------------
+ *
+-----------------------------------------------------------------------------*/
+enum SR_DepthTest : uint8_t
+{
+    SR_DEPTH_TEST_OFF,
+    SR_DEPTH_TEST_ON
+};
+
+
+
+/*-----------------------------------------------------------------------------
+ *
+-----------------------------------------------------------------------------*/
+enum SR_CullMode : uint8_t
+{
+    SR_CULL_BACK_FACE,
+    SR_CULL_FRONT_FACE,
+    SR_CULL_OFF
+};
+
+
+
+/*-----------------------------------------------------------------------------
+ *
+-----------------------------------------------------------------------------*/
 struct SR_VertexShader
 {
     uint8_t numVaryings;
+    SR_CullMode cullMode;
 
     ls::math::vec4_t<float> (*shader)(
         const uint32_t           vertId,
@@ -59,7 +105,9 @@ struct SR_FragmentShader
 {
     uint8_t numVaryings;
     uint8_t numOutputs;
-    bool    blend;
+    uint8_t blend;
+    SR_DepthTest depthTest;
+    SR_DepthMask depthMask;
 
     bool (*shader)(
         const ls::math::vec4_t<float>& fragCoord,

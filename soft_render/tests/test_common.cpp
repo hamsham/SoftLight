@@ -106,7 +106,8 @@ SR_VertexShader normal_vert_shader()
 {
     SR_VertexShader shader;
     shader.numVaryings = 2;
-    shader.shader = _normal_vert_shader_impl;
+    shader.cullMode    = SR_CULL_BACK_FACE;
+    shader.shader      = _normal_vert_shader_impl;
 
     return shader;
 }
@@ -152,9 +153,11 @@ SR_FragmentShader normal_frag_shader()
 {
     SR_FragmentShader shader;
     shader.numVaryings = 2;
-    shader.numOutputs = 1;
-    shader.blend = false;
-    shader.shader = _normal_frag_shader_impl;
+    shader.numOutputs  = 1;
+    shader.blend       = SR_BLEND_OFF;
+    shader.depthTest   = SR_DEPTH_TEST_ON;
+    shader.depthMask   = SR_DEPTH_MASK_ON;
+    shader.shader      = _normal_frag_shader_impl;
 
     return shader;
 }
@@ -187,6 +190,7 @@ SR_VertexShader texture_vert_shader()
 {
     SR_VertexShader shader;
     shader.numVaryings = 3;
+    shader.cullMode = SR_CULL_BACK_FACE;
     shader.shader = _texture_vert_shader_impl;
 
     return shader;
@@ -247,6 +251,7 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
     // output composition
     {
         pixel = pixel * (diffuse + specular);
+        pixel[3] = 0.25f;
         outputs[0] = math::min(pixel, math::vec4{1.f});
     }
 
@@ -393,10 +398,12 @@ SR_FragmentShader texture_frag_shader()
 {
     SR_FragmentShader shader;
     shader.numVaryings = 3;
-    shader.numOutputs = 1;
-    shader.blend = false;
-    shader.shader = _texture_frag_shader_spot;
-    //shader.shader = _texture_frag_shader_pbr;
+    shader.numOutputs  = 1;
+    shader.blend       = SR_BLEND_OFF;
+    shader.depthTest   = SR_DEPTH_TEST_ON;
+    shader.depthMask   = SR_DEPTH_MASK_ON;
+    shader.shader      = _texture_frag_shader_spot;
+    //shader.shader      = _texture_frag_shader_pbr;
 
     return shader;
 }
