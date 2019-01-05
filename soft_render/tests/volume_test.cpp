@@ -68,6 +68,7 @@ SR_VertexShader volume_vert_shader()
 {
     SR_VertexShader shader;
     shader.numVaryings = 1;
+    shader.cullMode = SR_CULL_FRONT_FACE;
     shader.shader = _volume_vert_shader;
 
     return shader;
@@ -192,7 +193,9 @@ SR_FragmentShader volume_frag_shader()
     SR_FragmentShader shader;
     shader.numVaryings = 1;
     shader.numOutputs = 1;
-    shader.blend = true;
+    shader.blend = SR_BLEND_PREMULTIPLED_ALPHA;
+    shader.depthMask = SR_DEPTH_MASK_OFF;
+    shader.depthTest = SR_DEPTH_TEST_ON;
     shader.shader = _volume_frag_shader;
 
     return shader;
