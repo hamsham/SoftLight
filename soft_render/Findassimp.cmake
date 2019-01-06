@@ -30,8 +30,15 @@ if(WIN32)
 				${ASSIMP_ROOT_DIR}/lib${ASSIMP_ARCHITECTURE}
 		)
 		
-		find_library(ASSIMP_LIBRARY_RELEASE				assimp-${ASSIMP_MSVC_VERSION}-mt.lib 			PATHS ${ASSIMP_LIBRARY_DIR})
-		find_library(ASSIMP_LIBRARY_DEBUG				assimp-${ASSIMP_MSVC_VERSION}-mtd.lib			PATHS ${ASSIMP_LIBRARY_DIR})
+		find_library(ASSIMP_LIBRARY_RELEASE
+			assimp-${ASSIMP_MSVC_VERSION}-mt.lib
+			PATHS
+			    ${ASSIMP_LIBRARY_DIR})
+
+		find_library(ASSIMP_LIBRARY_DEBUG
+			assimp-${ASSIMP_MSVC_VERSION}-mtd.lib
+			PATHS
+			    ${ASSIMP_LIBRARY_DIR})
 		
 		set(ASSIMP_LIBRARY 
 			optimized 	${ASSIMP_LIBRARY_RELEASE}
@@ -43,9 +50,12 @@ if(WIN32)
 	
 		function(ASSIMP_COPY_BINARIES TargetDirectory)
 			add_custom_target(AssimpCopyBinaries
-				COMMAND ${CMAKE_COMMAND} -E copy ${ASSIMP_ROOT_DIR}/bin${ASSIMP_ARCHITECTURE}/assimp-${ASSIMP_MSVC_VERSION}-mtd.dll 	${TargetDirectory}/Debug/assimp-${ASSIMP_MSVC_VERSION}-mtd.dll
-				COMMAND ${CMAKE_COMMAND} -E copy ${ASSIMP_ROOT_DIR}/bin${ASSIMP_ARCHITECTURE}/assimp-${ASSIMP_MSVC_VERSION}-mt.dll 		${TargetDirectory}/Release/assimp-${ASSIMP_MSVC_VERSION}-mt.dll
-			COMMENT "Copying Assimp binaries to '${TargetDirectory}'"
+				COMMAND
+				    ${CMAKE_COMMAND} -E copy ${ASSIMP_ROOT_DIR}/bin${ASSIMP_ARCHITECTURE}/assimp-${ASSIMP_MSVC_VERSION}-mtd.dll ${TargetDirectory}/Debug/assimp-${ASSIMP_MSVC_VERSION}-mtd.dll
+				COMMAND
+				    ${CMAKE_COMMAND} -E copy ${ASSIMP_ROOT_DIR}/bin${ASSIMP_ARCHITECTURE}/assimp-${ASSIMP_MSVC_VERSION}-mt.dll ${TargetDirectory}/Release/assimp-${ASSIMP_MSVC_VERSION}-mt.dll
+			COMMENT
+				"Copying Assimp binaries to '${TargetDirectory}'"
 			VERBATIM)
 		endfunction(ASSIMP_COPY_BINARIES)
 	
@@ -56,7 +66,11 @@ else(WIN32)
 	find_path(
 	  assimp_INCLUDE_DIRS
 	  NAMES
-		postprocess.h scene.h version.h config.h cimport.h
+		assimp/postprocess.h
+		assimp/scene.h
+		assimp/version.h
+		assimp/config.h
+		assimp/cimport.h
 	  PATHS
 		/usr/include
 		/usr/local/include
@@ -83,7 +97,7 @@ else(WIN32)
 
 	if (assimp_FOUND)
 	  if (NOT assimp_FIND_QUIETLY)
-		message(STATUS "-- Found asset importer library: ${assimp_LIBRARIES}")
+		message("-- Found asset importer library: ${assimp_LIBRARIES}")
 	  endif (NOT assimp_FIND_QUIETLY)
 	else (assimp_FOUND)
 	  if (assimp_FIND_REQUIRED)

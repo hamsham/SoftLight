@@ -52,6 +52,7 @@ endif()
 # -------------------------------------
 # 3rd-party libraries
 # -------------------------------------
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR};${CMAKE_MODULE_PATH}")
 include(assimpConfig.cmake)
 include(FreeImageConfig.cmake)
 

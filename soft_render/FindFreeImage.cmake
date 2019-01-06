@@ -10,10 +10,12 @@
 
 
 if (WIN32)
-	find_path(FREEIMAGE_INCLUDE_PATH FreeImage.h
-		${FREEIMAGE_ROOT_DIR}/include
-		${FREEIMAGE_ROOT_DIR}
-		DOC "The directory where FreeImage.h resides")
+	find_path(FREEIMAGE_INCLUDE_PATH
+		FreeImage.h
+		    ${FREEIMAGE_ROOT_DIR}/include
+		    ${FREEIMAGE_ROOT_DIR}
+		DOC
+		    "The directory where FreeImage.h resides")
 
 	find_library(FREEIMAGE_LIBRARY
 		NAMES FreeImage freeimage
@@ -23,7 +25,8 @@ if (WIN32)
 		DOC "The FreeImage library")
 
 else (WIN32)
-	find_path(FREEIMAGE_INCLUDE_PATH FreeImage.h
+	find_path(FREEIMAGE_INCLUDE_PATH
+		FreeImage.h
 			/usr/include
 			/usr/local/include
 			/sw/include
