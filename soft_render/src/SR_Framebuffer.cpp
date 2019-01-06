@@ -89,6 +89,10 @@ inline void assign_alpha_pixel(
     switch (color_type::num_components())
     {
         case 4:
+            d.rgba = s.rgba + (d.rgba * srcAlpha);
+            *reinterpret_cast<SR_ColorRGBType<ConvertedType>*>((void*)&outTexel) = color_cast<typename color_type::value_type, float>(d.rgb);
+            break;
+
         case 3:
             d.rgb = s.rgb + (d.rgb * srcAlpha);
             *reinterpret_cast<SR_ColorRGBType<ConvertedType>*>((void*)&outTexel) = color_cast<typename color_type::value_type, float>(d.rgb);
