@@ -40,7 +40,10 @@ enum SR_RenderMode : uint16_t; // SR_Geometry.hpp
 enum SR_BlendMode : uint8_t
 {
     SR_BLEND_OFF,
-    SR_BLEND_PREMULTIPLED_ALPHA
+    SR_BLEND_ALPHA,
+    SR_BLEND_PREMULTIPLED_ALPHA,
+    SR_BLEND_ADDITIVE,
+    SR_BLEND_SCREEN,
 };
 
 
@@ -103,9 +106,9 @@ struct SR_VertexShader
 -----------------------------------------------------------------------------*/
 struct SR_FragmentShader
 {
-    uint8_t numVaryings;
-    uint8_t numOutputs;
-    uint8_t blend;
+    uint8_t      numVaryings;
+    uint8_t      numOutputs;
+    SR_BlendMode blend;
     SR_DepthTest depthTest;
     SR_DepthMask depthMask;
 

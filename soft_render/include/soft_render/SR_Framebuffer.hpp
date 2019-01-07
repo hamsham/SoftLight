@@ -8,6 +8,7 @@
 #include "lightsky/utils/Copy.h" // utils::fast_memset, fast_fill
 
 #include "soft_render/SR_Texture.hpp"
+#include "SR_Shader.hpp"
 
 
 
@@ -97,7 +98,8 @@ class SR_Framebuffer
         uint16_t x,
         uint16_t y,
         uint16_t z,
-        const ls::math::vec4_t<float>& rgba) noexcept;
+        const ls::math::vec4_t<float>& rgba,
+        const SR_BlendMode blendMode) noexcept;
 
     bool test_depth_pixel(
         uint16_t x,

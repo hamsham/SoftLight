@@ -945,7 +945,7 @@ void SR_FragmentProcessor::flush_fragments(
     const SR_FragmentShader fragShader  = mShader->mFragShader;
     const uint32_t          numVaryings = fragShader.numVaryings;
     const uint32_t          numOutputs  = fragShader.numOutputs;
-    const bool              blendFrags  = fragShader.blend;
+    const SR_BlendMode      blendMode   = fragShader.blend;
     const bool              depthMask   = fragShader.depthMask == SR_DEPTH_MASK_ON;
     const auto              pShader     = fragShader.shader;
     SR_Framebuffer*         fbo         = mFbo;
@@ -954,7 +954,7 @@ void SR_FragmentProcessor::flush_fragments(
     math::vec4 pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
     math::vec4 outVaryings[SR_SHADER_MAX_VARYING_VECTORS];
 
-    if (blendFrags)
+    if (blendMode != SR_BLEND_OFF)
     {
         while (numQueuedFrags --> 0)
         {
@@ -972,10 +972,10 @@ void SR_FragmentProcessor::flush_fragments(
             // branchless select
             switch (-haveOutputs & numOutputs)
             {
-                case 4: fbo->put_alpha_pixel(3, x, y, (uint16_t)zi, pOutputs[3]);
-                case 3: fbo->put_alpha_pixel(2, x, y, (uint16_t)zi, pOutputs[2]);
-                case 2: fbo->put_alpha_pixel(1, x, y, (uint16_t)zi, pOutputs[1]);
-                case 1: fbo->put_alpha_pixel(0, x, y, (uint16_t)zi, pOutputs[0]);
+                case 4: fbo->put_alpha_pixel(3, x, y, (uint16_t)zi, pOutputs[3], blendMode);
+                case 3: fbo->put_alpha_pixel(2, x, y, (uint16_t)zi, pOutputs[2], blendMode);
+                case 2: fbo->put_alpha_pixel(1, x, y, (uint16_t)zi, pOutputs[1], blendMode);
+                case 1: fbo->put_alpha_pixel(0, x, y, (uint16_t)zi, pOutputs[0], blendMode);
             }
 
             if (depthMask)
