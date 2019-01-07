@@ -435,8 +435,8 @@ bool SR_ImgFile::save(const char* filename, img_file_t format) const
             break;
         case img_file_t::IMG_FILE_TIF: fiFormat = FIF_TIFF;
             break;
-        case img_file_t::IMG_FILE_WBP: fiFormat = FIF_WEBP;
-            break;
+        //case img_file_t::IMG_FILE_WBP: fiFormat = FIF_WEBP;
+        //    break;
         case img_file_t::IMG_FILE_XPM: fiFormat = FIF_XPM;
             break;
         default: fiFormat = FIF_PNG;

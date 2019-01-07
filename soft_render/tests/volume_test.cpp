@@ -68,7 +68,7 @@ SR_VertexShader volume_vert_shader()
 {
     SR_VertexShader shader;
     shader.numVaryings = 1;
-    shader.cullMode = SR_CULL_FRONT_FACE;
+    shader.cullMode = SR_CULL_OFF;
     shader.shader = _volume_vert_shader;
 
     return shader;
@@ -148,7 +148,7 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
         srcTexel = volumeTex->bilinear<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
         //srcTexel = volumeTex->nearest<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
 
-        if (srcTexel > 25)
+        if (srcTexel > 3)
         {
             const unsigned dstA = 256 - dstTexel[3];
             const unsigned srcA = 255 - srcTexel + 1; // avoid divide-by-0
@@ -158,11 +158,11 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
             dstTexel[3] += newAlpha;
 
             // pseudo transfer functions
-            if (srcTexel < 100)
+            if (srcTexel < 60)
             {
                 dstTexel[0] += newAlpha;
             }
-            else if (srcTexel < 120)
+            else if (srcTexel < 90)
             {
                 dstTexel[1] += newAlpha;
             }
@@ -193,7 +193,7 @@ SR_FragmentShader volume_frag_shader()
     SR_FragmentShader shader;
     shader.numVaryings = 1;
     shader.numOutputs = 1;
-    shader.blend = SR_BLEND_PREMULTIPLED_ALPHA;
+    shader.blend = SR_BLEND_ADDITIVE;
     shader.depthMask = SR_DEPTH_MASK_OFF;
     shader.depthTest = SR_DEPTH_TEST_ON;
     shader.shader = _volume_frag_shader;
@@ -368,7 +368,7 @@ utils::Pointer<SR_SceneGraph> init_volume_context()
     context.num_threads(4);
 
     SR_Texture& tex = context.texture(texId);
-    retCode = tex.init(SR_ColorDataType::SR_COLOR_RGB_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = tex.init(SR_ColorDataType::SR_COLOR_RGBA_FLOAT, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     assert(retCode == 0);
 
     SR_Texture& depth = context.texture(depthId);
@@ -665,7 +665,7 @@ int main()
 
             pGraph->update();
 
-            context.framebuffer(0).clear_color_buffer(0, SR_ColorRGB{128, 128, 168});
+            context.framebuffer(0).clear_color_buffer(0, SR_ColorRGBAf{0.25f, 0.25f, 0.25f, 1.f});
             //context.framebuffer(0).clear_color_buffers();
             context.framebuffer(0).clear_depth_buffer();
 

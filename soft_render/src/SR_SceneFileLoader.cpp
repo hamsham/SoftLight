@@ -785,7 +785,7 @@ void SR_SceneFileLoader::import_texture_path(
     aiString inPath;
     aiTextureMapMode inWrapMode[3] = {aiTextureMapMode::aiTextureMapMode_Wrap};
     aiColor3D inMatColor;
-    ai_real inShininess;
+    float inShininess;
     const SR_Texture* pTexture = nullptr;
 
     for (unsigned i = 0; i < maxTexCount; ++i)
