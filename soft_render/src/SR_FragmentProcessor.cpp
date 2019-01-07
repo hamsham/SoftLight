@@ -588,7 +588,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
 
     unsigned numQueuedFrags = 0;
     SR_FragCoord* outCoords = mQueues;
-    const int32_t scanlineOffset = mNumProcessors - 1 - (((bboxMinY%mNumProcessors) + yOffset) % mNumProcessors);
+    const int32_t scanlineOffset = sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
 
     for (int32_t y = bboxMinY+scanlineOffset; y <= bboxMaxY; y += increment)
     {
