@@ -87,7 +87,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     if (ENABLE_X86_OPTIMIZATIONS)
-        add_definitions(/arch:SSE2) # enable SSE
+        add_definitions(/arch:AVX2) # enable AVX2
     endif()
     
     add_definitions(/GL) # global program optimization
@@ -115,11 +115,11 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     add_definitions(/wd5039) # An 'extern "C"' function contains something which might throw an exception
     add_definitions(/wd4244) # possible loss of data when converting between time_t and unsigned int
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-    add_definitions(-xAVX)
+    add_definitions(-xAVX2)
     add_definitions(-msse)
     add_definitions(-msse2)
     add_definitions(-msse3)
-    add_definitions(-mavx)
+    add_definitions(-mavx2)
     add_definitions(-mtune=core2)
     add_definitions(-march=core2)
     add_definitions(-ip)
