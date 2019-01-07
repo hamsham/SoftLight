@@ -6,7 +6,7 @@ find_package(FreeImage MODULE)
 # #####################################
 # External build for FreeImage
 # #####################################
-if (NOT ${FREEIMAGE_FOUND})
+if (FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NOTFOUND OR FREEIMAGE_LIBRARY STREQUAL FREEIMAGE_LIBRARY-NOTFOUND)
 
     set(FREEIMAGE_BRANCH "master" CACHE STRING "Git branch or tag for checking out FreeImage.")
     mark_as_advanced(FREEIMAGE_BRANCH)
@@ -95,4 +95,5 @@ if (NOT ${FREEIMAGE_FOUND})
 
 
 
-endif(NOT ${FREEIMAGE_FOUND})
+endif()
+  

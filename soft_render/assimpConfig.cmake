@@ -6,7 +6,7 @@ find_package(assimp MODULE)
 # #####################################
 # External build for ASSIMP
 # #####################################
-if (NOT ${assimp_FOUND})
+if (assimp_INCLUDE_DIRS STREQUAL assimp_INCLUDE_DIRS-NOTFOUND OR assimp_LIBRARIES STREQUAL assimp_LIBRARIES-NOTFOUND)
 
     set(ASSIMP_BRANCH "master" CACHE STRING "Git branch or tag for checking out Assimp.")
     mark_as_advanced(ASSIMP_BRANCH)
@@ -88,4 +88,4 @@ if (NOT ${assimp_FOUND})
 
 
 
-endif (NOT ${assimp_FOUND})
+endif ()
