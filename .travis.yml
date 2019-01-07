@@ -29,7 +29,6 @@ addons:
           - libx11-dev
           - libx11-xcb-dev
           - x11-utils
-          - libassimp-dev
 
 
 
