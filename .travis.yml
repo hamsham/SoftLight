@@ -52,10 +52,11 @@ before_script:
   - git submodule foreach git checkout master
   - mkdir build
   - cd build
-  - cmake .. -G"Unix Makefiles"
+  - if [[ "$TRAVIS_OS_NAME" != "windows" ]]; then cmake .. -G"Unix Makefiles"
+  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then cmake ..
 
 
 
 script:
-    make
+  if [[ "$TRAVIS_OS_NAME" != "windows" ]]; make; else cmake --build . --config RelWithDebInfo --parallel; fi
 
