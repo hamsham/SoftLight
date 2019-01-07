@@ -52,8 +52,8 @@ before_script:
   - git submodule foreach git checkout master
   - mkdir build
   - cd build
-  - if [[ "$TRAVIS_OS_NAME" != "windows" ]]; then cmake .. -G'Unix Makefiles'
-  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then cmake ..
+  - if [[ "$TRAVIS_OS_NAME" != "windows" ]]; then cmake .. -G'Unix Makefiles'; fi
+  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then cmake ..; fi
 
 
 
