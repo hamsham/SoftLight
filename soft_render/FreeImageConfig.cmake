@@ -49,7 +49,7 @@ if (FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NOTFOUND OR FREEIMAGE
             PATCH_COMMAND
                 ${FREEIMAGE_PATCH_CMD0} && ${FREEIMAGE_PATCH_CMD1}
             BUILD_COMMAND
-                ${CMAKE_VS_DEVENV_COMMAND} /upgrade FreeImage.2013.sln &&
+                ${CMAKE_MAKE_PROGRAM} /upgrade FreeImage.2013.sln &&
                 ${CMAKE_MAKE_PROGRAM} FreeImage.2013.sln
             BUILD_IN_SOURCE
                 1
