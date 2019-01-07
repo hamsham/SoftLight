@@ -5,7 +5,7 @@ language: cpp
 os:
   - osx
   - linux
-#  - windows
+  - windows
 
 
 
