@@ -34,6 +34,7 @@ class SR_ImgFile;
 enum SR_TexWrapMode : uint16_t
 {
     SR_TEXTURE_WRAP_REPEAT,
+    SR_TEXTURE_WRAP_CUTOFF,
     SR_TEXTURE_WRAP_CLAMP,
 
     SR_TEXTURE_WRAP_DEFAULT = SR_TEXTURE_WRAP_REPEAT
@@ -700,6 +701,8 @@ inline color_type& SR_Texture::raw_texel(ptrdiff_t index) noexcept
 template <typename color_type>
 inline color_type SR_Texture::nearest(float x, float y) const noexcept
 {
+    if (mWrapping == SR_TEXTURE_WRAP_CUTOFF && (ls::math::min(x, y) < 0.f || ls::math::max(x, y) >= 1.f)) return color_type{0};
+
     const uint_fast32_t xi = (uint_fast32_t)(mWidthf * wrap_coordinate(x));
     const uint_fast32_t yi = (uint_fast32_t)(mHeightf * wrap_coordinate(y));
     const ptrdiff_t index = map_coordinate(xi, yi);
@@ -715,6 +718,8 @@ inline color_type SR_Texture::nearest(float x, float y) const noexcept
 template <typename color_type>
 inline color_type SR_Texture::nearest(float x, float y, float z) const noexcept
 {
+    if (mWrapping == SR_TEXTURE_WRAP_CUTOFF && (ls::math::min(x, y, z) < 0.f || ls::math::max(x, y, z) >= 1.f)) return color_type{0};
+
     const uint_fast32_t xi = (uint_fast32_t)(mWidthf  * wrap_coordinate(x));
     const uint_fast32_t yi = (uint_fast32_t)(mHeightf * wrap_coordinate(y));
     const uint_fast32_t zi = (uint_fast32_t)(mDepthf  * wrap_coordinate(z));
@@ -731,6 +736,8 @@ inline color_type SR_Texture::nearest(float x, float y, float z) const noexcept
 template <typename color_type>
 color_type SR_Texture::bilinear(float x, float y) const noexcept
 {
+    if (mWrapping == SR_TEXTURE_WRAP_CUTOFF && (ls::math::min(x, y) < 0.f || ls::math::max(x, y) >= 1.f)) return color_type{0};
+
     const float      xf      = wrap_coordinate(x) * mWidthf;
     const float      yf      = wrap_coordinate(y) * mHeightf;
     const uint16_t   xi0     = (uint16_t)xf;
@@ -770,6 +777,8 @@ color_type SR_Texture::bilinear(float x, float y) const noexcept
 template <typename color_type>
 color_type SR_Texture::bilinear(float x, float y, float z) const noexcept
 {
+    if (mWrapping == SR_TEXTURE_WRAP_CUTOFF && (ls::math::min(x, y, z) < 0.f || ls::math::max(x, y, z) >= 1.f)) return color_type{0};
+
     const float      xf      = wrap_coordinate(x) * mWidthf;
     const float      yf      = wrap_coordinate(y) * mHeightf;
     const uint16_t   zi      = (uint16_t)ls::math::round(wrap_coordinate(z) * mDepthf);

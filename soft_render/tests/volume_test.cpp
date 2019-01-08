@@ -58,8 +58,7 @@ math::vec4 _volume_vert_shader(const uint32_t vertId, const SR_VertexArray& vao,
 
     varyings[0] = modelPos;
 
-    math::vec4 spacing = {1.f, 1.f, 1.f, 1.f};
-    return pUniforms->mvpMatrix * (worldPos * spacing);
+    return pUniforms->mvpMatrix * worldPos;
 }
 
 
@@ -68,7 +67,7 @@ SR_VertexShader volume_vert_shader()
 {
     SR_VertexShader shader;
     shader.numVaryings = 1;
-    shader.cullMode = SR_CULL_OFF;
+    shader.cullMode = SR_CULL_FRONT_FACE;
     shader.shader = _volume_vert_shader;
 
     return shader;
@@ -140,33 +139,35 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
     rayStop[3]  = 0.f;
     rayStep     = math::normalize(rayStop - rayStart) * step;
     math::vec4 texPos = rayStart;
-    math::vec4_t<uint32_t>dstTexel = {0};
-    unsigned srcTexel  = 0;
+    math::vec4_t<float>dstTexel = {0};
+    uint8_t srcTexel  = 0;
 
     do
     {
-        srcTexel = volumeTex->bilinear<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
-        //srcTexel = volumeTex->nearest<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
+        //srcTexel = volumeTex->bilinear<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
+        srcTexel = volumeTex->nearest<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
 
-        if (srcTexel > 3)
+        if (srcTexel > 17)
         {
-            const unsigned dstA = 256 - dstTexel[3];
-            const unsigned srcA = 255 - srcTexel + 1; // avoid divide-by-0
+            const float dstA = 1.f - dstTexel[3];
+            const float srcA = ((float)srcTexel/255.f) + LS_EPSILON; // avoid divide-by-0
 
-            constexpr unsigned alphaMultiplier = 3;
-            const unsigned newAlpha = (dstA / srcA) << alphaMultiplier;
+            constexpr float alphaMultiplier = 0.001f;
+            const float newAlpha = (dstA / srcA) * alphaMultiplier;
             dstTexel[3] += newAlpha;
 
             // pseudo transfer functions
-            if (srcTexel < 60)
+            if (srcTexel > 75)
             {
                 dstTexel[0] += newAlpha;
             }
-            else if (srcTexel < 90)
+
+            if (srcTexel > 50)
             {
                 dstTexel[1] += newAlpha;
             }
-            else
+
+            if (srcTexel > 17)
             {
                 dstTexel[2] += newAlpha;
             }
@@ -174,14 +175,12 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
 
         texPos += rayStep;
     }
-    while ((dstTexel[3] <= 255) && (texPos <= 1.f) && (texPos >= 0.f));
+    while ((dstTexel[3] <= 1.f) && (texPos <= 1.f) && (texPos >= 0.f));
 
-    dstTexel = math::min(dstTexel, math::vec4_t<unsigned>{255});
-
-    const math::vec4&& pixel = color_cast<float, uint8_t>((math::vec4_t<uint8_t>)dstTexel);
+    dstTexel = math::min(dstTexel, math::vec4_t<float>{1.f});
 
     // output composition
-    outputs[0] = math::min(pixel, math::vec4{1.f});
+    outputs[0] = math::min(dstTexel, math::vec4{1.f});
 
     return dstTexel[3] > 0;
 }
@@ -193,7 +192,7 @@ SR_FragmentShader volume_frag_shader()
     SR_FragmentShader shader;
     shader.numVaryings = 1;
     shader.numOutputs = 1;
-    shader.blend = SR_BLEND_ADDITIVE;
+    shader.blend = SR_BLEND_PREMULTIPLED_ALPHA;
     shader.depthMask = SR_DEPTH_MASK_OFF;
     shader.depthTest = SR_DEPTH_TEST_ON;
     shader.shader = _volume_frag_shader;
@@ -233,7 +232,7 @@ int read_volume_file(SR_SceneGraph& graph)
     fin.read(reinterpret_cast<char*>(pTex.data()), numBytes);
     fin.close();
 
-    pTex.set_wrap_mode(SR_TexWrapMode::SR_TEXTURE_WRAP_CLAMP);
+    pTex.set_wrap_mode(SR_TexWrapMode::SR_TEXTURE_WRAP_CUTOFF);
 
     return 0;
 }
@@ -428,7 +427,7 @@ void render_volume(SR_SceneGraph* pGraph, const SR_Transform& viewMatrix, const 
     SR_Context&        context   = pGraph->mContext;
     VolumeUniforms*    pUniforms = static_cast<VolumeUniforms*>(context.shader(0).uniforms().get());
     const math::vec3&& camPos    = viewMatrix.get_abs_position();
-    //const math::mat4   modelMat  = math::scale(math::mat4{1.f}, math::vec3{1.6821f, 1.6821f, 2.86f});
+    //const math::mat4   modelMat  = math::scale(math::mat4{1.f}, math::vec3{1.6821f, 1.6821f, 2.4f});
     const math::mat4   modelMat  = math::mat4{1.f};
     pUniforms->camPos            = math::vec4{camPos[0], camPos[1], camPos[2], 0.f};
     pUniforms->mvMatrix          = viewMatrix.get_transform() * modelMat;

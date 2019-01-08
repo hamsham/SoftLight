@@ -40,7 +40,14 @@ namespace
 bool _xlib_get_position(_XDisplay* const pDisplay, const unsigned long window, int& x, int& y) noexcept
 {
     Window child;
-    XWindowAttributes attribs;
+
+    #ifdef LS_ARCH_X86
+        alignas(16) XWindowAttributes attribs;
+    #else
+        XWindowAttributes attribs;
+    #endif
+
+    ls::utils::fast_memset(&attribs, 0, sizeof(XWindowAttributes));
 
     int tempX, tempY;
 
