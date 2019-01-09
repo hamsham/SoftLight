@@ -39,7 +39,7 @@ SR_IndexBuffer::SR_IndexBuffer(const SR_IndexBuffer& v) noexcept :
     if (v.mBuffer != nullptr)
     {
         const uint32_t numBytes = v.mBytesPerId * v.mCount;
-        mBuffer = ls::utils::Pointer<unsigned char[]>{new unsigned char[numBytes]};
+        mBuffer = ls::utils::Pointer<unsigned char[], ls::utils::AlignedDeleter>{(unsigned char*)ls::utils::aligned_malloc(numBytes)};
         ls::utils::fast_memcpy(mBuffer.get(), v.mBuffer.get(), numBytes);
     }
 }
@@ -76,7 +76,7 @@ SR_IndexBuffer& SR_IndexBuffer::operator=(const SR_IndexBuffer& v) noexcept
         if (v.mBuffer != nullptr)
         {
             const uint32_t numBytes = v.mBytesPerId * v.mCount;
-            mBuffer = ls::utils::Pointer<unsigned char[]>{new unsigned char[numBytes]};
+            mBuffer = ls::utils::Pointer<unsigned char[], ls::utils::AlignedDeleter>{(unsigned char*)ls::utils::aligned_malloc(numBytes)};
             ls::utils::fast_memcpy(mBuffer.get(), v.mBuffer.get(), numBytes);
         }
     }
@@ -129,7 +129,7 @@ int SR_IndexBuffer::init(uint32_t numElements, SR_DataType type, const void* pDa
     mType = type;
     mBytesPerId = bytesPerType;
     mCount = numElements;
-    mBuffer = ls::utils::Pointer<unsigned char[]>{new unsigned char[totalBytes]};
+    mBuffer = ls::utils::Pointer<unsigned char[], ls::utils::AlignedDeleter>{(unsigned char*)ls::utils::aligned_malloc(totalBytes)};
 
     if (pData != nullptr)
     {

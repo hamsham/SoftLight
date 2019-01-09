@@ -30,7 +30,7 @@ SR_VertexBuffer::SR_VertexBuffer() noexcept :
 --------------------------------------*/
 SR_VertexBuffer::SR_VertexBuffer(const SR_VertexBuffer& v) noexcept :
     mNumBytes{v.mNumBytes},
-    mBuffer{(v.mBuffer == nullptr) ? nullptr : new unsigned char[v.mNumBytes]}
+    mBuffer{(v.mBuffer == nullptr) ? nullptr : (unsigned char*)ls::utils::aligned_malloc(v.mNumBytes)}
 {
     if (v.mBuffer != nullptr)
     {
@@ -63,7 +63,7 @@ SR_VertexBuffer& SR_VertexBuffer::operator=(const SR_VertexBuffer& v) noexcept
 
         if (v.mBuffer != nullptr)
         {
-            mBuffer.reset(new unsigned char[v.mNumBytes]);
+            mBuffer.reset((unsigned char*)ls::utils::aligned_malloc(v.mNumBytes));
             ls::utils::fast_memcpy(mBuffer.get(), v.mBuffer.get(), v.mNumBytes);
         }
     }
@@ -101,7 +101,7 @@ int SR_VertexBuffer::init(uint32_t numBytes, const void* pData)
     }
 
     mNumBytes = numBytes;
-    mBuffer.reset(new unsigned char[numBytes]);
+    mBuffer.reset((unsigned char*)ls::utils::aligned_malloc(numBytes));
 
     if (pData != nullptr)
     {
