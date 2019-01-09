@@ -341,16 +341,16 @@ void SR_Texture::set_texels(
     const char* pSrc = reinterpret_cast<const char*>(pData);
     const size_t bytesPerColor = mBytesPerTexel;
 
-    for (uint16_t k = 0, z1 = z+d; k < d; ++k, ++z1)
+    for (uint16_t k = 0; k < d; ++k, ++z)
     {
-        for (uint16_t j = 0, y1 = y+h; j < h; ++j, ++y1)
+        for (uint16_t j = 0; j < h; ++j, ++y)
         {
-            for (uint16_t i = 0, x1 = x+w; i < w; ++i, ++x1)
+            for (uint16_t i = 0; i < w; ++i, ++x)
             {
                 const ptrdiff_t index = i + h * (j + w * k);
                 const ptrdiff_t offset = (index * bytesPerColor);
 
-                set_texel(x1, y1, z1, pSrc+offset);
+                set_texel(x, y, z, pSrc+offset);
             }
         }
     }
