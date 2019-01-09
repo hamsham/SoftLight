@@ -300,6 +300,12 @@ SR_ProcessorPool& SR_ProcessorPool::operator=(SR_ProcessorPool&& p) noexcept
 
     mFragBins = std::move(p.mFragBins);
 
+    for (unsigned i = 0; i < mNumThreads; ++i)
+    {
+        delete mThreads[i];
+        mThreads[i] = nullptr;
+    }
+
     mThreads = std::move(p.mThreads);
 
     mFragQueues = std::move(p.mFragQueues);
