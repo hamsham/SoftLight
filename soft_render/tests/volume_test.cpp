@@ -2,12 +2,12 @@
 #include <fstream>
 #include <iostream>
 #include <memory> // std::move()
-#include "lightsky/utils/Copy.h"
 
+#include "lightsky/utils/Copy.h"
 #include "lightsky/utils/Pointer.h"
 #include "lightsky/utils/Time.hpp"
-#include "soft_render/SR_Camera.hpp"
 
+#include "soft_render/SR_Camera.hpp"
 #include "soft_render/SR_Context.hpp"
 #include "soft_render/SR_ImgFilePPM.hpp"
 #include "soft_render/SR_IndexBuffer.hpp"
@@ -110,13 +110,13 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
 {
     constexpr float       step      = 1.f / 256.f;
     const VolumeUniforms* pUniforms = static_cast<const VolumeUniforms*>(uniforms);
-    //math::vec4            texPos    = math::vec4{varyings[0][0], varyings[0][1], varyings[0][2], 0.f};
     const math::vec4&&    winDimens = math::rcp(math::vec4{pUniforms->windowSize[0], pUniforms->windowSize[1], 1.f, 1.f});
     const float           focalLen  = -pUniforms->focalLen;
     const SR_Texture*     volumeTex = pUniforms->pCubeMap;
     const math::vec4      camPos    = pUniforms->camPos;
-    const math::vec4      viewDir   = math::vec4{2.f * (winDimens[0]*fragCoords[0]) - 1.f, 2.f * (winDimens[1]*fragCoords[1]) - 1.f, focalLen, 1.f} * pUniforms->mvMatrix;
-    math::vec4            rayDir    = math::normalize(viewDir);
+    const math::vec4      spacing   {1.f, 0.5f, 1.f, 1.f};
+    const math::vec4&&    viewDir   = math::vec4{2.f * (winDimens[0]*fragCoords[0]) - 1.f, 2.f * (winDimens[1]*fragCoords[1]) - 1.f, focalLen, 1.f} * spacing;
+    math::vec4&&          rayDir    = math::normalize(viewDir * pUniforms->mvMatrix);
     math::vec4            rayStart;
     math::vec4            rayStop;
     math::vec4            rayStep;
@@ -140,19 +140,18 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
     rayStep     = math::normalize(rayStop - rayStart) * step;
     math::vec4 texPos = rayStart;
     math::vec4_t<float>dstTexel = {0};
-    uint8_t srcTexel  = 0;
+    unsigned srcTexel  = 0;
 
     do
     {
         //srcTexel = volumeTex->bilinear<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
         srcTexel = volumeTex->nearest<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
-
         if (srcTexel > 17)
         {
             const float dstA = 1.f - dstTexel[3];
             const float srcA = ((float)srcTexel/255.f) + LS_EPSILON; // avoid divide-by-0
 
-            constexpr float alphaMultiplier = 0.001f;
+            constexpr float alphaMultiplier = 0.005f;
             const float newAlpha = (dstA / srcA) * alphaMultiplier;
             dstTexel[3] += newAlpha;
 
@@ -306,6 +305,8 @@ int scene_load_cube(SR_SceneGraph& graph)
     verts[33] = math::vec3{1.f, 1.f, -1.f};
     verts[34] = math::vec3{-1.f, 1.f, -1.f};
     verts[35] = math::vec3{-1.f, 1.f, 1.f};
+
+    // Create the vertex buffer
     vbo.assign(verts, numVboBytes, sizeof(verts));
     vao.set_binding(0, numVboBytes, stride, SR_Dimension::VERTEX_DIMENSION_3, SR_DataType::VERTEX_DATA_FLOAT);
     numVboBytes += sizeof(verts);
@@ -427,7 +428,6 @@ void render_volume(SR_SceneGraph* pGraph, const SR_Transform& viewMatrix, const 
     SR_Context&        context   = pGraph->mContext;
     VolumeUniforms*    pUniforms = static_cast<VolumeUniforms*>(context.shader(0).uniforms().get());
     const math::vec3&& camPos    = viewMatrix.get_abs_position();
-    //const math::mat4   modelMat  = math::scale(math::mat4{1.f}, math::vec3{1.6821f, 1.6821f, 2.4f});
     const math::mat4   modelMat  = math::mat4{1.f};
     pUniforms->camPos            = math::vec4{camPos[0], camPos[1], camPos[2], 0.f};
     pUniforms->mvMatrix          = viewMatrix.get_transform() * modelMat;
@@ -644,15 +644,15 @@ int main()
             {
                 camTrans.apply_transform();
 
-                constexpr float viewAngle = LS_DEG2RAD(60.f);
-                constexpr float focalLen  = 1.f / math::const_tan(viewAngle * 0.5f);
-                const     float w         = 0.001f * (float)pWindow->width();
-                const     float h         = 0.001f * (float)pWindow->height();
+                constexpr float    viewAngle  = LS_DEG2RAD(60.f);
+                constexpr float    focalLen   = 1.f / math::const_tan(viewAngle * 0.5f);
+                const float        w          = 0.001f * (float)pWindow->width();
+                const float        h          = 0.001f * (float)pWindow->height();
                 const math::mat4&& projMatrix = math::ortho(-w, w, -h, h, 0.0001f, 0.1f);
                 //const math::mat4&& projMatrix = math::infinite_perspective(viewAngle, (float)pWindow->width() / (float)pWindow->height(), 0.01f);
 
+                vpMatrix            = projMatrix * camTrans.get_transform();
                 pUniforms->focalLen = focalLen;
-                vpMatrix = projMatrix * camTrans.get_transform();
             }
 
             if (pWindow->width() != pRenderBuf->width() || pWindow->height() != pRenderBuf->height())
