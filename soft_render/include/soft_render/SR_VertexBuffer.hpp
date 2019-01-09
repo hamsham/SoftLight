@@ -17,7 +17,7 @@ class SR_VertexBuffer
   private:
     uint32_t mNumBytes;
 
-    ls::utils::Pointer<unsigned char[]> mBuffer;
+    ls::utils::Pointer<unsigned char[], ls::utils::AlignedDeleter> mBuffer;
 
   public:
     ~SR_VertexBuffer() noexcept;

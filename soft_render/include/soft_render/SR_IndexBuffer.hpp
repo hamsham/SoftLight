@@ -20,7 +20,7 @@ class SR_IndexBuffer
 
     uint32_t mCount;
 
-    ls::utils::Pointer<unsigned char[]> mBuffer;
+    ls::utils::Pointer<unsigned char[], ls::utils::AlignedDeleter> mBuffer;
 
   public:
     ~SR_IndexBuffer() noexcept;
