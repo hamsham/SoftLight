@@ -154,7 +154,7 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
         if (srcTexel > 17)
         {
             const SR_ColorRGBf volColor = colorTex->raw_texel<SR_ColorRGBf>(srcTexel);
-            const float        srcAlpha = 0.75f * alphaTex->raw_texel<float>(srcTexel);
+            const float        srcAlpha = 0.5f * alphaTex->raw_texel<float>(srcTexel);
 
             dstTexel[0] += volColor[2] * srcAlpha;
             dstTexel[1] += volColor[1] * srcAlpha;

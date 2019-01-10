@@ -17,7 +17,7 @@
 
 // x86 will grab 4 pixels at a time, swizzle on non-vectorized implementations.
 #ifndef SR_TEXTURE_Z_ORDERING
-    #define SR_TEXTURE_Z_ORDERING
+    //#define SR_TEXTURE_Z_ORDERING
 #endif
 
 
@@ -58,7 +58,7 @@ enum SR_TexChunkInfo : uint_fast32_t
 -----------------------------------------------------------------------------*/
 class SR_Texture
 {
-    typedef ls::math::medp_t fixed_type;
+    typedef ls::math::long_highp_t fixed_type;
 
   private:
     uint16_t mWidth;
@@ -140,7 +140,7 @@ class SR_Texture
 
     float wrap_coordinate(float uvw) const noexcept;
 
-    constexpr fixed_type wrap_coordinate(fixed_type uvw) const noexcept;
+    inline fixed_type wrap_coordinate(fixed_type uvw) const noexcept;
 
     int wrap_coordinate(int uvw, int maxVal) const noexcept;
 
@@ -420,7 +420,7 @@ inline float SR_Texture::wrap_coordinate(float uvw) const noexcept
 /*-------------------------------------
  * Keep all UV values within the (0.f, 1.f) range.
 -------------------------------------*/
-constexpr SR_Texture::fixed_type SR_Texture::wrap_coordinate(SR_Texture::fixed_type uvw) const noexcept
+inline SR_Texture::fixed_type SR_Texture::wrap_coordinate(SR_Texture::fixed_type uvw) const noexcept
 {
     return (mWrapping == SR_TEXTURE_WRAP_REPEAT)
            ? ((uvw < ls::math::fixed_cast<fixed_type>(0)
