@@ -9,6 +9,7 @@
 
 #include "lightsky/utils/Copy.h"
 
+#include "lightsky/math/fixed.h"
 #include "lightsky/math/scalar_utils.h"
 
 #include "soft_render/SR_Color.hpp" // SR_ColorDataType
@@ -16,7 +17,7 @@
 
 // x86 will grab 4 pixels at a time, swizzle on non-vectorized implementations.
 #ifndef SR_TEXTURE_Z_ORDERING
-    //#define SR_TEXTURE_Z_ORDERING
+    #define SR_TEXTURE_Z_ORDERING
 #endif
 
 
@@ -57,6 +58,8 @@ enum SR_TexChunkInfo : uint_fast32_t
 -----------------------------------------------------------------------------*/
 class SR_Texture
 {
+    typedef ls::math::medp_t fixed_type;
+
   private:
     uint16_t mWidth;
 
@@ -136,6 +139,8 @@ class SR_Texture
     ) noexcept;
 
     float wrap_coordinate(float uvw) const noexcept;
+
+    constexpr fixed_type wrap_coordinate(fixed_type uvw) const noexcept;
 
     int wrap_coordinate(int uvw, int maxVal) const noexcept;
 
@@ -408,6 +413,20 @@ inline float SR_Texture::wrap_coordinate(float uvw) const noexcept
     return (mWrapping == SR_TEXTURE_WRAP_REPEAT)
            ? ((uvw < 0.f ? 1.f : 0.f) + ls::math::fmod_1(uvw))
            : ls::math::clamp(uvw, 0.f, 1.f);
+}
+
+
+
+/*-------------------------------------
+ * Keep all UV values within the (0.f, 1.f) range.
+-------------------------------------*/
+constexpr SR_Texture::fixed_type SR_Texture::wrap_coordinate(SR_Texture::fixed_type uvw) const noexcept
+{
+    return (mWrapping == SR_TEXTURE_WRAP_REPEAT)
+           ? ((uvw < ls::math::fixed_cast<fixed_type>(0)
+               ? ls::math::fixed_cast<fixed_type>(1)
+               : ls::math::fixed_cast<fixed_type>(0)) + (uvw % ls::math::fixed_cast<fixed_type>(1)))
+           : ls::math::clamp(uvw, ls::math::fixed_cast<fixed_type>(0), ls::math::fixed_cast<fixed_type>(1));
 }
 
 
@@ -703,10 +722,17 @@ inline color_type SR_Texture::nearest(float x, float y) const noexcept
 {
     if (mWrapping == SR_TEXTURE_WRAP_CUTOFF && (ls::math::min(x, y) < 0.f || ls::math::max(x, y) >= 1.f)) return color_type{0};
 
-    const uint_fast32_t xi = (uint_fast32_t)(mWidthf * wrap_coordinate(x));
-    const uint_fast32_t yi = (uint_fast32_t)(mHeightf * wrap_coordinate(y));
-    const ptrdiff_t index = map_coordinate(xi, yi);
+    #if 0
+        const uint_fast32_t xi = (uint_fast32_t)(mWidthf  * wrap_coordinate(x));
+        const uint_fast32_t yi = (uint_fast32_t)(mHeightf * wrap_coordinate(y));
+    #else
+        const fixed_type xf{x};
+        const fixed_type yf{y};
+        const uint_fast32_t xi = (uint_fast32_t)(ls::math::fixed_cast<fixed_type>(mWidth) * wrap_coordinate(xf));
+        const uint_fast32_t yi = (uint_fast32_t)(ls::math::fixed_cast<fixed_type>(mHeight) * wrap_coordinate(yf));
+    #endif
 
+    const ptrdiff_t index = map_coordinate(xi, yi);
     return reinterpret_cast<color_type*>(mTexels)[index];
 }
 
@@ -720,9 +746,18 @@ inline color_type SR_Texture::nearest(float x, float y, float z) const noexcept
 {
     if (mWrapping == SR_TEXTURE_WRAP_CUTOFF && (ls::math::min(x, y, z) < 0.f || ls::math::max(x, y, z) >= 1.f)) return color_type{0};
 
-    const uint_fast32_t xi = (uint_fast32_t)(mWidthf  * wrap_coordinate(x));
-    const uint_fast32_t yi = (uint_fast32_t)(mHeightf * wrap_coordinate(y));
-    const uint_fast32_t zi = (uint_fast32_t)(mDepthf  * wrap_coordinate(z));
+    #if 0
+        const uint_fast32_t xi = (uint_fast32_t)(mWidthf  * wrap_coordinate(x));
+        const uint_fast32_t yi = (uint_fast32_t)(mHeightf * wrap_coordinate(y));
+        const uint_fast32_t zi = (uint_fast32_t)(mDepthf  * wrap_coordinate(z));
+    #else
+        const fixed_type xf{x};
+        const fixed_type yf{y};
+        const fixed_type zf{z};
+        const uint_fast32_t xi = (uint_fast32_t)(ls::math::fixed_cast<fixed_type>(mWidth) * wrap_coordinate(xf));
+        const uint_fast32_t yi = (uint_fast32_t)(ls::math::fixed_cast<fixed_type>(mHeight) * wrap_coordinate(yf));
+        const uint_fast32_t zi = (uint_fast32_t)(ls::math::fixed_cast<fixed_type>(mDepth) * wrap_coordinate(zf));
+    #endif
 
     const ptrdiff_t index = map_coordinate(xi, yi, zi);
     return reinterpret_cast<color_type*>(mTexels)[index];
