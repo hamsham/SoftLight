@@ -37,6 +37,8 @@ struct VolumeUniforms : SR_UniformBuffer
     math::vec2 windowSize;
     float focalLen;
     const SR_Texture* pCubeMap;
+    const SR_Texture* pOpacityMap;
+    const SR_Texture* pColorMap;
     math::vec4 camPos;
     math::mat4 mvMatrix;
     math::mat4 mvpMatrix;
@@ -67,7 +69,7 @@ SR_VertexShader volume_vert_shader()
 {
     SR_VertexShader shader;
     shader.numVaryings = 1;
-    shader.cullMode = SR_CULL_FRONT_FACE;
+    shader.cullMode = SR_CULL_BACK_FACE;
     shader.shader = _volume_vert_shader;
 
     return shader;
@@ -113,9 +115,11 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
     const math::vec4&&    winDimens = math::rcp(math::vec4{pUniforms->windowSize[0], pUniforms->windowSize[1], 1.f, 1.f});
     const float           focalLen  = -pUniforms->focalLen;
     const SR_Texture*     volumeTex = pUniforms->pCubeMap;
+    const SR_Texture*     alphaTex  = pUniforms->pOpacityMap;
+    const SR_Texture*     colorTex  = pUniforms->pColorMap;
     const math::vec4      camPos    = pUniforms->camPos;
-    const math::vec4      spacing   {1.f, 0.5f, 1.f, 1.f};
-    const math::vec4&&    viewDir   = math::vec4{2.f * (winDimens[0]*fragCoords[0]) - 1.f, 2.f * (winDimens[1]*fragCoords[1]) - 1.f, focalLen, 1.f} * spacing;
+    const math::vec4      spacing   {1.f, 2.f, 1.f, 1.f};
+    const math::vec4&&    viewDir   = math::vec4{2.f * (winDimens[0]*fragCoords[0]) - 1.f, 2.f * (winDimens[1]*fragCoords[1]) - 1.f, focalLen, 1.f} / spacing;
     math::vec4&&          rayDir    = math::normalize(viewDir * pUniforms->mvMatrix);
     math::vec4            rayStart;
     math::vec4            rayStop;
@@ -139,37 +143,23 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
     rayStop[3]  = 0.f;
     rayStep     = math::normalize(rayStop - rayStart) * step;
     math::vec4 texPos = rayStart;
-    math::vec4_t<float>dstTexel = {0};
+    math::vec4_t<float>dstTexel = {0.f};
     unsigned srcTexel  = 0;
 
     do
     {
-        //srcTexel = volumeTex->bilinear<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
-        srcTexel = volumeTex->nearest<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
+        srcTexel = volumeTex->bilinear<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
+        //srcTexel = volumeTex->nearest<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
+
         if (srcTexel > 17)
         {
-            const float dstA = 1.f - dstTexel[3];
-            const float srcA = ((float)srcTexel/255.f) + LS_EPSILON; // avoid divide-by-0
+            const SR_ColorRGBf volColor = colorTex->raw_texel<SR_ColorRGBf>(srcTexel);
+            const float        srcAlpha = 0.75f * alphaTex->raw_texel<float>(srcTexel);
 
-            constexpr float alphaMultiplier = 0.005f;
-            const float newAlpha = (dstA / srcA) * alphaMultiplier;
-            dstTexel[3] += newAlpha;
-
-            // pseudo transfer functions
-            if (srcTexel > 75)
-            {
-                dstTexel[0] += newAlpha;
-            }
-
-            if (srcTexel > 50)
-            {
-                dstTexel[1] += newAlpha;
-            }
-
-            if (srcTexel > 17)
-            {
-                dstTexel[2] += newAlpha;
-            }
+            dstTexel[0] += volColor[2] * srcAlpha;
+            dstTexel[1] += volColor[1] * srcAlpha;
+            dstTexel[2] += volColor[0] * srcAlpha;
+            dstTexel[3] += srcAlpha;
         }
 
         texPos += rayStep;
@@ -331,31 +321,101 @@ int scene_load_cube(SR_SceneGraph& graph)
 
     assert(numVboBytes == (numVerts*stride*3));
 
-    graph.mMaterials.push_back(SR_Material());
-    SR_Material& material = graph.mMaterials.back();
-    material.pTextures[0] = context.textures().back();
-
-    graph.mMeshes.push_back(SR_Mesh());
+    graph.mMeshes.emplace_back(SR_Mesh());
     SR_Mesh& mesh = graph.mMeshes.back();
     mesh.vaoId = vaoId;
     mesh.elementBegin = 0;
     mesh.elementEnd = numVerts;
     mesh.mode = SR_RenderMode::RENDER_MODE_TRIANGLES;
-    mesh.materialId = graph.mMaterials.size()-1;
+    mesh.materialId = (uint16_t)-1;
 
     return 0;
 }
 
 
 
+/*-----------------------------------------------------------------------------
+ * Create the Transfer Functions
+-----------------------------------------------------------------------------*/
+bool create_opacity_map(SR_SceneGraph& graph, const size_t volumeTexIndex)
+{
+    SR_Context&            context    = graph.mContext;
+    const size_t           texId      = context.create_texture();
+    SR_Texture&            opacityTex = context.texture(texId);
+    const SR_Texture&      volumeTex  = context.texture(volumeTexIndex);
+    const SR_ColorDataType volumeType = volumeTex.type();
+
+    const size_t w = (1 << (sr_bytes_per_color(volumeType)*CHAR_BIT)) - 1;
+    const size_t h = 1;
+    const size_t d = 1;
+
+    if (0 != opacityTex.init(SR_COLOR_R_FLOAT, w, h, d))
+    {
+        std::cerr << "Error: Unable to allocate memory for the opacity transfer functions." << std::endl;
+        return false;
+    }
+    opacityTex.set_wrap_mode(SR_TexWrapMode::SR_TEXTURE_WRAP_CUTOFF);
+
+    const auto add_transfer_func = [&opacityTex](const uint16_t begin, const uint16_t end, const float opacity)->void
+    {
+        for (uint16_t i = begin; i < end; ++i)
+        {
+            opacityTex.texel<float>(i, 0, 0) = opacity;
+        }
+    };
+
+    add_transfer_func(0,  17,  0.f);
+    add_transfer_func(17, 40,  0.15f);
+    add_transfer_func(40, 50,  0.0f);
+    add_transfer_func(50, 75,  0.01f);
+    add_transfer_func(75, 255, 0.05f);
+
+    return true;
+}
+
+
+
+bool create_color_map(SR_SceneGraph& graph, const size_t volumeTexIndex)
+{
+    SR_Context&            context    = graph.mContext;
+    const size_t           texId      = context.create_texture();
+    SR_Texture&            colorTex   = context.texture(texId);
+    const SR_Texture&      volumeTex  = context.texture(volumeTexIndex);
+    const SR_ColorDataType volumeType = volumeTex.type();
+
+    const size_t w = (1 << (sr_bytes_per_color(volumeType)*CHAR_BIT)) - 1;
+    const size_t h = 1;
+    const size_t d = 1;
+
+    if (0 != colorTex.init(SR_COLOR_RGB_FLOAT, w, h, d))
+    {
+        std::cerr << "Error: Unable to allocate memory for the color transfer functions." << std::endl;
+        return false;
+    }
+    colorTex.set_wrap_mode(SR_TexWrapMode::SR_TEXTURE_WRAP_CUTOFF);
+
+    const auto add_transfer_func = [&colorTex](const uint16_t begin, const uint16_t end, const SR_ColorRGBType<float> color)->void
+    {
+        for (uint16_t i = begin; i < end; ++i)
+        {
+            colorTex.texel<SR_ColorRGBf>(i, 0, 0) = color;
+        }
+    };
+
+    add_transfer_func(0,  17,  SR_ColorRGBType<float>{0.f,   0.f,  0.f});
+    add_transfer_func(17, 40,  SR_ColorRGBType<float>{0.5f,  0.2f, 0.f});
+    add_transfer_func(40, 50,  SR_ColorRGBType<float>{0.5f,  0.0f, 0.5f});
+    add_transfer_func(50, 75,  SR_ColorRGBType<float>{1.f,   1.f,  1.f});
+    add_transfer_func(75, 255, SR_ColorRGBType<float>{0.6f,  1.f,  1.f});
+
+    return true;
+}
+
+
 
 /*-----------------------------------------------------------------------------
  * Create the context for a demo scene
 -----------------------------------------------------------------------------*/
-void render_volume(SR_SceneGraph*, const math::mat4&);
-
-
-
 utils::Pointer<SR_SceneGraph> init_volume_context()
 {
     int retCode = 0;
@@ -365,7 +425,7 @@ utils::Pointer<SR_SceneGraph> init_volume_context()
     uint32_t                      texId   = context.create_texture();
     uint32_t                      depthId = context.create_texture();
 
-    context.num_threads(4);
+    context.num_threads(std::thread::hardware_concurrency() - 2);
 
     SR_Texture& tex = context.texture(texId);
     retCode = tex.init(SR_ColorDataType::SR_COLOR_RGBA_FLOAT, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
@@ -391,7 +451,13 @@ utils::Pointer<SR_SceneGraph> init_volume_context()
     retCode = fbo.valid();
     assert(retCode == 0);
 
-    retCode = read_volume_file(*pGraph);
+    retCode = read_volume_file(*pGraph); // creates volume at texture index 2
+    assert(retCode == 0);
+
+    retCode = create_opacity_map(*pGraph, 2); // creates volume at texture index 3
+    assert(retCode == 0);
+
+    retCode = create_color_map(*pGraph, 2); // creates volume at texture index 4
     assert(retCode == 0);
 
     retCode = scene_load_cube(*pGraph);
@@ -400,7 +466,9 @@ utils::Pointer<SR_SceneGraph> init_volume_context()
     const SR_VertexShader&&   volVertShader = volume_vert_shader();
     const SR_FragmentShader&& volFragShader = volume_frag_shader();
     std::shared_ptr<VolumeUniforms> pUniforms{new VolumeUniforms};
-    pUniforms->pCubeMap = context.textures().back();
+    pUniforms->pCubeMap = context.textures()[2];
+    pUniforms->pOpacityMap = context.textures()[3];
+    pUniforms->pColorMap = context.textures()[4];
 
     uint32_t volShaderId = context.create_shader(volVertShader, volFragShader, pUniforms);
     assert(volShaderId == 0);
