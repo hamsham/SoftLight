@@ -1,5 +1,5 @@
 
- #include "lightsky/setup/Api.h" // LS_IMPERATIVE
+#include "lightsky/setup/Api.h" // LS_IMPERATIVE
 
 #include "lightsky/math/mat4.h"
 #include "lightsky/math/mat_utils.h"
@@ -76,17 +76,10 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
 
         while (i --> 0u)
         {
-            #if 0
-            const __m128 v0 = _mm_mul_ps((inVaryings0++)->simd, bc0);
-            const __m128 v1 = _mm_mul_ps((inVaryings1++)->simd, bc1);
-            const __m128 v2 = _mm_mul_ps((inVaryings2++)->simd, bc2);
-            (outVaryings++)->simd = _mm_add_ps(_mm_add_ps(v0, v1), v2);
-            #else
             const __m128 v0 = _mm_mul_ps((inVaryings0++)->simd, bc0);
             const __m128 v1 = _mm_fmadd_ps((inVaryings1++)->simd, bc1, v0);
             const __m128 v2 = _mm_fmadd_ps((inVaryings2++)->simd, bc2, v1);
             (outVaryings++)->simd = v2;
-            #endif
         }
     #elif defined(LS_ARCH_ARM)
         const float32x4_t bc0 = vdupq_lane_f32(vget_low_f32(baryCoords.simd),  0);
@@ -464,9 +457,9 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
         const __m128 d0         = _mm_sub_ps(yf4, p0y);
         const __m128 d1         = _mm_sub_ps(yf4, p1y);
         const __m128 alpha      = _mm_mul_ps(d0, p20y);
-        const int    secondHalf = _mm_movemask_ps(d1);
+        const __m128 secondHalf = _mm_cmplt_ps(d1, _mm_setzero_ps());
+        int32_t      xMax       = _mm_cvtss_si32(_mm_or_ps(_mm_and_ps(secondHalf, _mm_fmadd_ps(p21xy, d1, p1x)), _mm_andnot_ps(secondHalf, _mm_fmadd_ps(p10xy, d0, p0x))));
         int32_t      xMin       = _mm_cvtss_si32(_mm_fmadd_ps(p20x, alpha, p0x));
-        int32_t      xMax       = _mm_cvtss_si32(secondHalf ? _mm_fmadd_ps(p21xy, d1, p1x) : _mm_fmadd_ps(p10xy, d0, p0x));
 
         // Get the beginning and end of the scan-line
         if (xMin > xMax) std::swap(xMin, xMax);
