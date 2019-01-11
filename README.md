@@ -39,14 +39,13 @@ To see how to build a sample application using either SoftLight or the LightSky 
 
 
 ## TODO
-- [X] Implement blending functionality for transparency.
-- [X] Implement different face culling modes.
-- [X] Implement depth masks and optional depth testing.
 - [ ] Implement stencil buffers.
 - [ ] Doxygen-based documentation for the software rendering module.
-- [X] Doxygen-based documentation for the LightSky modules.
-- [X] Add Unit Tests.
-- [ ] Finish Examples.
+- [ ] Add Unit Tests.
+- [ ] Create additional examples.
+- [ ] Support mipmapping.
+- [ ] Add optional 3D texture swizzling.
+- [ ] Complete feature parity of GLSL functions.
 
 
 
