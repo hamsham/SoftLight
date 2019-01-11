@@ -3,8 +3,7 @@
 #define SR_VERTEX_PROCESSOR_HPP
 
 #include <array>
-
-#include "lightsky/utils/WorkerThread.hpp"
+#include <atomic>
 
 #include "lightsky/math/scalar_utils.h"
 

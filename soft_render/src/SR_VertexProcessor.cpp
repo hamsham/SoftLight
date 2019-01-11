@@ -1,7 +1,4 @@
 
-#include "lightsky/setup/Api.h" // LS_IMPERATIVE
-
-#include "lightsky/utils/Copy.h" // fast_memset
 #include "lightsky/utils/Sort.hpp" // utils::sort_quick
 
 #include "lightsky/math/vec4.h"
@@ -224,14 +221,11 @@ void SR_VertexProcessor::push_fragments(
     // Copy all per-vertex coordinates and varyings to the fragment bins which
     // will need the data for interpolation
     SR_FragmentBin bin;
-    //ls::utils::fast_memcpy(bin.mScreenCoords, screenCoords, sizeof(bin.mScreenCoords));
     bin.mScreenCoords[0] = screenCoords[0];
     bin.mScreenCoords[1] = screenCoords[1];
     bin.mScreenCoords[2] = screenCoords[2];
+    bin.mPerspDivide     = math::rcp(math::vec4{worldCoords[0][3], worldCoords[1][3], worldCoords[2][3], 1.f});
 
-    bin.mPerspDivide = math::rcp(math::vec4{worldCoords[0][3], worldCoords[1][3], worldCoords[2][3], 1.f});
-
-    //ls::utils::fast_memcpy(bin.mVaryings, varyings, sizeof(bin.mVaryings));
     for (unsigned i = 0; i < LS_ARRAY_SIZE(bin.mVaryings); ++i)
     {
         bin.mVaryings[i] = varyings[i];
