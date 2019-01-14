@@ -540,7 +540,7 @@ void SR_Context::import(SR_Context&& inContext) noexcept
 /*-------------------------------------
  * Draw a mesh
 -------------------------------------*/
-void SR_Context::draw(const SR_Mesh& m, uint32_t shaderId, uint32_t fboId) noexcept
+void SR_Context::draw(const SR_Mesh& m, size_t shaderId, size_t fboId) noexcept
 {
     mProcessors.run_shader_processors(this, &m, &mShaders[shaderId], &mFbos[fboId]);
 }
@@ -550,7 +550,7 @@ void SR_Context::draw(const SR_Mesh& m, uint32_t shaderId, uint32_t fboId) noexc
 /*-------------------------------------
  * Blit to a window
 -------------------------------------*/
-void SR_Context::blit(SR_WindowBuffer& buffer, uint32_t textureId) noexcept
+void SR_Context::blit(SR_WindowBuffer& buffer, size_t textureId) noexcept
 {
     mProcessors.run_blit_processors(mTextures[textureId], &buffer);
 }

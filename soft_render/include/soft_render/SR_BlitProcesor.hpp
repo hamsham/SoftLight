@@ -4,6 +4,8 @@
 
 #include <cstdint>
 
+#include <iostream>
+
 #include "soft_render/SR_Color.hpp"
 #include "soft_render/SR_Texture.hpp"
 #include "soft_render/SR_WindowBuffer.hpp"
@@ -287,6 +289,8 @@ void SR_BlitProcessor::blit_nearest_rgba(
     const sr_fixed_type foutW     = finW / ls::math::fixed_cast<sr_fixed_type>(outW);
     const sr_fixed_type foutH     = finH / ls::math::fixed_cast<sr_fixed_type>(outH);
     const uint_fast16_t numPixels = (outW*outH) - 1;
+
+    //std::cout << inW << ' ' << outW << ' ' << foutW.number << " & " << inH << ' ' << outH << ' '  << foutH.number << '\n';
 
     for (uint_fast16_t y = dstY0; y < dstY1; ++y)
     {

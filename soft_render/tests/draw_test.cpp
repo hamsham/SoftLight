@@ -21,7 +21,7 @@
 /*--------------------------------------
  * Vertex Shader
 --------------------------------------*/
-math::vec4 _line_vert_shader_impl(const uint32_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer*, math::vec4*)
+math::vec4 _line_vert_shader_impl(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer*, math::vec4*)
 {
     // Using a value of 1000 for the w-component to help with perspective correction.
     const math::vec3& vert = *vbo.element<const math::vec3>(vao.offset(0, vertId));
@@ -73,18 +73,18 @@ int main()
     retCode = context.num_threads(4);
     assert(retCode == 4);
 
-    uint32_t fboId = context.create_framebuffer();
-    uint32_t texId = context.create_texture();
-    uint32_t depthId = context.create_texture();
-    uint32_t vaoId = context.create_vao();
-    uint32_t vboId = context.create_vbo();
-    uint32_t iboId = context.create_ibo();
+    size_t fboId = context.create_framebuffer();
+    size_t texId = context.create_texture();
+    size_t depthId = context.create_texture();
+    size_t vaoId = context.create_vao();
+    size_t vboId = context.create_vbo();
+    size_t iboId = context.create_ibo();
 
     pGraph->mMeshes.push_back(SR_Mesh());
 
     const SR_VertexShader&& vertShader = line_vert_shader();
     const SR_FragmentShader&& fragShader = line_frag_shader();
-    uint32_t shaderId  = context.create_shader(vertShader,  fragShader, std::shared_ptr<SR_UniformBuffer>{nullptr});
+    size_t shaderId  = context.create_shader(vertShader,  fragShader, std::shared_ptr<SR_UniformBuffer>{nullptr});
 
     SR_VertexBuffer& vbo = context.vbo(vboId);
     float tri[3][3] = {
@@ -93,7 +93,7 @@ int main()
         {480.f, 400.f, 1.f}
     };
 
-    const uint32_t numVboBytes = 3 * sr_bytes_per_vertex(SR_DataType::VERTEX_DATA_FLOAT, SR_Dimension::VERTEX_DIMENSION_3);
+    const size_t numVboBytes = 3 * sr_bytes_per_vertex(SR_DataType::VERTEX_DATA_FLOAT, SR_Dimension::VERTEX_DIMENSION_3);
     retCode = vbo.init(numVboBytes);
     if (retCode != 0)
     {

@@ -146,7 +146,7 @@ void SR_Animation::set_play_mode(const SR_AnimPlayMode animMode) noexcept {
 /*-------------------------------------
  * Retrieve the SR_Animation's hash number
 -------------------------------------*/
-unsigned SR_Animation::get_anim_id() const noexcept {
+size_t SR_Animation::get_anim_id() const noexcept {
     return mAnimId;
 }
 
@@ -200,7 +200,7 @@ void SR_Animation::set_ticks_per_sec(const SR_AnimPrecision numTicks) noexcept {
 /*-------------------------------------
  * Retrieve the transformations affected by *this.
 -------------------------------------*/
-const std::vector<uint32_t>& SR_Animation::get_transforms() const noexcept {
+const std::vector<size_t>& SR_Animation::get_transforms() const noexcept {
     return mTransformIds;
 }
 
@@ -209,7 +209,7 @@ const std::vector<uint32_t>& SR_Animation::get_transforms() const noexcept {
 /*-------------------------------------
  * Retrieve the animation channels affected by *this.
 -------------------------------------*/
-const std::vector<uint32_t>& SR_Animation::get_node_tracks() const noexcept {
+const std::vector<size_t>& SR_Animation::get_node_tracks() const noexcept {
     return mTrackIds;
 }
 
@@ -218,7 +218,7 @@ const std::vector<uint32_t>& SR_Animation::get_node_tracks() const noexcept {
 /*-------------------------------------
  * Retrieve an array of animations affected by *this.
 -------------------------------------*/
-const std::vector<uint32_t>& SR_Animation::get_node_animations() const noexcept {
+const std::vector<size_t>& SR_Animation::get_node_animations() const noexcept {
     return mChannelIds;
 }
 
@@ -227,7 +227,7 @@ const std::vector<uint32_t>& SR_Animation::get_node_animations() const noexcept 
 /*-------------------------------------
  * Get the number of sub-animations
 -------------------------------------*/
-unsigned SR_Animation::get_num_anim_channels() const noexcept {
+size_t SR_Animation::get_num_anim_channels() const noexcept {
     LS_DEBUG_ASSERT(mTransformIds.size() == mChannelIds.size());
     LS_DEBUG_ASSERT(mTransformIds.size() == mTrackIds.size());
     return mTransformIds.size();
@@ -238,7 +238,7 @@ unsigned SR_Animation::get_num_anim_channels() const noexcept {
 /*-------------------------------------
  * Add a node's animation track to *this
 -------------------------------------*/
-void SR_Animation::add_anim_channel(const SR_SceneNode& node, const uint32_t nodeTrackId) noexcept {
+void SR_Animation::add_anim_channel(const SR_SceneNode& node, const size_t nodeTrackId) noexcept {
     mChannelIds.push_back(node.animListId);
     mTrackIds.push_back(nodeTrackId);
     mTransformIds.push_back(node.nodeId);
@@ -249,7 +249,7 @@ void SR_Animation::add_anim_channel(const SR_SceneNode& node, const uint32_t nod
 /*-------------------------------------
  * Remove a node's animation from *this.
 -------------------------------------*/
-void SR_Animation::remove_anim_channel(const unsigned channelIndex) noexcept {
+void SR_Animation::remove_anim_channel(const size_t channelIndex) noexcept {
     LS_DEBUG_ASSERT(mTransformIds.size() == mChannelIds.size());
     LS_DEBUG_ASSERT(mTransformIds.size() == mTrackIds.size());
     
@@ -276,7 +276,7 @@ void SR_Animation::clear_anim_channels() noexcept {
 /*-------------------------------------
  * Reserve space for animation tracks.
 -------------------------------------*/
-void SR_Animation::reserve_anim_channels(const unsigned reserveSize) noexcept {
+void SR_Animation::reserve_anim_channels(const size_t reserveSize) noexcept {
     mChannelIds.reserve(reserveSize);
     mTrackIds.reserve(reserveSize);
     mTransformIds.reserve(reserveSize);
@@ -296,12 +296,12 @@ void SR_Animation::animate(SR_SceneGraph& graph, const SR_AnimPrecision percentD
     const std::vector<std::vector<SR_AnimationChannel>>& nodeAnims = graph.mNodeAnims;
     SR_Transform* const pTransforms = graph.mCurrentTransforms.data();
     
-    for (unsigned i = mTransformIds.size(); i --> 0;) {
-        const uint32_t animChannelId    = mChannelIds[i]; // SR_SceneGraph.mNodeAnims[node.animId]
-        const uint32_t nodeTrackId      = mTrackIds[i]; // SR_SceneGraph.mNodeAnims[node.animId][nodeTrackId]
-        const uint32_t transformId      = mTransformIds[i]; // SR_SceneGraph.currentTransforms[node.nodeId]
-        const SR_AnimationChannel& track   = nodeAnims[animChannelId][nodeTrackId];
-        SR_Transform& nodeTransform        = pTransforms[transformId];
+    for (size_t i = mTransformIds.size(); i --> 0;) {
+        const size_t animChannelId       = mChannelIds[i]; // SR_SceneGraph.mNodeAnims[node.animId]
+        const size_t nodeTrackId         = mTrackIds[i]; // SR_SceneGraph.mNodeAnims[node.animId][nodeTrackId]
+        const size_t transformId         = mTransformIds[i]; // SR_SceneGraph.currentTransforms[node.nodeId]
+        const SR_AnimationChannel& track = nodeAnims[animChannelId][nodeTrackId];
+        SR_Transform& nodeTransform      = pTransforms[transformId];
         
         LS_DEBUG_ASSERT(transformId != SR_SceneNodeProp::SCENE_NODE_ROOT_ID);
 
@@ -335,12 +335,12 @@ void SR_Animation::init(SR_SceneGraph& graph, const bool atStart) const noexcept
     const std::vector<std::vector<SR_AnimationChannel>>& nodeAnims = graph.mNodeAnims;
     SR_Transform* pTransforms = graph.mCurrentTransforms.data();
     
-    for (unsigned i = mTransformIds.size(); i --> 0;) {
-        const uint32_t animChannelId    = mChannelIds[i]; // SR_SceneGraph.mNodeAnims[node.animId]
-        const uint32_t nodeTrackId      = mTrackIds[i]; // SR_SceneGraph.mNodeAnims[node.animId][nodeTrackId]
-        const uint32_t transformId      = mTransformIds[i]; // SR_SceneGraph.currentTransforms[node.nodeId]
-        const SR_AnimationChannel& track   = nodeAnims[animChannelId][nodeTrackId];
-        SR_Transform& nodeTransform        = pTransforms[transformId];
+    for (size_t i = mTransformIds.size(); i --> 0;) {
+        const size_t animChannelId       = mChannelIds[i]; // SR_SceneGraph.mNodeAnims[node.animId]
+        const size_t nodeTrackId         = mTrackIds[i]; // SR_SceneGraph.mNodeAnims[node.animId][nodeTrackId]
+        const size_t transformId         = mTransformIds[i]; // SR_SceneGraph.currentTransforms[node.nodeId]
+        const SR_AnimationChannel& track = nodeAnims[animChannelId][nodeTrackId];
+        SR_Transform& nodeTransform      = pTransforms[transformId];
 
         if (track.mPosFrames.is_valid()) {
             nodeTransform.set_position(atStart ? track.mPosFrames.get_start_data() : track.mPosFrames.get_end_data());

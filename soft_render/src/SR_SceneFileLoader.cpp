@@ -546,7 +546,7 @@ bool SR_SceneFileLoader::load_scene(const aiScene* const pScene) noexcept
 
     for (const SR_SceneNode n : sceneData.mNodes)
     {
-        const unsigned nId = n.nodeId;
+        const size_t nId = n.nodeId;
         LS_LOG_MSG(nId, ' ', sceneData.mCurrentTransforms[nId].mParentId);
     }
 
@@ -589,11 +589,11 @@ bool SR_SceneFileLoader::allocate_gpu_data() noexcept
         return true;
     }
 
-    unsigned totalMeshTypes = vboMarkers.size();
+    size_t totalMeshTypes = vboMarkers.size();
     ls::utils::Pointer<SR_CommonVertType[]> vertTypes{new SR_CommonVertType[totalMeshTypes]};
 
     // initialize the VBO attributes
-    for (unsigned i = 0; i < vboMarkers.size(); ++i)
+    for (size_t i = 0; i < vboMarkers.size(); ++i)
     {
         vertTypes[i] = vboMarkers[i].vertType;
     }
@@ -631,7 +631,7 @@ bool SR_SceneFileLoader::allocate_gpu_data() noexcept
     {
         SR_VertexArray    vao{};
         SR_CommonVertType inAttribs          = vertTypes[i];
-        unsigned          currentVaoAttribId = 0;
+        size_t            currentVaoAttribId = 0;
         SR_VaoGroup&      m                  = vboMarkers[i];
         const int         numBindings        = ls::math::count_set_bits(inAttribs);
 
@@ -908,7 +908,7 @@ bool SR_SceneFileLoader::import_mesh_data(const aiScene* const pScene) noexcept
     std::vector<SR_BoundingBox>& bounds   = sceneData.mMeshBounds;
     SR_VertexBuffer&         vbo          = renderData.vbo(renderData.vbos().size()-1);
     SR_IndexBuffer&          ibo          = renderData.ibo(renderData.ibos().size()-1);
-    unsigned                 baseIndex    = 0;
+    size_t                   baseIndex    = 0;
     char* const              pVbo         = reinterpret_cast<char*>(vbo.data());
     char*                    pIbo         = reinterpret_cast<char*>(ibo.data());
 
@@ -919,19 +919,19 @@ bool SR_SceneFileLoader::import_mesh_data(const aiScene* const pScene) noexcept
     {
         const aiMesh* const     pMesh       = pScene->mMeshes[meshId];
         const SR_CommonVertType vertType    = sr_convert_assimp_verts(pMesh);
-        const unsigned          meshGroupId = get_mesh_group_marker(vertType, mPreloader.mVaoGroups);
+        const size_t            meshGroupId = get_mesh_group_marker(vertType, mPreloader.mVaoGroups);
         SR_VaoGroup&            meshGroup   = tempVboMarks[meshGroupId];
-        unsigned                numIndices  = 0;
+        size_t                  numIndices  = 0;
 
         LS_DEBUG_ASSERT(meshGroup.vertType == vertType);
 
         SR_Mesh& mesh   = meshes[meshId];
         SR_BoundingBox& box = bounds[meshId];
-        mesh.materialId = (uint16_t)pMesh->mMaterialIndex;
+        mesh.materialId = (uint32_t)pMesh->mMaterialIndex;
         mesh.vaoId      = meshGroupId;
 
         // get the offset to the current mesh so it can be sent to a VBO
-        const unsigned meshOffset = meshGroup.vboOffset + meshGroup.meshOffset;
+        const size_t meshOffset = meshGroup.vboOffset + meshGroup.meshOffset;
         sr_upload_mesh_vertices(pMesh, pVbo + meshOffset, meshGroup.vertType);
 
         // increment the mesh offset for the next mesh
@@ -956,23 +956,23 @@ bool SR_SceneFileLoader::import_mesh_data(const aiScene* const pScene) noexcept
 char* SR_SceneFileLoader::upload_mesh_indices(
     const aiMesh* const pMesh,
     char* pIbo,
-    const unsigned baseIndex,
-    const unsigned baseVertex,
+    const size_t baseIndex,
+    const size_t baseVertex,
     SR_Mesh& outMesh,
-    unsigned& outNumIndices
+    size_t& outNumIndices
 ) noexcept
 {
     const SR_SceneFileMeta& sceneInfo = mPreloader.mSceneInfo;
     const ptrdiff_t numBytesPerIndex = sr_index_byte_size(sceneInfo.indexType);
 
     // iterate through all faces in the mesh
-    for (unsigned faceIter = 0; faceIter < pMesh->mNumFaces; ++faceIter)
+    for (size_t faceIter = 0; faceIter < pMesh->mNumFaces; ++faceIter)
     {
         const aiFace& face = pMesh->mFaces[faceIter];
 
-        for (unsigned i = 0; i < face.mNumIndices; ++i)
+        for (size_t i = 0; i < face.mNumIndices; ++i)
         {
-            const unsigned idx = face.mIndices[i] + baseVertex;
+            const size_t idx = face.mIndices[i] + baseVertex;
 
             switch (sceneInfo.indexType)
             {
@@ -1012,12 +1012,12 @@ char* SR_SceneFileLoader::upload_mesh_indices(
 /*-------------------------------------
  * Retrieve a single VBO Marker
 -------------------------------------*/
-unsigned SR_SceneFileLoader::get_mesh_group_marker(
+size_t SR_SceneFileLoader::get_mesh_group_marker(
     const SR_CommonVertType vertType,
     const std::vector<SR_VaoGroup>& markers
 ) const noexcept
 {
-    for (unsigned i = 0; i < markers.size(); ++i)
+    for (size_t i = 0; i < markers.size(); ++i)
     {
         if (vertType == markers[i].vertType)
         {
@@ -1027,7 +1027,7 @@ unsigned SR_SceneFileLoader::get_mesh_group_marker(
 
     LS_DEBUG_ASSERT(false);
 
-    return (unsigned)-1;
+    return (size_t)-1;
 }
 
 
@@ -1038,7 +1038,7 @@ unsigned SR_SceneFileLoader::get_mesh_group_marker(
 void SR_SceneFileLoader::read_node_hierarchy(
     const aiScene* const pScene,
     const aiNode* const pInNode,
-    const unsigned parentId
+    const uint64_t parentId
 ) noexcept
 {
     // use the size of the node list as an index which should be returned to
@@ -1138,15 +1138,15 @@ void SR_SceneFileLoader::read_node_hierarchy(
 void SR_SceneFileLoader::import_mesh_node(const aiNode* const pNode, SR_SceneNode& outNode) noexcept
 {
     SR_SceneGraph& graph = mPreloader.mSceneData;
-    std::vector<unsigned>& nodeMeshCounts = graph.mNumNodeMeshes;
-    std::vector<ls::utils::Pointer<unsigned[]>>& meshList = graph.mNodeMeshes;
+    std::vector<size_t>& nodeMeshCounts = graph.mNumNodeMeshes;
+    std::vector<ls::utils::Pointer<size_t[]>>& meshList = graph.mNodeMeshes;
 
     // The check for how many meshes a scene node has must have already been
     // performed.
     const unsigned numMeshes = pNode->mNumMeshes;
     LS_DEBUG_ASSERT(numMeshes > 0);
 
-    ls::utils::Pointer<unsigned[]> meshIds{new unsigned[numMeshes]};
+    ls::utils::Pointer<size_t[]> meshIds{new size_t[numMeshes]};
     LS_DEBUG_ASSERT(meshIds.get());
 
     // map the internal indices to the assimp node's mesh list
@@ -1170,7 +1170,7 @@ void SR_SceneFileLoader::import_mesh_node(const aiNode* const pNode, SR_SceneNod
 -------------------------------------*/
 void SR_SceneFileLoader::import_camera_node(
     const aiScene* const pScene,
-    const unsigned camIndex,
+    const size_t camIndex,
     SR_SceneNode& outNode
 ) noexcept
 {

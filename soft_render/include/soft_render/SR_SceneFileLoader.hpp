@@ -220,9 +220,9 @@ class SR_SceneFileLoader
 
     bool import_mesh_data(const aiScene* const pScene) noexcept;
 
-    char* upload_mesh_indices(const aiMesh* const pMesh, char* pIbo, const unsigned baseIndex, const unsigned baseVertex, SR_Mesh& outMesh, unsigned& outNumIndices) noexcept;
+    char* upload_mesh_indices(const aiMesh* const pMesh, char* pIbo, const size_t baseIndex, const size_t baseVertex, SR_Mesh& outMesh, size_t& outNumIndices) noexcept;
 
-    unsigned get_mesh_group_marker(const SR_CommonVertType vertType, const std::vector<SR_VaoGroup>& markers) const noexcept;
+    size_t get_mesh_group_marker(const SR_CommonVertType vertType, const std::vector<SR_VaoGroup>& markers) const noexcept;
 
     /**
      * @brief Recursively reads and imports scene graph data from Assimp.
@@ -240,7 +240,7 @@ class SR_SceneFileLoader
      * @return The index of the the last child node recursively placed into
      * the scene node list.
      */
-    void read_node_hierarchy(const aiScene* const pScene, const aiNode* const pNode, const unsigned parentId) noexcept;
+    void read_node_hierarchy(const aiScene* const pScene, const aiNode* const pNode, const size_t parentId) noexcept;
 
     /**
      * @brief Import a sceneMeshNode object if an ASSIMP node contains
@@ -270,7 +270,7 @@ class SR_SceneFileLoader
      * A reference to the SceneNode object which will have the remainder of
      * its data initialized through this method.
      */
-    void import_camera_node(const aiScene* const pScene, const unsigned camIndex, SR_SceneNode& outNode) noexcept;
+    void import_camera_node(const aiScene* const pScene, const size_t camIndex, SR_SceneNode& outNode) noexcept;
 
     /**
      * @brief Import all animations contained within a 3D scene file,

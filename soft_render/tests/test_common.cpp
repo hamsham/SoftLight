@@ -87,7 +87,7 @@
 /*--------------------------------------
  * Vertex Shader
 --------------------------------------*/
-math::vec4 _normal_vert_shader_impl(const uint32_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4* varyings)
+math::vec4 _normal_vert_shader_impl(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4* varyings)
 {
     const MeshUniforms* pUniforms = static_cast<const MeshUniforms*>(uniforms);
 
@@ -170,7 +170,7 @@ SR_FragmentShader normal_frag_shader()
 /*--------------------------------------
  * Vertex Shader
 --------------------------------------*/
-math::vec4 _texture_vert_shader_impl(const uint32_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4* varyings)
+math::vec4 _texture_vert_shader_impl(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4* varyings)
 {
     const MeshUniforms* pUniforms = static_cast<const MeshUniforms*>(uniforms);
     const math::vec3&   vert      = *vbo.element<const math::vec3>(vao.offset(0, vertId));
@@ -426,9 +426,9 @@ utils::Pointer<SR_SceneGraph> create_context()
     SR_SceneFileLoader meshLoader;
     utils::Pointer<SR_SceneGraph> pGraph{new SR_SceneGraph{}};
     SR_Context& context = pGraph->mContext;
-    uint32_t fboId   = context.create_framebuffer();
-    uint32_t texId   = context.create_texture();
-    uint32_t depthId = context.create_texture();
+    uint32_t fboId   = (uint32_t)context.create_framebuffer();
+    uint32_t texId   = (uint32_t)context.create_texture();
+    uint32_t depthId = (uint32_t)context.create_texture();
 
     retCode = context.num_threads(SR_TEST_MAX_THREADS);
     assert(retCode == SR_TEST_MAX_THREADS);
@@ -489,8 +489,8 @@ utils::Pointer<SR_SceneGraph> create_context()
     pUniforms->spot.outerCutoff = std::cos(LS_DEG2RAD(13.f));
     pUniforms->spot.epsilon     = math::rcp(pUniforms->spot.innerCutoff - pUniforms->spot.outerCutoff);
 
-    uint32_t texShaderId  = context.create_shader(texVertShader,  texFragShader,  pUniforms);
-    uint32_t normShaderId = context.create_shader(normVertShader, normFragShader, pUniforms);
+    uint32_t texShaderId  = (uint32_t)context.create_shader(texVertShader,  texFragShader,  pUniforms);
+    uint32_t normShaderId = (uint32_t)context.create_shader(normVertShader, normFragShader, pUniforms);
 
     assert(texShaderId == 0);
     assert(normShaderId == 1);
@@ -536,15 +536,15 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
         }
 
         const math::mat4& modelMat = pGraph->mModelMatrices[n.nodeId];
-        const unsigned numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
-        const utils::Pointer<unsigned[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
+        const size_t numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
+        const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
 
         pUniforms->modelMatrix = modelMat;
         pUniforms->mvpMatrix   = vpMatrix * modelMat;
 
-        for (unsigned meshId = 0; meshId < numNodeMeshes; ++meshId)
+        for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
         {
-            const unsigned        nodeMeshId = meshIds[meshId];
+            const size_t          nodeMeshId = meshIds[meshId];
             const SR_Mesh&        m          = pGraph->mMeshes[nodeMeshId];
             //const SR_BoundingBox& box        = pGraph->mMeshBounds[nodeMeshId];
             const SR_Material&    material   = pGraph->mMaterials[m.materialId];
@@ -557,7 +557,7 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
                 continue;
             }
             */
-            const uint32_t shaderId   = (uint32_t)(material.pTextures[0] == nullptr);
+            const size_t shaderId = (size_t)(material.pTextures[0] == nullptr);
             //const uint32_t shaderId = 0;
 
             /*

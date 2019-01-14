@@ -237,7 +237,7 @@ void SR_VertexArray::remove_binding(std::size_t bindId)
 /*--------------------------------------
  *
 --------------------------------------*/
-void SR_VertexArray::set_vertex_buffer(uint32_t vboId)
+void SR_VertexArray::set_vertex_buffer(size_t vboId)
 {
     mVboId = vboId;
 }
@@ -267,7 +267,7 @@ bool SR_VertexArray::has_vertex_buffer() const
 /*--------------------------------------
  *
 --------------------------------------*/
-void SR_VertexArray::set_index_buffer(uint32_t iboId)
+void SR_VertexArray::set_index_buffer(size_t iboId)
 {
     mIboId = iboId;
 }

@@ -46,7 +46,7 @@ inline math::vec4 world_to_screen_3(const math::vec4& v, const float widthScale,
 /*--------------------------------------
  * Get the next vertex from an IBO
 --------------------------------------*/
-inline uint32_t get_next_vertex(const SR_IndexBuffer* pIbo, uint32_t vId) noexcept
+inline size_t get_next_vertex(const SR_IndexBuffer* pIbo, size_t vId) noexcept
 {
     switch (pIbo->type())
     {
@@ -62,9 +62,9 @@ inline uint32_t get_next_vertex(const SR_IndexBuffer* pIbo, uint32_t vId) noexce
 
 
 
-inline math::vec4_t<uint32_t> get_next_vertex3(const SR_IndexBuffer* pIbo, uint32_t vId) noexcept
+inline math::vec4_t<size_t> get_next_vertex3(const SR_IndexBuffer* pIbo, size_t vId) noexcept
 {
-    math::vec4_t<uint32_t> ret;
+    math::vec4_t<size_t> ret;
 
     switch (pIbo->type())
     {
@@ -311,8 +311,8 @@ void SR_VertexProcessor::execute() noexcept
     float                   fboH         = (float)mFboH;
     const float             widthScale   = fboW * 0.5f;
     const float             heightScale  = fboH * 0.5f;
-    uint32_t                begin        = mMesh.elementBegin;
-    uint32_t                end          = mMesh.elementEnd;
+    size_t                  begin        = mMesh.elementBegin;
+    size_t                  end          = mMesh.elementEnd;
     const SR_IndexBuffer*   pIbo         = nullptr;
     ls::math::vec4          worldCoords  [SR_SHADER_MAX_WORLD_COORDS];
     ls::math::vec4          screenCoords [SR_SHADER_MAX_SCREEN_COORDS];
@@ -326,10 +326,10 @@ void SR_VertexProcessor::execute() noexcept
     if (mMesh.mode == RENDER_MODE_INDEXED_POINTS)
     {
         begin += mThreadId;
-        const uint32_t step = mNumThreads;
-        for (uint32_t i = begin; i < end; i += step)
+        const size_t step = mNumThreads;
+        for (size_t i = begin; i < end; i += step)
         {
-            const uint32_t vertId = get_next_vertex(pIbo, i);
+            const size_t vertId = get_next_vertex(pIbo, i);
             worldCoords[0] = shader(vertId, vao, vbo, pUniforms, pVaryings);
 
             if (worldCoords[0][3] > 0.f)
@@ -342,9 +342,9 @@ void SR_VertexProcessor::execute() noexcept
     else if (mMesh.mode == RENDER_MODE_POINTS)
     {
         begin += mThreadId;
-        const uint32_t step = mNumThreads;
+        const size_t step = mNumThreads;
 
-        for (uint32_t i = begin; i < end; i += step)
+        for (size_t i = begin; i < end; i += step)
         {
             worldCoords[0] = shader(i, vao, vbo, pUniforms, pVaryings);
 
@@ -359,16 +359,16 @@ void SR_VertexProcessor::execute() noexcept
     {
         // 3 vertices per set of lines
         begin += mThreadId * 3u;
-        const uint32_t step = mNumThreads * 3u;
+        const size_t step = mNumThreads * 3u;
 
-        for (uint32_t i = begin; i < end; i += step)
+        for (size_t i = begin; i < end; i += step)
         {
-            for (uint32_t j = 0; j < 3; ++j)
+            for (size_t j = 0; j < 3; ++j)
             {
-                const uint32_t index0  = i + j;
-                const uint32_t index1  = i + ((j + 1) % 3);
-                const uint32_t vertId0 = get_next_vertex(pIbo, index0);
-                const uint32_t vertId1 = get_next_vertex(pIbo, index1);
+                const size_t   index0  = i + j;
+                const size_t   index1  = i + ((j + 1) % 3);
+                const size_t   vertId0 = get_next_vertex(pIbo, index0);
+                const size_t   vertId1 = get_next_vertex(pIbo, index1);
                 worldCoords[0]         = shader(vertId0, vao, vbo, pUniforms, pVaryings);
                 worldCoords[1]         = shader(vertId1, vao, vbo, pUniforms, pVaryings + numVaryings);
 
@@ -385,13 +385,13 @@ void SR_VertexProcessor::execute() noexcept
     {
         // 3 vertices per set of lines
         begin += mThreadId * 3u;
-        const uint32_t step = mNumThreads * 3u;
-        for (uint32_t i = begin; i < end; i += step)
+        const size_t step = mNumThreads * 3u;
+        for (size_t i = begin; i < end; i += step)
         {
-            for (uint32_t j = 0; j < 3; ++j)
+            for (size_t j = 0; j < 3; ++j)
             {
-                const uint32_t vertId0 = i + j;
-                const uint32_t vertId1 = i + ((j + 1) % 3);
+                const size_t   vertId0 = i + j;
+                const size_t   vertId1 = i + ((j + 1) % 3);
                 worldCoords[0]         = shader(vertId0, vao, vbo, pUniforms, pVaryings);
                 worldCoords[1]         = shader(vertId1, vao, vbo, pUniforms, pVaryings + numVaryings);
 
@@ -408,10 +408,10 @@ void SR_VertexProcessor::execute() noexcept
     {
         // 3 vertices per triangle
         begin += mThreadId * 3u;
-        const uint32_t step = mNumThreads * 3u;
-        for (uint32_t i = begin; i < end; i += step)
+        const size_t step = mNumThreads * 3u;
+        for (size_t i = begin; i < end; i += step)
         {
-            const math::vec4_t<uint32_t>&& vertId = get_next_vertex3(pIbo, i);
+            const math::vec4_t<size_t>&& vertId = get_next_vertex3(pIbo, i);
 
             worldCoords[0]  = shader(vertId[0], vao, vbo, pUniforms, pVaryings);
             worldCoords[1]  = shader(vertId[1], vao, vbo, pUniforms, pVaryings + numVaryings);
@@ -438,12 +438,12 @@ void SR_VertexProcessor::execute() noexcept
     {
         // 3 vertices per triangle
         begin += mThreadId * 3u;
-        const uint32_t step = mNumThreads * 3u;
-        for (uint32_t i = begin; i < end; i += step)
+        const size_t step = mNumThreads * 3u;
+        for (size_t i = begin; i < end; i += step)
         {
-            const uint32_t vertId0 = i;
-            const uint32_t vertId1 = i+1;
-            const uint32_t vertId2 = i+2;
+            const size_t vertId0 = i;
+            const size_t vertId1 = i+1;
+            const size_t vertId2 = i+2;
 
             worldCoords[0]  = shader(vertId0, vao, vbo, pUniforms, pVaryings);
             worldCoords[1]  = shader(vertId1, vao, vbo, pUniforms, pVaryings + numVaryings);

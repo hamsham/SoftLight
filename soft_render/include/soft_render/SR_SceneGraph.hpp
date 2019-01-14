@@ -122,7 +122,7 @@ class SR_SceneGraph
      * "mNodeMeshCounts" member, will allow several mesh indices to be
      * referenced by a single node.
      */
-    std::vector<ls::utils::Pointer<unsigned[]>> mNodeMeshes;
+    std::vector<ls::utils::Pointer<size_t[]>> mNodeMeshes;
 
     /**
      * Referenced by mesh-type scene nodes using their
@@ -131,7 +131,7 @@ class SR_SceneGraph
      * No two nodes should be able to reference the same mesh count index.
      * Doing so will cause a crash when deleting nodes.
      */
-    std::vector<unsigned> mNumNodeMeshes;
+    std::vector<size_t> mNumNodeMeshes;
 
     /**
      * @brief Graphical context & resources required for rendering all data in
@@ -147,7 +147,7 @@ class SR_SceneGraph
      * @param transformId
      * An array index which will determine which transform is currently being
      */
-    void update_node_transform(const unsigned transformId) noexcept;
+    void update_node_transform(const size_t transformId) noexcept;
 
     /**
      * Remove all data specific to mesh nodes.
@@ -156,7 +156,7 @@ class SR_SceneGraph
      * An unsigned integer, containing the data index of a node being
      * deleted.
      */
-    void delete_mesh_node_data(const unsigned nodeDataId) noexcept;
+    void delete_mesh_node_data(const size_t nodeDataId) noexcept;
 
     /**
      * Remove all data specific to camera nodes.
@@ -165,7 +165,7 @@ class SR_SceneGraph
      * An unsigned integer, containing the data index of a node being
      * deleted.
      */
-    void delete_camera_node_data(const unsigned nodeDataId) noexcept;
+    void delete_camera_node_data(const size_t nodeDataId) noexcept;
 
     /**
      * Remove all animation data pertaining to the current node.
@@ -176,7 +176,7 @@ class SR_SceneGraph
      * @param animId
      * The array index of the animation being deleted.
      */
-    void delete_node_animation_data(const uint32_t nodeId, const uint32_t animId) noexcept;
+    void delete_node_animation_data(const size_t nodeId, const size_t animId) noexcept;
 
   public: // member functions
     /**
@@ -278,7 +278,7 @@ class SR_SceneGraph
      *
      * @return The total number of nodes which were deleted.
      */
-    unsigned delete_node(const unsigned nodeIndex) noexcept;
+    size_t delete_node(const size_t nodeIndex) noexcept;
 
     /**
      * Reassign a node to a different parent.
@@ -298,7 +298,7 @@ class SR_SceneGraph
      * @return TRUE if the node could be reparented, FALSE if the node is
      * currently an ancestor of the requested parent.
      */
-    bool reparent_node(const unsigned nodeIndex, const unsigned parentIndex = SCENE_NODE_ROOT_ID) noexcept;
+    bool reparent_node(const size_t nodeIndex, const size_t parentIndex = SCENE_NODE_ROOT_ID) noexcept;
 
     /**
      * Search for a node by its name and return its index.
@@ -310,7 +310,7 @@ class SR_SceneGraph
      * @return The array-index of the node being searched for, or
      * SCENE_GRAPH_ROOT_ID if the node was not found.
      */
-    unsigned find_node_id(const std::string& nameQuery) const noexcept;
+    size_t find_node_id(const std::string& nameQuery) const noexcept;
 
     /**
      * Retrieve the total number of children hierarchially attached to a
@@ -323,7 +323,7 @@ class SR_SceneGraph
      * @return An unsigned integral type, containing the total number of
      * child nodes that are recursively attached to the queried node.
      */
-    unsigned get_num_total_children(const unsigned nodeIndex) const noexcept;
+    size_t get_num_total_children(const size_t nodeIndex) const noexcept;
 
     /**
      * Retrieve the number of children immediately attached to a SR_SceneNode.
@@ -335,7 +335,7 @@ class SR_SceneGraph
      * @return An unsigned integral type, containing the number of child
      * nodes that are attached to the queried node.
      */
-    unsigned get_num_immediate_children(const unsigned nodeIndex) const noexcept;
+    size_t get_num_immediate_children(const size_t nodeIndex) const noexcept;
 
     /**
      * Determine if a node is a hierarchal child of another node.
@@ -348,7 +348,7 @@ class SR_SceneGraph
      * An unsigned integral type, containing the array-index of the
      * possible parent ID.
      */
-    bool node_is_child(const unsigned nodeIndex, const unsigned parentId) const noexcept;
+    bool node_is_child(const size_t nodeIndex, const size_t parentId) const noexcept;
 
     /**
      * @brief Import data loaded from a mesh file loader.

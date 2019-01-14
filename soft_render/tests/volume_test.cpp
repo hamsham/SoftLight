@@ -49,7 +49,7 @@ struct VolumeUniforms : SR_UniformBuffer
 /*--------------------------------------
  * Vertex Shader
 --------------------------------------*/
-math::vec4 _volume_vert_shader(const uint32_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4* varyings)
+math::vec4 _volume_vert_shader(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4* varyings)
 {
     const VolumeUniforms* pUniforms = static_cast<const VolumeUniforms*>(uniforms);
 
@@ -124,19 +124,19 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
     math::vec4            rayStart;
     math::vec4            rayStop;
     math::vec4            rayStep;
-    float                 near;
-    float                 far;
+    float                 nearPos;
+    float                 farPos;
 
-    if (!intersect_ray_box(camPos, rayDir, math::vec4{-1.f}, math::vec4{1.f}, near, far))
+    if (!intersect_ray_box(camPos, rayDir, math::vec4{ -1.f }, math::vec4{1.f}, nearPos, farPos))
     {
-        float temp = near;
-        near = far;
-        far = temp;
+        float temp = nearPos;
+        nearPos = farPos;
+        farPos = temp;
     }
-    near = math::max(near, 0.f);
+    nearPos = math::max(nearPos, 0.f);
 
-    rayStart    = camPos + rayDir * near;
-    rayStop     = camPos + rayDir * far;
+    rayStart    = camPos + rayDir * nearPos;
+    rayStop     = camPos + rayDir * farPos;
     rayStart    = 0.5f * (rayStart + 1.f);
     rayStop     = 0.5f * (rayStop + 1.f);
     rayStart[3] = 0.f;
@@ -237,9 +237,9 @@ int scene_load_cube(SR_SceneGraph& graph)
     SR_Context& context = graph.mContext;
     constexpr unsigned numVerts = 36;
     constexpr size_t stride = sizeof(math::vec3);
-    uint32_t numVboBytes = 0;
+    size_t numVboBytes = 0;
 
-    uint32_t vboId = context.create_vbo();
+    size_t vboId = context.create_vbo();
     SR_VertexBuffer& vbo = context.vbo(vboId);
     retCode = vbo.init(numVerts*stride*3);
     if (retCode != 0)
@@ -248,7 +248,7 @@ int scene_load_cube(SR_SceneGraph& graph)
         abort();
     }
 
-    uint32_t vaoId = context.create_vao();
+    size_t vaoId = context.create_vao();
     SR_VertexArray& vao = context.vao(vaoId);
     vao.set_vertex_buffer(vboId);
     retCode = vao.set_num_bindings(3);
@@ -302,7 +302,7 @@ int scene_load_cube(SR_SceneGraph& graph)
     numVboBytes += sizeof(verts);
 
     // Ensure UVs are only between 0-1.
-    for (unsigned i = 0; i < numVerts; ++i)
+    for (size_t i = 0; i < numVerts; ++i)
     {
         verts[i] = 0.5f + verts[i] * 0.5f;
     }
@@ -311,7 +311,7 @@ int scene_load_cube(SR_SceneGraph& graph)
     numVboBytes += sizeof(verts);
 
     // Normalizing the vertex positions should allow for smooth shading.
-    for (unsigned i = 0; i < numVerts; ++i)
+    for (size_t i = 0; i < numVerts; ++i)
     {
         verts[i] = math::normalize(verts[i] - 0.5f);
     }
@@ -345,9 +345,9 @@ bool create_opacity_map(SR_SceneGraph& graph, const size_t volumeTexIndex)
     const SR_Texture&      volumeTex  = context.texture(volumeTexIndex);
     const SR_ColorDataType volumeType = volumeTex.type();
 
-    const size_t w = (1 << (sr_bytes_per_color(volumeType)*CHAR_BIT)) - 1;
-    const size_t h = 1;
-    const size_t d = 1;
+    const uint16_t w = (uint16_t)((1 << (sr_bytes_per_color(volumeType)*CHAR_BIT)) - 1);
+    const uint16_t h = 1;
+    const uint16_t d = 1;
 
     if (0 != opacityTex.init(SR_COLOR_R_FLOAT, w, h, d))
     {
@@ -383,9 +383,9 @@ bool create_color_map(SR_SceneGraph& graph, const size_t volumeTexIndex)
     const SR_Texture&      volumeTex  = context.texture(volumeTexIndex);
     const SR_ColorDataType volumeType = volumeTex.type();
 
-    const size_t w = (1 << (sr_bytes_per_color(volumeType)*CHAR_BIT)) - 1;
-    const size_t h = 1;
-    const size_t d = 1;
+    const uint16_t w = (uint16_t)((1 << (sr_bytes_per_color(volumeType)*CHAR_BIT)) - 1);
+    const uint16_t h = 1;
+    const uint16_t d = 1;
 
     if (0 != colorTex.init(SR_COLOR_RGB_FLOAT, w, h, d))
     {
@@ -421,9 +421,9 @@ utils::Pointer<SR_SceneGraph> init_volume_context()
     int retCode = 0;
     utils::Pointer<SR_SceneGraph> pGraph  {new SR_SceneGraph{}};
     SR_Context&                   context = pGraph->mContext;
-    uint32_t                      fboId   = context.create_framebuffer();
-    uint32_t                      texId   = context.create_texture();
-    uint32_t                      depthId = context.create_texture();
+    size_t                        fboId   = context.create_framebuffer();
+    size_t                        texId   = context.create_texture();
+    size_t                        depthId = context.create_texture();
 
     context.num_threads(std::thread::hardware_concurrency() - 2);
 
@@ -465,12 +465,13 @@ utils::Pointer<SR_SceneGraph> init_volume_context()
 
     const SR_VertexShader&&   volVertShader = volume_vert_shader();
     const SR_FragmentShader&& volFragShader = volume_frag_shader();
-    std::shared_ptr<VolumeUniforms> pUniforms{new VolumeUniforms};
+    //std::shared_ptr<VolumeUniforms> pUniforms{new VolumeUniforms};
+    std::shared_ptr<VolumeUniforms>  pUniforms{ (VolumeUniforms*)ls::utils::aligned_malloc(sizeof(VolumeUniforms)), [](VolumeUniforms* p)->void {ls::utils::aligned_free(p); } };
     pUniforms->pCubeMap = context.textures()[2];
     pUniforms->pOpacityMap = context.textures()[3];
     pUniforms->pColorMap = context.textures()[4];
 
-    uint32_t volShaderId = context.create_shader(volVertShader, volFragShader, pUniforms);
+    size_t volShaderId = context.create_shader(volVertShader, volFragShader, pUniforms);
     assert(volShaderId == 0);
     (void)volShaderId;
 

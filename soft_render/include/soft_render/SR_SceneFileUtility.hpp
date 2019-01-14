@@ -235,15 +235,15 @@ void sr_update_mesh_bounds(const aiMesh* const pMesh, SR_BoundingBox& box) noexc
  * Check to see if a node is a mesh/camera/bone/point node
 -------------------------------------*/
 template<typename assimp_data_t>
-unsigned sr_is_node_type(
+uint64_t sr_is_node_type(
     const aiNode* const pNode,
     const assimp_data_t* const* const pItems,
-    const unsigned itemCount
+    const uint64_t itemCount
 ) noexcept
 {
     const aiString& nodeName = pNode->mName;
 
-    for (unsigned i = 0; i < itemCount; ++i)
+    for (uint64_t i = 0; i < itemCount; ++i)
     {
         const assimp_data_t* const pItem = pItems[i];
         const aiString& itemName = pItem->mName;
@@ -260,7 +260,7 @@ unsigned sr_is_node_type(
 
 
 template<>
-inline unsigned sr_is_node_type<aiMesh>(const aiNode* const pNode, const aiMesh* const* const, const unsigned) noexcept
+inline uint64_t sr_is_node_type<aiMesh>(const aiNode* const pNode, const aiMesh* const* const, const uint64_t) noexcept
 {
     return pNode->mNumMeshes > 0;
 }

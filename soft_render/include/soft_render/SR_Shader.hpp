@@ -30,7 +30,7 @@ struct SR_UniformBuffer;
 class SR_VertexArray;
 class SR_VertexBuffer;
 
-enum SR_RenderMode : uint16_t; // SR_Geometry.hpp
+enum SR_RenderMode : uint32_t; // SR_Geometry.hpp
 
 
 
@@ -91,7 +91,7 @@ struct SR_VertexShader
     SR_CullMode cullMode;
 
     ls::math::vec4_t<float> (*shader)(
-        const uint32_t           vertId,
+        const size_t             vertId,
         const SR_VertexArray&    vao,
         const SR_VertexBuffer&   vbo,
         const SR_UniformBuffer*  uniforms,

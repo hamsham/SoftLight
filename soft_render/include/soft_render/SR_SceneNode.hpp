@@ -9,14 +9,14 @@
 /*-----------------------------------------------------------------------------
  * Enumerations
 -----------------------------------------------------------------------------*/
-enum SR_SceneNodeProp : unsigned
+enum SR_SceneNodeProp : size_t
 {
-    SCENE_NODE_ROOT_ID = (unsigned)-1
+    SCENE_NODE_ROOT_ID = (size_t)-1
 };
 
 
 
-enum SR_SceneNodeType : uint32_t
+enum SR_SceneNodeType : size_t
 {
     NODE_TYPE_EMPTY,
     NODE_TYPE_MESH,
@@ -36,7 +36,7 @@ enum SR_SceneNodeType : uint32_t
  * helps to ensure that other objects contained within a SceneGraph can be
  * managed separately from the node.
 -----------------------------------------------------------------------------*/
-struct alignas(sizeof(uint32_t)) SR_SceneNode final
+struct alignas(sizeof(size_t)) SR_SceneNode final
 {
     /**
      * @brief Enumeration containing the type of scene node which *this
@@ -60,7 +60,7 @@ struct alignas(sizeof(uint32_t)) SR_SceneNode final
      *      - modelMatrices
      *      - nodeNames
      */
-    uint32_t nodeId;
+    size_t nodeId;
 
     /**
      * @brief The dataId parameter contains the indexed location of data for a
@@ -73,14 +73,14 @@ struct alignas(sizeof(uint32_t)) SR_SceneNode final
      * 
      * Camera Nodes will reference the "cameras" member of a SceneGraph.
      */
-    uint32_t dataId;
+    size_t dataId;
 
     /**
      * This member represents an index into the parent SceneGraph's "nodeAnims"
      * member. Use this to retrieve a single animation track related to the
      * current node.
      */
-    uint32_t animListId;
+    size_t animListId;
 };
 
 

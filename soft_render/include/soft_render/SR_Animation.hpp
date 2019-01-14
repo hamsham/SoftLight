@@ -83,20 +83,20 @@ class SR_Animation
      * @brief mChannelIds contains ID of the std::vector<AnimationChannel>
      * which will be used to identify a SceneNode's animation channel to use.
      */
-    std::vector <uint32_t> mChannelIds;
+    std::vector<size_t> mChannelIds;
 
     /**
      * @brief mTrackIds are used after the mChannelIds to determine the exact
      * AnimationChannel in a list of animation channels to use for an
      * animation.
      */
-    std::vector <uint32_t> mTrackIds;
+    std::vector<size_t> mTrackIds;
 
     /**
      * @brief transformIds contains the indices of all node transformations
      * that will contain the resulting transformation after an animation.
      */
-    std::vector <uint32_t> mTransformIds;
+    std::vector<size_t> mTransformIds;
 
   public: // public member functions
     /**
@@ -185,7 +185,7 @@ class SR_Animation
      * @return An unsigned integer, containing the hashed value of *this
      * Animation's name.
      */
-    unsigned get_anim_id() const noexcept;
+    size_t get_anim_id() const noexcept;
 
     /**
      * @brief Retrieve the name of *this Animation.
@@ -255,7 +255,7 @@ class SR_Animation
      * @return A reference to a constant vector of indices which reference
      * the "currentTransform" objects in a SceneGraph.
      */
-    const std::vector <uint32_t>& get_transforms() const noexcept;
+    const std::vector <size_t>& get_transforms() const noexcept;
 
     /**
      * @brief Retrieve the list of indices which will be used to reference a
@@ -271,7 +271,7 @@ class SR_Animation
      * per-node animation channels
      * (SceneGraph::nodeAnims[animTrackId][nodeTrackId]).
      */
-    const std::vector <uint32_t>& get_node_tracks() const noexcept;
+    const std::vector <size_t>& get_node_tracks() const noexcept;
 
     /**
      * @brief Retrieve the list of indices which will be used to reference
@@ -284,7 +284,7 @@ class SR_Animation
      * reference an array of AnimationChannel objects in a SceneGraph.
      * (SceneGraph::nodeAnims[animTrackId]).
      */
-    const std::vector <uint32_t>& get_node_animations() const noexcept;
+    const std::vector <size_t>& get_node_animations() const noexcept;
 
     /**
      * @brief Get the number of Animation channels that will be animated by
@@ -293,7 +293,7 @@ class SR_Animation
      * @return The total number of node channels which *this Animation object
      * runs during any given frame.
      */
-    unsigned get_num_anim_channels() const noexcept;
+    size_t get_num_anim_channels() const noexcept;
 
     /**
      * @brief Add an Animation channel to *this.
@@ -305,7 +305,7 @@ class SR_Animation
      * An unsigned integer, containing the index of the AnimationChannel in
      * the input node's std::vector<AnimationChannel> to use for animation.
      */
-    void add_anim_channel(const SR_SceneNode& node, const uint32_t nodeTrackId) noexcept;
+    void add_anim_channel(const SR_SceneNode& node, const size_t nodeTrackId) noexcept;
 
     /**
      * Remove a single Animation channel from *this.
@@ -313,7 +313,7 @@ class SR_Animation
      * @param trackId
      * The index of the Animation channel to remove.
      */
-    void remove_anim_channel(const unsigned trackId) noexcept;
+    void remove_anim_channel(const size_t trackId) noexcept;
 
     /**
      * Remove all Animation keyframes and channels inside of *this.
@@ -324,7 +324,7 @@ class SR_Animation
      * @brief Reserve a number of animation channels to help avoid the chances
      * of a reallocation when adding single animations.
      */
-    void reserve_anim_channels(const unsigned reserveSize) noexcept;
+    void reserve_anim_channels(const size_t reserveSize) noexcept;
 
     /**
      * @brief Animate nodes in a sceneGraph.

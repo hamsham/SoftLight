@@ -93,7 +93,7 @@ SR_VertexBuffer& SR_VertexBuffer::operator=(SR_VertexBuffer&& v) noexcept
 /*--------------------------------------
  *
 --------------------------------------*/
-int SR_VertexBuffer::init(uint32_t numBytes, const void* pData)
+int SR_VertexBuffer::init(size_t numBytes, const void* pData)
 {
     if (!numBytes)
     {

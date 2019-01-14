@@ -15,7 +15,7 @@
 class SR_VertexBuffer
 {
   private:
-    uint32_t mNumBytes;
+      size_t mNumBytes;
 
     ls::utils::Pointer<unsigned char[], ls::utils::AlignedDeleter> mBuffer;
 
@@ -32,7 +32,7 @@ class SR_VertexBuffer
 
     SR_VertexBuffer& operator=(SR_VertexBuffer&& v) noexcept;
 
-    int init(uint32_t numBytes, const void* pData = nullptr);
+    int init(size_t numBytes, const void* pData = nullptr);
 
     void terminate();
 

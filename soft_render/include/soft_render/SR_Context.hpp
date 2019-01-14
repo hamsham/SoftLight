@@ -153,12 +153,12 @@ class SR_Context
     /*
      *
      */
-    void draw(const SR_Mesh& m, uint32_t shaderId, uint32_t fboId) noexcept;
+    void draw(const SR_Mesh& m, size_t shaderId, size_t fboId) noexcept;
 
     /*
      *
      */
-    void blit(SR_WindowBuffer& buffer, uint32_t textureId) noexcept;
+    void blit(SR_WindowBuffer& buffer, size_t textureId) noexcept;
 
     /*
      *

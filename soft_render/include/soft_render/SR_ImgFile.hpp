@@ -68,7 +68,7 @@ class SR_ImgFile final {
         /**
          * imgSize represents the pixel width & height of a loaded image
          */
-        int mDimens[3];
+        size_t mDimens[3];
 
         /**
          * Number of bits per pixel in the image
@@ -150,7 +150,7 @@ class SR_ImgFile final {
          * used by *this to hold an image in memory. A value of 0u is returned
          * if no data is being managed by *this.
          */
-        unsigned num_bytes() const;
+        size_t num_bytes() const;
 
         /**
          * @brief Load an image file
@@ -199,28 +199,28 @@ class SR_ImgFile final {
          * @return a 2D integer vector containing the width and height of the
          * loaded image, in pixels.
          */
-        const int* size() const;
+        const size_t* size() const;
 
         /**
          * Get the width of the currently loaded image
          *
          * @return The width, in pixels, of the current image.
          */
-        int width() const;
+        size_t width() const;
 
         /**
          * Get the height of the currently loaded image
          *
          * @return The height, in pixels, of the current image.
          */
-        int height() const;
+        size_t height() const;
 
         /**
          * Get the depth of the currently loaded image
          *
          * @return The depth, in pixels, of the current image.
          */
-        int depth() const;
+        size_t depth() const;
 
         /**
          * Get the number of bits per pixel in the image.
@@ -243,8 +243,8 @@ class SR_ImgFile final {
 /*-------------------------------------
  * Get the pixel size of the currently loaded image
 -------------------------------------*/
-inline unsigned SR_ImgFile::num_bytes() const {
-    const std::size_t bytesPerPixel = sr_bytes_per_color(mFormat);
+inline size_t SR_ImgFile::num_bytes() const {
+    const size_t bytesPerPixel = sr_bytes_per_color(mFormat);
     return mDimens[0] * mDimens[1] * mDimens[2] * bytesPerPixel;
 }
 
@@ -253,7 +253,7 @@ inline unsigned SR_ImgFile::num_bytes() const {
 /*-------------------------------------
  * Get the pixel size of the currently loaded image
 -------------------------------------*/
-inline const int* SR_ImgFile::size() const {
+inline const size_t* SR_ImgFile::size() const {
     return mDimens;
 }
 
@@ -262,7 +262,7 @@ inline const int* SR_ImgFile::size() const {
 /*-------------------------------------
  * Image Width
 -------------------------------------*/
-inline int SR_ImgFile::width() const {
+inline size_t SR_ImgFile::width() const {
     return mDimens[0];
 }
 
@@ -271,7 +271,7 @@ inline int SR_ImgFile::width() const {
 /*-------------------------------------
  * Image Height
 -------------------------------------*/
-inline int SR_ImgFile::height() const {
+inline size_t SR_ImgFile::height() const {
     return mDimens[1];
 }
 
@@ -280,7 +280,7 @@ inline int SR_ImgFile::height() const {
 /*-------------------------------------
  * Image Depth
 -------------------------------------*/
-inline int SR_ImgFile::depth() const {
+inline size_t SR_ImgFile::depth() const {
     return mDimens[2];
 }
 

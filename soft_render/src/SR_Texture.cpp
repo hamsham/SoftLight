@@ -17,7 +17,7 @@ namespace
 /*-------------------------------------
  *
 -------------------------------------*/
-char* _sr_allocate_texture(uint16_t w, uint16_t h, uint16_t d, unsigned bpt)
+char* _sr_allocate_texture(uint16_t w, uint16_t h, uint16_t d, size_t bpt)
 {
     // 8 pixels can be acquired at a time
     const uint16_t alignment = 8 - (w%8);
@@ -265,7 +265,7 @@ int SR_Texture::init(const SR_ImgFile& imgFile) noexcept
         return -2;
     }
 
-    const int* const dimens = imgFile.size();
+    const size_t* const dimens = imgFile.size();
 
     if (dimens[0] > std::numeric_limits<uint16_t>::max()
     || dimens[1] > std::numeric_limits<uint16_t>::max()
@@ -274,7 +274,7 @@ int SR_Texture::init(const SR_ImgFile& imgFile) noexcept
         return -3;
     }
 
-    int retCode = this->init(imgFile.format(), dimens[0], dimens[1], dimens[2]);
+    int retCode = this->init(imgFile.format(), (uint16_t)dimens[0], (uint16_t)dimens[1], (uint16_t)dimens[2]);
 
     if (retCode == 0)
     {

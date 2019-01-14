@@ -12,9 +12,9 @@
 class SR_VertexArray
 {
   private:
-    uint32_t mVboId;
+    uint64_t mVboId;
 
-    uint32_t mIboId;
+    uint64_t mIboId;
 
     std::vector<SR_Dimension> mDimens;
 
@@ -60,21 +60,21 @@ class SR_VertexArray
 
     void remove_binding(std::size_t bindId);
 
-    void set_vertex_buffer(uint32_t vboId);
+    void set_vertex_buffer(uint64_t vboId);
 
     void remove_vertex_buffer();
 
     bool has_vertex_buffer() const;
 
-    uint32_t get_vertex_buffer() const;
+    uint64_t get_vertex_buffer() const;
 
-    void set_index_buffer(uint32_t iboId);
+    void set_index_buffer(uint64_t iboId);
 
     void remove_index_buffer();
 
     bool has_index_buffer() const;
 
-    uint32_t get_index_buffer() const;
+    uint64_t get_index_buffer() const;
 
     void terminate();
 };
@@ -84,7 +84,7 @@ class SR_VertexArray
 /*--------------------------------------
  *
 --------------------------------------*/
-inline uint32_t SR_VertexArray::get_vertex_buffer() const
+inline uint64_t SR_VertexArray::get_vertex_buffer() const
 {
     return mVboId;
 }
@@ -94,7 +94,7 @@ inline uint32_t SR_VertexArray::get_vertex_buffer() const
 /*--------------------------------------
  *
 --------------------------------------*/
-inline uint32_t SR_VertexArray::get_index_buffer() const
+inline uint64_t SR_VertexArray::get_index_buffer() const
 {
     return mIboId;
 }
