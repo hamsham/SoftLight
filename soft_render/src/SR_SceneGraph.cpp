@@ -286,7 +286,7 @@ void SR_SceneGraph::update_node_transform(const size_t transformId) noexcept
 void SR_SceneGraph::update() noexcept
 {
     // Transformation indices have a 1:1 relationship with node indices.
-    for (unsigned i = 0; i < mCurrentTransforms.size(); ++i)
+    for (size_t i = 0; i < mCurrentTransforms.size(); ++i)
     {
         if (mCurrentTransforms[i].is_dirty())
         {
@@ -455,7 +455,7 @@ size_t SR_SceneGraph::delete_node(const size_t nodeIndex) noexcept
         size_t&                nextDataId    = nextNode.dataId;
         size_t&                nextAnimId    = nextNode.animListId;
         SR_Transform&          nextTransform = mCurrentTransforms[i];
-        const unsigned         nextParentId  = nextTransform.mParentId;
+        const size_t           nextParentId  = nextTransform.mParentId;
 
         // Placing assertion here because nodeIds must never equate to the
         // root node ID. They must always have tangible data to point at.

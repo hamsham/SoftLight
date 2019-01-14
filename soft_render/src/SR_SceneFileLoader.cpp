@@ -1083,7 +1083,7 @@ void SR_SceneFileLoader::read_node_hierarchy(
         baseTransforms.push_back(baseTrans.get_transform());
     }
 
-    const unsigned camIndex = sr_is_node_type<aiCamera>(pInNode, pScene->mCameras, pScene->mNumCameras);
+    const size_t camIndex = sr_is_node_type<aiCamera>(pInNode, pScene->mCameras, pScene->mNumCameras);
 
     if (camIndex != SCENE_NODE_ROOT_ID)
     {

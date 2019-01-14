@@ -2,6 +2,7 @@
 #ifndef SR_MESH_HPP
 #define SR_MESH_HPP
 
+#include <cstdlib> // size_t
 #include <cstdint> // uint32_t
 
 

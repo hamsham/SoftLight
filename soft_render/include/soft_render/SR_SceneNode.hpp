@@ -2,7 +2,7 @@
 #ifndef SR_SCENE_NODE_HPP
 #define SR_SCENE_NODE_HPP
 
-#include <cstdint>
+#include <cstdlib> // size_t
 
 
 
