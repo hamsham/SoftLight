@@ -1038,7 +1038,7 @@ size_t SR_SceneFileLoader::get_mesh_group_marker(
 void SR_SceneFileLoader::read_node_hierarchy(
     const aiScene* const pScene,
     const aiNode* const pInNode,
-    const uint64_t parentId
+    const size_t parentId
 ) noexcept
 {
     // use the size of the node list as an index which should be returned to

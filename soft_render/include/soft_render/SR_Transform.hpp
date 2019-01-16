@@ -47,13 +47,13 @@ class SR_Transform
     /**
      * Array index of a parent transformation in a Scene Graph.
      */
-    uint64_t mParentId;
+    size_t mParentId;
 
   private:
     /**
      * @brief Meta-information container.
      */
-      uint64_t mFlags;
+      uint32_t mFlags;
 
     /**
      * @brief Transformation type.

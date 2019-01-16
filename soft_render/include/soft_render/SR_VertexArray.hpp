@@ -60,7 +60,7 @@ class SR_VertexArray
 
     void remove_binding(std::size_t bindId);
 
-    void set_vertex_buffer(uint64_t vboId);
+    void set_vertex_buffer(std::size_t vboId);
 
     void remove_vertex_buffer();
 
@@ -68,7 +68,7 @@ class SR_VertexArray
 
     uint64_t get_vertex_buffer() const;
 
-    void set_index_buffer(uint64_t iboId);
+    void set_index_buffer(std::size_t iboId);
 
     void remove_index_buffer();
 
