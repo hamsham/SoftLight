@@ -1,4 +1,6 @@
 
+#include <utility> // std::move()
+
 #include "lightsky/setup/Setup.h"
 
 #include "lightsky/utils/Assertions.h"

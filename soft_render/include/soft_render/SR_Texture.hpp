@@ -2,6 +2,8 @@
 #ifndef SR_TEXTURE_HPP
 #define SR_TEXTURE_HPP
 
+#include <iostream>
+
 #include <cstddef> // ptrdiff_t
 
 #include "lightsky/setup/Arch.h"
@@ -58,7 +60,7 @@ enum SR_TexChunkInfo : uint_fast32_t
 -----------------------------------------------------------------------------*/
 class SR_Texture
 {
-    typedef ls::math::long_highp_t fixed_type;
+    typedef ls::math::long_medp_t fixed_type;
 
   private:
     uint16_t mWidth;
@@ -423,10 +425,10 @@ inline float SR_Texture::wrap_coordinate(float uvw) const noexcept
 inline SR_Texture::fixed_type SR_Texture::wrap_coordinate(SR_Texture::fixed_type uvw) const noexcept
 {
     return (mWrapping == SR_TEXTURE_WRAP_REPEAT)
-           ? ((uvw < ls::math::fixed_cast<fixed_type>(0)
-               ? ls::math::fixed_cast<fixed_type>(1)
-               : ls::math::fixed_cast<fixed_type>(0)) + (uvw % ls::math::fixed_cast<fixed_type>(1)))
-           : ls::math::clamp(uvw, ls::math::fixed_cast<fixed_type>(0), ls::math::fixed_cast<fixed_type>(1));
+           ? ((uvw < fixed_type{0u}
+               ? ls::math::fixed_cast<fixed_type>(1u)
+               : fixed_type{0u}) + (uvw % ls::math::fixed_cast<fixed_type>(1u)))
+           : ls::math::clamp<fixed_type>(uvw, fixed_type{0u}, ls::math::fixed_cast<fixed_type>(1u));
 }
 
 
@@ -726,13 +728,16 @@ inline color_type SR_Texture::nearest(float x, float y) const noexcept
         const uint_fast32_t xi = (uint_fast32_t)(mWidthf  * wrap_coordinate(x));
         const uint_fast32_t yi = (uint_fast32_t)(mHeightf * wrap_coordinate(y));
     #else
-        const fixed_type xf{x};
-        const fixed_type yf{y};
-        const uint_fast32_t xi = (uint_fast32_t)(ls::math::fixed_cast<fixed_type>(mWidth) * wrap_coordinate(xf));
-        const uint_fast32_t yi = (uint_fast32_t)(ls::math::fixed_cast<fixed_type>(mHeight) * wrap_coordinate(yf));
+        const fixed_type    xf = ls::math::fixed_cast<fixed_type, float>(x);
+        const fixed_type    yf = ls::math::fixed_cast<fixed_type, float>(y);
+        const uint_fast32_t xi = ls::math::integer_cast<uint_fast32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(mWidth) * wrap_coordinate(xf));
+        const uint_fast32_t yi = ls::math::integer_cast<uint_fast32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(mHeight) * wrap_coordinate(yf));
     #endif
 
     const ptrdiff_t index = map_coordinate(xi, yi);
+
+    //std::cout << wrap_coordinate(xf).number << ' ' << wrap_coordinate(yf).number << '\n';
+
     return reinterpret_cast<color_type*>(mTexels)[index];
 }
 
@@ -751,12 +756,12 @@ inline color_type SR_Texture::nearest(float x, float y, float z) const noexcept
         const uint_fast32_t yi = (uint_fast32_t)(mHeightf * wrap_coordinate(y));
         const uint_fast32_t zi = (uint_fast32_t)(mDepthf  * wrap_coordinate(z));
     #else
-        const fixed_type xf{x};
-        const fixed_type yf{y};
-        const fixed_type zf{z};
-        const uint_fast32_t xi = (uint_fast32_t)(ls::math::fixed_cast<fixed_type>(mWidth) * wrap_coordinate(xf));
-        const uint_fast32_t yi = (uint_fast32_t)(ls::math::fixed_cast<fixed_type>(mHeight) * wrap_coordinate(yf));
-        const uint_fast32_t zi = (uint_fast32_t)(ls::math::fixed_cast<fixed_type>(mDepth) * wrap_coordinate(zf));
+        const fixed_type    xf = ls::math::fixed_cast<fixed_type, float>(x);
+        const fixed_type    yf = ls::math::fixed_cast<fixed_type, float>(y);
+        const fixed_type    zf = ls::math::fixed_cast<fixed_type, float>(z);
+        const uint_fast32_t xi = ls::math::integer_cast<uint_fast32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(mWidth) * wrap_coordinate(xf));
+        const uint_fast32_t yi = ls::math::integer_cast<uint_fast32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(mHeight) * wrap_coordinate(yf));
+        const uint_fast32_t zi = ls::math::integer_cast<uint_fast32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(mDepth) * wrap_coordinate(zf));
     #endif
 
     const ptrdiff_t index = map_coordinate(xi, yi, zi);

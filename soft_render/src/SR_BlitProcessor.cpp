@@ -20,33 +20,33 @@ namespace math = ls::math;
  * External function declarations to keep compile times short
 -------------------------------------*/
 /*
-template void SR_BlitProcessor::blit_nearest_r<uint8_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-template void SR_BlitProcessor::blit_nearest_r<uint16_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-template void SR_BlitProcessor::blit_nearest_r<uint32_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-template void SR_BlitProcessor::blit_nearest_r<uint64_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-template void SR_BlitProcessor::blit_nearest_r<float>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-template void SR_BlitProcessor::blit_nearest_r<double>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_r<uint8_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+template void SR_BlitProcessor::blit_nearest_r<uint16_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+template void SR_BlitProcessor::blit_nearest_r<uint32_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+template void SR_BlitProcessor::blit_nearest_r<uint64_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+template void SR_BlitProcessor::blit_nearest_r<float>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+template void SR_BlitProcessor::blit_nearest_r<double>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
 
-template void SR_BlitProcessor::blit_nearest_rg<uint8_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-template void SR_BlitProcessor::blit_nearest_rg<uint16_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-template void SR_BlitProcessor::blit_nearest_rg<uint32_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-template void SR_BlitProcessor::blit_nearest_rg<uint64_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-template void SR_BlitProcessor::blit_nearest_rg<float>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-template void SR_BlitProcessor::blit_nearest_rg<double>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_rg<uint8_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+template void SR_BlitProcessor::blit_nearest_rg<uint16_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+template void SR_BlitProcessor::blit_nearest_rg<uint32_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+template void SR_BlitProcessor::blit_nearest_rg<uint64_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+template void SR_BlitProcessor::blit_nearest_rg<float>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+template void SR_BlitProcessor::blit_nearest_rg<double>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
 
-template void SR_BlitProcessor::blit_nearest_rgb<uint8_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-template void SR_BlitProcessor::blit_nearest_rgb<uint16_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-template void SR_BlitProcessor::blit_nearest_rgb<uint32_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-template void SR_BlitProcessor::blit_nearest_rgb<uint64_t>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-template void SR_BlitProcessor::blit_nearest_rgb<float>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-template void SR_BlitProcessor::blit_nearest_rgb<double>(unsigned char* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_rgb<uint8_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+template void SR_BlitProcessor::blit_nearest_rgb<uint16_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+template void SR_BlitProcessor::blit_nearest_rgb<uint32_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+template void SR_BlitProcessor::blit_nearest_rgb<uint64_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+template void SR_BlitProcessor::blit_nearest_rgb<float>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+template void SR_BlitProcessor::blit_nearest_rgb<double>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
 
-template void SR_BlitProcessor::blit_nearest_rgba<uint8_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-template void SR_BlitProcessor::blit_nearest_rgba<uint16_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-template void SR_BlitProcessor::blit_nearest_rgba<uint32_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-template void SR_BlitProcessor::blit_nearest_rgba<uint64_t>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-template void SR_BlitProcessor::blit_nearest_rgba<float>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
-template void SR_BlitProcessor::blit_nearest_rgba<double>(SR_ColorRGBA8* const, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t, const uint_fast16_t);
+template void SR_BlitProcessor::blit_nearest_rgba<uint8_t>(SR_ColorRGBA8* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+template void SR_BlitProcessor::blit_nearest_rgba<uint16_t>(SR_ColorRGBA8* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+template void SR_BlitProcessor::blit_nearest_rgba<uint32_t>(SR_ColorRGBA8* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+template void SR_BlitProcessor::blit_nearest_rgba<uint64_t>(SR_ColorRGBA8* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+template void SR_BlitProcessor::blit_nearest_rgba<float>(SR_ColorRGBA8* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+template void SR_BlitProcessor::blit_nearest_rgba<double>(SR_ColorRGBA8* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
 */
 
 
@@ -58,10 +58,10 @@ void SR_BlitProcessor::execute() noexcept
 {
     // calculate the bounds of the tile which a certain thread will be
     // responsible for
-    const uint_fast16_t bufferW = mBackBuffer->width();
-    const uint_fast16_t bufferH = mBackBuffer->height();
-    const uint_fast16_t texW    = mTexture->width();
-    const uint_fast16_t texH    = mTexture->height();
+    const uint_fast32_t bufferW = mBackBuffer->width();
+    const uint_fast32_t bufferH = mBackBuffer->height();
+    const uint_fast32_t texW    = mTexture->width();
+    const uint_fast32_t texH    = mTexture->height();
     SR_ColorRGBA8*      pDest   = mBackBuffer->buffer();
 
     switch (mTexture->type())
