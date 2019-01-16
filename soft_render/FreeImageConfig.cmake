@@ -34,6 +34,14 @@ if (FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NOTFOUND OR FREEIMAGE
 
     # Build FreeImage
     if (MSVC)
+        if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+            set(FREEIMAGE_PLATFORM "x64")
+            set(FREEIMAGE_DIST_DIR "x64")
+        else()
+            set(FREEIMAGE_PLATFORM "x86")
+            set(FREEIMAGE_DIST_DIR "x32")
+        endif()
+      
         ExternalProject_Add(
             FreeImage
             PREFIX
@@ -50,13 +58,13 @@ if (FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NOTFOUND OR FREEIMAGE
                 ${FREEIMAGE_PATCH_CMD0} && ${FREEIMAGE_PATCH_CMD1}
             BUILD_COMMAND
                 ${CMAKE_VS_DEVENV_COMMAND} /upgrade FreeImage.2013.sln &&
-                ${CMAKE_MAKE_PROGRAM} FreeImage.2013.sln
+                ${CMAKE_MAKE_PROGRAM} FreeImage.2013.sln /p:Platform=${FREEIMAGE_PLATFORM}
             BUILD_IN_SOURCE
                 1
             INSTALL_COMMAND
-                ${CMAKE_COMMAND} -E copy ${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Dist/x32/${FREEIMAGE_LIB} ${EXTERNAL_PROJECT_PREFIX}/lib &&
-                ${CMAKE_COMMAND} -E copy ${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Dist/x32/${FREEIMAGE_DLL} ${EXTERNAL_PROJECT_PREFIX}/bin &&
-                ${CMAKE_COMMAND} -E copy ${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Dist/x32/FreeImage.h      ${EXTERNAL_PROJECT_PREFIX}/include
+                ${CMAKE_COMMAND} -E copy ${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Dist/${FREEIMAGE_DIST_DIR}/${FREEIMAGE_LIB} ${EXTERNAL_PROJECT_PREFIX}/lib &&
+                ${CMAKE_COMMAND} -E copy ${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Dist/${FREEIMAGE_DIST_DIR}/${FREEIMAGE_DLL} ${EXTERNAL_PROJECT_PREFIX}/bin &&
+                ${CMAKE_COMMAND} -E copy ${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Dist/${FREEIMAGE_DIST_DIR}/FreeImage.h      ${EXTERNAL_PROJECT_PREFIX}/include
         )
     else()
         configure_file(${PROJECT_SOURCE_DIR}/build_freeimage.sh ${EXTERNAL_PROJECT_PREFIX}/build_freeimage.sh @ONLY)
