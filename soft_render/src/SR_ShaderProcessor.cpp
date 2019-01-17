@@ -477,7 +477,7 @@ void SR_ProcessorPool::run_blit_processors(const SR_Texture* t, SR_WindowBuffer*
 
     SR_BlitProcessor& blitter = processor.mBlitter;
     blitter.mThreadId   = 0;
-    blitter.mNumThreads = mNumThreads;
+    blitter.mNumThreads = (uint16_t)mNumThreads;
     blitter.mTexture    = t;
     blitter.mBackBuffer = b;
 
