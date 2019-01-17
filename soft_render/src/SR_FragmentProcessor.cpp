@@ -408,10 +408,10 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     math::vec4        p1           = screenCoords[1];
     math::vec4        p2           = screenCoords[2];
     const int         depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON);
-    const int32_t     bboxMinX     = math::min(mFboW, math::max(0.f, math::min(p0[0], p1[0], p2[0])));
-    const int32_t     bboxMinY     = math::min(mFboH, math::max(0.f, math::min(p0[1], p1[1], p2[1])));
-    const int32_t     bboxMaxX     = math::max(0.f, math::min(mFboW, math::max(p0[0], p1[0], p2[0])));
-    const int32_t     bboxMaxY     = math::max(0.f, math::min(mFboH, math::max(p0[1], p1[1], p2[1])));
+    const int32_t     bboxMinX     = (int32_t)math::min(mFboW, math::max(0.f, math::min(p0[0], p1[0], p2[0])));
+    const int32_t     bboxMinY     = (int32_t)math::ceil(math::min(mFboH, math::max(0.f, math::min(p0[1], p1[1], p2[1]))));
+    const int32_t     bboxMaxX     = (int32_t)math::max(0.f, math::min(mFboW, math::max(p0[0], p1[0], p2[0])));
+    const int32_t     bboxMaxY     = (int32_t)math::max(0.f, math::min(mFboH, math::max(p0[1], p1[1], p2[1])));
     const math::vec4  depth        {p0[2], p1[2], p2[2], 0.f};
     const __m128      t0[3]        {_mm_set1_ps(p2[0]-p0[0]), _mm_set1_ps(p1[0]-p0[0]), _mm_set1_ps(p0[0])};
     const __m128      t1[3]        {_mm_set1_ps(p2[1]-p0[1]), _mm_set1_ps(p1[1]-p0[1]), _mm_set1_ps(p0[1])};
@@ -419,7 +419,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     const __m128      scale        = _mm_rcp_ps(scaleInv);
 
     // Don't render triangles which are too small to see
-    if (std::fabs(_mm_cvtss_f32(scaleInv)) < 1.f)
+    if (math::abs(_mm_cvtss_f32(scaleInv)) < 1.f)
     {
         return;
     }
@@ -489,7 +489,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
 
             for (int32_t i = 0; i < 4; ++i)
             {
-                if ((depthTest & (0x01 << i)) || _mm_movemask_ps(bcF[i].simd))
+                if (depthTest & (0x01 << i))
                 {
                     continue;
                 }
@@ -550,18 +550,18 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     math::vec4        p1           = screenCoords[1];
     math::vec4        p2           = screenCoords[2];
     const int         depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON);
-    const int32_t     bboxMinX     = math::min(mFboW, math::max(0.f, math::min(p0[0], p1[0], p2[0])));
-    const int32_t     bboxMinY     = math::min(mFboH, math::max(0.f, math::min(p0[1], p1[1], p2[1])));
-    const int32_t     bboxMaxX     = math::max(0.f, math::min(mFboW, math::max(p0[0], p1[0], p2[0])));
-    const int32_t     bboxMaxY     = math::max(0.f, math::min(mFboH, math::max(p0[1], p1[1], p2[1])));
-    const math::vec4  depth       {p0[2], p1[2], p2[2], 0.f};
-    const float32x4_t t0[3]       {vdupq_n_f32(p2[0]-p0[0]), vdupq_n_f32(p1[0]-p0[0]), vdupq_n_f32(p0[0])};
-    const float32x4_t t1[3]       {vdupq_n_f32(p2[1]-p0[1]), vdupq_n_f32(p1[1]-p0[1]), vdupq_n_f32(p0[1])};
-    const float32x4_t scaleInv    = vsubq_f32(vmulq_f32(t0[0], t1[1]), vmulq_f32(t0[1], t1[0]));
-    const float32x4_t scale       = vrecpeq_f32(scaleInv);
+    const int32_t     bboxMinX     = (int32_t)math::min(mFboW, math::max(0.f, math::min(p0[0], p1[0], p2[0])));
+    const int32_t     bboxMinY     = (int32_t)math::ceil(math::min(mFboH, math::max(0.f, math::min(p0[1], p1[1], p2[1]))));
+    const int32_t     bboxMaxX     = (int32_t)math::max(0.f, math::min(mFboW, math::max(p0[0], p1[0], p2[0])));
+    const int32_t     bboxMaxY     = (int32_t)math::max(0.f, math::min(mFboH, math::max(p0[1], p1[1], p2[1])));
+    const math::vec4  depth        {p0[2], p1[2], p2[2], 0.f};
+    const float32x4_t t0[3]        {vdupq_n_f32(p2[0]-p0[0]), vdupq_n_f32(p1[0]-p0[0]), vdupq_n_f32(p0[0])};
+    const float32x4_t t1[3]        {vdupq_n_f32(p2[1]-p0[1]), vdupq_n_f32(p1[1]-p0[1]), vdupq_n_f32(p0[1])};
+    const float32x4_t scaleInv     = vsubq_f32(vmulq_f32(t0[0], t1[1]), vmulq_f32(t0[1], t1[0]));
+    const float32x4_t scale        = vrecpeq_f32(scaleInv);
 
     // Don't render triangles which are too small to see
-    if (std::fabs(vgetq_lane_f32(scaleInv, 0)) < 1.f)
+    if (math::abs(vgetq_lane_f32(scaleInv, 0)) < 1.f)
     {
         return;
     }
@@ -627,7 +627,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
 
             for (int32_t i = 0; i < 4; ++i)
             {
-                if ((depthTest & (1 << i)) || math::sign_bits(bcF[i]))
+                if (depthTest & (1 << i))
                 {
                     continue;
                 }
@@ -687,10 +687,10 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     math::vec4        p1           = screenCoords[1];
     math::vec4        p2           = screenCoords[2];
     const int         depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON);
-    const int32_t     bboxMinX     = math::min(mFboW, math::max(0.f, math::min(p0[0], p1[0], p2[0])));
-    const int32_t     bboxMinY     = math::min(mFboH, math::max(0.f, math::min(p0[1], p1[1], p2[1])));
-    const int32_t     bboxMaxX     = math::max(0.f, math::min(mFboW, math::max(p0[0], p1[0], p2[0])));
-    const int32_t     bboxMaxY     = math::max(0.f, math::min(mFboH, math::max(p0[1], p1[1], p2[1])));
+    const int32_t     bboxMinX     = (int32_t)math::min(mFboW, math::max(0.f, math::min(p0[0], p1[0], p2[0])));
+    const int32_t     bboxMinY     = (int32_t)math::ceil(math::min(mFboH, math::max(0.f, math::min(p0[1], p1[1], p2[1]))));
+    const int32_t     bboxMaxX     = (int32_t)math::max(0.f, math::min(mFboW, math::max(p0[0], p1[0], p2[0])));
+    const int32_t     bboxMaxY     = (int32_t)math::max(0.f, math::min(mFboH, math::max(p0[1], p1[1], p2[1])));
     const math::vec4  depth        {screenCoords[0][2], screenCoords[1][2], screenCoords[2][2], 0.f};
     const math::vec4  t0[3]        {math::vec4{p2[0]-p0[0]}, math::vec4{p1[0]-p0[0]}, math::vec4{p0[0]}};
     const math::vec4  t1[3]        {math::vec4{p2[1]-p0[1]}, math::vec4{p1[1]-p0[1]}, math::vec4{p0[1]}};
@@ -698,7 +698,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     const math::vec4  scale        = math::rcp(scaleInv);
 
     // Don't render triangles which are too small to see
-    if (std::fabs(scaleInv[0]) < 1.f)
+    if (math::abs(scaleInv[0]) < 1.f)
     {
         return;
     }
@@ -763,7 +763,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
 
             for (int32_t i = 0; i < 4; ++i)
             {
-                if ((depthTest & (0x01 << i)) || math::sign_bits(bcF[i]))
+                if (depthTest & (0x01 << i))
                 {
                     continue;
                 }
@@ -818,7 +818,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     const math::vec4  persp        = mBins[binId].mPerspDivide;
     const bool        depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON;
     const int32_t     bboxMinX     = (int32_t)math::min(mFboW, math::max(0.f, math::min(p0[0], p1[0], p2[0])));
-    const int32_t     bboxMinY     = (int32_t)math::min(mFboH, math::max(0.f, math::min(p0[1], p1[1], p2[1])));
+    const int32_t     bboxMinY     = (int32_t)math::ceil(math::min(mFboH, math::max(0.f, math::min(p0[1], p1[1], p2[1]))));
     const int32_t     bboxMaxX     = (int32_t)math::max(0.f, math::min(mFboW, math::max(p0[0], p1[0], p2[0])));
     const int32_t     bboxMaxY     = (int32_t)math::max(0.f, math::min(mFboH, math::max(p0[1], p1[1], p2[1])));
     const float       t0[3]        = {p2[0]-p0[0], p1[0]-p0[0], p0[0]};
@@ -828,7 +828,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     SR_FragCoord*     outCoords    = mQueues;
 
     // Don't render triangles which are too small to see
-    if (std::fabs(scaleInv) < 1.f)
+    if (math::abs(scaleInv) < 1.f)
     {
         return;
     }
@@ -871,6 +871,9 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             xMax = temp;
         }
 
+        // In this rasterizer, we're only rendering the absolute pixels
+        // contained within the triangle edges. However this will serve as a
+        // guard against any pixels we don't want to render.
         xMin = math::clamp<int32_t>(xMin, bboxMinX, bboxMaxX);
         xMax = math::clamp<int32_t>(xMax, bboxMinX, bboxMaxX);
 
@@ -891,8 +894,12 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             const float z = math::dot(depth, bc);
             const float oldDepth = depthBuffer->texel<float>(x, y);
 
-            //if (bc.v[0] < 0.f || bc.v[1] < 0.f || bc.v[2] < 0.f)
-            if (math::sign_bits(bc) || (depthTesting && (z < oldDepth)))
+            // We're only using the barycentric coordinates here to determine
+            // if a pixel on the edge of a triangle should still be rendered.
+            // This normally involves checking if the coordinate is negative,
+            // but due to roundoff errors, we need to know if it's close enough
+            // to a triangle edge to be rendered.
+            if (depthTesting && (z < oldDepth))
             {
                 continue;
             }
