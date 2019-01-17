@@ -432,25 +432,27 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context* c, const SR_Mesh*
 
     SR_ShaderProcessor task;
     task.mType = SR_VERTEX_SHADER;
+
     SR_VertexProcessor& vertTask = task.mVertProcessor;
+    vertTask.mThreadId       = 0;
+    vertTask.mNumThreads     = (uint16_t)mNumThreads;
+    vertTask.mFragProcessors = &mFragSemaphore;
+    vertTask.mBusyProcessors = &mShadingSemaphore;
+    vertTask.mShader         = s;
+    vertTask.mContext        = c;
+    vertTask.mFbo            = fbo;
+    vertTask.mFboW           = fbo->width();
+    vertTask.mFboH           = fbo->height();
+    vertTask.mMesh           = *m;
+    vertTask.mBinsUsed       = &mBinsUsed;
+    vertTask.mFragBins       = mFragBins.get();
+    vertTask.mFragQueues     = mFragQueues.get();
 
     // Divide all vertex processing amongst the available worker threads. Let
     // The threads work out between themselves how to partition the data.
     for (uint16_t threadId = 0; threadId < mNumThreads; ++threadId)
     {
-        vertTask.mThreadId       = threadId;
-        vertTask.mNumThreads     = (uint16_t)mNumThreads;
-        vertTask.mFragProcessors = &mFragSemaphore;
-        vertTask.mBusyProcessors = &mShadingSemaphore;
-        vertTask.mShader         = s;
-        vertTask.mContext        = c;
-        vertTask.mFbo            = fbo;
-        vertTask.mFboW           = fbo->width();
-        vertTask.mFboH           = fbo->height();
-        vertTask.mMesh           = *m;
-        vertTask.mBinsUsed       = &mBinsUsed;
-        vertTask.mFragBins       = mFragBins.get();
-        vertTask.mFragQueues     = mFragQueues.get();
+        vertTask.mThreadId = threadId;
 
         // Busy waiting will be enabled the moment the first flush occurs on each
         // thread.
@@ -474,15 +476,15 @@ void SR_ProcessorPool::run_blit_processors(const SR_Texture* t, SR_WindowBuffer*
     processor.mType = SR_BLIT_SHADER;
 
     SR_BlitProcessor& blitter = processor.mBlitter;
+    blitter.mThreadId   = 0;
+    blitter.mNumThreads = mNumThreads;
+    blitter.mTexture    = t;
+    blitter.mBackBuffer = b;
 
     // Process most of the rendering on other threads first.
     for (uint16_t i = 0; i < mNumThreads; ++i)
     {
-        blitter.mThreadId   = i;
-        blitter.mNumThreads = mNumThreads;
-        blitter.mTexture    = t;
-        blitter.mBackBuffer = b;
-
+        blitter.mThreadId = i;
         mThreads[i]->push(processor);
     }
 
