@@ -2,32 +2,20 @@
 #ifndef SR_FRAGMENT_PROCESSOR_HPP
 #define SR_FRAGMENT_PROCESSOR_HPP
 
-#include <atomic>
 #include "lightsky/math/vec4.h"
 
-#include "soft_render/SR_Mesh.hpp"
-
-#include "soft_render/SR_Framebuffer.hpp"
-#include "soft_render/SR_Shader.hpp"
-#include "soft_render/SR_UniformBuffer.hpp"
+#include "soft_render/SR_Mesh.hpp" // SR_RenderMode
 
 
 
 /*-----------------------------------------------------------------------------
  * Forward Declarations
 -----------------------------------------------------------------------------*/
-namespace ls
-{
-    namespace utils
-    {
-        template<class WorkerTaskType>
-        class Worker;
-    } // end utils namespace
-} // end ls namespace
-
 struct SR_FragCoord; // SR_ShaderProcessor.hpp
 struct SR_FragmentBin; // SR_ShaderProcessor.hpp
-struct SR_ShaderProcessor;
+class SR_Framebuffer;
+struct SR_Shader;
+class SR_Texture;
 
 
 
@@ -114,8 +102,10 @@ inline ls::math::vec4_t<data_t> sr_subdivide_region(
 -----------------------------------------------------------------------------*/
 struct SR_FragmentProcessor
 {
-    // 32 bits
+    // 16 bits
     uint16_t mThreadId;
+
+    // 32 bits
     SR_RenderMode mMode;
 
     // 32-bits
@@ -134,7 +124,7 @@ struct SR_FragmentProcessor
     SR_FragmentBin* mBins;
     SR_FragCoord* mQueues;
 
-    // 448 bits = 56 bytes
+    // 432 bits = 54 bytes
 
     void render_point(
         const uint_fast64_t binId,

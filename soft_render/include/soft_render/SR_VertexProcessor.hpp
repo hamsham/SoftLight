@@ -5,8 +5,6 @@
 #include <array>
 #include <atomic>
 
-#include "lightsky/math/scalar_utils.h"
-
 #include "soft_render/SR_Mesh.hpp"
 
 
@@ -16,15 +14,6 @@
 -----------------------------------------------------------------------------*/
 namespace ls
 {
-    namespace utils
-    {
-        template<class WorkerTaskType>
-        class Worker;
-
-        template<class WorkerTaskType>
-        class WorkerThread;
-    } // end utils namespace
-
     namespace math
     {
         template<typename>

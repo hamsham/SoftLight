@@ -7,6 +7,7 @@
 
 #include "soft_render/SR_BlitProcesor.hpp"
 #include "soft_render/SR_FragmentProcessor.hpp"
+#include "soft_render/SR_Framebuffer.hpp" // SR_Framebuffer
 #include "soft_render/SR_ShaderProcessor.hpp"
 #include "soft_render/SR_VertexProcessor.hpp"
 #include "soft_render/SR_WindowBuffer.hpp"

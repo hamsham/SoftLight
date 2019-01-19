@@ -168,7 +168,10 @@ void SR_VertexProcessor::flush_fragments() const noexcept
         mFragProcessors->store(syncPoint1, std::memory_order_release);
     }
 
-    while (mFragProcessors->load(std::memory_order_relaxed) < syncPoint1);
+    while (mFragProcessors->load(std::memory_order_relaxed) < syncPoint1)
+    {
+        std::this_thread::yield();
+    }
 
     SR_FragmentProcessor fragTask;
     fragTask.mThreadId       = (uint16_t)tileId;
@@ -195,9 +198,7 @@ void SR_VertexProcessor::flush_fragments() const noexcept
 
     while (mFragProcessors->load(std::memory_order_relaxed) != 0)
     {
-        #ifdef LS_ARCH_X86
-            //_mm_pause();
-        #endif
+        std::this_thread::yield();
     }
 }
 
@@ -216,20 +217,6 @@ void SR_VertexProcessor::push_fragments(
 {
     const SR_Mesh m = mMesh;
     std::atomic_uint_fast64_t* const pLocks = mBinsUsed;
-    SR_FragmentBin* const pFragBins = mFragBins;
-
-    // Copy all per-vertex coordinates and varyings to the fragment bins which
-    // will need the data for interpolation
-    SR_FragmentBin bin;
-    bin.mScreenCoords[0] = screenCoords[0];
-    bin.mScreenCoords[1] = screenCoords[1];
-    bin.mScreenCoords[2] = screenCoords[2];
-    bin.mPerspDivide     = math::rcp(math::vec4{worldCoords[0][3], worldCoords[1][3], worldCoords[2][3], 1.f});
-
-    for (unsigned i = 0; i < LS_ARRAY_SIZE(bin.mVaryings); ++i)
-    {
-        bin.mVaryings[i] = varyings[i];
-    }
 
     const math::vec4& p0 = screenCoords[0];
     const math::vec4& p1 = screenCoords[1];
@@ -271,6 +258,21 @@ void SR_VertexProcessor::push_fragments(
 
     if (isFragVisible)
     {
+        SR_FragmentBin* const pFragBins = mFragBins;
+
+        // Copy all per-vertex coordinates and varyings to the fragment bins which
+        // will need the data for interpolation
+        SR_FragmentBin bin;
+        bin.mScreenCoords[0] = p0;
+        bin.mScreenCoords[1] = p1;
+        bin.mScreenCoords[2] = p2;
+        bin.mPerspDivide     = math::rcp(math::vec4{worldCoords[0][3], worldCoords[1][3], worldCoords[2][3], 1.f});
+
+        for (unsigned i = 0; i < LS_ARRAY_SIZE(bin.mVaryings); ++i)
+        {
+            bin.mVaryings[i] = varyings[i];
+        }
+
         // Check if the output bin is full
         uint_fast64_t binId = pLocks->fetch_add(1, std::memory_order_relaxed);
 
