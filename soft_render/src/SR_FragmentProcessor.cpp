@@ -819,10 +819,10 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     math::vec2        p2           {screenCoords[2][0], screenCoords[2][1]};
     const math::vec4  persp        = mBins[binId].mPerspDivide;
     const bool        depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON;
-    const int32_t     bboxMinX     = (int32_t)math::ceil(math::min(mFboW, math::max(0.f, math::min(p0[0], p1[0], p2[0]))));
-    const int32_t     bboxMinY     = (int32_t)math::ceil(math::min(mFboH, math::max(0.f, math::min(p0[1], p1[1], p2[1]))));
-    const int32_t     bboxMaxX     = (int32_t)math::floor(math::max(0.f, math::min(mFboW, math::max(p0[0], p1[0], p2[0]))));
-    const int32_t     bboxMaxY     = (int32_t)math::floor(math::max(0.f, math::min(mFboH, math::max(p0[1], p1[1], p2[1]))));
+    const int32_t     bboxMinX     = (int32_t)math::min(mFboW, math::max(0.f,   math::ceil(math::min(p0[0], p1[0], p2[0]))));
+    const int32_t     bboxMinY     = (int32_t)math::min(mFboH, math::max(0.f,   math::ceil(math::min(p0[1], p1[1], p2[1]))));
+    const int32_t     bboxMaxX     = (int32_t)math::max(0.f,   math::min(mFboW, math::ceil(math::max(p0[0], p1[0], p2[0]))));
+    const int32_t     bboxMaxY     = (int32_t)math::max(0.f,   math::min(mFboH, math::ceil(math::max(p0[1], p1[1], p2[1]))));
     const float       t0[3]        = {p2[0]-p0[0], p1[0]-p0[0], p0[0]};
     const float       t1[3]        = {p2[1]-p0[1], p1[1]-p0[1], p0[1]};
     const float       scaleInv     = (t0[0] * t1[1]) - (t0[1] * t1[0]);

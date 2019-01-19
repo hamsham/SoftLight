@@ -151,19 +151,31 @@ void SR_VertexProcessor::flush_fragments() const noexcept
     // return this number back to 0
     uint_fast64_t tileId = mFragProcessors->fetch_add(1, std::memory_order_acq_rel);
 
+    SR_FragmentProcessor fragTask;
+    fragTask.mThreadId      = (uint16_t)tileId;
+    fragTask.mMode          = mMesh.mode;
+    fragTask.mNumProcessors = mNumThreads;
+    fragTask.mNumBins       = math::min<uint64_t>(mBinsUsed->load(std::memory_order_relaxed), SR_SHADER_MAX_FRAG_BINS);
+    fragTask.mShader        = mShader;
+    fragTask.mFbo           = mFbo;
+    fragTask.mBins          = mFragBins;
+    fragTask.mQueues        = mFragQueues[tileId].data();
+    fragTask.mFboW          = (float)(mFboW - 1);
+    fragTask.mFboH          = (float)(mFboH - 1);
+
     // Sort the bins based on their depth. Closer objects should be rendered
     // first to allow for fragment rejection during the depth test.
     if (tileId == mNumThreads-1u)
     {
         // Alpha-blended fragments get sorted from nearest to furthest for
         // corrected coloring
-        if (mShader->fragment_shader().blend)
+        if (mShader->fragment_shader().blend == SR_BLEND_OFF)
         {
-            ls::utils::sort_quick<SR_FragmentBin, ls::utils::IsLess<SR_FragmentBin>>(mFragBins, math::min<uint64_t>(mBinsUsed->load(), SR_SHADER_MAX_FRAG_BINS));
+            ls::utils::sort_quick<SR_FragmentBin, ls::utils::IsGreater<SR_FragmentBin>>(mFragBins, math::min<uint64_t>(mBinsUsed->load(), SR_SHADER_MAX_FRAG_BINS));
         }
         else
         {
-            ls::utils::sort_quick<SR_FragmentBin, ls::utils::IsGreater<SR_FragmentBin>>(mFragBins, math::min<uint64_t>(mBinsUsed->load(), SR_SHADER_MAX_FRAG_BINS));
+            ls::utils::sort_quick<SR_FragmentBin, ls::utils::IsLess<SR_FragmentBin>>(mFragBins, math::min<uint64_t>(mBinsUsed->load(), SR_SHADER_MAX_FRAG_BINS));
         }
         mFragProcessors->store(syncPoint1, std::memory_order_release);
     }
@@ -173,29 +185,19 @@ void SR_VertexProcessor::flush_fragments() const noexcept
         std::this_thread::yield();
     }
 
-    SR_FragmentProcessor fragTask;
-    fragTask.mThreadId       = (uint16_t)tileId;
-    fragTask.mMode           = mMesh.mode;
-    fragTask.mNumProcessors  = mNumThreads;
-    fragTask.mNumBins        = math::min<uint64_t>(mBinsUsed->load(std::memory_order_relaxed), SR_SHADER_MAX_FRAG_BINS);
-    fragTask.mShader         = mShader;
-    fragTask.mFbo            = mFbo;
-    fragTask.mBins           = mFragBins;
-    fragTask.mQueues         = mFragQueues[tileId].data();
-    fragTask.mFboW           = (float)(mFboW - 1);
-    fragTask.mFboH           = (float)(mFboH - 1);
-
     fragTask.execute();
 
     // indicate the bins are available for pushing
     tileId = mFragProcessors->fetch_add(1, std::memory_order_acq_rel);
 
+    // Wait for the last thread to reset the number of available bins.
     if (tileId == syncPoint2)
     {
         mBinsUsed->store(0, std::memory_order_release);
         mFragProcessors->store(0, std::memory_order_release);
     }
 
+    // Sync all threads
     while (mFragProcessors->load(std::memory_order_relaxed) != 0)
     {
         std::this_thread::yield();

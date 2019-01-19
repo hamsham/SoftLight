@@ -14,7 +14,7 @@
 struct SR_FragCoord; // SR_ShaderProcessor.hpp
 struct SR_FragmentBin; // SR_ShaderProcessor.hpp
 class SR_Framebuffer;
-struct SR_Shader;
+class SR_Shader;
 class SR_Texture;
 
 
