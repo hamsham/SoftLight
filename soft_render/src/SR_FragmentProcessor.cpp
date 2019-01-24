@@ -202,9 +202,9 @@ void SR_FragmentProcessor::render_line(
     const float   dx     = screenCoord1[0] - screenCoord0[0];
     const float   dy     = screenCoord1[1] - screenCoord0[1];
     const float   dz     = screenCoord1[2] - screenCoord0[2];
-    const int32_t l      = (int32_t)std::abs(dx);
-    const int32_t m      = (int32_t)std::abs(dy);
-    const int32_t n      = (int32_t)std::abs(dz);
+    const int32_t l      = (int32_t)math::abs(dx);
+    const int32_t m      = (int32_t)math::abs(dy);
+    const int32_t n      = (int32_t)math::abs(dz);
     const int32_t dx2    = l << 1;
     const int32_t dy2    = m << 1;
     const int32_t dz2    = n << 1;
@@ -215,7 +215,7 @@ void SR_FragmentProcessor::render_line(
 
     if ((l >= m) && (l >= n))
     {
-        const float percentEnd = std::abs(dx);
+        const float percentEnd = math::abs(dx);
         const float z_inc = dz / percentEnd;
         err_1 = dy2 - l;
         err_2 = dz2 - l;
@@ -226,7 +226,7 @@ void SR_FragmentProcessor::render_line(
             {
                 interpolate_line_varyings(pointZ, numVaryings, inVaryings, outVaryings);
 
-                if (noDepthTest || (fragShader.depthTest == SR_DEPTH_TEST_ON && fbo->test_depth_pixel(pointX, pointY, pointZ)))
+                if (noDepthTest || fbo->test_depth_pixel(pointX, pointY, pointZ))
                 {
                     const math::vec4 fragCoord{(float)pointX, (float)pointY, pointZ, 1.f};
 
@@ -264,7 +264,7 @@ void SR_FragmentProcessor::render_line(
     }
     else if ((m >= l) && (m >= n))
     {
-        const float percentEnd = std::abs(dy);
+        const float percentEnd = math::abs(dy);
         const float z_inc = dz / percentEnd;
         err_1 = dx2 - m;
         err_2 = dz2 - m;
@@ -275,7 +275,7 @@ void SR_FragmentProcessor::render_line(
             {
                 interpolate_line_varyings(pointZ, numVaryings, inVaryings, outVaryings);
 
-                if (noDepthTest || (fragShader.depthTest == SR_DEPTH_TEST_ON && fbo->test_depth_pixel(pointX, pointY, pointZ)))
+                if (noDepthTest || fbo->test_depth_pixel(pointX, pointY, pointZ))
                 {
                     const math::vec4 fragCoord{(float)pointX, (float)pointY, pointZ, 1.f};
 
@@ -313,7 +313,7 @@ void SR_FragmentProcessor::render_line(
     }
     else
     {
-        const float percentEnd = std::abs(dz);
+        const float percentEnd = math::abs(dz);
         const float z_inc = dz / percentEnd;
         err_1 = dy2 - n;
         err_2 = dx2 - n;
@@ -324,7 +324,7 @@ void SR_FragmentProcessor::render_line(
             {
                 interpolate_line_varyings(pointZ, numVaryings, inVaryings, outVaryings);
 
-                if (noDepthTest || (fragShader.depthTest == SR_DEPTH_TEST_ON && fbo->test_depth_pixel(pointX, pointY, pointZ)))
+                if (noDepthTest || fbo->test_depth_pixel(pointX, pointY, pointZ))
                 {
                     const math::vec4 fragCoord{(float)pointX, (float)pointY, pointZ, 1.f};
 
@@ -365,7 +365,7 @@ void SR_FragmentProcessor::render_line(
     {
         interpolate_line_varyings(pointZ, numVaryings, inVaryings, outVaryings);
 
-        if (noDepthTest || (fragShader.depthTest == SR_DEPTH_TEST_ON && fbo->test_depth_pixel(pointX, pointY, pointZ)))
+        if (noDepthTest || fbo->test_depth_pixel(pointX, pointY, pointZ))
         {
             const math::vec4 fragCoord{(float)pointX, (float)pointY, pointZ, 1.f};
 
@@ -408,12 +408,12 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     const int32_t     bboxMaxY     = (int32_t)math::max(0.f,   math::min(mFboH, math::max(p0[1], p1[1], p2[1])));
     const float       t0[3]        = {p2[0]-p0[0], p1[0]-p0[0], p0[0]};
     const float       t1[3]        = {p2[1]-p0[1], p1[1]-p0[1], p0[1]};
-    const float       scaleInv     = (t0[0] * t1[1]) - (t0[1] * t1[0]);
-    const float       scale        = math::rcp(scaleInv);
+    const float       areaInv      = (t0[0] * t1[1]) - (t0[1] * t1[0]);
+    const float       area         = math::rcp(areaInv);
     SR_FragCoord*     outCoords    = mQueues;
 
     // Don't render triangles which are too small to see
-    if (math::abs(scaleInv) < 1.f)
+    if (math::abs(areaInv) < 0.1f)
     {
         return;
     }
@@ -469,8 +469,8 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             const float tx   = t0[2] - xf;
             const float tx10 = tx * t1[0];
             const float tx11 = tx * t1[1];
-            const float u0   = (t01y - tx11) * scale;
-            const float u1   = (tx10 - t00y) * scale;
+            const float u0   = (t01y - tx11) * area;
+            const float u1   = (tx10 - t00y) * area;
             math::vec4  bc   {1.f - (u0 + u1), u1, u0, 0.f};
 
             // Only render pixels within the triangle edges.
