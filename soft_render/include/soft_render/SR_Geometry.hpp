@@ -4,6 +4,8 @@
 
 #include "lightsky/setup/Macros.h"
 
+#include "lightsky/math/vec_utils.h"
+
 #include "soft_render/SR_Setup.hpp"
 #include "soft_render/SR_Color.hpp"
 
@@ -281,6 +283,75 @@ void sr_draw_line_efla5(SR_ColorRGB8* pImg, coord_shrt_t width, coord_shrt_t x1,
  * Line Drawing: Bresenham's (Fixed-Point)
 -------------------------------------*/
 void sr_draw_line_fixed(SR_ColorRGB8* const pImg, coord_shrt_t w, coord_shrt_t x1, coord_shrt_t y1, coord_shrt_t x2, coord_shrt_t y2, const SR_ColorRGB8& color);
+
+
+
+/*-------------------------------------
+ * 2D Barycentric Coordinates
+-------------------------------------*/
+template <typename data_t>
+inline ls::math::vec3_t<data_t> sr_barycentric(
+    const ls::math::vec2_t<data_t>& p,
+    const ls::math::vec2_t<data_t>& a,
+    const ls::math::vec2_t<data_t>& b,
+    const ls::math::vec2_t<data_t>& c
+) noexcept
+{
+    const ls::math::vec3_t<data_t>   u = {c[0]-a[0], b[0]-a[0], a[0]-p[0]};
+    const ls::math::vec3_t<data_t>   v = {c[1]-a[1], b[1]-a[1], a[1]-p[1]};
+    const ls::math::vec3_t<data_t>&& s = ls::math::cross<data_t>(u, v);
+
+    const data_t si = ls::math::rcp<data_t>(s[2]);
+    const data_t s2 = s[0] * si;
+    const data_t s1 = s[1] * si;
+    const data_t s0 = (data_t)1 - (s1+s2);
+
+    return ls::math::vec3_t<data_t>{s0, s1, s2};
+}
+
+
+
+template <typename data_t>
+inline ls::math::vec3_t<data_t> sr_barycentric(
+    const ls::math::vec3_t<data_t>& p,
+    const ls::math::vec3_t<data_t>& a,
+    const ls::math::vec3_t<data_t>& b,
+    const ls::math::vec3_t<data_t>& c
+) noexcept
+{
+    const ls::math::vec3_t<data_t>   u = {c[0]-a[0], b[0]-a[0], a[0]-p[0]};
+    const ls::math::vec3_t<data_t>   v = {c[1]-a[1], b[1]-a[1], a[1]-p[1]};
+    const ls::math::vec3_t<data_t>&& s = ls::math::cross<data_t>(u, v);
+
+    const data_t si = ls::math::rcp<data_t>(s[2]);
+    const data_t s2 = s[0] * si;
+    const data_t s1 = s[1] * si;
+    const data_t s0 = (data_t)1 - (s1+s2);
+
+    return ls::math::vec3_t<data_t>{s0, s1, s2};
+}
+
+
+
+template <typename data_t>
+inline ls::math::vec4_t<data_t> sr_barycentric(
+    const ls::math::vec4_t<data_t>& p,
+    const ls::math::vec4_t<data_t>& a,
+    const ls::math::vec4_t<data_t>& b,
+    const ls::math::vec4_t<data_t>& c
+) noexcept
+{
+    const ls::math::vec3_t<data_t>   u = {c[0]-a[0], b[0]-a[0], a[0]-p[0]};
+    const ls::math::vec3_t<data_t>   v = {c[1]-a[1], b[1]-a[1], a[1]-p[1]};
+    const ls::math::vec3_t<data_t>&& s = ls::math::cross<data_t>(u, v);
+
+    const data_t si = ls::math::rcp<data_t>(s[2]);
+    const data_t s2 = s[0] * si;
+    const data_t s1 = s[1] * si;
+    const data_t s0 = (data_t)1 - (s1+s2);
+
+    return ls::math::vec4_t<data_t>{s0, s1, s2, (data_t)0};
+}
 
 
 
