@@ -116,6 +116,8 @@ utils::Pointer<SR_SceneGraph> create_context();
 -----------------------------------------------------------------------------*/
 void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix);
 
+void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float far, float fov, const SR_Transform& camTrans);
+
 
 
 #endif /* PROJECT_TEST_COMMON_HPP */
