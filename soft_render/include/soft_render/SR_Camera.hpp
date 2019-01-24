@@ -37,7 +37,12 @@ class SR_BoundingBox;
  * @return TRUE if the input point is within the frustum extracted from
  * "mvpMatrix", FALSE if not.
  */
-bool sr_is_visible(const ls::math::vec3& point, const ls::math::mat4& mvpMatrix, const float fovDivisor = 1.f);
+bool sr_is_visible(const ls::math::vec4& point, const ls::math::mat4& mvpMatrix, const float fovDivisor = 1.f) noexcept;
+
+inline bool sr_is_visible(const ls::math::vec3& point, const ls::math::mat4& mvpMatrix, const float fovDivisor = 1.f) noexcept
+{
+    return sr_is_visible(ls::math::vec4{point[0], point[1], point[2], 1.f}, mvpMatrix, fovDivisor);
+}
 
 
 
@@ -58,7 +63,7 @@ bool sr_is_visible(const ls::math::vec3& point, const ls::math::mat4& mvpMatrix,
  * @return TRUE if the input box is within the frustum extracted from
  * "mvpMatrix", FALSE if not.
  */
-bool sr_is_visible(const SR_BoundingBox& bb, const ls::math::mat4& mvpMatrix, const float fovDivisor = 1.f);
+bool sr_is_visible(const SR_BoundingBox& bb, const ls::math::mat4& mvpMatrix, const float fovDivisor = 1.f) noexcept;
 
 
 

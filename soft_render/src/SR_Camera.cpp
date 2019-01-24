@@ -20,7 +20,7 @@ namespace math = ls::math;
 /*-------------------------------------
  * Test the visibility of a point
 -------------------------------------*/
-bool sr_is_visible(const math::vec4& point, const math::mat4& mvpMatrix, const float fovDivisor)
+bool sr_is_visible(const math::vec4& point, const math::mat4& mvpMatrix, const float fovDivisor) noexcept
 {
     math::vec4&& temp = mvpMatrix * point;
 
@@ -39,10 +39,10 @@ bool sr_is_visible(const math::vec4& point, const math::mat4& mvpMatrix, const f
 /*-------------------------------------
  * Test the visibility of a Bounding Box
 -------------------------------------*/
-bool sr_is_visible(const SR_BoundingBox& bb, const math::mat4& mvpMatrix, const float fovDivisor)
+bool sr_is_visible(const SR_BoundingBox& bb, const math::mat4& mvpMatrix, const float fovDivisor) noexcept
 {
-    const math::vec4& trr = bb.get_top_rear_right();
-    const math::vec4& bfl = bb.get_bot_front_left();
+    const math::vec4& trr = mvpMatrix * bb.get_top_rear_right();
+    const math::vec4& bfl = mvpMatrix * bb.get_bot_front_left();
 
     const math::vec4 points[] = {
         {trr[0], bfl[1], bfl[2], 1.f},
@@ -56,9 +56,16 @@ bool sr_is_visible(const SR_BoundingBox& bb, const math::mat4& mvpMatrix, const 
         {bfl[0], trr[1], bfl[2], 1.f},
     };
 
+    // Debug multipliers to reduce the frustum planes
+    const math::vec4 fd = {fovDivisor, fovDivisor, 1.f, 1.f};
+
     for (unsigned i = 0; i < LS_ARRAY_SIZE(points); ++i)
     {
-        if (sr_is_visible(points[i], mvpMatrix, fovDivisor))
+        math::vec4&& temp = points[i] * fd;
+
+        if (temp[0] > -temp[3] && temp[0] < temp[3] &&
+            temp[1] > -temp[3] && temp[1] < temp[3] &&
+            temp[2] > -temp[3] && temp[2] < temp[3])
         {
             return true;
         }
