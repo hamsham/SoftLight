@@ -236,7 +236,7 @@ inline bool SR_Framebuffer::test_depth_pixel(
     float depth) noexcept
 {
     return ((mDepth->type() == SR_COLOR_R_FLOAT) && depth >= mDepth->texel<float>(x, y))
-    || ((mDepth->type() == SR_COLOR_R_DOUBLE) && depth > mDepth->texel<double>(x, y));
+    || ((mDepth->type() == SR_COLOR_R_DOUBLE) && depth >= mDepth->texel<double>(x, y));
 }
 
 
