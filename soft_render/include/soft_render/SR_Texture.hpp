@@ -838,17 +838,8 @@ color_type SR_Texture::bilinear(float x, float y, float z) const noexcept
     const float      weight1 = omdx * dy;
     const float      weight2 = dx * omdy;
     const float      weight3 = dx * dy;
-    color_type       ret;
 
-    switch (color_type::num_components())
-    {
-        case 4: ret[3] = (weight0*pixel0[3]) + (weight1*pixel1[3]) + (weight2*pixel2[3]) + (weight3*pixel3[3]);
-        case 3: ret[2] = (weight0*pixel0[2]) + (weight1*pixel1[2]) + (weight2*pixel2[2]) + (weight3*pixel3[2]);
-        case 2: ret[1] = (weight0*pixel0[1]) + (weight1*pixel1[1]) + (weight2*pixel2[1]) + (weight3*pixel3[1]);
-        case 1: ret[0] = (weight0*pixel0[0]) + (weight1*pixel1[0]) + (weight2*pixel2[0]) + (weight3*pixel3[0]);
-    }
-
-    return ret;
+    return (weight0*pixel0) + (weight1*pixel1) + (weight2*pixel2) + (weight3*pixel3);
 }
 
 
