@@ -419,7 +419,7 @@ void SR_VertexProcessor::execute() noexcept
 
             worldCoords[0]  = shader(vertId[0], vao, vbo, pUniforms, pVaryings);
             worldCoords[1]  = shader(vertId[1], vao, vbo, pUniforms, pVaryings + numVaryings);
-            worldCoords[2]  = shader(vertId[2], vao, vbo, pUniforms, pVaryings + (numVaryings * 2));
+            worldCoords[2]  = shader(vertId[2], vao, vbo, pUniforms, pVaryings + (numVaryings << 1));
             screenCoords[0] = world_to_screen_3(worldCoords[0], widthScale, heightScale);
             screenCoords[1] = world_to_screen_3(worldCoords[1], widthScale, heightScale);
             screenCoords[2] = world_to_screen_3(worldCoords[2], widthScale, heightScale);
@@ -451,7 +451,7 @@ void SR_VertexProcessor::execute() noexcept
 
             worldCoords[0]  = shader(vertId0, vao, vbo, pUniforms, pVaryings);
             worldCoords[1]  = shader(vertId1, vao, vbo, pUniforms, pVaryings + numVaryings);
-            worldCoords[2]  = shader(vertId2, vao, vbo, pUniforms, pVaryings + (numVaryings * 2));
+            worldCoords[2]  = shader(vertId2, vao, vbo, pUniforms, pVaryings + (numVaryings << 1));
             screenCoords[0] = world_to_screen_3(worldCoords[0], widthScale, heightScale);
             screenCoords[1] = world_to_screen_3(worldCoords[1], widthScale, heightScale);
             screenCoords[2] = world_to_screen_3(worldCoords[2], widthScale, heightScale);

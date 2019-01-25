@@ -153,7 +153,7 @@ int main()
     camTrans.set_type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
     //camTrans.extract_transforms(math::look_at(math::vec3{75.f}, math::vec3{0.f, 10.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
     camTrans.extract_transforms(math::look_at(math::vec3{0.f}, math::vec3{3.f, -5.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
-    const math::mat4&& projMatrix = math::infinite_perspective(LS_DEG2RAD(90.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
+    const math::mat4&& projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
 
     if (shouldQuit)
     {
@@ -321,7 +321,8 @@ int main()
             context.framebuffer(0).clear_color_buffers();
             context.framebuffer(0).clear_depth_buffer();
 
-            render_scene(pGraph.get(), vpMatrix, 1000.f, LS_DEG2RAD(90.f), camTrans);
+            //render_scene(pGraph.get(), vpMatrix);
+            render_scene(pGraph.get(), vpMatrix, ((float)pRenderBuf->width() / (float)pWindow->height()), LS_DEG2RAD(60.f), camTrans);
 
             context.blit(*pRenderBuf, 0);
             pWindow->render(*pRenderBuf);

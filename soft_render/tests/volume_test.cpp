@@ -148,7 +148,7 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
 
     do
     {
-        srcTexel = volumeTex->bilinear<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
+        srcTexel = volumeTex->bilinear<uint8_t>(texPos[0], texPos[1], texPos[2]);
         //srcTexel = volumeTex->nearest<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
 
         if (srcTexel > 17)

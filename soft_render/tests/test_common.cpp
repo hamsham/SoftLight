@@ -82,6 +82,73 @@
 
 
 /*-----------------------------------------------------------------------------
+ * Shader to display bounding boxes
+-----------------------------------------------------------------------------*/
+/*--------------------------------------
+ * Vertex Shader
+--------------------------------------*/
+math::vec4 _box_vert_shader_impl(const size_t vertId, const SR_VertexArray&, const SR_VertexBuffer&, const SR_UniformBuffer* uniforms, math::vec4*)
+{
+    const MeshUniforms* pUniforms = static_cast<const MeshUniforms*>(uniforms);
+    //const math::vec3&   vert      = *vbo.element<const math::vec3>(vao.offset(0, vertId));
+    const math::vec4&   trr       = pUniforms->aabb->get_top_rear_right();
+    const math::vec4&   bfl       = pUniforms->aabb->get_bot_front_left();
+
+    const math::vec4 points[] = {
+        {trr[0], bfl[1], bfl[2], 1.f},
+        {trr[0], trr[1], bfl[2], 1.f},
+        {trr[0], trr[1], trr[2], 1.f},
+        {bfl[0], trr[1], trr[2], 1.f},
+        {bfl[0], bfl[1], trr[2], 1.f},
+        {bfl[0], bfl[1], bfl[2], 1.f},
+        {trr[0], bfl[1], trr[2], 1.f},
+        {bfl[0], trr[1], bfl[2], 1.f}
+    };
+
+    return pUniforms->mvpMatrix * points[vertId % LS_ARRAY_SIZE(points)];
+}
+
+
+
+SR_VertexShader box_vert_shader()
+{
+    SR_VertexShader shader;
+    shader.numVaryings = 0;
+    shader.cullMode    = SR_CULL_OFF;
+    shader.shader      = _box_vert_shader_impl;
+
+    return shader;
+}
+
+
+
+/*--------------------------------------
+ * Fragment Shader
+--------------------------------------*/
+bool _box_frag_shader_impl(const math::vec4&, const SR_UniformBuffer*, const math::vec4*, math::vec4* outputs)
+{
+    outputs[0] = SR_ColorRGBAf{1.f, 0.f, 1.f, 1.f};
+    return true;
+}
+
+
+
+SR_FragmentShader box_frag_shader()
+{
+    SR_FragmentShader shader;
+    shader.numVaryings = 0;
+    shader.numOutputs  = 1;
+    shader.blend       = SR_BLEND_OFF;
+    shader.depthTest   = SR_DEPTH_TEST_OFF;
+    shader.depthMask   = SR_DEPTH_MASK_OFF;
+    shader.shader      = _box_frag_shader_impl;
+
+    return shader;
+}
+
+
+
+/*-----------------------------------------------------------------------------
  * Shader to display vertices with a position and normal
 -----------------------------------------------------------------------------*/
 /*--------------------------------------
@@ -208,14 +275,14 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
     const math::vec4     norm      = varyings[2];
     const MeshUniforms*  pUniforms = static_cast<const MeshUniforms*>(uniforms);
     const SR_Texture*    albedo    = pUniforms->pTexture;
-
+    float                attenuation;
     math::vec4           pixel;
-    float attenuation;
-    math::vec4 diffuse, specular{0.f};
+    math::vec4           diffuse;
+    math::vec4           specular;
 
     // normalize the texture colors to within (0.f, 1.f)
     {
-        math::vec3_t<uint8_t>&& pixel8 = albedo->nearest<math::vec3_t<uint8_t>>(uv[0], uv[1]);
+        math::vec3_t<uint8_t>&& pixel8 = albedo->bilinear<math::vec3_t<uint8_t>>(uv[0], uv[1]);
         math::vec4_t<uint8_t> pixelF{pixel8[0], pixel8[1], pixel8[2], 255};
         pixel = color_cast<float, uint8_t>(pixelF);
     }
@@ -251,7 +318,6 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
     // output composition
     {
         pixel = pixel * (diffuse + specular);
-        pixel[3] = 0.25f;
         outputs[0] = math::min(pixel, math::vec4{1.f});
     }
 
@@ -410,6 +476,94 @@ SR_FragmentShader texture_frag_shader()
 
 
 
+/*-------------------------------------
+ * Load a cube mesh
+-------------------------------------*/
+int scene_load_cube(SR_SceneGraph& graph)
+{
+    int retCode = 0;
+    SR_Context& context = graph.mContext;
+    constexpr unsigned numVerts = 36;
+    constexpr size_t stride = sizeof(math::vec3);
+    size_t numVboBytes = 0;
+
+    size_t vboId = context.create_vbo();
+    SR_VertexBuffer& vbo = context.vbo(vboId);
+    retCode = vbo.init(numVerts*stride);
+    if (retCode != 0)
+    {
+        std::cerr << "Error while creating a VBO: " << retCode << std::endl;
+        abort();
+    }
+
+    size_t vaoId = context.create_vao();
+    SR_VertexArray& vao = context.vao(vaoId);
+    vao.set_vertex_buffer(vboId);
+    retCode = vao.set_num_bindings(3);
+    if (retCode != 3)
+    {
+        std::cerr << "Error while setting the number of VAO bindings: " << retCode << std::endl;
+        abort();
+    }
+
+    math::vec3 verts[numVerts];
+    verts[0]  = math::vec3{-1.f, -1.f, 1.f};
+    verts[1]  = math::vec3{1.f, -1.f, 1.f};
+    verts[2]  = math::vec3{1.f, 1.f, 1.f};
+    verts[3]  = math::vec3{1.f, 1.f, 1.f};
+    verts[4]  = math::vec3{-1.f, 1.f, 1.f};
+    verts[5]  = math::vec3{-1.f, -1.f, 1.f};
+    verts[6]  = math::vec3{1.f, -1.f, 1.f};
+    verts[7]  = math::vec3{1.f, -1.f, -1.f};
+    verts[8]  = math::vec3{1.f, 1.f, -1.f};
+    verts[9]  = math::vec3{1.f, 1.f, -1.f};
+    verts[10] = math::vec3{1.f, 1.f, 1.f};
+    verts[11] = math::vec3{1.f, -1.f, 1.f};
+    verts[12] = math::vec3{-1.f, 1.f, -1.f};
+    verts[13] = math::vec3{1.f, 1.f, -1.f};
+    verts[14] = math::vec3{1.f, -1.f, -1.f};
+    verts[15] = math::vec3{1.f, -1.f, -1.f};
+    verts[16] = math::vec3{-1.f, -1.f, -1.f};
+    verts[17] = math::vec3{-1.f, 1.f, -1.f};
+    verts[18] = math::vec3{-1.f, -1.f, -1.f};
+    verts[19] = math::vec3{-1.f, -1.f, 1.f};
+    verts[20] = math::vec3{-1.f, 1.f, 1.f};
+    verts[21] = math::vec3{-1.f, 1.f, 1.f};
+    verts[22] = math::vec3{-1.f, 1.f, -1.f};
+    verts[23] = math::vec3{-1.f, -1.f, -1.f};
+    verts[24] = math::vec3{-1.f, -1.f, -1.f};
+    verts[25] = math::vec3{1.f, -1.f, -1.f};
+    verts[26] = math::vec3{1.f, -1.f, 1.f};
+    verts[27] = math::vec3{1.f, -1.f, 1.f};
+    verts[28] = math::vec3{-1.f, -1.f, 1.f};
+    verts[29] = math::vec3{-1.f, -1.f, -1.f};
+    verts[30] = math::vec3{-1.f, 1.f, 1.f};
+    verts[31] = math::vec3{1.f, 1.f, 1.f};
+    verts[32] = math::vec3{1.f, 1.f, -1.f};
+    verts[33] = math::vec3{1.f, 1.f, -1.f};
+    verts[34] = math::vec3{-1.f, 1.f, -1.f};
+    verts[35] = math::vec3{-1.f, 1.f, 1.f};
+
+    // Create the vertex buffer
+    vbo.assign(verts, numVboBytes, sizeof(verts));
+    vao.set_binding(0, numVboBytes, stride, SR_Dimension::VERTEX_DIMENSION_3, SR_DataType::VERTEX_DATA_FLOAT);
+    numVboBytes += sizeof(verts);
+
+    assert(numVboBytes == (numVerts*stride));
+
+    graph.mMeshes.emplace_back(SR_Mesh());
+    SR_Mesh& mesh = graph.mMeshes.back();
+    mesh.vaoId = vaoId;
+    mesh.elementBegin = 0;
+    mesh.elementEnd = numVerts;
+    mesh.mode = SR_RenderMode::RENDER_MODE_LINES;
+    mesh.materialId = (uint16_t)-1;
+
+    return 0;
+}
+
+
+
 /*-----------------------------------------------------------------------------
  * Create the context for a demo scene
 -----------------------------------------------------------------------------*/
@@ -457,6 +611,10 @@ utils::Pointer<SR_SceneGraph> create_context()
     retCode = fbo.valid();
     assert(retCode == 0);
 
+    // cube exists at index 0
+    //retCode = scene_load_cube(*pGraph);
+    //assert(retCode == 0);
+
     //retCode = meshLoader.load("testdata/african_head/african_head.obj");
     //retCode = meshLoader.load("testdata/bob/Bob.md5mesh");
     //retCode = meshLoader.load("testdata/rover/testmesh.dae");
@@ -474,6 +632,8 @@ utils::Pointer<SR_SceneGraph> create_context()
     const SR_FragmentShader&& normFragShader = normal_frag_shader();
     const SR_VertexShader&&   texVertShader  = texture_vert_shader();
     const SR_FragmentShader&& texFragShader  = texture_frag_shader();
+    const SR_VertexShader&&   boxVertShader  = box_vert_shader();
+    const SR_FragmentShader&& boxFragShader  = box_frag_shader();
 
     // I keep getting this weird error about alignment so I'm using malloc
     std::shared_ptr<MeshUniforms>  pUniforms{(MeshUniforms*)ls::utils::aligned_malloc(sizeof(MeshUniforms)), [](MeshUniforms* p)->void {ls::utils::aligned_free(p);}};
@@ -491,11 +651,14 @@ utils::Pointer<SR_SceneGraph> create_context()
 
     uint32_t texShaderId  = (uint32_t)context.create_shader(texVertShader,  texFragShader,  pUniforms);
     uint32_t normShaderId = (uint32_t)context.create_shader(normVertShader, normFragShader, pUniforms);
+    uint32_t boxShaderId  = (uint32_t)context.create_shader(boxVertShader,  boxFragShader,  pUniforms);
 
     assert(texShaderId == 0);
     assert(normShaderId == 1);
+    assert(boxShaderId == 2);
     (void)texShaderId;
     (void)normShaderId;
+    (void)boxShaderId;
 
     //const math::mat4&& viewMatrix = math::look_at(math::vec3{75.f}, math::vec3{0.f, 10.f, 0.f}, math::vec3{0.f, 1.f, 0.f});
     const math::mat4&& viewMatrix = math::look_at(math::vec3{0.f}, math::vec3{3.f, -5.f, 0.f}, math::vec3{0.f, 1.f, 0.f});
@@ -550,8 +713,6 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
             const SR_Material&    material   = pGraph->mMaterials[m.materialId];
             pUniforms->pTexture = material.pTextures[0];
 
-            //m.mode = SR_RenderMode::RENDER_MODE_INDEXED_LINES;
-
             // Use the textureless shader if needed
             /*
             if (!material.pTextures[0])
@@ -577,29 +738,23 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
 
 
 bool is_visible(
-    const math::mat4&,// vpMatrix,
-    float far,
+    float aspect,
     float fov,
     const SR_Transform& camTrans,
     const math::mat4& modelMat,
     const SR_BoundingBox& bounds) noexcept
 {
-    //const math::vec3&  camPos    = camTrans.get_position();
-    const math::vec3&& camDir    = math::normalize(camTrans.get_forwards_direction());
-    const math::vec3&& camUp     = math::normalize(camTrans.get_up_direction());
-    const math::vec3&& camRight  = math::cross(camUp, camDir);
-    const math::vec3&& farPos    = camDir * far;
-    const float&&      farLen    = far * math::const_tan(fov);
-    const math::vec3&& lPos      = farPos - (camRight * farLen);
-    const math::vec3&& rPos      = farPos + (camRight * farLen);
-    const math::vec3&& bPos      = farPos - (camUp    * farLen);
-    const math::vec3&& tPos      = farPos + (camUp    * farLen);
-    const math::vec4& trr0       = bounds.get_top_rear_right();
-    const math::vec4& bfl0       = bounds.get_bot_front_left();
-    const math::vec4&& trr       = camTrans.get_transform() * modelMat * trr0;
-    const math::vec4&& bfl       = camTrans.get_transform() * modelMat * bfl0;
+    const float        viewAngle = math::const_tan(fov);
+    const math::vec3   c         = camTrans.get_position();
+    const math::vec3&& cx        = math::get_x_axis(camTrans.get_orientation());
+    const math::vec3&& cy        = math::get_y_axis(camTrans.get_orientation());
+    const math::vec3&& cz        = math::cross(cx, cy);
+    const math::vec4&  trr0      = bounds.get_top_rear_right();
+    const math::vec4&  bfl0      = bounds.get_bot_front_left();
+    const math::vec4&& trr       = modelMat * trr0;
+    const math::vec4&& bfl       = modelMat * bfl0;
 
-    const math::vec3 points[] = {
+    const math::vec3   points[]  = {
         {trr[0], bfl[1], bfl[2]},
         {trr[0], trr[1], bfl[2]},
         {trr[0], trr[1], trr[2]},
@@ -610,43 +765,59 @@ bool is_visible(
         {bfl[0], trr[1], bfl[2]}
     };
 
+    float objX, objY, objZ, xAspect, yAspect;
+
     for (unsigned i = 0; i < LS_ARRAY_SIZE(points); ++i)
     {
-        /*
-        std::cout
-            << camPos[0]    << ' ' << camPos[1]    << ' ' << camPos[2] << '\n'
-            << lPos[0]      << ' ' << lPos[1]      << ' ' << lPos[2] << '\n'
-            << rPos[0]      << ' ' << rPos[1]      << ' ' << rPos[2] << '\n'
-            << tPos[0]      << ' ' << tPos[1]      << ' ' << tPos[2] << '\n'
-            << bPos[0]      << ' ' << bPos[1]      << ' ' << bPos[2] << '\n'
-            << points[i][0] << ' ' << points[i][1] << ' ' << points[i][2] << '\n'
-            << std::endl;
-        */
+        const math::vec3& p = points[i];
 
-        const math::vec3 px = {points[i][0], points[i][2], 0.f};
-        const math::vec3 py = {points[i][1], points[i][2], 0.f};
-        const math::vec3 l  = {lPos[0],      lPos[2],      0.f};
-        const math::vec3 r  = {rPos[0],      rPos[2],      0.f};
-        const math::vec3 b  = {bPos[1],      bPos[2],      0.f};
-        const math::vec3 t  = {tPos[1],      tPos[2],      0.f};
+        // compute vector from camera position to p
+        const math::vec3&& v = p - c;
 
-        if (sr_barycentric(px, math::vec3{0.f}, l, r) >= 0.f ||
-            sr_barycentric(py, math::vec3{0.f}, b, t) >= 0.f)
+        // compute and test the Z coordinate
+        objZ = math::dot(v, cz);
+
+        if (objZ < 0.f)
         {
-            return true;
+            continue;
         }
+
+        // compute and test the Y coordinate
+        objY = math::dot(v, cy);
+        yAspect = objZ * viewAngle;
+        if (objY > yAspect || objY < -yAspect)
+        {
+            continue;
+        }
+
+        // compute and test the X coordinate
+        objX = math::dot(v, cx);
+        xAspect = yAspect * aspect;
+        if (objX > xAspect || objX < -xAspect)
+        {
+            continue;
+        }
+
+        return true;
     }
 
-    return false;
+    const math::vec3&& cWorld  = camTrans.get_abs_position();
+    const math::vec3   bboxMin = {bfl[0], bfl[1], bfl[2]};
+    const math::vec3   bboxMax = {trr[0], trr[1], trr[2]};
+
+    return cWorld > bboxMin && cWorld < bboxMax;
 }
 
 
 
 
-void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float far, float fov, const SR_Transform& camTrans)
+void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspect, float fov, const SR_Transform& camTrans)
 {
-    SR_Context& context = pGraph->mContext;
-    MeshUniforms* pUniforms = static_cast<MeshUniforms*>(context.shader(0).uniforms().get());
+    SR_Context&    context   = pGraph->mContext;
+    MeshUniforms*  pUniforms = static_cast<MeshUniforms*>(context.shader(0).uniforms().get());
+    //const SR_Mesh& boxMesh   = pGraph->mMeshes[0];
+    unsigned       numHidden = 0;
+    unsigned       numTotal  = 0;
 
     for (SR_SceneNode& n : pGraph->mNodes)
     {
@@ -671,8 +842,6 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float far, 
 
             pUniforms->pTexture = material.pTextures[0];
 
-            //m.mode = SR_RenderMode::RENDER_MODE_INDEXED_LINES;
-
             // Use the textureless shader if needed
             /*
             if (!material.pTextures[0])
@@ -683,12 +852,53 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float far, 
             const size_t shaderId = (size_t)(material.pTextures[0] == nullptr);
             //const uint32_t shaderId = 0;
 
-            if (!is_visible(vpMatrix, far, fov, camTrans, modelMat, box))
+            ++numTotal;
+
+            if (!is_visible(aspect, fov, camTrans, modelMat, box))// && !sr_is_visible(box, pUniforms->mvpMatrix))
             {
+                ++numHidden;
                 continue;
             }
 
             context.draw(m, shaderId, 0);
         }
     }
+
+    /*
+    // debugging
+    for (SR_SceneNode& n : pGraph->mNodes)
+    {
+        if (n.type != NODE_TYPE_MESH)
+        {
+            continue;
+        }
+
+        const math::mat4& modelMat = pGraph->mModelMatrices[n.nodeId];
+        const size_t numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
+        const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
+
+        pUniforms->modelMatrix = modelMat;
+        pUniforms->mvpMatrix   = vpMatrix * modelMat;
+
+        for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
+        {
+            const size_t nodeMeshId = meshIds[meshId];
+            const SR_BoundingBox& box = pGraph->mMeshBounds[nodeMeshId];
+            pUniforms->aabb = &box;
+
+            if (!is_visible(aspect, fov, camTrans, modelMat, box))
+            {
+                continue;
+            }
+
+            context.draw(boxMesh, 2,  0);
+        }
+    }
+    */
+
+    /*
+    std::cout
+        << "Meshes Hidden: " << numHidden << '/' << numTotal << " (" << 100.f*((float)numHidden/(float)numTotal) << "%)."
+        << std::endl;
+    */
 }

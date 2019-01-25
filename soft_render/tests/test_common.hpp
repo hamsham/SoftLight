@@ -60,6 +60,7 @@ struct SpotLight
 struct MeshUniforms : SR_UniformBuffer
 {
     const SR_Texture* pTexture;
+    const SR_BoundingBox* aabb;
     Light light;
     PointLight point;
     SpotLight spot;
@@ -116,7 +117,7 @@ utils::Pointer<SR_SceneGraph> create_context();
 -----------------------------------------------------------------------------*/
 void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix);
 
-void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float far, float fov, const SR_Transform& camTrans);
+void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspect, float fov, const SR_Transform& camTrans);
 
 
 

@@ -1096,7 +1096,7 @@ void SR_SceneFileLoader::read_node_hierarchy(
         import_mesh_node(pInNode, currentNode);
     }
     else
-        {
+    {
         currentNode.type = NODE_TYPE_EMPTY;
     }
 
