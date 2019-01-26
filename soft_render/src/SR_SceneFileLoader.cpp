@@ -1153,7 +1153,6 @@ void SR_SceneFileLoader::import_mesh_node(const aiNode* const pNode, SR_SceneNod
     for (unsigned i = 0; i < numMeshes; ++i)
     {
         meshIds[i] = pNode->mMeshes[i];
-
     }
 
     // Very important for the scene graph to keep track of what mesh node owns

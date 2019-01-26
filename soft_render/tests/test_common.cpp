@@ -24,6 +24,8 @@
     #define SR_TEST_MAX_THREADS 4
 #endif /* SR_TEST_MAX_THREADS */
 
+#define SR_TEST_DEBUG_AABBS 1
+
 
 
 /*
@@ -90,11 +92,9 @@
 math::vec4 _box_vert_shader_impl(const size_t vertId, const SR_VertexArray&, const SR_VertexBuffer&, const SR_UniformBuffer* uniforms, math::vec4*)
 {
     const MeshUniforms* pUniforms = static_cast<const MeshUniforms*>(uniforms);
-    //const math::vec3&   vert      = *vbo.element<const math::vec3>(vao.offset(0, vertId));
     const math::vec4&   trr       = pUniforms->aabb->get_top_rear_right();
     const math::vec4&   bfl       = pUniforms->aabb->get_bot_front_left();
-
-    const math::vec4 points[] = {
+    const math::vec4    points[]  = {
         {trr[0], bfl[1], bfl[2], 1.f},
         {trr[0], trr[1], bfl[2], 1.f},
         {trr[0], trr[1], trr[2], 1.f},
@@ -282,7 +282,7 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
 
     // normalize the texture colors to within (0.f, 1.f)
     {
-        math::vec3_t<uint8_t>&& pixel8 = albedo->bilinear<math::vec3_t<uint8_t>>(uv[0], uv[1]);
+        math::vec3_t<uint8_t>&& pixel8 = albedo->nearest<math::vec3_t<uint8_t>>(uv[0], uv[1]);
         math::vec4_t<uint8_t> pixelF{pixel8[0], pixel8[1], pixel8[2], 255};
         pixel = color_cast<float, uint8_t>(pixelF);
     }
@@ -551,13 +551,23 @@ int scene_load_cube(SR_SceneGraph& graph)
 
     assert(numVboBytes == (numVerts*stride));
 
+    ls::utils::Pointer<size_t[]> meshId{new size_t[1]};
+    meshId[0] = 0;
+
+    graph.mNodes.push_back({SR_SceneNodeType::NODE_TYPE_EMPTY, 0, 0, SCENE_NODE_ROOT_ID});
+    graph.mBaseTransforms.push_back(math::mat4{1.f});
+    graph.mCurrentTransforms.push_back(SR_Transform{math::mat4{1.f}, SR_TRANSFORM_TYPE_MODEL});
+    graph.mNodeNames.push_back(std::string{"AABB"});
+    graph.mModelMatrices.push_back(math::mat4{1.f});
+    graph.mNodeMeshes.emplace_back(std::move(meshId));
+    graph.mNumNodeMeshes.push_back(1);
     graph.mMeshes.emplace_back(SR_Mesh());
     SR_Mesh& mesh = graph.mMeshes.back();
     mesh.vaoId = vaoId;
     mesh.elementBegin = 0;
     mesh.elementEnd = numVerts;
     mesh.mode = SR_RenderMode::RENDER_MODE_LINES;
-    mesh.materialId = (uint16_t)-1;
+    mesh.materialId = (uint32_t)-1;
 
     return 0;
 }
@@ -612,8 +622,10 @@ utils::Pointer<SR_SceneGraph> create_context()
     assert(retCode == 0);
 
     // cube exists at index 0
-    //retCode = scene_load_cube(*pGraph);
-    //assert(retCode == 0);
+#if SR_TEST_DEBUG_AABBS
+    retCode = scene_load_cube(*pGraph);
+    assert(retCode == 0);
+#endif
 
     //retCode = meshLoader.load("testdata/african_head/african_head.obj");
     //retCode = meshLoader.load("testdata/bob/Bob.md5mesh");
@@ -708,8 +720,8 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
         for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
         {
             const size_t          nodeMeshId = meshIds[meshId];
-            SR_Mesh               m          = pGraph->mMeshes[nodeMeshId];
-            //const SR_BoundingBox& box        = pGraph->mMeshBounds[nodeMeshId];
+            const SR_Mesh&        m          = pGraph->mMeshes[nodeMeshId];
+            const SR_BoundingBox& box        = pGraph->mMeshBounds[nodeMeshId];
             const SR_Material&    material   = pGraph->mMaterials[m.materialId];
             pUniforms->pTexture = material.pTextures[0];
 
@@ -723,12 +735,10 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
             const size_t shaderId = (size_t)(material.pTextures[0] == nullptr);
             //const uint32_t shaderId = 0;
 
-            /*
             if (!sr_is_visible(box, pUniforms->mvpMatrix))
             {
                 continue;
             }
-            */
 
             context.draw(m, shaderId, 0);
         }
@@ -815,7 +825,6 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
 {
     SR_Context&    context   = pGraph->mContext;
     MeshUniforms*  pUniforms = static_cast<MeshUniforms*>(context.shader(0).uniforms().get());
-    //const SR_Mesh& boxMesh   = pGraph->mMeshes[0];
     unsigned       numHidden = 0;
     unsigned       numTotal  = 0;
 
@@ -864,8 +873,10 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
         }
     }
 
-    /*
     // debugging
+#if SR_TEST_DEBUG_AABBS
+    const SR_Mesh& boxMesh = pGraph->mMeshes[0];
+
     for (SR_SceneNode& n : pGraph->mNodes)
     {
         if (n.type != NODE_TYPE_MESH)
@@ -894,7 +905,7 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
             context.draw(boxMesh, 2,  0);
         }
     }
-    */
+#endif
 
     /*
     std::cout

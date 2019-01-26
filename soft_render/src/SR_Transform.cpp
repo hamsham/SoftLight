@@ -1,5 +1,6 @@
 
 #include <utility> // std::move()
+#include <soft_render/SR_SceneNode.hpp>
 
 #include "lightsky/setup/Setup.h"
 
@@ -75,7 +76,7 @@ SR_Transform::~SR_Transform() noexcept
  * Constructor
 -------------------------------------*/
 SR_Transform::SR_Transform(const SR_TransformType transformType) noexcept :
-    mParentId{0},
+    mParentId{SCENE_NODE_ROOT_ID},
     mFlags{0},
     mType{transformType},
     mPosition{0.f},

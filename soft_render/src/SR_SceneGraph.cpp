@@ -721,12 +721,39 @@ int SR_SceneGraph::import(SR_SceneGraph& inGraph) noexcept
     SR_Context&           inContext  = inGraph.mContext;
     std::vector<SR_Mesh>& inMeshes   = inGraph.mMeshes;
     const std::size_t     baseVaoId  = mContext.vaos().size();
+    const std::size_t     baseMatId  = mMaterials.size();
     const std::size_t     baseNodeId = mNodes.size();
+
+    for (SR_SceneNode& n : inGraph.mNodes)
+    {
+        n.nodeId += baseNodeId;
+
+        if (n.type == NODE_TYPE_CAMERA)
+        {
+            n.dataId += mCameras.size();
+        }
+        else if (n.type == NODE_TYPE_MESH)
+        {
+            const size_t numNodeMeshes = inGraph.mNumNodeMeshes[n.dataId];
+            const ls::utils::Pointer<size_t[]>& meshIds = inGraph.mNodeMeshes[n.dataId];
+
+            for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
+            {
+                meshIds[meshId] += mMeshes.size();
+            }
+
+            n.dataId += mNumNodeMeshes.size();
+        }
+
+        n.animListId += mNodeAnims.size();
+    }
+    std::move(inGraph.mNodes.begin(), inGraph.mNodes.end(), std::back_inserter(mNodes));
+    inGraph.mNodes.clear();
 
     for (SR_Mesh& inMesh : inMeshes)
     {
         inMesh.vaoId += baseVaoId;
-        inMesh.materialId += (uint32_t)mMaterials.size();
+        inMesh.materialId += (uint32_t)baseMatId;
     }
 
     std::move(inMeshes.begin(), inMeshes.end(), std::back_inserter(mMeshes));
@@ -740,24 +767,6 @@ int SR_SceneGraph::import(SR_SceneGraph& inGraph) noexcept
 
     std::move(inGraph.mMaterials.begin(), inGraph.mMaterials.end(), std::back_inserter(mMaterials));
     inGraph.mMaterials.clear();
-
-    for (SR_SceneNode& n : inGraph.mNodes)
-    {
-        n.nodeId += baseNodeId;
-
-        if (n.type == NODE_TYPE_CAMERA)
-        {
-            n.dataId += mCameras.size();
-        }
-        else if (n.type == NODE_TYPE_MESH)
-        {
-            n.dataId += mNodeMeshes.size();
-        }
-
-        n.animListId += mNodeAnims.size();
-    }
-    std::move(inGraph.mNodes.begin(), inGraph.mNodes.end(), std::back_inserter(mNodes));
-    inGraph.mNodes.clear();
 
     std::move(inGraph.mBaseTransforms.begin(), inGraph.mBaseTransforms.end(), std::back_inserter(mBaseTransforms));
     inGraph.mBaseTransforms.clear();
