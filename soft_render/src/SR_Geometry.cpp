@@ -1,8 +1,9 @@
 
 #include <algorithm> // std::swap
-#include <cmath> // std::abs
 
 #include "soft_render/SR_Geometry.hpp"
+
+namespace math = ls::math;
 
 
 
@@ -510,7 +511,7 @@ unsigned sr_index_byte_size(const SR_DataType indexType)
 -------------------------------------*/
 void sr_draw_line_bresenham(SR_ColorRGB8* const pImg, coord_shrt_t w, coord_shrt_t x1, coord_shrt_t y1, coord_shrt_t x2, coord_shrt_t y2, const SR_ColorRGB8& color)
 {
-    const bool steep = std::abs(x1 - x2) < std::abs(y1 - y2);
+    const bool steep = math::abs(x1 - x2) < math::abs(y1 - y2);
     if (steep)
     {
         std::swap(x1, y1);
@@ -525,7 +526,7 @@ void sr_draw_line_bresenham(SR_ColorRGB8* const pImg, coord_shrt_t w, coord_shrt
     
     const coord_shrt_t dx = x2 - x1;
     const coord_shrt_t dy = y2 - y1;
-    const coord_shrt_t dErr = std::abs(dy) * 2;
+    const coord_shrt_t dErr = math::abs(dy) * 2;
     const coord_shrt_t yErr = (y2 > y1) ? 1 : -1;
     coord_shrt_t currentErr = 0;
     coord_shrt_t y = y1;
@@ -571,7 +572,7 @@ void sr_draw_line_efla5(SR_ColorRGB8* pImg, coord_shrt_t width, coord_shrt_t x1,
 {
     coord_long_t shortLen = y2 - y1;
     coord_long_t longLen  = x2 - x1;
-    const bool yLonger    = std::abs(shortLen) > std::abs(longLen);
+    const bool yLonger    = math::abs(shortLen) > math::abs(longLen);
     
     if (yLonger)
     {
@@ -677,3 +678,102 @@ void sr_draw_line_fixed(SR_ColorRGB8* const pImg, coord_shrt_t w, coord_shrt_t x
     }
 }
 
+
+
+/*-----------------------------------------------------------------------------
+ * Vertex Information Algorithms
+-----------------------------------------------------------------------------*/
+/*-------------------------------------
+    Calculate the normal vector of a triangle
+-------------------------------------*/
+math::vec3 sr_calc_normal(
+    const math::vec3& v0,
+    const math::vec3& v1,
+    const math::vec3& v2
+) {
+    const math::vec3&& a = v1 - v0;
+    const math::vec3&& b = v2 - v0;
+
+    return math::normalize(math::vec3{
+        (a.v[1] * b.v[2]) - (a.v[2] * b.v[1]),
+        (a.v[2] * b.v[0]) - (a.v[0] * b.v[2]),
+        (a.v[0] * b.v[1]) - (a.v[1] * b.v[0])
+    });
+}
+
+
+
+/*-------------------------------------
+ * Calculate the tangents for a set of triangles (placed in a vertex array).
+-------------------------------------*/
+void sr_calc_tangents(
+    unsigned vertCount,
+    const math::vec3* const positions,
+    const math::vec2* const uvs,
+    math::vec3* tangents,
+    math::vec3* bitangents
+) {
+    for (unsigned i = 0; i < vertCount; ++i) {
+        const math::vec3&& deltaPos1 = positions[i + 1] - positions[i];
+        const math::vec3&& deltaPos2 = positions[i + 2] - positions[i];
+
+        const math::vec2&& deltaUv1 = uvs[i + 1] - uvs[i];
+        const math::vec2&& deltaUv2 = uvs[i + 2] - uvs[i];
+
+        const float r = math::rcp((deltaUv1[0] * deltaUv2[1]) - (deltaUv1[1] * deltaUv2[0]));
+
+        tangents[i] = tangents[i + 1] = tangents[i + 2] =
+            math::vec3{(deltaPos1 * deltaUv2[1]) - (deltaPos2 * deltaUv1[1])} * r;
+
+        bitangents[i] = bitangents[i + 1] = bitangents[i + 2] =
+            math::vec3{(deltaPos2 * deltaUv1[0]) - (deltaPos1 * deltaUv2[0])} * r;
+    }
+}
+
+
+
+/*-------------------------------------
+ * Calculate the tangent of a textured triangle in model-space.
+-------------------------------------*/
+math::vec3 sr_calc_tangent(
+    const math::vec3& pos0,
+    const math::vec3& pos1,
+    const math::vec3& pos2,
+    const math::vec2& uv0,
+    const math::vec2& uv1,
+    const math::vec2& uv2
+) {
+    const math::vec3&& deltaPos1 = pos1 - pos0;
+    const math::vec3&& deltaPos2 = pos2 - pos0;
+
+    const math::vec2&& deltaUv1 = uv1 - uv0;
+    const math::vec2&& deltaUv2 = uv2 - uv0;
+
+    const float r = math::rcp((deltaUv1[0] * deltaUv2[1]) - (deltaUv1[1] * deltaUv2[0]));
+
+    return math::vec3{(deltaPos1 * deltaUv2[1]) - (deltaPos2 * deltaUv1[1])} * r;
+}
+
+
+
+/*-------------------------------------
+ * Calculate the bi-tangent of a textured triangle in model-space.
+-------------------------------------*/
+math::vec3 sr_calc_bitangent(
+    const math::vec3& pos0,
+    const math::vec3& pos1,
+    const math::vec3& pos2,
+    const math::vec2& uv0,
+    const math::vec2& uv1,
+    const math::vec2& uv2
+) {
+    const math::vec3&& deltaPos1 = pos1 - pos0;
+    const math::vec3&& deltaPos2 = pos2 - pos0;
+
+    const math::vec2&& deltaUv1 = uv1 - uv0;
+    const math::vec2&& deltaUv2 = uv2 - uv0;
+
+    const float r = math::rcp((deltaUv1[0] * deltaUv2[1]) - (deltaUv1[1] * deltaUv2[0]));
+
+    return math::vec3{(deltaPos2 * deltaUv1[0]) - (deltaPos1 * deltaUv2[0])} * r;
+}

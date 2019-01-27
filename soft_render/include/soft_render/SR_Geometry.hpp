@@ -286,6 +286,9 @@ void sr_draw_line_fixed(SR_ColorRGB8* const pImg, coord_shrt_t w, coord_shrt_t x
 
 
 
+/*-----------------------------------------------------------------------------
+ * Triangle Feature Algorithms
+-----------------------------------------------------------------------------*/
 /*-------------------------------------
  * 2D Barycentric Coordinates
 -------------------------------------*/
@@ -352,6 +355,117 @@ inline ls::math::vec4_t<data_t> sr_barycentric(
 
     return ls::math::vec4_t<data_t>{s0, s1, s2, (data_t)0};
 }
+
+
+
+/*-----------------------------------------------------------------------------
+ * Vertex Information Algorithms
+-----------------------------------------------------------------------------*/
+/**------------------------------------
+ * Helper function to calculate a vertex normal from 3 vertices.
+ *
+ * @param v0
+ * @param v1
+ * @param v2
+ *
+ * @return A 3-dimensional vector that represents a vertex normal.
+-------------------------------------*/
+ls::math::vec3 sr_calc_normal(
+    const ls::math::vec3& v0,
+    const ls::math::vec3& v1,
+    const ls::math::vec3& v2
+);
+
+/**------------------------------------
+ * Calculate the tangents for a set of triangles (placed in a vertex array).
+ *
+ * @param vertCount
+ * The number of vertices in the input arrays.
+ *
+ * @param positions
+ * A pointer to an array (of size 'vertCount') of 3D vectors, representing the
+ * positions of a set of triangles.
+ *
+ * @param uvs
+ * A pointer to an array (of size 'vertCount') of 3D vectors, representing the
+ * uvs of a set of triangles.
+ *
+ * @param tangents
+ * A pointer to an array (of size 'vertCount') of 3D vectors, representing the
+ * tangents of a set of triangles.
+ *
+ * @param bitangents
+ * A pointer to an array (of size 'vertCount') of 3D vectors, representing the
+ * bitangents of a set of triangles.
+ *
+-------------------------------------*/
+void sr_calc_tangents(
+    unsigned vertCount,
+    const ls::math::vec3* const positions,
+    const ls::math::vec2* const uvs,
+    ls::math::vec3* tangents,
+    ls::math::vec3* bitangents
+);
+
+/**------------------------------------
+ * @brief Calculate the tangents for a set of triangles (placed in a vertex
+ * array).
+ *
+ * @param pos0
+ * The first vertex of a triangle in model-space.
+ *
+ * @param pos1
+ * The second vertex of a triangle in model-space.
+ *
+ * @param pos2
+ * The third vertex of a triangle in model-space.
+ *
+ * @param uv0
+ * The third UV coordinate of a triangle in texture-space.
+ *
+ * @param uv1
+ * The third UV coordinate of a triangle in texture-space.
+ *
+ * @param uv2
+ * The third UV coordinate of a triangle in texture-space.
+ *
+ * @return A 3D vector, representing the tangent coordinate of a textured
+ * triangle.
+-------------------------------------*/
+ls::math::vec3 sr_calc_tangent(
+    const ls::math::vec3& pos0, const ls::math::vec3& pos1, const ls::math::vec3& pos2,
+    const ls::math::vec2& uv0, const ls::math::vec2& uv1, const ls::math::vec2& uv2
+);
+
+/**------------------------------------
+ * @brief Calculate the tangents for a set of triangles (placed in a vertex
+ * array).
+ *
+ * @param pos0
+ * The first vertex of a triangle in model-space.
+ *
+ * @param pos1
+ * The second vertex of a triangle in model-space.
+ *
+ * @param pos2
+ * The third vertex of a triangle in model-space.
+ *
+ * @param uv0
+ * The third UV coordinate of a triangle in texture-space.
+ *
+ * @param uv1
+ * The third UV coordinate of a triangle in texture-space.
+ *
+ * @param uv2
+ * The third UV coordinate of a triangle in texture-space.
+ *
+ * @return A 3D vector, representing the bi-tangent coordinate of a textured
+ * triangle.
+-------------------------------------*/
+ls::math::vec3 sr_calc_bitangent(
+    const ls::math::vec3& pos0, const ls::math::vec3& pos1, const ls::math::vec3& pos2,
+    const ls::math::vec2& uv0, const ls::math::vec2& uv1, const ls::math::vec2& uv2
+);
 
 
 
