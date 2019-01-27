@@ -222,25 +222,22 @@ void SR_FragmentProcessor::render_line(
 
         for (int32_t i = 0; i < l; ++i)
         {
-            if (pointX >= dimens[0] && pointX <= dimens[1] && pointY >= dimens[2] && pointY <= dimens[3])
+            interpolate_line_varyings(pointZ, numVaryings, inVaryings, outVaryings);
+
+            if (noDepthTest || fbo->test_depth_pixel(pointX, pointY, pointZ))
             {
-                interpolate_line_varyings(pointZ, numVaryings, inVaryings, outVaryings);
+                const math::vec4 fragCoord{(float)pointX, (float)pointY, pointZ, 1.f};
 
-                if (noDepthTest || fbo->test_depth_pixel(pointX, pointY, pointZ))
+                if (shader(fragCoord, pUniforms, outVaryings, pOutputs))
                 {
-                    const math::vec4 fragCoord{(float)pointX, (float)pointY, pointZ, 1.f};
-
-                    if (shader(fragCoord, pUniforms, outVaryings, pOutputs))
+                    if (depthMask)
                     {
-                        if (depthMask)
-                        {
-                            fbo->put_depth_pixel<float>(pointX, pointY, pointZ);
-                        }
+                        fbo->put_depth_pixel<float>(pointX, pointY, pointZ);
+                    }
 
-                        for (std::size_t targetId = 0; targetId < numOutputs; ++targetId)
-                        {
-                            fbo->put_pixel(targetId, pointX, pointY, 0, pOutputs[targetId]);
-                        }
+                    for (std::size_t targetId = 0; targetId < numOutputs; ++targetId)
+                    {
+                        fbo->put_pixel(targetId, pointX, pointY, 0, pOutputs[targetId]);
                     }
                 }
             }
@@ -271,25 +268,22 @@ void SR_FragmentProcessor::render_line(
 
         for (int32_t i = 0; i < m; ++i)
         {
-            if (pointX >= dimens[0] && pointX <= dimens[1] && pointY >= dimens[2] && pointY <= dimens[3])
+            interpolate_line_varyings(pointZ, numVaryings, inVaryings, outVaryings);
+
+            if (noDepthTest || fbo->test_depth_pixel(pointX, pointY, pointZ))
             {
-                interpolate_line_varyings(pointZ, numVaryings, inVaryings, outVaryings);
+                const math::vec4 fragCoord{(float)pointX, (float)pointY, pointZ, 1.f};
 
-                if (noDepthTest || fbo->test_depth_pixel(pointX, pointY, pointZ))
+                if (shader(fragCoord, pUniforms, outVaryings, pOutputs))
                 {
-                    const math::vec4 fragCoord{(float)pointX, (float)pointY, pointZ, 1.f};
-
-                    if (shader(fragCoord, pUniforms, outVaryings, pOutputs))
+                    if (depthMask)
                     {
-                        if (depthMask)
-                        {
-                            fbo->put_depth_pixel<float>(pointX, pointY, pointZ);
-                        }
+                        fbo->put_depth_pixel<float>(pointX, pointY, pointZ);
+                    }
 
-                        for (std::size_t targetId = 0; targetId < numOutputs; ++targetId)
-                        {
-                            fbo->put_pixel(targetId, pointX, pointY, 0, pOutputs[targetId]);
-                        }
+                    for (std::size_t targetId = 0; targetId < numOutputs; ++targetId)
+                    {
+                        fbo->put_pixel(targetId, pointX, pointY, 0, pOutputs[targetId]);
                     }
                 }
             }
@@ -320,25 +314,22 @@ void SR_FragmentProcessor::render_line(
 
         for (int32_t i = 0; i < n; ++i)
         {
-            if (pointX >= dimens[0] && pointX <= dimens[1] && pointY >= dimens[2] && pointY <= dimens[3])
+            interpolate_line_varyings(pointZ, numVaryings, inVaryings, outVaryings);
+
+            if (noDepthTest || fbo->test_depth_pixel(pointX, pointY, pointZ))
             {
-                interpolate_line_varyings(pointZ, numVaryings, inVaryings, outVaryings);
+                const math::vec4 fragCoord{(float)pointX, (float)pointY, pointZ, 1.f};
 
-                if (noDepthTest || fbo->test_depth_pixel(pointX, pointY, pointZ))
+                if (shader(fragCoord, pUniforms, outVaryings, pOutputs))
                 {
-                    const math::vec4 fragCoord{(float)pointX, (float)pointY, pointZ, 1.f};
-
-                    if (shader(fragCoord, pUniforms, outVaryings, pOutputs))
+                    if (depthMask)
                     {
-                        if (depthMask)
-                        {
-                            fbo->put_depth_pixel<float>(pointX, pointY, pointZ);
-                        }
+                        fbo->put_depth_pixel<float>(pointX, pointY, pointZ);
+                    }
 
-                        for (std::size_t targetId = 0; targetId < numOutputs; ++targetId)
-                        {
-                            fbo->put_pixel(targetId, pointX, pointY, 0, pOutputs[targetId]);
-                        }
+                    for (std::size_t targetId = 0; targetId < numOutputs; ++targetId)
+                    {
+                        fbo->put_pixel(targetId, pointX, pointY, 0, pOutputs[targetId]);
                     }
                 }
             }
@@ -361,10 +352,9 @@ void SR_FragmentProcessor::render_line(
         }
     }
 
+    // Final bounds check
     if (pointX >= dimens[0] && pointX <= dimens[1] && pointY >= dimens[2] && pointY <= dimens[3])
     {
-        interpolate_line_varyings(pointZ, numVaryings, inVaryings, outVaryings);
-
         if (noDepthTest || fbo->test_depth_pixel(pointX, pointY, pointZ))
         {
             const math::vec4 fragCoord{(float)pointX, (float)pointY, pointZ, 1.f};
