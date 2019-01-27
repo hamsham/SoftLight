@@ -24,7 +24,7 @@
     #define SR_TEST_MAX_THREADS 4
 #endif /* SR_TEST_MAX_THREADS */
 
-#define SR_TEST_DEBUG_AABBS 1
+#define SR_TEST_DEBUG_AABBS 0
 
 
 
@@ -747,6 +747,12 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
 
 
 
+/*-------------------------------------
+ * Radar-based frustum culling method as described by Hernandez-Rudomin in
+ * their paper "A Rendering Pipeline for Real-time Crowds."
+ *
+ * https://pdfs.semanticscholar.org/4fae/54e3f9e79ba09ead5702648664b9932a1d3f.pdf
+-------------------------------------*/
 bool is_visible(
     float aspect,
     float fov,
@@ -754,15 +760,17 @@ bool is_visible(
     const math::mat4& modelMat,
     const SR_BoundingBox& bounds) noexcept
 {
-    const float        viewAngle = math::const_tan(fov);
-    const math::vec3   c         = camTrans.get_position();
-    const math::vec3&& cx        = math::get_x_axis(camTrans.get_orientation());
-    const math::vec3&& cy        = math::get_y_axis(camTrans.get_orientation());
-    const math::vec3&& cz        = math::cross(cx, cy);
+    const float        viewAngle = math::const_tan(fov*0.5f);
+    const math::vec3&& c         = camTrans.get_abs_position();
+    const math::mat3&& t         = math::mat3{math::transpose(camTrans.get_transform())};
+    const math::vec3&  cx        = t[0];
+    const math::vec3&  cy        = t[1];
+    const math::vec3&& cz        = -t[2];
     const math::vec4&  trr0      = bounds.get_top_rear_right();
     const math::vec4&  bfl0      = bounds.get_bot_front_left();
     const math::vec4&& trr       = modelMat * trr0;
     const math::vec4&& bfl       = modelMat * bfl0;
+    constexpr float    delta     = 0.f;
 
     const math::vec3   points[]  = {
         {trr[0], bfl[1], bfl[2]},
@@ -786,7 +794,6 @@ bool is_visible(
 
         // compute and test the Z coordinate
         objZ = math::dot(v, cz);
-
         if (objZ < 0.f)
         {
             continue;
@@ -795,6 +802,7 @@ bool is_visible(
         // compute and test the Y coordinate
         objY = math::dot(v, cy);
         yAspect = objZ * viewAngle;
+        yAspect += delta;
         if (objY > yAspect || objY < -yAspect)
         {
             continue;
@@ -803,6 +811,7 @@ bool is_visible(
         // compute and test the X coordinate
         objX = math::dot(v, cx);
         xAspect = yAspect * aspect;
+        xAspect += delta;
         if (objX > xAspect || objX < -xAspect)
         {
             continue;
@@ -811,7 +820,7 @@ bool is_visible(
         return true;
     }
 
-    const math::vec3&& cWorld  = camTrans.get_abs_position();
+    const math::vec3&  cWorld  = camTrans.get_position();
     const math::vec3   bboxMin = {bfl[0], bfl[1], bfl[2]};
     const math::vec3   bboxMax = {trr[0], trr[1], trr[2]};
 
