@@ -736,7 +736,7 @@ bool SR_RenderWindowWin32::peek_event(SR_WindowEvent* const pEvent) noexcept
     case WM_KEYDOWN:
         // As per the windows documentation, bit #30 determines if the key had
         // previously been depressed.
-        if (!mKeysRepeat || (mLastMsg.lParam & (1<<30)) != 0)
+        if (!mKeysRepeat && (mLastMsg.lParam & (1<<30)) != 0)
         {
             pEvent->type = SR_WinEventType::WIN_EVENT_UNKNOWN;
             return false;
