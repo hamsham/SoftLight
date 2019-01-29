@@ -64,8 +64,8 @@ struct SR_VertexProcessor
     void push_fragments(
         float fboW,
         float fboH,
-        ls::math::vec4_t<float>*       screenCoords,
-        ls::math::vec4_t<float>*       worldCoords,
+        ls::math::vec4_t<float>* const screenCoords,
+        ls::math::vec4_t<float>* const worldCoords,
         const ls::math::vec4_t<float>* varyings
     ) const noexcept;
 

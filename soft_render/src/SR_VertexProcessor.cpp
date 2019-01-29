@@ -1,4 +1,6 @@
 
+#include <iostream>
+
 #include "lightsky/utils/Sort.hpp" // utils::sort_quick
 
 #include "lightsky/math/vec4.h"
@@ -62,9 +64,9 @@ inline size_t get_next_vertex(const SR_IndexBuffer* pIbo, size_t vId) noexcept
 
 
 
-inline math::vec4_t<size_t> get_next_vertex3(const SR_IndexBuffer* pIbo, size_t vId) noexcept
+inline math::vec3_t<size_t> get_next_vertex3(const SR_IndexBuffer* pIbo, size_t vId) noexcept
 {
-    math::vec4_t<size_t> ret;
+    math::vec3_t<size_t> ret;
 
     switch (pIbo->type())
     {
@@ -108,12 +110,10 @@ inline math::vec4_t<size_t> get_next_vertex3(const SR_IndexBuffer* pIbo, size_t 
 --------------------------------------*/
 bool clip_segment(float num, float denom, float& tE, float& tL)
 {
-    float t;
-
     if (math::abs(denom) < LS_EPSILON)
         return num < 0.f;
 
-    t = num / denom;
+    const float t = num / denom;
 
     if (denom > 0.f)
     {
@@ -143,12 +143,15 @@ bool clip_segment(float num, float denom, float& tE, float& tL)
     return true;
 }
 
-bool clip_liang_barsky(float& x1, float& y1, float& x2, float& y2, float xMax, float yMax)
+bool sr_clip_liang_barsky(math::vec4 screenCoords[SR_SHADER_MAX_SCREEN_COORDS], float xMax, float yMax)
 {
-    float dx, dy, tE, tL;
-
-    dx = x2 - x1;
-    dy = y2 - y1;
+    float tE, tL;
+    float& x1 = screenCoords[0][0];
+    float& y1 = screenCoords[0][1];
+    float& x2 = screenCoords[1][0];
+    float& y2 = screenCoords[1][1];
+    const float dx = x2 - x1;
+    const float dy = y2 - y1;
 
     if (math::abs(dx) < LS_EPSILON && math::abs(dy) < LS_EPSILON)
     {
@@ -189,7 +192,7 @@ bool clip_liang_barsky(float& x1, float& y1, float& x2, float& y2, float xMax, f
 /*--------------------------------------
  * Cull backfaces of a triangle
 --------------------------------------*/
-inline bool backface_visible(const math::vec4* screenCoords, const math::vec4* worldCoords) noexcept
+inline bool backface_visible(math::vec4 screenCoords[SR_SHADER_MAX_SCREEN_COORDS], const math::vec4 worldCoords[SR_SHADER_MAX_WORLD_COORDS]) noexcept
 {
     return math::min(worldCoords[0][3], worldCoords[1][3], worldCoords[2][3]) > 0.f &&
            (0.f < math::dot(math::vec4{0.f, 0.f, 1.f, 0.f}, math::normalize(math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0]))));
@@ -200,9 +203,9 @@ inline bool backface_visible(const math::vec4* screenCoords, const math::vec4* w
 /*--------------------------------------
  * Cull frontfaces of a triangle
 --------------------------------------*/
-inline bool frontface_visible(const math::vec4* screenCoords, const math::vec4* worldCoords) noexcept
+inline bool frontface_visible(const math::vec4 screenCoords[SR_SHADER_MAX_SCREEN_COORDS], const math::vec4 worldCoords[SR_SHADER_MAX_WORLD_COORDS]) noexcept
 {
-    return math::min(worldCoords[0][3], worldCoords[1][3], worldCoords[2][3]) > 0.f &&
+    return math::min(worldCoords[0][3], worldCoords[1][3], worldCoords[2][3]) >= 0.f &&
            (0.f > math::dot(math::vec4{0.f, 0.f, 1.f, 0.f}, math::normalize(math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0]))));
 }
 
@@ -211,7 +214,7 @@ inline bool frontface_visible(const math::vec4* screenCoords, const math::vec4* 
 /*--------------------------------------
  * Cull only triangle outside of the screen
 --------------------------------------*/
-inline bool face_visible(const math::vec4* worldCoords) noexcept
+inline bool face_visible(const math::vec4 worldCoords[SR_SHADER_MAX_WORLD_COORDS]) noexcept
 {
     return math::min(worldCoords[0][3], worldCoords[1][3], worldCoords[2][3]) > 0.f;
 }
@@ -302,9 +305,9 @@ void SR_VertexProcessor::flush_fragments() const noexcept
 void SR_VertexProcessor::push_fragments(
     float fboW,
     float fboH,
-    ls::math::vec4* screenCoords,
-    ls::math::vec4* worldCoords,
-    const ls::math::vec4* varyings
+    math::vec4* const screenCoords,
+    math::vec4* const worldCoords,
+    const math::vec4* varyings
 ) const noexcept
 {
     const SR_Mesh m = mMesh;
@@ -470,7 +473,8 @@ void SR_VertexProcessor::execute() noexcept
                 {
                     screenCoords[0] = world_to_screen_3(worldCoords[0], widthScale, heightScale);
                     screenCoords[1] = world_to_screen_3(worldCoords[1], widthScale, heightScale);
-                    if (clip_liang_barsky(screenCoords[0][0], screenCoords[0][1], screenCoords[1][0], screenCoords[1][1], fboW, fboH))
+
+                    if (sr_clip_liang_barsky(screenCoords, fboW, fboH))
                     {
                         push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
                     }
@@ -496,7 +500,8 @@ void SR_VertexProcessor::execute() noexcept
                 {
                     screenCoords[0] = world_to_screen_3(worldCoords[0], widthScale, heightScale);
                     screenCoords[1] = world_to_screen_3(worldCoords[1], widthScale, heightScale);
-                    if (clip_liang_barsky(screenCoords[0][0], screenCoords[0][1], screenCoords[1][0], screenCoords[1][1], fboW, fboH))
+
+                    if (sr_clip_liang_barsky(screenCoords, fboW, fboH))
                     {
                         push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
                     }
@@ -511,24 +516,19 @@ void SR_VertexProcessor::execute() noexcept
         const size_t step = mNumThreads * 3u;
         for (size_t i = begin; i < end; i += step)
         {
-            const math::vec4_t<size_t>&& vertId = get_next_vertex3(pIbo, i);
+            const math::vec3_t<size_t>&& vertId = get_next_vertex3(pIbo, i);
 
             worldCoords[0]  = shader(vertId[0], vao, vbo, pUniforms, pVaryings);
             worldCoords[1]  = shader(vertId[1], vao, vbo, pUniforms, pVaryings + numVaryings);
             worldCoords[2]  = shader(vertId[2], vao, vbo, pUniforms, pVaryings + (numVaryings << 1));
+
             screenCoords[0] = world_to_screen_3(worldCoords[0], widthScale, heightScale);
             screenCoords[1] = world_to_screen_3(worldCoords[1], widthScale, heightScale);
             screenCoords[2] = world_to_screen_3(worldCoords[2], widthScale, heightScale);
 
-            if (cullMode == SR_CULL_BACK_FACE && backface_visible(screenCoords, worldCoords))
-            {
-                push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
-            }
-            else if (cullMode == SR_CULL_FRONT_FACE && frontface_visible(screenCoords, worldCoords))
-            {
-                push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
-            }
-            else if (cullMode == SR_CULL_OFF && face_visible(worldCoords))
+            if ((cullMode == SR_CULL_BACK_FACE  && backface_visible(screenCoords, worldCoords))
+            ||  (cullMode == SR_CULL_FRONT_FACE && frontface_visible(screenCoords, worldCoords))
+            ||  (cullMode == SR_CULL_OFF        && face_visible(worldCoords)))
             {
                 push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
             }
@@ -548,19 +548,14 @@ void SR_VertexProcessor::execute() noexcept
             worldCoords[0]  = shader(vertId0, vao, vbo, pUniforms, pVaryings);
             worldCoords[1]  = shader(vertId1, vao, vbo, pUniforms, pVaryings + numVaryings);
             worldCoords[2]  = shader(vertId2, vao, vbo, pUniforms, pVaryings + (numVaryings << 1));
+
             screenCoords[0] = world_to_screen_3(worldCoords[0], widthScale, heightScale);
             screenCoords[1] = world_to_screen_3(worldCoords[1], widthScale, heightScale);
             screenCoords[2] = world_to_screen_3(worldCoords[2], widthScale, heightScale);
 
-            if (cullMode == SR_CULL_BACK_FACE && backface_visible(screenCoords, worldCoords))
-            {
-                push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
-            }
-            else if (cullMode == SR_CULL_FRONT_FACE && frontface_visible(screenCoords, worldCoords))
-            {
-                push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
-            }
-            else if (cullMode == SR_CULL_OFF && face_visible(worldCoords))
+            if ((cullMode == SR_CULL_BACK_FACE  && backface_visible(screenCoords, worldCoords))
+            ||  (cullMode == SR_CULL_FRONT_FACE && frontface_visible(screenCoords, worldCoords))
+            ||  (cullMode == SR_CULL_OFF        && face_visible(worldCoords)))
             {
                 push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
             }
