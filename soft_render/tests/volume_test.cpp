@@ -56,7 +56,8 @@ math::vec4 _volume_vert_shader(const size_t vertId, const SR_VertexArray& vao, c
     const math::vec3      spacing   = {pUniforms->spacing[0], pUniforms->spacing[1], pUniforms->spacing[2]};
     const math::vec4      worldPos  = math::vec4{vert[0], vert[1], vert[2], 1.f};
 
-    return pUniforms->mvpMatrix * worldPos;
+    return pUniforms->mvpMatrix * math::scale(math::mat4{1.f}, math::rcp(spacing))  * worldPos;
+    //return pUniforms->mvpMatrix * worldPos;
 }
 
 
@@ -79,14 +80,12 @@ SR_VertexShader volume_vert_shader()
 inline bool intersect_ray_box(
     const math::vec4& rayPos,
     const math::vec4& rayDir,
-    const math::vec4& boxMin,
-    const math::vec4& boxMax,
     float& texNear,
     float& texFar)
 {
     const math::vec4&& invR    = math::rcp(rayDir);
-    const math::vec4&& tbot    = invR * (boxMin-rayPos);
-    const math::vec4&& ttop    = invR * (boxMax-rayPos);
+    const math::vec4&& tbot    = invR * (math::vec4{-1.f}-rayPos);
+    const math::vec4&& ttop    = invR * (math::vec4{1.f}-rayPos);
     const math::vec4&& tmin    = math::min(ttop, tbot);
     const math::vec4&& tmax    = math::max(ttop, tbot);
     const math::vec2   minXX   = {tmin[0], tmin[0]};
@@ -121,11 +120,12 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
     float                 nearPos;
     float                 farPos;
 
-    if (!intersect_ray_box(camPos, rayDir, math::vec4{ -1.f }, math::vec4{1.f}, nearPos, farPos))
+    if (!intersect_ray_box(camPos, rayDir, nearPos, farPos))
     {
-        float temp = nearPos;
-        nearPos = farPos;
-        farPos = temp;
+        return false;
+        //float temp = nearPos;
+        //nearPos = farPos;
+        //farPos = temp;
     }
     nearPos = math::max(nearPos, 0.f);
 
@@ -346,7 +346,7 @@ bool create_opacity_map(SR_SceneGraph& graph, const size_t volumeTexIndex)
     if (0 != opacityTex.init(SR_COLOR_R_FLOAT, w, h, d))
     {
         std::cerr << "Error: Unable to allocate memory for the opacity transfer functions." << std::endl;
-        return false;
+        return 1;
     }
     opacityTex.set_wrap_mode(SR_TexWrapMode::SR_TEXTURE_WRAP_CUTOFF);
 
@@ -364,7 +364,7 @@ bool create_opacity_map(SR_SceneGraph& graph, const size_t volumeTexIndex)
     add_transfer_func(50, 75,  0.01f);
     add_transfer_func(75, 255, 0.05f);
 
-    return true;
+    return 0;
 }
 
 
@@ -384,7 +384,7 @@ bool create_color_map(SR_SceneGraph& graph, const size_t volumeTexIndex)
     if (0 != colorTex.init(SR_COLOR_RGB_FLOAT, w, h, d))
     {
         std::cerr << "Error: Unable to allocate memory for the color transfer functions." << std::endl;
-        return false;
+        return 1;
     }
     colorTex.set_wrap_mode(SR_TexWrapMode::SR_TEXTURE_WRAP_CUTOFF);
 
@@ -402,7 +402,7 @@ bool create_color_map(SR_SceneGraph& graph, const size_t volumeTexIndex)
     add_transfer_func(50, 75,  SR_ColorRGBType<float>{1.f,   1.f,  1.f});
     add_transfer_func(75, 255, SR_ColorRGBType<float>{0.6f,  1.f,  1.f});
 
-    return true;
+    return 0;
 }
 
 
@@ -568,7 +568,7 @@ int main()
     math::mat4 vpMatrix;
     SR_Transform camTrans;
     camTrans.set_type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
-    camTrans.extract_transforms(math::look_from(math::vec3{3.f}, math::vec3{0.f}, math::vec3{0.f, 1.f, 0.f}));
+    camTrans.extract_transforms(math::look_from(math::vec3{-1.f}, math::vec3{0.f}, math::vec3{0.f, -1.f, 0.f}));
 
     if (shouldQuit)
     {
@@ -690,7 +690,7 @@ int main()
             {
                 camTrans.apply_transform();
 
-                constexpr float    viewAngle  = LS_DEG2RAD(60.f);
+                constexpr float    viewAngle  = LS_DEG2RAD(45.f);
                 //const float        w          = 0.001f * (float)pWindow->width();
                 //const float        h          = 0.001f * (float)pWindow->height();
                 //const math::mat4&& projMatrix = math::ortho(-w, w, -h, h, 0.0001f, 0.1f);
