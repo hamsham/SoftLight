@@ -34,14 +34,14 @@
 --------------------------------------*/
 struct VolumeUniforms : SR_UniformBuffer
 {
-    math::vec2 windowSize;
-    float focalLen;
+    math::vec2        windowSize;
     const SR_Texture* pCubeMap;
     const SR_Texture* pOpacityMap;
     const SR_Texture* pColorMap;
-    math::vec4 camPos;
-    math::mat4 mvMatrix;
-    math::mat4 mvpMatrix;
+    math::vec4        spacing;
+    math::vec4        camPos;
+    math::mat4        mvMatrix;
+    math::mat4        mvpMatrix;
 };
 
 
@@ -49,16 +49,12 @@ struct VolumeUniforms : SR_UniformBuffer
 /*--------------------------------------
  * Vertex Shader
 --------------------------------------*/
-math::vec4 _volume_vert_shader(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4* varyings)
+math::vec4 _volume_vert_shader(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4*)
 {
     const VolumeUniforms* pUniforms = static_cast<const VolumeUniforms*>(uniforms);
-
-    const math::vec3& vert     = *vbo.element<const math::vec3>(vao.offset(0, vertId));
-    const math::vec3& uvs      = *vbo.element<const math::vec3>(vao.offset(1, vertId));
-    const math::vec4  worldPos = math::vec4{vert[0], vert[1], vert[2], 1.f};
-    const math::vec4  modelPos = math::vec4{uvs[0],  uvs[1],  uvs[2],  1.f};
-
-    varyings[0] = modelPos;
+    const math::vec3&     vert      = *vbo.element<const math::vec3>(vao.offset(0, vertId));
+    const math::vec3      spacing   = {pUniforms->spacing[0], pUniforms->spacing[1], pUniforms->spacing[2]};
+    const math::vec4      worldPos  = math::vec4{vert[0], vert[1], vert[2], 1.f};
 
     return pUniforms->mvpMatrix * worldPos;
 }
@@ -68,8 +64,8 @@ math::vec4 _volume_vert_shader(const size_t vertId, const SR_VertexArray& vao, c
 SR_VertexShader volume_vert_shader()
 {
     SR_VertexShader shader;
-    shader.numVaryings = 1;
-    shader.cullMode = SR_CULL_BACK_FACE;
+    shader.numVaryings = 0;
+    shader.cullMode = SR_CULL_FRONT_FACE;
     shader.shader = _volume_vert_shader;
 
     return shader;
@@ -113,13 +109,11 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
     constexpr float       step      = 1.f / 256.f;
     const VolumeUniforms* pUniforms = static_cast<const VolumeUniforms*>(uniforms);
     const math::vec4&&    winDimens = math::rcp(math::vec4{pUniforms->windowSize[0], pUniforms->windowSize[1], 1.f, 1.f});
-    const float           focalLen  = -pUniforms->focalLen;
     const SR_Texture*     volumeTex = pUniforms->pCubeMap;
     const SR_Texture*     alphaTex  = pUniforms->pOpacityMap;
     const SR_Texture*     colorTex  = pUniforms->pColorMap;
     const math::vec4      camPos    = pUniforms->camPos;
-    const math::vec4      spacing   {1.f, 2.f, 1.f, 1.f};
-    const math::vec4&&    viewDir   = math::vec4{2.f * (winDimens[0]*fragCoords[0]) - 1.f, 2.f * (winDimens[1]*fragCoords[1]) - 1.f, focalLen, 1.f} / spacing;
+    const math::vec4&&    viewDir   = math::vec4{2.f * (winDimens[0]*fragCoords[0]) - 1.f, 2.f * (winDimens[1]*fragCoords[1]) - 1.f, -1.f, 1.f} / pUniforms->spacing;
     math::vec4&&          rayDir    = math::normalize(viewDir * pUniforms->mvMatrix);
     math::vec4            rayStart;
     math::vec4            rayStop;
@@ -498,6 +492,7 @@ void render_volume(SR_SceneGraph* pGraph, const SR_Transform& viewMatrix, const 
     VolumeUniforms*    pUniforms = static_cast<VolumeUniforms*>(context.shader(0).uniforms().get());
     const math::vec3&& camPos    = viewMatrix.get_abs_position();
     const math::mat4   modelMat  = math::mat4{1.f};
+    pUniforms->spacing           = {1.f, 2.f, 2.f, 1.f};
     pUniforms->camPos            = math::vec4{camPos[0], camPos[1], camPos[2], 0.f};
     pUniforms->mvMatrix          = viewMatrix.get_transform() * modelMat;
     pUniforms->mvpMatrix         = vpMatrix * modelMat;
@@ -633,24 +628,6 @@ int main()
                         }
                         break;
 
-                    case SR_KeySymbol::KEY_SYM_LEFT:
-                        pWindow->set_size(IMAGE_WIDTH / 2, IMAGE_HEIGHT / 2);
-                        {
-                            unsigned w, h;
-                            pWindow->get_size(w, h);
-                            std::cout << "Window size changed: " << w << ' ' << h << std::endl;
-                        }
-                        break;
-
-                    case SR_KeySymbol::KEY_SYM_RIGHT:
-                        pWindow->set_size(IMAGE_WIDTH, IMAGE_HEIGHT);
-                        {
-                            unsigned w, h;
-                            pWindow->get_size(w, h);
-                            std::cout << "Window size changed: " << w << ' ' << h << std::endl;
-                        }
-                        break;
-
                     case SR_KeySymbol::KEY_SYM_UP:
                         numThreads = ls::math::min(numThreads + 1u, std::thread::hardware_concurrency());
                         context.num_threads(numThreads);
@@ -714,18 +691,19 @@ int main()
                 camTrans.apply_transform();
 
                 constexpr float    viewAngle  = LS_DEG2RAD(60.f);
-                constexpr float    focalLen   = 1.f / math::const_tan(viewAngle * 0.5f);
-                const float        w          = 0.001f * (float)pWindow->width();
-                const float        h          = 0.001f * (float)pWindow->height();
-                const math::mat4&& projMatrix = math::ortho(-w, w, -h, h, 0.0001f, 0.1f);
-                //const math::mat4&& projMatrix = math::infinite_perspective(viewAngle, (float)pWindow->width() / (float)pWindow->height(), 0.01f);
+                //const float        w          = 0.001f * (float)pWindow->width();
+                //const float        h          = 0.001f * (float)pWindow->height();
+                //const math::mat4&& projMatrix = math::ortho(-w, w, -h, h, 0.0001f, 0.1f);
+                const math::mat4&& projMatrix = math::infinite_perspective(viewAngle, (float)pWindow->width() / (float)pWindow->height(), 0.001f);
 
-                vpMatrix            = projMatrix * camTrans.get_transform();
-                pUniforms->focalLen = focalLen;
+                vpMatrix = projMatrix * camTrans.get_transform();
             }
 
             if (pWindow->width() != pRenderBuf->width() || pWindow->height() != pRenderBuf->height())
             {
+                context.texture(0).init(SR_ColorDataType::SR_COLOR_RGBA_FLOAT, (uint16_t)pWindow->width(), (uint16_t)pWindow->height(), 1);
+                context.texture(1).init(SR_ColorDataType::SR_COLOR_R_FLOAT,    (uint16_t)pWindow->width(), (uint16_t)pWindow->height(), 1);
+
                 pRenderBuf->terminate();
                 pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
                 pUniforms->windowSize = math::vec2{(float)pWindow->width(), (float)pWindow->height()};
