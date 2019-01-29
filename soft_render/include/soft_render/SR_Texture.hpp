@@ -199,6 +199,12 @@ class SR_Texture
 
     template <typename color_type>
     color_type bilinear(float x, float y, float z) const noexcept;
+
+    template <typename color_type>
+    color_type trilinear(float x, float y) const noexcept;
+
+    template <typename color_type>
+    color_type trilinear(float x, float y, float z) const noexcept;
 };
 
 
@@ -850,6 +856,81 @@ color_type SR_Texture::bilinear(float x, float y, float z) const noexcept
 
     return ret;
 }
+
+
+
+/*-------------------------------------
+ * Trilinear Texture Lookup
+-------------------------------------*/
+template <typename color_type>
+inline color_type SR_Texture::trilinear(float x, float y) const noexcept
+{
+    return trilinear<color_type>(x, y, 0.f);
+}
+
+
+
+/*-------------------------------------
+ * Trilinear Texture Lookup
+-------------------------------------*/
+template <typename color_type>
+color_type SR_Texture::trilinear(float x, float y, float z) const noexcept
+{
+    if (mWrapping == SR_TEXTURE_WRAP_CUTOFF && (ls::math::min(x, y, z) < 0.f || ls::math::max(x, y, z) >= 1.f)) return color_type{0};
+
+    /*
+       V000 (1 - x) (1 - y) (1 - z) +
+       V100 x (1 - y) (1 - z) +
+       V010 (1 - x) y (1 - z) +
+       V001 (1 - x) (1 - y) z +
+       V101 x (1 - y) z +
+       V011 (1 - x) y z +
+       V110 x y (1 - z) +
+       V111 x y z
+     */
+
+    namespace math = ls::math;
+
+    const float xf   = x;
+    const float yf   = y;
+    const float zf   = z;
+    const float wf   = 1.f;
+    const float hf   = 1.f;
+    const float df   = 1.f;
+    constexpr float one  = 1.f;
+    constexpr float zero = 0.f;
+
+    const math::vec3 v000f = math::vec3{zero, zero, zero} * math::vec3{wf-xf, hf-yf, df-zf};
+    const math::vec3 v100f = math::vec3{one,  zero, zero} * math::vec3{xf,    hf-yf, df-zf};
+    const math::vec3 v010f = math::vec3{zero, one,  zero} * math::vec3{wf-xf, yf,    df-zf};
+    const math::vec3 v001f = math::vec3{zero, zero, one}  * math::vec3{wf-xf, hf-yf, zf};
+    const math::vec3 v101f = math::vec3{one,  zero, one}  * math::vec3{xf,    hf-yf, zf};
+    const math::vec3 v011f = math::vec3{zero, one,  one}  * math::vec3{wf-xf, yf,    zf};
+    const math::vec3 v110f = math::vec3{one,  one,  zero} * math::vec3{xf,    yf,    df-zf};
+    const math::vec3 v111f = math::vec3{one,  one,  one}  * math::vec3{xf,    yf,    zf};
+
+    const color_type c000 = bilinear<color_type>(v000f[0], v000f[1], v000f[2]);
+    const color_type c100 = bilinear<color_type>(v100f[0], v100f[1], v100f[2]);
+    const color_type c010 = bilinear<color_type>(v010f[0], v010f[1], v010f[2]);
+    const color_type c001 = bilinear<color_type>(v001f[0], v001f[1], v001f[2]);
+    const color_type c101 = bilinear<color_type>(v101f[0], v101f[1], v101f[2]);
+    const color_type c011 = bilinear<color_type>(v011f[0], v011f[1], v011f[2]);
+    const color_type c110 = bilinear<color_type>(v110f[0], v110f[1], v110f[2]);
+    const color_type c111 = bilinear<color_type>(v111f[0], v111f[1], v111f[2]);
+
+    color_type ret;
+
+    switch (color_type::num_components())
+    {
+        case 4: ret[3] = c000[3] + c100[3] + c010[3] + c001[3] + c101[3] + c011[3] + c110[3] + c111[3];
+        case 3: ret[2] = c000[2] + c100[2] + c010[2] + c001[2] + c101[2] + c011[2] + c110[2] + c111[2];
+        case 2: ret[1] = c000[1] + c100[1] + c010[1] + c001[1] + c101[1] + c011[1] + c110[1] + c111[1];
+        case 1: ret[0] = c000[0] + c100[0] + c010[0] + c001[0] + c101[0] + c011[0] + c110[0] + c111[0];
+    }
+
+    return ret;
+}
+
 
 
 #endif /* SR_TEXTURE_HPP */
