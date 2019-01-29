@@ -1,6 +1,4 @@
 
-#include <iostream>
-
 #include "lightsky/utils/Sort.hpp" // utils::sort_quick
 
 #include "lightsky/math/vec4.h"
