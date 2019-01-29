@@ -160,8 +160,32 @@ struct alignas(sizeof(T)) SR_ColorRType
 
     static constexpr unsigned num_components() noexcept { return 1; }
 
-    constexpr T operator[] (int n) const noexcept { return (&r)[n]; };
-    inline T& operator[] (int n) noexcept { return (&r)[n]; };
+    constexpr SR_ColorRType() noexcept = default;
+    constexpr SR_ColorRType(const SR_ColorRType& c ) noexcept = default;
+    constexpr SR_ColorRType(SR_ColorRType&& c ) noexcept = default;
+
+    explicit constexpr SR_ColorRType(T n) noexcept : r{n} {};
+
+    template <typename C>
+    explicit constexpr SR_ColorRType(C n) noexcept : r{(T)n} {};
+
+    inline SR_ColorRType& operator=(const SR_ColorRType& c ) noexcept = default;
+    inline SR_ColorRType& operator=(SR_ColorRType&& c ) noexcept = default;
+    inline SR_ColorRType& operator=(const T n) noexcept { r = n; return *this; };
+
+    explicit constexpr operator T() const noexcept { return r; };
+
+    template <typename C>
+    explicit constexpr operator C() const noexcept { return (C)r; };
+
+    template <typename C>
+    explicit constexpr operator SR_ColorRType<C>() const noexcept { return SR_ColorRType{(C)r}; };
+
+    template <typename index_t>
+    constexpr T operator[] (index_t n) const noexcept { return (&r)[n]; };
+
+    template <typename index_t>
+    inline T& operator[] (index_t n) noexcept { return (&r)[n]; };
 };
 
 
