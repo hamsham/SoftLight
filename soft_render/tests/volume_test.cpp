@@ -34,6 +34,7 @@
 --------------------------------------*/
 struct VolumeUniforms : SR_UniformBuffer
 {
+    float             viewAngle;
     math::vec2        windowSize;
     const SR_Texture* pCubeMap;
     const SR_Texture* pOpacityMap;
@@ -56,7 +57,7 @@ math::vec4 _volume_vert_shader(const size_t vertId, const SR_VertexArray& vao, c
     const math::vec3      spacing   = {pUniforms->spacing[0], pUniforms->spacing[1], pUniforms->spacing[2]};
     const math::vec4      worldPos  = math::vec4{vert[0], vert[1], vert[2], 1.f};
 
-    return pUniforms->mvpMatrix * math::scale(math::mat4{1.f}, math::rcp(spacing))  * worldPos;
+    return pUniforms->mvpMatrix * math::scale(math::mat4{1.f}, spacing) * worldPos;
     //return pUniforms->mvpMatrix * worldPos;
 }
 
@@ -107,12 +108,14 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
 {
     constexpr float       step      = 1.f / 256.f;
     const VolumeUniforms* pUniforms = static_cast<const VolumeUniforms*>(uniforms);
-    const math::vec4&&    winDimens = math::rcp(math::vec4{pUniforms->windowSize[0], pUniforms->windowSize[1], 1.f, 1.f});
+    const math::vec2&&    winDimens = math::vec2{fragCoords[0], fragCoords[1]} * math::rcp(pUniforms->windowSize);
+    const float           focalLen  = math::rcp<float>(math::const_tan(pUniforms->viewAngle*0.5f));
     const SR_Texture*     volumeTex = pUniforms->pCubeMap;
     const SR_Texture*     alphaTex  = pUniforms->pOpacityMap;
     const SR_Texture*     colorTex  = pUniforms->pColorMap;
+    const math::vec4      spacing   = pUniforms->spacing;
     const math::vec4      camPos    = pUniforms->camPos;
-    const math::vec4&&    viewDir   = math::vec4{2.f * (winDimens[0]*fragCoords[0]) - 1.f, 2.f * (winDimens[1]*fragCoords[1]) - 1.f, -1.f, 1.f} / pUniforms->spacing;
+    const math::vec4&&    viewDir   = math::vec4{2.f * winDimens[0] - 1.f, 2.f * winDimens[1] - 1.f, -focalLen, 1.f} / spacing;
     math::vec4&&          rayDir    = math::normalize(viewDir * pUniforms->mvMatrix);
     math::vec4            rayStart;
     math::vec4            rayStop;
@@ -123,9 +126,6 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
     if (!intersect_ray_box(camPos, rayDir, nearPos, farPos))
     {
         return false;
-        //float temp = nearPos;
-        //nearPos = farPos;
-        //farPos = temp;
     }
     nearPos = math::max(nearPos, 0.f);
 
@@ -142,14 +142,13 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
 
     do
     {
-        srcTexel = volumeTex->trilinear<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
-        //srcTexel = volumeTex->bilinear<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
+        srcTexel = volumeTex->bilinear<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
         //srcTexel = volumeTex->nearest<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
 
         if (srcTexel > 17)
         {
             const SR_ColorRGBf volColor = colorTex->raw_texel<SR_ColorRGBf>(srcTexel);
-            const float        srcAlpha = 0.5f * alphaTex->raw_texel<float>(srcTexel);
+            const float        srcAlpha = 0.25f * alphaTex->raw_texel<float>(srcTexel);
 
             dstTexel[0] += volColor[2] * srcAlpha;
             dstTexel[1] += volColor[1] * srcAlpha;
@@ -174,7 +173,7 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
 SR_FragmentShader volume_frag_shader()
 {
     SR_FragmentShader shader;
-    shader.numVaryings = 1;
+    shader.numVaryings = 0;
     shader.numOutputs = 1;
     shader.blend = SR_BLEND_PREMULTIPLED_ALPHA;
     shader.depthMask = SR_DEPTH_MASK_OFF;
@@ -398,10 +397,10 @@ bool create_color_map(SR_SceneGraph& graph, const size_t volumeTexIndex)
     };
 
     add_transfer_func(0,  17,  SR_ColorRGBType<float>{0.f,   0.f,  0.f});
-    add_transfer_func(17, 40,  SR_ColorRGBType<float>{0.5f,  0.2f, 0.f});
-    add_transfer_func(40, 50,  SR_ColorRGBType<float>{0.5f,  0.0f, 0.5f});
+    add_transfer_func(17, 40,  SR_ColorRGBType<float>{0.5f,  0.2f, 0.1f});
+    add_transfer_func(40, 50,  SR_ColorRGBType<float>{0.5f,  0.8f, 0.5f});
     add_transfer_func(50, 75,  SR_ColorRGBType<float>{1.f,   1.f,  1.f});
-    add_transfer_func(75, 255, SR_ColorRGBType<float>{0.6f,  1.f,  1.f});
+    add_transfer_func(75, 255, SR_ColorRGBType<float>{0.6f,  0.6f, 0.6f});
 
     return 0;
 }
@@ -569,7 +568,7 @@ int main()
     math::mat4 vpMatrix;
     SR_Transform camTrans;
     camTrans.set_type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
-    camTrans.extract_transforms(math::look_from(math::vec3{-2.f}, math::vec3{0.f}, math::vec3{0.f, -1.f, 0.f}));
+    camTrans.extract_transforms(math::look_from(math::vec3{-3.f}, math::vec3{0.f}, math::vec3{0.f, -1.f, 0.f}));
 
     if (shouldQuit)
     {
@@ -691,12 +690,13 @@ int main()
             {
                 camTrans.apply_transform();
 
-                constexpr float    viewAngle  = LS_DEG2RAD(45.f);
+                constexpr float    viewAngle  = math::deg_to_rad(45.f);
                 //const float        w          = 0.001f * (float)pWindow->width();
                 //const float        h          = 0.001f * (float)pWindow->height();
                 //const math::mat4&& projMatrix = math::ortho(-w, w, -h, h, 0.0001f, 0.1f);
                 const math::mat4&& projMatrix = math::infinite_perspective(viewAngle, (float)pWindow->width() / (float)pWindow->height(), 0.001f);
 
+                pUniforms->viewAngle = viewAngle;
                 vpMatrix = projMatrix * camTrans.get_transform();
             }
 
