@@ -919,10 +919,10 @@ color_type SR_Texture::trilinear(float x, float y, float z) const noexcept
 
     switch (color_type::num_components())
     {
-        case 4: ret[3] = 0.125f * (float)math::sum(c000[3], c100[3], c010[3], c001[3], c101[3], c011[3], c110[3], c111[3]);
-        case 3: ret[2] = 0.125f * (float)math::sum(c000[2], c100[2], c010[2], c001[2], c101[2], c011[2], c110[2], c111[2]);
-        case 2: ret[1] = 0.125f * (float)math::sum(c000[1], c100[1], c010[1], c001[1], c101[1], c011[1], c110[1], c111[1]);
-        case 1: ret[0] = 0.125f * (float)math::sum(c000[0], c100[0], c010[0], c001[0], c101[0], c011[0], c110[0], c111[0]);
+        case 4: ret[3] = math::sum(c000[3], c100[3], c010[3], c001[3], c101[3], c011[3], c110[3], c111[3]) / 8;
+        case 3: ret[2] = math::sum(c000[2], c100[2], c010[2], c001[2], c101[2], c011[2], c110[2], c111[2]) / 8;
+        case 2: ret[1] = math::sum(c000[1], c100[1], c010[1], c001[1], c101[1], c011[1], c110[1], c111[1]) / 8;
+        case 1: ret[0] = math::sum(c000[0], c100[0], c010[0], c001[0], c101[0], c011[0], c110[0], c111[0]) / 8;
     }
 
     return ret;
