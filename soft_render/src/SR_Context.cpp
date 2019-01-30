@@ -427,7 +427,7 @@ std::size_t SR_Context::create_shader(
     const SR_FragmentShader& fragShader,
     const std::shared_ptr<SR_UniformBuffer>& pUniforms)
 {
-    if (vertShader.numVaryings > fragShader.numVaryings)
+    if (vertShader.numVaryings < fragShader.numVaryings)
     {
         return (std::size_t)-1;
     }
