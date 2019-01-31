@@ -890,31 +890,31 @@ color_type SR_Texture::trilinear(float x, float y, float z) const noexcept
 
     namespace math = ls::math;
 
+    const float wf = 1.f / mWidthf;
+    const float hf = 1.f / mHeightf;
+    const float df = 1.f / mDepthf;
+
+    const math::vec3 uv000 = math::vec3{x-wf, y-hf, z-df};
+    const math::vec3 uv100 = math::vec3{x,    y-hf, z-df};
+    const math::vec3 uv010 = math::vec3{x-wf, y,    z-df};
+    const math::vec3 uv001 = math::vec3{x-wf, y-hf, z};
+    const math::vec3 uv101 = math::vec3{x,    y-hf, z};
+    const math::vec3 uv011 = math::vec3{x-wf, y,    z};
+    const math::vec3 uv110 = math::vec3{x,    y,    z-df};
+    const math::vec3 uv111 = math::vec3{x,    y,    z};
+
+    const color_type c000 = nearest<color_type>(uv000[0], uv000[1], uv000[2]);
+    const color_type c100 = nearest<color_type>(uv100[0], uv100[1], uv100[2]);
+    const color_type c010 = nearest<color_type>(uv010[0], uv010[1], uv010[2]);
+    const color_type c001 = nearest<color_type>(uv001[0], uv001[1], uv001[2]);
+    const color_type c101 = nearest<color_type>(uv101[0], uv101[1], uv101[2]);
+    const color_type c011 = nearest<color_type>(uv011[0], uv011[1], uv011[2]);
+    const color_type c110 = nearest<color_type>(uv110[0], uv110[1], uv110[2]);
+    const color_type c111 = nearest<color_type>(uv111[0], uv111[1], uv111[2]);
+
     const float x0 = wrap_coordinate(x) * mWidthf;
     const float y0 = wrap_coordinate(y) * mHeightf;
     const float z0 = wrap_coordinate(z) * mDepthf;
-
-    const math::vec4 texMin{0.f};
-    const math::vec4 texMax{mWidthf, mHeightf, mDepthf, 0.f};
-
-    const math::vec4_t<int16_t> uv000 = (math::vec4_t<int16_t>)math::max(math::min(math::vec4{x0-1.f, y0-1.f, z0-1.f, 0.f}, texMax), texMin);
-    const math::vec4_t<int16_t> uv100 = (math::vec4_t<int16_t>)math::max(math::min(math::vec4{x0,     y0-1.f, z0-1.f, 0.f}, texMax), texMin);
-    const math::vec4_t<int16_t> uv010 = (math::vec4_t<int16_t>)math::max(math::min(math::vec4{x0-1.f, y0,     z0-1.f, 0.f}, texMax), texMin);
-    const math::vec4_t<int16_t> uv001 = (math::vec4_t<int16_t>)math::max(math::min(math::vec4{x0-1.f, y0-1.f, z0,     0.f}, texMax), texMin);
-    const math::vec4_t<int16_t> uv101 = (math::vec4_t<int16_t>)math::max(math::min(math::vec4{x0,     y0-1.f, z0,     0.f}, texMax), texMin);
-    const math::vec4_t<int16_t> uv011 = (math::vec4_t<int16_t>)math::max(math::min(math::vec4{x0-1.f, y0,     z0,     0.f}, texMax), texMin);
-    const math::vec4_t<int16_t> uv110 = (math::vec4_t<int16_t>)math::max(math::min(math::vec4{x0,     y0,     z0-1.f, 0.f}, texMax), texMin);
-    const math::vec4_t<int16_t> uv111 = (math::vec4_t<int16_t>)math::max(math::min(math::vec4{x0,     y0,     z0,     0.f}, texMax), texMin);
-
-    const color_type c000 = texel<color_type>(uv000[0], uv000[1], uv000[2]);
-    const color_type c100 = texel<color_type>(uv100[0], uv100[1], uv100[2]);
-    const color_type c010 = texel<color_type>(uv010[0], uv010[1], uv010[2]);
-    const color_type c001 = texel<color_type>(uv001[0], uv001[1], uv001[2]);
-    const color_type c101 = texel<color_type>(uv101[0], uv101[1], uv101[2]);
-    const color_type c011 = texel<color_type>(uv011[0], uv011[1], uv011[2]);
-    const color_type c110 = texel<color_type>(uv110[0], uv110[1], uv110[2]);
-    const color_type c111 = texel<color_type>(uv111[0], uv111[1], uv111[2]);
-
     const float xf = x0 - math::floor(x0);
     const float xd = 1.f - xf;
     const float yf = y0 - math::floor(y0);
