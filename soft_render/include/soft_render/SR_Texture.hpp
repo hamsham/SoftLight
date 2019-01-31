@@ -877,6 +877,8 @@ inline color_type SR_Texture::trilinear(float x, float y) const noexcept
 template <typename color_type>
 color_type SR_Texture::trilinear(float x, float y, float z) const noexcept
 {
+    if (mWrapping == SR_TEXTURE_WRAP_CUTOFF && (ls::math::min(x, y, z) < 0.f || ls::math::max(x, y, z) >= 1.f)) return color_type{0};
+
     /*
        V000 (1 - x) (1 - y) (1 - z) +
        V100 x (1 - y) (1 - z) +
@@ -890,36 +892,48 @@ color_type SR_Texture::trilinear(float x, float y, float z) const noexcept
 
     namespace math = ls::math;
 
-    const float wf = 1.f / mWidthf;
-    const float hf = 1.f / mHeightf;
-    const float df = 1.f / mDepthf;
+    // use "-1" to avoid out-of-bounds errors at texture edges.
+    x = wrap_coordinate(x) * (mWidthf-1.f);
+    y = wrap_coordinate(y) * (mHeightf-1.f);
+    z = wrap_coordinate(z) * (mDepthf-1.f);
 
-    const math::vec3 uv000 = math::vec3{x-wf, y-hf, z-df};
-    const math::vec3 uv100 = math::vec3{x,    y-hf, z-df};
-    const math::vec3 uv010 = math::vec3{x-wf, y,    z-df};
-    const math::vec3 uv001 = math::vec3{x-wf, y-hf, z};
-    const math::vec3 uv101 = math::vec3{x,    y-hf, z};
-    const math::vec3 uv011 = math::vec3{x-wf, y,    z};
-    const math::vec3 uv110 = math::vec3{x,    y,    z-df};
-    const math::vec3 uv111 = math::vec3{x,    y,    z};
+    // only use fixed-point calculation for determining texel indices.
+    const fixed_type x0 = ls::math::fixed_cast<fixed_type, float>(x);
+    const fixed_type y0 = ls::math::fixed_cast<fixed_type, float>(y);
+    const fixed_type z0 = ls::math::fixed_cast<fixed_type, float>(z);
+    const uint16_t   xi = ls::math::integer_cast<uint16_t, fixed_type>(x0);
+    const uint16_t   yi = ls::math::integer_cast<uint16_t, fixed_type>(y0);
+    const uint16_t   zi = ls::math::integer_cast<uint16_t, fixed_type>(z0);
 
-    const color_type c000 = nearest<color_type>(uv000[0], uv000[1], uv000[2]);
-    const color_type c100 = nearest<color_type>(uv100[0], uv100[1], uv100[2]);
-    const color_type c010 = nearest<color_type>(uv010[0], uv010[1], uv010[2]);
-    const color_type c001 = nearest<color_type>(uv001[0], uv001[1], uv001[2]);
-    const color_type c101 = nearest<color_type>(uv101[0], uv101[1], uv101[2]);
-    const color_type c011 = nearest<color_type>(uv011[0], uv011[1], uv011[2]);
-    const color_type c110 = nearest<color_type>(uv110[0], uv110[1], uv110[2]);
-    const color_type c111 = nearest<color_type>(uv111[0], uv111[1], uv111[2]);
+    constexpr fixed_type one = math::fixed_cast<fixed_type, int>(1);
+    constexpr fixed_type zero = math::fixed_cast<fixed_type, int>(0);
+    const uint16_t si = math::integer_cast<uint16_t, fixed_type>(math::max(x0-one, zero));
+    const uint16_t ti = math::integer_cast<uint16_t, fixed_type>(math::max(y0-one, zero));
+    const uint16_t ri = math::integer_cast<uint16_t, fixed_type>(math::max(z0-one, zero));
 
-    const float x0 = wrap_coordinate(x) * mWidthf;
-    const float y0 = wrap_coordinate(y) * mHeightf;
-    const float z0 = wrap_coordinate(z) * mDepthf;
-    const float xf = x0 - math::floor(x0);
+    const math::vec3_t<uint16_t> uv000 = {si, ti, ri};
+    const math::vec3_t<uint16_t> uv100 = {xi, ti, ri};
+    const math::vec3_t<uint16_t> uv010 = {si, yi, ri};
+    const math::vec3_t<uint16_t> uv001 = {si, ti, zi};
+    const math::vec3_t<uint16_t> uv101 = {xi, ti, zi};
+    const math::vec3_t<uint16_t> uv011 = {si, yi, zi};
+    const math::vec3_t<uint16_t> uv110 = {xi, yi, ri};
+    const math::vec3_t<uint16_t> uv111 = {xi, yi, zi};
+
+    const color_type c000 = texel<color_type>(uv000[0], uv000[1], uv000[2]);
+    const color_type c100 = texel<color_type>(uv100[0], uv100[1], uv100[2]);
+    const color_type c010 = texel<color_type>(uv010[0], uv010[1], uv010[2]);
+    const color_type c001 = texel<color_type>(uv001[0], uv001[1], uv001[2]);
+    const color_type c101 = texel<color_type>(uv101[0], uv101[1], uv101[2]);
+    const color_type c011 = texel<color_type>(uv011[0], uv011[1], uv011[2]);
+    const color_type c110 = texel<color_type>(uv110[0], uv110[1], uv110[2]);
+    const color_type c111 = texel<color_type>(uv111[0], uv111[1], uv111[2]);
+
+    const float xf = x - math::floor(x);
     const float xd = 1.f - xf;
-    const float yf = y0 - math::floor(y0);
+    const float yf = y - math::floor(y);
     const float yd = 1.f - yf;
-    const float zf = z0 - math::floor(z0);
+    const float zf = z - math::floor(z);
     const float zd = 1.f - zf;
 
     const float weight000 = xd*yd*zd;
