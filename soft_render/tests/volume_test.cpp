@@ -104,6 +104,32 @@ inline bool intersect_ray_box(
 
 
 
+math::vec4 calc_normal(const SR_Texture* tex, const math::vec4& p)
+{
+    constexpr float eps = 1.f / 32.f;
+
+    const math::vec4   a   = {eps, 0.f, 0.f, 0.f};
+    const math::vec4   b   = {0.f, eps, 0.f, 0.f};
+    const math::vec4   c   = {0.f, 0.f, eps, 0.f};
+    const math::vec4&& ppa = p+a;
+    const math::vec4&& ppb = p+b;
+    const math::vec4&& ppc = p+c;
+    const math::vec4&& pma = p-a;
+    const math::vec4&& pmb = p-b;
+    const math::vec4&& pmc = p-c;
+
+    return math::normalize(
+        (math::vec4)math::vec4_t<int>{
+            tex->nearest<SR_ColorR8>(ppa[0], ppa[1], ppa[2]).r - tex->nearest<SR_ColorR8>(pma[0], pma[1], pma[2]).r,
+            tex->nearest<SR_ColorR8>(ppb[0], ppb[1], ppb[2]).r - tex->nearest<SR_ColorR8>(pmb[0], pmb[1], pmb[2]).r,
+            tex->nearest<SR_ColorR8>(ppc[0], ppc[1], ppc[2]).r - tex->nearest<SR_ColorR8>(pmc[0], pmc[1], pmc[2]).r,
+            0
+        }
+    );
+}
+
+
+
 bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* uniforms, const math::vec4*, math::vec4* outputs)
 {
     constexpr float       step      = 1.f / 256.f;
@@ -152,9 +178,12 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
             const SR_ColorRGBf volColor = colorTex->raw_texel<SR_ColorRGBf>(srcTexel);
             const float        srcAlpha = 0.25f * alphaTex->raw_texel<float>(srcTexel);
 
-            dstTexel[0] += volColor[2] * srcAlpha;
-            dstTexel[1] += volColor[1] * srcAlpha;
-            dstTexel[2] += volColor[0] * srcAlpha;
+            const math::vec4 n = calc_normal(volumeTex, texPos);
+            const float b = math::clamp(100.f * math::dot(n, rayDir), 0.f, 1.f);
+
+            dstTexel[0] += b * volColor[2] * srcAlpha;
+            dstTexel[1] += b * volColor[1] * srcAlpha;
+            dstTexel[2] += b * volColor[0] * srcAlpha;
             dstTexel[3] += srcAlpha;
         }
 
@@ -361,9 +390,9 @@ bool create_opacity_map(SR_SceneGraph& graph, const size_t volumeTexIndex)
     };
 
     add_transfer_func(0,  17,  0.f);
-    add_transfer_func(17, 40,  0.15f);
-    add_transfer_func(40, 50,  0.0f);
-    add_transfer_func(50, 75,  0.01f);
+    add_transfer_func(17, 40,  0.125f);
+    add_transfer_func(40, 50,  0.125f);
+    add_transfer_func(50, 75,  0.1f);
     add_transfer_func(75, 255, 0.05f);
 
     return 0;
@@ -399,8 +428,8 @@ bool create_color_map(SR_SceneGraph& graph, const size_t volumeTexIndex)
     };
 
     add_transfer_func(0,  17,  SR_ColorRGBType<float>{0.f,   0.f,  0.f});
-    add_transfer_func(17, 40,  SR_ColorRGBType<float>{0.5f,  0.2f, 0.1f});
-    add_transfer_func(40, 50,  SR_ColorRGBType<float>{0.5f,  0.8f, 0.5f});
+    add_transfer_func(17, 40,  SR_ColorRGBType<float>{0.5f,  0.2f, 0.2f});
+    add_transfer_func(40, 50,  SR_ColorRGBType<float>{0.4f,  0.3f, 0.1f});
     add_transfer_func(50, 75,  SR_ColorRGBType<float>{1.f,   1.f,  1.f});
     add_transfer_func(75, 255, SR_ColorRGBType<float>{0.6f,  0.6f, 0.6f});
 
@@ -570,7 +599,7 @@ int main()
     math::mat4 vpMatrix;
     SR_Transform camTrans;
     camTrans.set_type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
-    camTrans.extract_transforms(math::look_from(math::vec3{-3.f}, math::vec3{0.f}, math::vec3{0.f, -1.f, 0.f}));
+    camTrans.extract_transforms(math::look_from(math::vec3{-2.f}, math::vec3{0.f}, math::vec3{0.f, -1.f, 0.f}));
 
     if (shouldQuit)
     {
