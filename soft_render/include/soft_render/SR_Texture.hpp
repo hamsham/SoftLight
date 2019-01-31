@@ -890,39 +890,55 @@ color_type SR_Texture::trilinear(float x, float y, float z) const noexcept
 
     namespace math = ls::math;
 
-    const float xf   = x;
-    const float yf   = y;
-    const float zf   = z;
-    const float wf   = 1.f / mWidthf;
-    const float hf   = 1.f / mHeightf;
-    const float df   = 1.f / mDepthf;
+    const float wf = 1.f / mWidthf;
+    const float hf = 1.f / mHeightf;
+    const float df = 1.f / mDepthf;
 
-    const math::vec3 v000f = math::vec3{xf-wf, yf-hf, zf-df};
-    const math::vec3 v100f = math::vec3{xf,    yf-hf, zf-df};
-    const math::vec3 v010f = math::vec3{xf-wf, yf,    zf-df};
-    const math::vec3 v001f = math::vec3{xf-wf, yf-hf, zf};
-    const math::vec3 v101f = math::vec3{xf,    yf-hf, zf};
-    const math::vec3 v011f = math::vec3{xf-wf, yf,    zf};
-    const math::vec3 v110f = math::vec3{xf,    yf,    zf-df};
-    const math::vec3 v111f = math::vec3{xf,    yf,    zf};
+    const math::vec3 uv000 = math::vec3{x-wf, y-hf, z-df};
+    const math::vec3 uv100 = math::vec3{x,    y-hf, z-df};
+    const math::vec3 uv010 = math::vec3{x-wf, y,    z-df};
+    const math::vec3 uv001 = math::vec3{x-wf, y-hf, z};
+    const math::vec3 uv101 = math::vec3{x,    y-hf, z};
+    const math::vec3 uv011 = math::vec3{x-wf, y,    z};
+    const math::vec3 uv110 = math::vec3{x,    y,    z-df};
+    const math::vec3 uv111 = math::vec3{x,    y,    z};
 
-    const color_type c000 = bilinear<color_type>(v000f[0], v000f[1], v000f[2]);
-    const color_type c100 = bilinear<color_type>(v100f[0], v100f[1], v100f[2]);
-    const color_type c010 = bilinear<color_type>(v010f[0], v010f[1], v010f[2]);
-    const color_type c001 = bilinear<color_type>(v001f[0], v001f[1], v001f[2]);
-    const color_type c101 = bilinear<color_type>(v101f[0], v101f[1], v101f[2]);
-    const color_type c011 = bilinear<color_type>(v011f[0], v011f[1], v011f[2]);
-    const color_type c110 = bilinear<color_type>(v110f[0], v110f[1], v110f[2]);
-    const color_type c111 = bilinear<color_type>(v111f[0], v111f[1], v111f[2]);
+    const color_type c000 = bilinear<color_type>(uv000[0], uv000[1], uv000[2]);
+    const color_type c100 = bilinear<color_type>(uv100[0], uv100[1], uv100[2]);
+    const color_type c010 = bilinear<color_type>(uv010[0], uv010[1], uv010[2]);
+    const color_type c001 = bilinear<color_type>(uv001[0], uv001[1], uv001[2]);
+    const color_type c101 = bilinear<color_type>(uv101[0], uv101[1], uv101[2]);
+    const color_type c011 = bilinear<color_type>(uv011[0], uv011[1], uv011[2]);
+    const color_type c110 = bilinear<color_type>(uv110[0], uv110[1], uv110[2]);
+    const color_type c111 = bilinear<color_type>(uv111[0], uv111[1], uv111[2]);
+
+    const float x0 = wrap_coordinate(x) * mWidthf;
+    const float y0 = wrap_coordinate(y) * mHeightf;
+    const float z0 = wrap_coordinate(z) * mDepthf;
+    const float xf = x0 - math::floor(x0);
+    const float xd = 1.f - xf;
+    const float yf = y0 - math::floor(y0);
+    const float yd = 1.f - yf;
+    const float zf = z0 - math::floor(z0);
+    const float zd = 1.f - zf;
+
+    const float weight000 = xd*yd*zd;
+    const float weight100 = xf*yd*zd;
+    const float weight010 = xd*yf*zd;
+    const float weight001 = xd*yd*zf;
+    const float weight101 = xf*yd*zf;
+    const float weight011 = xd*yf*zf;
+    const float weight110 = xf*yf*zd;
+    const float weight111 = xf*yf*zf;
 
     color_type ret;
 
     switch (color_type::num_components())
     {
-        case 4: ret[3] = math::sum(c000[3], c100[3], c010[3], c001[3], c101[3], c011[3], c110[3], c111[3]) / 8;
-        case 3: ret[2] = math::sum(c000[2], c100[2], c010[2], c001[2], c101[2], c011[2], c110[2], c111[2]) / 8;
-        case 2: ret[1] = math::sum(c000[1], c100[1], c010[1], c001[1], c101[1], c011[1], c110[1], c111[1]) / 8;
-        case 1: ret[0] = math::sum(c000[0], c100[0], c010[0], c001[0], c101[0], c011[0], c110[0], c111[0]) / 8;
+        case 4: ret[3] = math::sum<float>(weight000*c000[3], weight100*c100[3], weight010*c010[3], weight001*c001[3], weight101*c101[3], weight011*c011[3], weight110*c110[3], weight111*c111[3]);
+        case 3: ret[2] = math::sum<float>(weight000*c000[2], weight100*c100[2], weight010*c010[2], weight001*c001[2], weight101*c101[2], weight011*c011[2], weight110*c110[2], weight111*c111[2]);
+        case 2: ret[1] = math::sum<float>(weight000*c000[1], weight100*c100[1], weight010*c010[1], weight001*c001[1], weight101*c101[1], weight011*c011[1], weight110*c110[1], weight111*c111[1]);
+        case 1: ret[0] = math::sum<float>(weight000*c000[0], weight100*c100[0], weight010*c010[0], weight001*c001[0], weight101*c101[0], weight011*c011[0], weight110*c110[0], weight111*c111[0]);
     }
 
     return ret;

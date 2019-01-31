@@ -142,11 +142,13 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
 
     do
     {
-        srcTexel = volumeTex->bilinear<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
-        //srcTexel = volumeTex->nearest<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
-
-        if (srcTexel > 17)
+        // Get a pixel with minimal filtering before attempting to do anything more expensive
+        if ((srcTexel = volumeTex->nearest<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r) >= 17)
         {
+            srcTexel = volumeTex->trilinear<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
+            //srcTexel = volumeTex->bilinear<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
+            //srcTexel = volumeTex->nearest<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
+
             const SR_ColorRGBf volColor = colorTex->raw_texel<SR_ColorRGBf>(srcTexel);
             const float        srcAlpha = 0.25f * alphaTex->raw_texel<float>(srcTexel);
 
