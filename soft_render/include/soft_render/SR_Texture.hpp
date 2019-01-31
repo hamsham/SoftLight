@@ -929,6 +929,7 @@ color_type SR_Texture::trilinear(float x, float y, float z) const noexcept
     const color_type c110 = texel<color_type>(uv110[0], uv110[1], uv110[2]);
     const color_type c111 = texel<color_type>(uv111[0], uv111[1], uv111[2]);
 
+    // floating-point math can be used for calculating the texel weights
     const float xf = x - math::floor(x);
     const float xd = 1.f - xf;
     const float yf = y - math::floor(y);
