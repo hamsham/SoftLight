@@ -67,6 +67,7 @@ std::wstring cstr_to_wstr(const char* pStr)
 * SR_RenderWindowWin32 Class
 -----------------------------------------------------------------------------*/
 /*-------------------------------------
+ * Window Event Callback
 -------------------------------------*/
 LRESULT CALLBACK SR_RenderWindowWin32::WinProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -89,6 +90,7 @@ LRESULT CALLBACK SR_RenderWindowWin32::WinProc(HWND hwnd, UINT msg, WPARAM wPara
 
 
 /*-------------------------------------
+ * Destructor
 -------------------------------------*/
 SR_RenderWindowWin32::~SR_RenderWindowWin32() noexcept
 {
@@ -105,6 +107,7 @@ SR_RenderWindowWin32::~SR_RenderWindowWin32() noexcept
 
 
 /*-------------------------------------
+ * Constructor
 -------------------------------------*/
 SR_RenderWindowWin32::SR_RenderWindowWin32() noexcept :
     mWc(),
@@ -229,6 +232,7 @@ SR_RenderWindowWin32& SR_RenderWindowWin32::operator=(SR_RenderWindowWin32&& rw)
 
 
 /*-------------------------------------
+ * Private: Window Creation callbacl
 -------------------------------------*/
 LRESULT SR_RenderWindowWin32::win_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -256,6 +260,7 @@ LRESULT SR_RenderWindowWin32::win_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
 
 
 /*-------------------------------------
+ * Set the window title
 -------------------------------------*/
 int SR_RenderWindowWin32::set_title(const char* const pName) noexcept
 {
@@ -275,6 +280,7 @@ int SR_RenderWindowWin32::set_title(const char* const pName) noexcept
 
 
 /*-------------------------------------
+ * Create a widnow
 -------------------------------------*/
 int SR_RenderWindowWin32::init(unsigned width, unsigned height) noexcept
 {
@@ -358,6 +364,7 @@ int SR_RenderWindowWin32::init(unsigned width, unsigned height) noexcept
 
 
 /*-------------------------------------
+ * Destroy the current window and release all resources
 -------------------------------------*/
 int SR_RenderWindowWin32::destroy() noexcept
 {
@@ -586,14 +593,37 @@ void SR_RenderWindowWin32::update() noexcept
     if (mLastMsg.message == WM_MOUSEMOVE && mCaptureMouse)
     {
         unsigned w, h;
-        get_size(w, h);
-        w /= 2;
-        h /= 2;
-
         POINT mousePos;
+        RECT clientRect;
+
         GetCursorPos(&mousePos);
+        GetClientRect(mHwnd, &clientRect);
+        w = clientRect.right >> 1;
+        h = clientRect.bottom >> 1;
+
         if (mousePos.x != (int)w && mousePos.y != (int)h)
         {
+            POINT leftTop;
+            POINT rightBottom;
+
+            leftTop.x     = clientRect.left;
+            leftTop.y     = clientRect.top;
+            rightBottom.x = clientRect.right;
+            rightBottom.y = clientRect.bottom;
+
+            // Get the window border size to prevent the mouse getting stuck on a window edge
+            int borderSize = GetSystemMetrics(SM_CYFRAME);
+
+            ClientToScreen(mHwnd, &leftTop);
+            ClientToScreen(mHwnd, &rightBottom);
+
+            clientRect.left   = leftTop.x;
+            clientRect.top    = leftTop.y;
+            clientRect.right  = rightBottom.x - borderSize;
+            clientRect.bottom = rightBottom.y - borderSize;
+
+            ClipCursor(&clientRect);
+
             mousePos.x = w;
             mousePos.y = h;
             ClientToScreen(mHwnd, &mousePos);
