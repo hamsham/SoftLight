@@ -1,10 +1,13 @@
 
 #include <windows.h>
 #include <windowsx.h>
+#include <winuser.h>
 
 #include <cassert>
 #include <iostream>
 #include <string>
+
+#include "lightsky/setup/Compiler.h"
 
 #include "soft_render/SR_Color.hpp"
 
@@ -612,7 +615,11 @@ void SR_RenderWindowWin32::update() noexcept
             rightBottom.y = clientRect.bottom;
 
             // Get the window border size to prevent the mouse getting stuck on a window edge
-            int borderSize = GetSystemMetrics(SM_CYFRAME);
+            #ifndef LS_COMPILER_MINGW
+                int borderSize = GetSystemMetrics(SM_CYFRAME);
+            #else
+                constexpr int borderSize = 0;
+            #endif
 
             ClientToScreen(mHwnd, &leftTop);
             ClientToScreen(mHwnd, &rightBottom);
@@ -854,7 +861,11 @@ bool SR_RenderWindowWin32::peek_event(SR_WindowEvent* const pEvent) noexcept
         }
         else
         {
-            const unsigned dpi = GetDpiForWindow(mHwnd) >> 1;
+            #ifndef LS_COMPILER_MINGW
+                const unsigned dpi = GetDpiForWindow(mHwnd) >> 1;
+            #else
+                constexpr unsigned dpi = 72;
+            #endif
             unsigned w, h;
             get_size(w, h);
             const int w2 = w >> 1;
