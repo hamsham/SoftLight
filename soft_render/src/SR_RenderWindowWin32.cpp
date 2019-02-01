@@ -854,14 +854,15 @@ bool SR_RenderWindowWin32::peek_event(SR_WindowEvent* const pEvent) noexcept
         }
         else
         {
+            const unsigned dpi = GetDpiForWindow(mHwnd) >> 1;
             unsigned w, h;
             get_size(w, h);
-            const int w2 = w / 2;
-            const int h2 = h / 2;
+            const int w2 = w >> 1;
+            const int h2 = h >> 1;
             const int dx = pEvent->mousePos.x;
             const int dy = pEvent->mousePos.y;
-            pEvent->mousePos.dx = (int16_t)(w2 - dx);
-            pEvent->mousePos.dy = (int16_t)(h2 - dy);
+            pEvent->mousePos.dx = (int16_t)(w2 - dx) * dpi;
+            pEvent->mousePos.dy = (int16_t)(h2 - dy) * dpi;
             mMouseX = dx;
             mMouseY = dy;
         }
