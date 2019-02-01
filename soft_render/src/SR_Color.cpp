@@ -6,7 +6,7 @@
 /*-------------------------------------
  * Get the number of bytes per pixel
 -------------------------------------*/
-std::size_t sr_bytes_per_color(SR_ColorDataType p)
+size_t sr_bytes_per_color(SR_ColorDataType p)
 {
     switch (p)
     {
