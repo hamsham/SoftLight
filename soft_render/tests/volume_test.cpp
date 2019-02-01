@@ -362,7 +362,7 @@ int scene_load_cube(SR_SceneGraph& graph)
 /*-----------------------------------------------------------------------------
  * Create the Transfer Functions
 -----------------------------------------------------------------------------*/
-bool create_opacity_map(SR_SceneGraph& graph, const size_t volumeTexIndex)
+int create_opacity_map(SR_SceneGraph& graph, const size_t volumeTexIndex)
 {
     SR_Context&            context    = graph.mContext;
     const size_t           texId      = context.create_texture();
@@ -400,7 +400,7 @@ bool create_opacity_map(SR_SceneGraph& graph, const size_t volumeTexIndex)
 
 
 
-bool create_color_map(SR_SceneGraph& graph, const size_t volumeTexIndex)
+int create_color_map(SR_SceneGraph& graph, const size_t volumeTexIndex)
 {
     SR_Context&            context    = graph.mContext;
     const size_t           texId      = context.create_texture();
