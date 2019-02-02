@@ -29,7 +29,7 @@ if (FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NOTFOUND OR FREEIMAGE
             set(FREEIMAGE_PLATFORM "x86")
             set(FREEIMAGE_DIST_DIR "x32")
         endif()
-      
+        
         ExternalProject_Add(
             FreeImage
             PREFIX
@@ -41,7 +41,7 @@ if (FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NOTFOUND OR FREEIMAGE
             CONFIGURE_COMMAND
                 ""
             BUILD_COMMAND
-                ${CMAKE_MAKE_PROGRAM} FreeImage.2017.sln /p:Platform=${FREEIMAGE_PLATFORM}
+                ${CMAKE_MAKE_PROGRAM} FreeImage.2017.sln /p:Configuration=Release /p:Platform=${FREEIMAGE_PLATFORM}
             BUILD_IN_SOURCE
                 1
             INSTALL_COMMAND
