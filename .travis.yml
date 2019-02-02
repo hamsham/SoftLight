@@ -38,7 +38,7 @@ addons:
         packages:
           - assimp
           - freeimage
-    chocolatey:
+    choco:
         packages:
           - tortoisesvn
 
