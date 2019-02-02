@@ -8,13 +8,13 @@ find_package(FreeImage MODULE)
 # #####################################
 if (FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NOTFOUND OR FREEIMAGE_LIBRARY STREQUAL FREEIMAGE_LIBRARY-NOTFOUND)
 
-    set(FREEIMAGE_BRANCH "master" CACHE STRING "Git branch or tag for checking out FreeImage.")
-    mark_as_advanced(FREEIMAGE_BRANCH)
+    set(FREEIMAGE_VERSION "3.18.0" CACHE STRING "Version of the FreeImage static library to be built.")
+    mark_as_advanced(FREEIMAGE_VERSION)
 
     if (MSVC)
         set(FREEIMAGE_LIB ${CMAKE_STATIC_LIBRARY_PREFIX}FreeImaged.lib)
         set(FREEIMAGE_DLL ${CMAKE_SHARED_LIBRARY_PREFIX}FreeImaged.dll)
-        set(FREEIMAGE_LIB_TYPE STATIC)
+        set(FREEIMAGE_LIB_TYPE SHARED)
 
         string(REPLACE "/" "\\" FREEIMAGE_TIF_CONFIG_PATH0 "${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Source/LibTIFF4/tif_config.vc.h")
         set(FREEIMAGE_PATCH_CMD0 findstr \/v \/C:snprintf "${FREEIMAGE_TIF_CONFIG_PATH0}" > ${FREEIMAGE_TIF_CONFIG_PATH0}.tmp && type ${FREEIMAGE_TIF_CONFIG_PATH0}.tmp > ${FREEIMAGE_TIF_CONFIG_PATH0})
@@ -22,14 +22,8 @@ if (FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NOTFOUND OR FREEIMAGE
         string(REPLACE "/" "\\" FREEIMAGE_TIF_CONFIG_PATH1 "${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Source/LibTIFF4/tif_config.h")
         set(FREEIMAGE_PATCH_CMD1 findstr \/v \/C:snprintf "${FREEIMAGE_TIF_CONFIG_PATH1}" > ${FREEIMAGE_TIF_CONFIG_PATH1}.tmp && type ${FREEIMAGE_TIF_CONFIG_PATH1}.tmp > ${FREEIMAGE_TIF_CONFIG_PATH1})
     else()
-        if (MINGW)
-            set(FREEIMAGE_LIB_TYPE STATIC)
-            set(FREEIMAGE_LIB ${CMAKE_SHARED_LIBRARY_PREFIX}FreeImage${CMAKE_STATIC_LIBRARY_SUFFIX})
-            add_definitions(-D FREEIMAGE_LIB)
-        else()
-            set(FREEIMAGE_LIB_TYPE SHARED)
-            set(FREEIMAGE_LIB ${CMAKE_SHARED_LIBRARY_PREFIX}freeimage${CMAKE_SHARED_LIBRARY_SUFFIX})
-        endif()
+        set(FREEIMAGE_LIB ${CMAKE_STATIC_LIBRARY_PREFIX}freeimage${CMAKE_STATIC_LIBRARY_SUFFIX})
+        set(FREEIMAGE_LIB_TYPE STATIC)
     endif()
 
     # Build FreeImage
@@ -67,26 +61,23 @@ if (FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NOTFOUND OR FREEIMAGE
                 ${CMAKE_COMMAND} -E copy ${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Dist/${FREEIMAGE_DIST_DIR}/FreeImage.h      ${EXTERNAL_PROJECT_PREFIX}/include
         )
     else()
-        configure_file(${PROJECT_SOURCE_DIR}/build_freeimage.sh ${EXTERNAL_PROJECT_PREFIX}/build_freeimage.sh @ONLY)
-
         ExternalProject_Add(
             FreeImage
             PREFIX
                 ${EXTERNAL_PROJECT_PREFIX}
-            GIT_REPOSITORY
-                "https://github.com/MonoGame/FreeImage.git"
-            GIT_TAG
-                "${FIMG_BRANCH}"
+            SVN_REPOSITORY
+                "https://svn.code.sf.net/p/freeimage/svn/FreeImage/trunk"
             UPDATE_COMMAND
-                ${GIT_EXECUTABLE} fetch
+                ${Subversion_SVN_EXECUTABLE} update
             CONFIGURE_COMMAND
-                bash ${EXTERNAL_PROJECT_PREFIX}/build_freeimage.sh --configure
+                ""
             BUILD_COMMAND
-                bash ${EXTERNAL_PROJECT_PREFIX}/build_freeimage.sh --make
+                make
             BUILD_IN_SOURCE
                 1
             INSTALL_COMMAND
-                bash ${EXTERNAL_PROJECT_PREFIX}/build_freeimage.sh --install
+                ${CMAKE_COMMAND} -E copy_if_different ${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Dist/${FREEIMAGE_LIB} ${EXTERNAL_PROJECT_PREFIX}/lib &&
+                ${CMAKE_COMMAND} -E copy_if_different ${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Dist/FreeImage.h      ${EXTERNAL_PROJECT_PREFIX}/include
         )
     endif()
 

@@ -33,3 +33,4 @@ file(MAKE_DIRECTORY ${EXTERNAL_PROJECT_PREFIX}/bin)
 # Version Control Tools
 # #####################################
 find_package(Git REQUIRED)
+find_package(Subversion REQUIRED)
