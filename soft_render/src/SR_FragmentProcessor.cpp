@@ -615,6 +615,8 @@ void SR_FragmentProcessor::execute() noexcept
 
         case RENDER_MODE_LINES:
         case RENDER_MODE_INDEXED_LINES:
+        case RENDER_MODE_TRI_WIRE:
+        case RENDER_MODE_INDEXED_TRI_WIRE:
         {
             // divide the screen into equal parts which can then be rendered by all
             // available fragment threads.
