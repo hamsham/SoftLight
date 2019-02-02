@@ -423,7 +423,7 @@ void SR_VertexProcessor::execute() noexcept
     {
         begin += mThreadId;
         const size_t step = mNumThreads;
-        const bool usingIndices = (mMesh.mode & RENDER_MODE_INDEXED_POINTS) > 0;
+        const bool usingIndices = mMesh.mode == RENDER_MODE_INDEXED_POINTS;
 
         for (size_t i = begin; i < end; i += step)
         {
@@ -443,7 +443,7 @@ void SR_VertexProcessor::execute() noexcept
         // 3 vertices per set of lines
         begin += mThreadId * 2u;
         const size_t step = mNumThreads * 2u;
-        const bool usingIndices = (mMesh.mode & RENDER_MODE_INDEXED_LINES) > 0;
+        const bool usingIndices = mMesh.mode == RENDER_MODE_INDEXED_LINES;
         size_t index0;
         size_t index1;
         size_t vertId0;
@@ -476,7 +476,7 @@ void SR_VertexProcessor::execute() noexcept
         // 3 vertices per set of lines
         begin += mThreadId * 3u;
         const size_t step = mNumThreads * 3u;
-        const bool usingIndices = (mMesh.mode & RENDER_MODE_INDEXED_TRI_WIRE) > 0;
+        const bool usingIndices = mMesh.mode == RENDER_MODE_INDEXED_TRI_WIRE;
         math::vec4 tempWorldCoord;
         math::vec4 tempScreenCoord;
 
@@ -539,7 +539,7 @@ void SR_VertexProcessor::execute() noexcept
         // 3 vertices per triangle
         begin += mThreadId * 3u;
         const size_t step = mNumThreads * 3u;
-        const bool usingIndices = (mMesh.mode & RENDER_MODE_INDEXED_TRIANGLES) > 0;
+        const bool usingIndices = mMesh.mode == RENDER_MODE_INDEXED_TRIANGLES;
 
         for (size_t i = begin; i < end; i += step)
         {

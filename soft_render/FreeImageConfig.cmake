@@ -12,15 +12,9 @@ if (FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NOTFOUND OR FREEIMAGE
     mark_as_advanced(FREEIMAGE_VERSION)
 
     if (MSVC)
-        set(FREEIMAGE_LIB ${CMAKE_STATIC_LIBRARY_PREFIX}FreeImaged.lib)
-        set(FREEIMAGE_DLL ${CMAKE_SHARED_LIBRARY_PREFIX}FreeImaged.dll)
+        set(FREEIMAGE_LIB ${CMAKE_STATIC_LIBRARY_PREFIX}FreeImaged${CMAKE_STATIC_LIBRARY_SUFFIX})
+        set(FREEIMAGE_DLL ${CMAKE_SHARED_LIBRARY_PREFIX}FreeImaged${CMAKE_SHARED_LIBRARY_SUFFIX})
         set(FREEIMAGE_LIB_TYPE SHARED)
-
-        string(REPLACE "/" "\\" FREEIMAGE_TIF_CONFIG_PATH0 "${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Source/LibTIFF4/tif_config.vc.h")
-        set(FREEIMAGE_PATCH_CMD0 findstr \/v \/C:snprintf "${FREEIMAGE_TIF_CONFIG_PATH0}" > ${FREEIMAGE_TIF_CONFIG_PATH0}.tmp && type ${FREEIMAGE_TIF_CONFIG_PATH0}.tmp > ${FREEIMAGE_TIF_CONFIG_PATH0})
-
-        string(REPLACE "/" "\\" FREEIMAGE_TIF_CONFIG_PATH1 "${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Source/LibTIFF4/tif_config.h")
-        set(FREEIMAGE_PATCH_CMD1 findstr \/v \/C:snprintf "${FREEIMAGE_TIF_CONFIG_PATH1}" > ${FREEIMAGE_TIF_CONFIG_PATH1}.tmp && type ${FREEIMAGE_TIF_CONFIG_PATH1}.tmp > ${FREEIMAGE_TIF_CONFIG_PATH1})
     else()
         set(FREEIMAGE_LIB ${CMAKE_STATIC_LIBRARY_PREFIX}freeimage${CMAKE_STATIC_LIBRARY_SUFFIX})
         set(FREEIMAGE_LIB_TYPE STATIC)
@@ -40,25 +34,20 @@ if (FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NOTFOUND OR FREEIMAGE
             FreeImage
             PREFIX
                 ${EXTERNAL_PROJECT_PREFIX}
-            GIT_REPOSITORY
-                "https://github.com/MonoGame/FreeImage.git"
-            GIT_TAG
-                "${FREEIMAGE_BRANCH}"
+            SVN_REPOSITORY
+                "https://svn.code.sf.net/p/freeimage/svn/FreeImage/trunk"
             UPDATE_COMMAND
-                ${GIT_EXECUTABLE} fetch
+                ${Subversion_SVN_EXECUTABLE} update
             CONFIGURE_COMMAND
                 ""
-            PATCH_COMMAND
-                ${FREEIMAGE_PATCH_CMD0} && ${FREEIMAGE_PATCH_CMD1}
             BUILD_COMMAND
-                ${CMAKE_VS_DEVENV_COMMAND} /upgrade FreeImage.2013.sln &&
-                ${CMAKE_MAKE_PROGRAM} FreeImage.2013.sln /p:Platform=${FREEIMAGE_PLATFORM}
+                ${CMAKE_MAKE_PROGRAM} FreeImage.2017.sln /p:Platform=${FREEIMAGE_PLATFORM}
             BUILD_IN_SOURCE
                 1
             INSTALL_COMMAND
-                ${CMAKE_COMMAND} -E copy ${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Dist/${FREEIMAGE_DIST_DIR}/${FREEIMAGE_LIB} ${EXTERNAL_PROJECT_PREFIX}/lib &&
-                ${CMAKE_COMMAND} -E copy ${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Dist/${FREEIMAGE_DIST_DIR}/${FREEIMAGE_DLL} ${EXTERNAL_PROJECT_PREFIX}/bin &&
-                ${CMAKE_COMMAND} -E copy ${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Dist/${FREEIMAGE_DIST_DIR}/FreeImage.h      ${EXTERNAL_PROJECT_PREFIX}/include
+                ${CMAKE_COMMAND} -E copy_if_different ${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Dist/${FREEIMAGE_DIST_DIR}/${FREEIMAGE_LIB} ${EXTERNAL_PROJECT_PREFIX}/lib &&
+                ${CMAKE_COMMAND} -E copy_if_different ${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Dist/${FREEIMAGE_DIST_DIR}/${FREEIMAGE_DLL} ${EXTERNAL_PROJECT_PREFIX}/bin &&
+                ${CMAKE_COMMAND} -E copy_if_different ${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Dist/${FREEIMAGE_DIST_DIR}/FreeImage.h      ${EXTERNAL_PROJECT_PREFIX}/include
         )
     else()
         ExternalProject_Add(
@@ -87,7 +76,7 @@ if (FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NOTFOUND OR FREEIMAGE
     add_dependencies(freeimage FreeImage)
 
     if (WIN32)
-        set(FREEIMAGE_LIBRARIES freeimage ws2_32)
+        set(FREEIMAGE_LIBRARIES ${EXTERNAL_PROJECT_PREFIX}/lib/${FREEIMAGE_LIB} ws2_32)
     else()
         set(FREEIMAGE_LIBRARIES freeimage)
     endif()
