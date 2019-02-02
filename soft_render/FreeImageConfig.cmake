@@ -26,7 +26,7 @@ if (FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NOTFOUND OR FREEIMAGE
             set(FREEIMAGE_PLATFORM "x64")
             set(FREEIMAGE_DIST_DIR "x64")
         else()
-            set(FREEIMAGE_PLATFORM "x86")
+            set(FREEIMAGE_PLATFORM "Win32")
             set(FREEIMAGE_DIST_DIR "x32")
         endif()
         
