@@ -38,9 +38,14 @@ addons:
         packages:
           - assimp
           - freeimage
-    choco:
+    chocolatey:
         packages:
           - tortoisesvn
+
+
+
+install:
+  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then choco install tortoisesvn; fi
 
 
 
