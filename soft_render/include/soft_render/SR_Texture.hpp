@@ -46,10 +46,10 @@ enum SR_TexWrapMode : uint16_t
 
 
 
-enum SR_TexChunkInfo : uint_fast32_t
+enum SR_TexChunkInfo : uint32_t
 {
-    SR_TEXELS_PER_CHUNK = 4,
-    SR_TEXEL_SHIFTS_PER_CHUNK = 2 // 2^SR_TEXEL_SHIFTS_PER_CHUNK = SR_TEXELS_PER_CHUNK
+    SR_TEXELS_PER_CHUNK = 2,
+    SR_TEXEL_SHIFTS_PER_CHUNK = 1 // 2^SR_TEXEL_SHIFTS_PER_CHUNK = SR_TEXELS_PER_CHUNK
 };
 
 
@@ -240,44 +240,7 @@ inline ptrdiff_t SR_Texture::map_coordinate(uint_fast32_t x, uint_fast32_t y) co
 -------------------------------------*/
 inline ls::math::vec4_t<ptrdiff_t> SR_Texture::map_coordinates(uint_fast32_t x, uint_fast32_t y) const noexcept
 {
-    #ifdef SR_TEXTURE_Z_ORDERING
-        constexpr uint_fast32_t idsPerBlock = SR_TEXELS_PER_CHUNK*SR_TEXELS_PER_CHUNK;
-        const uint_fast32_t     x0          = x;
-        const uint_fast32_t     x1          = x+1;
-        const uint_fast32_t     x2          = x+2;
-        const uint_fast32_t     x3          = x+3;
-        const uint_fast32_t     tileX0      = x0 >> SR_TEXEL_SHIFTS_PER_CHUNK;
-        const uint_fast32_t     tileX1      = x1 >> SR_TEXEL_SHIFTS_PER_CHUNK;
-        const uint_fast32_t     tileX2      = x2 >> SR_TEXEL_SHIFTS_PER_CHUNK;
-        const uint_fast32_t     tileX3      = x3 >> SR_TEXEL_SHIFTS_PER_CHUNK;
-        const uint_fast32_t     tileY       = y >> SR_TEXEL_SHIFTS_PER_CHUNK;
-        const uint_fast32_t     xOffset     = (mWidth >> SR_TEXEL_SHIFTS_PER_CHUNK) * tileY;
-        const uint_fast32_t     tileId0     = tileX0 + xOffset;
-        const uint_fast32_t     tileId1     = tileX1 + xOffset;
-        const uint_fast32_t     tileId2     = tileX2 + xOffset;
-        const uint_fast32_t     tileId3     = tileX3 + xOffset;
-
-        // We're only getting the remainder of a power of 2. Use bit operations
-        // instead of a modulo.
-        const uint_fast32_t     innerX0     = x0 & (SR_TEXELS_PER_CHUNK-1u);
-        const uint_fast32_t     innerX1     = x1 & (SR_TEXELS_PER_CHUNK-1u);
-        const uint_fast32_t     innerX2     = x2 & (SR_TEXELS_PER_CHUNK-1u);
-        const uint_fast32_t     innerX3     = x3 & (SR_TEXELS_PER_CHUNK-1u);
-        const uint_fast32_t     innerY      = y & (SR_TEXELS_PER_CHUNK-1u);
-        const uint_fast32_t     innerId0    = innerX0 + (innerY << SR_TEXEL_SHIFTS_PER_CHUNK);
-        const uint_fast32_t     innerId1    = innerX1 + (innerY << SR_TEXEL_SHIFTS_PER_CHUNK);
-        const uint_fast32_t     innerId2    = innerX2 + (innerY << SR_TEXEL_SHIFTS_PER_CHUNK);
-        const uint_fast32_t     innerId3    = innerX3 + (innerY << SR_TEXEL_SHIFTS_PER_CHUNK);
-
-        return ls::math::vec4_t<ptrdiff_t>{
-            (ptrdiff_t)(innerId0 + tileId0 * idsPerBlock),
-            (ptrdiff_t)(innerId1 + tileId1 * idsPerBlock),
-            (ptrdiff_t)(innerId2 + tileId2 * idsPerBlock),
-            (ptrdiff_t)(innerId3 + tileId3 * idsPerBlock)
-        };
-    #else
-        return ls::math::vec4_t<ptrdiff_t>{0, 1, 2, 3} + (x + mWidth * y);
-    #endif
+    return map_coordinates(x, y, 0u);
 }
 
 
@@ -288,7 +251,19 @@ inline ls::math::vec4_t<ptrdiff_t> SR_Texture::map_coordinates(uint_fast32_t x, 
 inline ptrdiff_t SR_Texture::map_coordinate(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
 {
     #ifdef SR_TEXTURE_Z_ORDERING
-        return map_coordinate(x, y) + (z * mWidth * mHeight);
+        const uint_fast32_t idsPerBlock = SR_TEXELS_PER_CHUNK * SR_TEXELS_PER_CHUNK * ((mDepth > 1) ? SR_TEXELS_PER_CHUNK : 1);
+
+        const uint_fast32_t tileX       = x >> SR_TEXEL_SHIFTS_PER_CHUNK;
+        const uint_fast32_t tileY       = y >> SR_TEXEL_SHIFTS_PER_CHUNK;
+        const uint_fast32_t tileZ       = z >> SR_TEXEL_SHIFTS_PER_CHUNK;
+        const uint_fast32_t tileId      = tileX + ((mWidth >> SR_TEXEL_SHIFTS_PER_CHUNK) * (tileY + ((mHeight >> SR_TEXEL_SHIFTS_PER_CHUNK) * tileZ)));
+
+        const uint_fast32_t innerX      = x & (SR_TEXELS_PER_CHUNK-1u);
+        const uint_fast32_t innerY      = y & (SR_TEXELS_PER_CHUNK-1u);
+        const uint_fast32_t innerZ      = z & (SR_TEXELS_PER_CHUNK-1u);
+        const uint_fast32_t innerId     = innerX + ((innerY << SR_TEXEL_SHIFTS_PER_CHUNK) + (SR_TEXELS_PER_CHUNK * (innerZ << SR_TEXEL_SHIFTS_PER_CHUNK)));
+
+        return innerId + tileId * idsPerBlock;
     #else
         return x + mWidth * (y + mHeight * z);
     #endif
@@ -302,7 +277,39 @@ inline ptrdiff_t SR_Texture::map_coordinate(uint_fast32_t x, uint_fast32_t y, ui
 inline ls::math::vec4_t<ptrdiff_t> SR_Texture::map_coordinates(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
 {
     #ifdef SR_TEXTURE_Z_ORDERING
-        return map_coordinates(x, y) + (ptrdiff_t)(z * mWidth * mHeight);
+        const uint_fast32_t idsPerBlock = SR_TEXELS_PER_CHUNK * SR_TEXELS_PER_CHUNK * ((mDepth > 1) ? SR_TEXELS_PER_CHUNK : 1);
+
+        const uint_fast32_t x0          = x+0u;
+        const uint_fast32_t x1          = x+1u;
+        const uint_fast32_t x2          = x+2u;
+        const uint_fast32_t x3          = x+3u;
+        const uint_fast32_t tileX0      = x0 >> SR_TEXEL_SHIFTS_PER_CHUNK;
+        const uint_fast32_t tileX1      = x1 >> SR_TEXEL_SHIFTS_PER_CHUNK;
+        const uint_fast32_t tileX2      = x2 >> SR_TEXEL_SHIFTS_PER_CHUNK;
+        const uint_fast32_t tileX3      = x3 >> SR_TEXEL_SHIFTS_PER_CHUNK;
+        const uint_fast32_t tileY       = y >> SR_TEXEL_SHIFTS_PER_CHUNK;
+        const uint_fast32_t tileZ       = z >> SR_TEXEL_SHIFTS_PER_CHUNK;
+        const uint_fast32_t tileShift   = (mWidth >> SR_TEXEL_SHIFTS_PER_CHUNK) * (tileY + ((mHeight >> SR_TEXEL_SHIFTS_PER_CHUNK) * tileZ));
+        const uint_fast32_t tileId0     = tileX0 + tileShift;
+        const uint_fast32_t tileId1     = tileX1 + tileShift;
+        const uint_fast32_t tileId2     = tileX2 + tileShift;
+        const uint_fast32_t tileId3     = tileX3 + tileShift;
+        const uint_fast32_t innerX0     = x0 & (SR_TEXELS_PER_CHUNK-1u);
+        const uint_fast32_t innerX1     = x1 & (SR_TEXELS_PER_CHUNK-1u);
+        const uint_fast32_t innerX2     = x2 & (SR_TEXELS_PER_CHUNK-1u);
+        const uint_fast32_t innerX3     = x3 & (SR_TEXELS_PER_CHUNK-1u);
+        const uint_fast32_t innerY      = y & (SR_TEXELS_PER_CHUNK-1u);
+        const uint_fast32_t innerZ      = z & (SR_TEXELS_PER_CHUNK-1u);
+        const uint_fast32_t innerShift  = (innerY << SR_TEXEL_SHIFTS_PER_CHUNK) + (SR_TEXELS_PER_CHUNK * (innerZ << SR_TEXEL_SHIFTS_PER_CHUNK));
+        const uint_fast32_t innerId0    =  innerX0 + innerShift;
+        const uint_fast32_t innerId1    =  innerX1 + innerShift;
+        const uint_fast32_t innerId2    =  innerX2 + innerShift;
+        const uint_fast32_t innerId3    =  innerX3 + innerShift;
+
+        const ls::math::vec4_t<ptrdiff_t> innerIds{(ptrdiff_t)innerId0, (ptrdiff_t)innerId1, (ptrdiff_t)innerId2, (ptrdiff_t)innerId3};
+        const ls::math::vec4_t<ptrdiff_t> tileIds{(ptrdiff_t)tileId0, (ptrdiff_t)tileId1, (ptrdiff_t)tileId2, (ptrdiff_t)tileId3};
+
+        return innerIds + tileIds * idsPerBlock;
     #else
         return ls::math::vec4_t<ptrdiff_t>{0, 1, 2, 3} + x + mWidth * (y + mHeight * z);
     #endif
@@ -405,11 +412,19 @@ inline void* SR_Texture::data() noexcept
 -------------------------------------*/
 inline void SR_Texture::set_texel(uint16_t x, uint16_t y, uint16_t z, const void* pData) noexcept
 {
+    size_t bpp = mBytesPerTexel;
     const ptrdiff_t index = map_coordinate(x, y, z);
-    const size_t bytesPerColor = mBytesPerTexel;
-    const ptrdiff_t offset = bytesPerColor * index;
+    const ptrdiff_t offset = bpp * index;
 
-    ls::utils::fast_memcpy(mTexels+offset, pData, bytesPerColor);
+    char* pOut = mTexels + offset;
+    const char* pIn = reinterpret_cast<const char*>(pData);
+
+    while (bpp --> 0)
+    {
+        *pOut++ = *pIn++;
+    }
+
+    //ls::utils::fast_memcpy(mTexels+offset, pData, bpp);
 }
 
 
@@ -732,13 +747,13 @@ inline color_type SR_Texture::nearest(float x, float y) const noexcept
     if (mWrapping == SR_TEXTURE_WRAP_CUTOFF && (ls::math::min(x, y) < 0.f || ls::math::max(x, y) >= 1.f)) return color_type{0};
 
     #if 0
-        const uint_fast32_t xi = (uint_fast32_t)(mWidthf  * wrap_coordinate(x));
-        const uint_fast32_t yi = (uint_fast32_t)(mHeightf * wrap_coordinate(y));
+        const uint32_t xi = (uint32_t)(mWidthf  * wrap_coordinate(x));
+        const uint32_t yi = (uint32_t)(mHeightf * wrap_coordinate(y));
     #else
         const fixed_type    xf = ls::math::fixed_cast<fixed_type, float>(x);
         const fixed_type    yf = ls::math::fixed_cast<fixed_type, float>(y);
-        const uint_fast32_t xi = ls::math::integer_cast<uint_fast32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(mWidth) * wrap_coordinate(xf));
-        const uint_fast32_t yi = ls::math::integer_cast<uint_fast32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(mHeight) * wrap_coordinate(yf));
+        const uint32_t xi = ls::math::integer_cast<uint32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(mWidth) * wrap_coordinate(xf));
+        const uint32_t yi = ls::math::integer_cast<uint32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(mHeight) * wrap_coordinate(yf));
     #endif
 
     const ptrdiff_t index = map_coordinate(xi, yi);
@@ -759,16 +774,16 @@ inline color_type SR_Texture::nearest(float x, float y, float z) const noexcept
     if (mWrapping == SR_TEXTURE_WRAP_CUTOFF && (ls::math::min(x, y, z) < 0.f || ls::math::max(x, y, z) >= 1.f)) return color_type{0};
 
     #if 0
-        const uint_fast32_t xi = (uint_fast32_t)(mWidthf  * wrap_coordinate(x));
-        const uint_fast32_t yi = (uint_fast32_t)(mHeightf * wrap_coordinate(y));
-        const uint_fast32_t zi = (uint_fast32_t)(mDepthf  * wrap_coordinate(z));
+        const uint32_t xi = (uint32_t)(mWidthf  * wrap_coordinate(x));
+        const uint32_t yi = (uint32_t)(mHeightf * wrap_coordinate(y));
+        const uint32_t zi = (uint32_t)(mDepthf  * wrap_coordinate(z));
     #else
         const fixed_type    xf = ls::math::fixed_cast<fixed_type, float>(x);
         const fixed_type    yf = ls::math::fixed_cast<fixed_type, float>(y);
         const fixed_type    zf = ls::math::fixed_cast<fixed_type, float>(z);
-        const uint_fast32_t xi = ls::math::integer_cast<uint_fast32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(mWidth) * wrap_coordinate(xf));
-        const uint_fast32_t yi = ls::math::integer_cast<uint_fast32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(mHeight) * wrap_coordinate(yf));
-        const uint_fast32_t zi = ls::math::integer_cast<uint_fast32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(mDepth) * wrap_coordinate(zf));
+        const uint32_t xi = ls::math::integer_cast<uint32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(mWidth) * wrap_coordinate(xf));
+        const uint32_t yi = ls::math::integer_cast<uint32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(mHeight) * wrap_coordinate(yf));
+        const uint32_t zi = ls::math::integer_cast<uint32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(mDepth) * wrap_coordinate(zf));
     #endif
 
     const ptrdiff_t index = map_coordinate(xi, yi, zi);

@@ -243,8 +243,21 @@ int read_volume_file(SR_SceneGraph& graph)
     constexpr size_t numTexels = w*h*d;
     constexpr size_t numBytes = sizeof(char) * numTexels;
 
-    fin.read(reinterpret_cast<char*>(pTex.data()), numBytes);
+    ls::utils::Pointer<char[]> tempBuf{new char[numTexels]};
+
+    fin.read(tempBuf.get(), numBytes);
     fin.close();
+
+    for (size_t z = 0; z < d; ++z)
+    {
+        for (size_t y = 0; y < h; ++y)
+        {
+            for (size_t x = 0; x < w; ++x)
+            {
+                pTex.texel<char>(x, y, z) = tempBuf[x + w * (y + h * z)];
+            }
+        }
+    }
 
     pTex.set_wrap_mode(SR_TexWrapMode::SR_TEXTURE_WRAP_CUTOFF);
 
@@ -385,7 +398,7 @@ int create_opacity_map(SR_SceneGraph& graph, const size_t volumeTexIndex)
     {
         for (uint16_t i = begin; i < end; ++i)
         {
-            opacityTex.texel<float>(i, 0, 0) = opacity;
+            opacityTex.raw_texel<float>(i, 0, 0) = opacity;
         }
     };
 
@@ -423,7 +436,7 @@ int create_color_map(SR_SceneGraph& graph, const size_t volumeTexIndex)
     {
         for (uint16_t i = begin; i < end; ++i)
         {
-            colorTex.texel<SR_ColorRGBf>(i, 0, 0) = color;
+            colorTex.raw_texel<SR_ColorRGBf>(i, 0, 0) = color;
         }
     };
 

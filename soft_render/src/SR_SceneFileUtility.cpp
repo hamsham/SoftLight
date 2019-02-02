@@ -91,8 +91,11 @@ SR_TexWrapMode sr_convert_assimp_tex_wrap(const aiTextureMapMode inWrapMode) noe
 
     switch(inWrapMode)
     {
-        case aiTextureMapMode::aiTextureMapMode_Clamp:
         case aiTextureMapMode::aiTextureMapMode_Decal:
+            outWrapping = SR_TexWrapMode::SR_TEXTURE_WRAP_CUTOFF;
+            break;
+
+        case aiTextureMapMode::aiTextureMapMode_Clamp:
             outWrapping = SR_TexWrapMode::SR_TEXTURE_WRAP_CLAMP;
             break;
 

@@ -20,14 +20,14 @@ namespace
 char* _sr_allocate_texture(uint16_t w, uint16_t h, uint16_t d, size_t bpt)
 {
     // 8 pixels can be acquired at a time
-    const uint16_t alignment = 8 - (w%8);
+    const uint16_t wAlignment = 8 - (w%8);
+    const uint16_t hAlignment = 8 - (h%8);
+    const size_t   numBytes   = (w + wAlignment) * (h + hAlignment) * d * bpt;
+    char* const    pTexels    = (char*)ls::utils::aligned_malloc(numBytes);
 
-    const size_t numBytes = (w + alignment) * h * d * bpt;
-    char* pData = (char*)ls::utils::aligned_malloc(numBytes);
+    ls::utils::fast_memset(pTexels, 0, numBytes);
 
-    ls::utils::fast_memset(pData, 0, numBytes);
-
-    return pData;
+    return pTexels;
 }
 
 
@@ -41,12 +41,15 @@ char* _sr_copy_texture(size_t w, size_t h, size_t d, size_t bpt, const char* pDa
         return nullptr;
     }
 
-    ptrdiff_t numBytes = w * h * d * bpt;
+    // 8 pixels can be acquired at a time
+    const uint16_t wAlignment = 8 - (w%8);
+    const uint16_t hAlignment = 8 - (h%8);
+    const size_t   numBytes   = (w + wAlignment) * (h + hAlignment) * d * bpt;
+    char* const    pTexels    = (char*)ls::utils::aligned_malloc(numBytes);
 
-    char* pTexture = (char*)ls::utils::aligned_malloc(numBytes);
-    ls::utils::fast_memcpy(pTexture, pData, numBytes);
+    ls::utils::fast_memcpy(pTexels, pData, numBytes);
 
-    return pTexture;
+    return pTexels;
 }
 
 
@@ -281,6 +284,8 @@ int SR_Texture::init(const SR_ImgFile& imgFile) noexcept
         const unsigned char* pInTex = reinterpret_cast<const unsigned char*>(imgFile.data());
 
         #ifdef SR_TEXTURE_Z_ORDERING
+        const size_t bytesPerColor = mBytesPerTexel;
+
         for (uint16_t z = 0; z < mDepth; ++z)
         {
             for (uint16_t y = 0; y < mHeight; ++y)
@@ -288,7 +293,6 @@ int SR_Texture::init(const SR_ImgFile& imgFile) noexcept
                 for (uint16_t x = 0; x < mWidth; ++x)
                 {
                     const ptrdiff_t index = x + mWidth * (y + mHeight * z);
-                    const size_t bytesPerColor = mBytesPerTexel;
                     const ptrdiff_t offset = bytesPerColor * index;
                     set_texel(x, y, z, pInTex + offset);
                 }
@@ -341,13 +345,13 @@ void SR_Texture::set_texels(
     const char* pSrc = reinterpret_cast<const char*>(pData);
     const size_t bytesPerColor = mBytesPerTexel;
 
-    for (uint16_t k = 0; k < d; ++k, ++z)
+    for (uint16_t k = 0; z < d; ++k, ++z)
     {
-        for (uint16_t j = 0; j < h; ++j, ++y)
+        for (uint16_t j = 0; y < h; ++j, ++y)
         {
-            for (uint16_t i = 0; i < w; ++i, ++x)
+            for (uint16_t i = 0; x < w; ++i, ++x)
             {
-                const ptrdiff_t index = i + h * (j + w * k);
+                const ptrdiff_t index = i + w * (j + (h * k));
                 const ptrdiff_t offset = (index * bytesPerColor);
 
                 set_texel(x, y, z, pSrc+offset);
