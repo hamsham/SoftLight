@@ -48,8 +48,8 @@ enum SR_TexWrapMode : uint16_t
 
 enum SR_TexChunkInfo : uint32_t
 {
-    SR_TEXELS_PER_CHUNK = 2,
-    SR_TEXEL_SHIFTS_PER_CHUNK = 1 // 2^SR_TEXEL_SHIFTS_PER_CHUNK = SR_TEXELS_PER_CHUNK
+    SR_TEXELS_PER_CHUNK = 4,
+    SR_TEXEL_SHIFTS_PER_CHUNK = 2 // 2^SR_TEXEL_SHIFTS_PER_CHUNK = SR_TEXELS_PER_CHUNK
 };
 
 
@@ -251,7 +251,7 @@ inline ls::math::vec4_t<ptrdiff_t> SR_Texture::map_coordinates(uint_fast32_t x, 
 inline ptrdiff_t SR_Texture::map_coordinate(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
 {
     #ifdef SR_TEXTURE_Z_ORDERING
-        const uint_fast32_t idsPerBlock = SR_TEXELS_PER_CHUNK * SR_TEXELS_PER_CHUNK * ((mDepth > 1) ? SR_TEXELS_PER_CHUNK : 1);
+        const uint_fast32_t idsPerBlock = SR_TEXELS_PER_CHUNK * SR_TEXELS_PER_CHUNK * ((mDepth > 1) ? LS_ENUM_VAL(SR_TEXELS_PER_CHUNK) : 1);
 
         const uint_fast32_t tileX       = x >> SR_TEXEL_SHIFTS_PER_CHUNK;
         const uint_fast32_t tileY       = y >> SR_TEXEL_SHIFTS_PER_CHUNK;
@@ -277,7 +277,7 @@ inline ptrdiff_t SR_Texture::map_coordinate(uint_fast32_t x, uint_fast32_t y, ui
 inline ls::math::vec4_t<ptrdiff_t> SR_Texture::map_coordinates(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
 {
     #ifdef SR_TEXTURE_Z_ORDERING
-        const uint_fast32_t idsPerBlock = SR_TEXELS_PER_CHUNK * SR_TEXELS_PER_CHUNK * ((mDepth > 1) ? SR_TEXELS_PER_CHUNK : 1);
+        const uint_fast32_t idsPerBlock = SR_TEXELS_PER_CHUNK * SR_TEXELS_PER_CHUNK * ((mDepth > 1) ? LS_ENUM_VAL(SR_TEXELS_PER_CHUNK) : 1);
 
         const uint_fast32_t x0          = x+0u;
         const uint_fast32_t x1          = x+1u;
