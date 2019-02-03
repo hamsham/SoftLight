@@ -14,11 +14,13 @@ compiler:
   - clang
 
 
-
 dist: xenial
 osx_image: xcode10.1
-sudo: required
 
+
+env:
+  - CC="$CC"
+  - CXX="$CXX"
 
 
 addons:
@@ -36,6 +38,7 @@ addons:
     homebrew:
         update: true
         packages:
+          - 
           - assimp
           - freeimage
     chocolatey:
@@ -43,21 +46,17 @@ addons:
           - tortoisesvn
 
 
-
 install:
   - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then choco install mingw tortoisesvn; fi
-
 
 
 git:
     submodules: true
 
 
-
 branches:
     only:
       - master
-
 
 
 before_script:
@@ -66,8 +65,7 @@ before_script:
   - git submodule foreach git checkout master
   - mkdir build
   - cd build
-  - if [[ "$TRAVIS_OS_NAME" != "windows" || "$CC" == gcc ]]; then cmake .. -G'Unix Makefiles'; else cmake ..; fi
-
+  - if [[ "$TRAVIS_OS_NAME" != "windows" || "$CC_FOR_BUILD" == gcc ]]; then cmake .. -G'Unix Makefiles'; else cmake ..; fi
 
 
 script:
