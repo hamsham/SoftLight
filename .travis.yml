@@ -45,7 +45,7 @@ addons:
 
 
 install:
-  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then choco install tortoisesvn; fi
+  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then choco install mingw tortoisesvn; fi
 
 
 
@@ -67,7 +67,7 @@ before_script:
   - mkdir build
   - cd build
   - if [[ "$TRAVIS_OS_NAME" != "windows" ]]; then cmake .. -G'Unix Makefiles'; fi
-  - if [[ "$TRAVIS_OS_NAME" == "windows" && "$CXX" == "g++" ]]; then cmake -G'Unix Makefiles' ..; else cmake ..; fi
+  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then if [[ "$CXX" == "g++" ]]; then cmake -G'Unix Makefiles' ..; else cmake ..; fi; fi
 
 
 
