@@ -18,12 +18,6 @@ dist: xenial
 osx_image: xcode10.1
 
 
-env:
-  global:
-    - CC="$CC"
-    - CXX="$CXX"
-
-
 addons:
     apt:
         update: true
@@ -66,7 +60,7 @@ before_script:
   - git submodule foreach git checkout master
   - mkdir build
   - cd build
-  - if [[ "$TRAVIS_OS_NAME" != "windows" || "$CC_FOR_BUILD" == gcc ]]; then cmake .. -G'Unix Makefiles'; else cmake ..; fi
+  - if [[ "$TRAVIS_OS_NAME" != "windows" || "$CC_FOR_BUILD" == gcc ]]; then cmake .. -G'Unix Makefiles'; else cmake .. ; fi
 
 
 script:
