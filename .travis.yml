@@ -42,7 +42,7 @@ addons:
 
 
 install:
-  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then choco install mingw tortoisesvn; fi
+  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then choco install mingw make tortoisesvn; fi
 
 
 git:
