@@ -8,6 +8,8 @@ find_package(FreeImage MODULE)
 # #####################################
 if (FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NOTFOUND OR FREEIMAGE_LIBRARY STREQUAL FREEIMAGE_LIBRARY-NOTFOUND)
 
+    message("-- Building FreeImage from source")
+  
     set(FREEIMAGE_VERSION "3.18.0" CACHE STRING "Version of the FreeImage static library to be built.")
     mark_as_advanced(FREEIMAGE_VERSION)
 

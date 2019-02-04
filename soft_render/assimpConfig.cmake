@@ -8,6 +8,8 @@ find_package(assimp MODULE)
 # #####################################
 if (ASSIMP_INCLUDE_DIR STREQUAL ASSIMP_INCLUDE_DIR-NOTFOUND OR ASSIMP_LIBRARIES STREQUAL ASSIMP_LIBRARIES-NOTFOUND)
 
+    message("-- Building ASSIMP from source")
+  
     set(ASSIMP_BRANCH "master" CACHE STRING "Git branch or tag for checking out Assimp.")
     mark_as_advanced(ASSIMP_BRANCH)
 
