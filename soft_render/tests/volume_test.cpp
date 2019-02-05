@@ -254,7 +254,7 @@ int read_volume_file(SR_SceneGraph& graph)
         {
             for (size_t x = 0; x < w; ++x)
             {
-                pTex.texel<char>(x, y, z) = tempBuf[x + w * (y + h * z)];
+                pTex.texel<char>((uint16_t)x, (uint16_t)y, (uint16_t)z) = tempBuf[x + w * (y + h * z)];
             }
         }
     }

@@ -1,10 +1,11 @@
-if (CMAKE_SIZEOF_VOID_P EQUAL 8)
-    set(ASSIMP_ARCHITECTURE "64")
-elseif (CMAKE_SIZEOF_VOID_P EQUAL 4)
-    set(ASSIMP_ARCHITECTURE "32")
-endif (CMAKE_SIZEOF_VOID_P EQUAL 8)
 
-if (WIN32)
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(ASSIMP_ARCHITECTURE "64")
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
+    set(ASSIMP_ARCHITECTURE "32")
+endif()
+
+if(MSVC)
     set(ASSIMP_ROOT_DIR CACHE PATH "ASSIMP root directory")
 
     # Find path of each library
@@ -15,13 +16,13 @@ if (WIN32)
             ${ASSIMP_ROOT_DIR}/include
     )
 
-    if (MSVC12)
+    if(MSVC12)
         set(ASSIMP_MSVC_VERSION "vc120")
-    elseif (MSVC14)
+    elseif(MSVC14)
         set(ASSIMP_MSVC_VERSION "vc140")
-    endif (MSVC12)
+    endif()
 
-    if (MSVC12 OR MSVC14)
+    if(MSVC12 OR MSVC14)
 
         find_path(ASSIMP_LIBRARY_DIR
             NAMES
@@ -57,11 +58,11 @@ if (WIN32)
             COMMENT
                 "Copying Assimp binaries to '${TargetDirectory}'"
             VERBATIM)
-        endfunction (ASSIMP_COPY_BINARIES)
+        endfunction()
 
     endif()
 
-else (WIN32)
+else()
 
     find_path(
       assimp_INCLUDE_DIR
@@ -82,6 +83,7 @@ else (WIN32)
       assimp_LIBRARIES
       NAMES
         assimp
+        assimp.dll
       PATHS
         /usr/lib64
         /usr/lib
@@ -90,14 +92,15 @@ else (WIN32)
         /sw/lib
         /opt/local/lib
     )
-
-    if (ASSIMP_INCLUDE_DIR AND ASSIMP_LIBRARIES)
-        message("-- Found ASSIMP: ${ASSIMP_LIBRARIES}")
+    if(assimp_INCLUDE_DIR AND assimp_LIBRARIES)
+        message("-- Found ASSIMP: ${assimp_LIBRARIES}")
         set(ASSIMP_FOUND TRUE PARENT_SCOPE)
-    else (ASSIMP_INCLUDE_DIR AND ASSIMP_LIBRARIES)
-      if (ASSIMP_FIND_REQUIRED)
-        message(FATAL_ERROR "Could not find asset importer library")
-      endif (ASSIMP_FIND_REQUIRED)
-    endif (ASSIMP_INCLUDE_DIR AND ASSIMP_LIBRARIES)
 
-endif (WIN32)
+    else()
+      if(ASSIMP_FIND_REQUIRED)
+        message(FATAL_ERROR "Could not find asset importer library")
+      endif()
+    endif()
+
+endif()
+

@@ -101,6 +101,12 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     add_definitions(/WX) # warnings are errors
     add_definitions(/Zc:rvalueCast /Zc:strictStrings /Zc:inline)
 
+    # Prevent libraries from being rebuilt
+    set(CMAKE_EXE_LINKER_FLAGS    "${CMAKE_EXE_LINKER_FLAGS}    /LTCG:INCREMENTAL")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /LTCG:INCREMENTAL")
+    set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /LTCG:INCREMENTAL")
+    set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} /LTCG:INCREMENTAL")
+    
     add_definitions(/wd4146) # unsigned negation using the '-' operator
     add_definitions(/wd4996) # insecure use of wcstombs
     add_definitions(/wd4365) # Impplicit conversion from signed to unsigned (built into the standard library :/ )

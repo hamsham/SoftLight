@@ -3,9 +3,6 @@
 #include <iostream>
 #include <iomanip>
 
-#ifndef SR_TEXTURE_Z_ORDERING
-    #define SR_TEXTURE_Z_ORDERING
-#endif
 #include "soft_render/SR_Texture.hpp"
 
 

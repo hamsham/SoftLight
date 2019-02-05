@@ -394,7 +394,8 @@ int SR_RenderWindowWin32::destroy() noexcept
 -------------------------------------*/
 unsigned SR_RenderWindowWin32::width() const noexcept
 {
-    unsigned w, h;
+    unsigned w = 0;
+    unsigned h = 0;
     get_size(w, h);
     return w;
 }
@@ -406,7 +407,8 @@ unsigned SR_RenderWindowWin32::width() const noexcept
 -------------------------------------*/
 unsigned SR_RenderWindowWin32::height() const noexcept
 {
-    unsigned w, h;
+    unsigned w = 0;
+    unsigned h = 0;
     get_size(w, h);
     return h;
 }
@@ -474,7 +476,8 @@ bool SR_RenderWindowWin32::set_size(unsigned w, unsigned h) noexcept
 -------------------------------------*/
 int SR_RenderWindowWin32::x_position() const noexcept
 {
-    unsigned x, y;
+    unsigned x = 0;
+    unsigned y = 0;
     get_size(x, y);
     return x;
 }
@@ -486,7 +489,8 @@ int SR_RenderWindowWin32::x_position() const noexcept
 -------------------------------------*/
 int SR_RenderWindowWin32::y_position() const noexcept
 {
-    unsigned x, y;
+    unsigned x = 0;
+    unsigned y = 0;
     get_size(x, y);
     return y;
 }
@@ -523,7 +527,8 @@ bool SR_RenderWindowWin32::set_position(int x, int y) noexcept
         return false;
     }
 
-    unsigned w, h;
+    unsigned w = 0;
+    unsigned h = 0;
     get_size(w, h);
 
     return SetWindowPos(mHwnd, nullptr, x, y, w, h, SWP_NOSIZE | SWP_NOSENDCHANGING) != FALSE;
@@ -866,7 +871,8 @@ bool SR_RenderWindowWin32::peek_event(SR_WindowEvent* const pEvent) noexcept
             #else
                 constexpr unsigned dpi = 72;
             #endif
-            unsigned w, h;
+            unsigned w = 0;
+            unsigned h = 0;
             get_size(w, h);
             const int w2 = w >> 1;
             const int h2 = h >> 1;

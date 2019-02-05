@@ -113,3 +113,5 @@ sr_add_test(volume_test          volume_test.cpp)
 sr_add_test(scanline_offset_test scanline_offset_test.cpp)
 sr_add_test(screen_tile_test     screen_tile_test.cpp)
 sr_add_test(z_curve_test         z_curve_test.cpp)
+
+target_compile_definitions(z_curve_test PRIVATE SR_TEXTURE_Z_ORDERING=1)

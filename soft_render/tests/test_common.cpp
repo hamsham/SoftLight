@@ -24,7 +24,9 @@
     #define SR_TEST_MAX_THREADS 4
 #endif /* SR_TEST_MAX_THREADS */
 
-#define SR_TEST_DEBUG_AABBS 0
+#ifndef SR_TEST_DEBUG_AABBS
+    #define SR_TEST_DEBUG_AABBS 0
+#endif
 
 
 
@@ -566,7 +568,7 @@ int scene_load_cube(SR_SceneGraph& graph)
     mesh.vaoId = vaoId;
     mesh.elementBegin = 0;
     mesh.elementEnd = numVerts;
-    mesh.mode = SR_RenderMode::RENDER_MODE_LINES;
+    mesh.mode = SR_RenderMode::RENDER_MODE_TRI_WIRE;
     mesh.materialId = (uint32_t)-1;
 
     return 0;
