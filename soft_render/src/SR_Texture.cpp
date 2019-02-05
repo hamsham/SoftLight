@@ -17,13 +17,13 @@ namespace
 /*-------------------------------------
  *
 -------------------------------------*/
-char* _sr_allocate_texture(uint16_t w, uint16_t h, uint16_t d, size_t bpt)
+char* _sr_allocate_texture(size_t w, size_t h, size_t d, size_t bpt)
 {
     // 8 pixels can be acquired at a time
-    const uint16_t wAlignment = 8 - (w%8);
-    const uint16_t hAlignment = 8 - (h%8);
-    const size_t   numBytes   = (w + wAlignment) * (h + hAlignment) * d * bpt;
-    char* const    pTexels    = (char*)ls::utils::aligned_malloc(numBytes);
+    const size_t wAlignment = 8 - (w%8);
+    const size_t hAlignment = 8 - (h%8);
+    const size_t numBytes   = (w + wAlignment) * (h + hAlignment) * d * bpt;
+    char* const  pTexels    = (char*)ls::utils::aligned_malloc(numBytes);
 
     ls::utils::fast_memset(pTexels, 0, numBytes);
 
