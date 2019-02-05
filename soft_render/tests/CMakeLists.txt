@@ -16,10 +16,10 @@ include_directories(".")
 # -------------------------------------
 # Resource Files
 # -------------------------------------
-#configure_file(testdata/heart/heart.obj           testdata/heart/heart.obj           COPYONLY)
-#configure_file(testdata/heart/heart.mtl           testdata/heart/heart.mtl           COPYONLY)
-#configure_file(testdata/heart/Heart_env.png       testdata/heart/Heart_env.png       COPYONLY)
-#configure_file(testdata/heart/HeartUtuwaFrame.png testdata/heart/HeartUtuwaFrame.png COPYONLY)
+configure_file(testdata/heart/heart.obj           testdata/heart/heart.obj           COPYONLY)
+configure_file(testdata/heart/heart.mtl           testdata/heart/heart.mtl           COPYONLY)
+configure_file(testdata/heart/Heart_env.png       testdata/heart/Heart_env.png       COPYONLY)
+configure_file(testdata/heart/HeartUtuwaFrame.png testdata/heart/HeartUtuwaFrame.png COPYONLY)
 #
 #configure_file(testdata/bob/Bob.md5anim       testdata/bob/Bob.md5anim       COPYONLY)
 #configure_file(testdata/bob/Bob.md5mesh       testdata/bob/Bob.md5mesh       COPYONLY)

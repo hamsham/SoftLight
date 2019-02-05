@@ -103,14 +103,14 @@ int main()
     vbo.assign(tri, 0, numVboBytes);
 
     SR_IndexBuffer& ibo = context.ibo(iboId);
-    unsigned char indices[4] = {0, 2, 1, 0};
-    retCode = ibo.init(4, SR_DataType::VERTEX_DATA_BYTE);
+    unsigned char indices[6] = {0, 2, 0, 1, 1, 2};
+    retCode = ibo.init(6, SR_DataType::VERTEX_DATA_BYTE);
     if (retCode != 0)
     {
         std::cerr << "Error while creating an IBO: " << retCode << std::endl;
         abort();
     }
-    ibo.assign(indices, 0, 3);
+    ibo.assign(indices, 0, 6);
 
     SR_VertexArray& vao = context.vao(vaoId);
     vao.set_vertex_buffer(vboId);

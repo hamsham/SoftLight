@@ -592,9 +592,9 @@ utils::Pointer<SR_SceneGraph> create_context()
     SR_SceneFileLoader meshLoader;
     utils::Pointer<SR_SceneGraph> pGraph{new SR_SceneGraph{}};
     SR_Context& context = pGraph->mContext;
-    uint32_t fboId   = (uint32_t)context.create_framebuffer();
-    uint32_t texId   = (uint32_t)context.create_texture();
-    uint32_t depthId = (uint32_t)context.create_texture();
+    size_t fboId   = context.create_framebuffer();
+    size_t texId   = context.create_texture();
+    size_t depthId = context.create_texture();
 
     retCode = context.num_threads(SR_TEST_MAX_THREADS);
     assert(retCode == SR_TEST_MAX_THREADS);
@@ -649,7 +649,7 @@ utils::Pointer<SR_SceneGraph> create_context()
     const SR_VertexShader&&   boxVertShader  = box_vert_shader();
     const SR_FragmentShader&& boxFragShader  = box_frag_shader();
 
-    // I keep getting this weird error about alignment so I'm using malloc
+    // Uniform variables don't always align properly because of the vtable
     std::shared_ptr<MeshUniforms>  pUniforms{(MeshUniforms*)ls::utils::aligned_malloc(sizeof(MeshUniforms)), [](MeshUniforms* p)->void {ls::utils::aligned_free(p);}};
 
     pUniforms->light.pos        = math::vec4{30.f, 45.f, 45.f, 1.f};
@@ -663,9 +663,9 @@ utils::Pointer<SR_SceneGraph> create_context()
     pUniforms->spot.outerCutoff = std::cos(LS_DEG2RAD(13.f));
     pUniforms->spot.epsilon     = math::rcp(pUniforms->spot.innerCutoff - pUniforms->spot.outerCutoff);
 
-    uint32_t texShaderId  = (uint32_t)context.create_shader(texVertShader,  texFragShader,  pUniforms);
-    uint32_t normShaderId = (uint32_t)context.create_shader(normVertShader, normFragShader, pUniforms);
-    uint32_t boxShaderId  = (uint32_t)context.create_shader(boxVertShader,  boxFragShader,  pUniforms);
+    size_t texShaderId  = context.create_shader(texVertShader,  texFragShader,  pUniforms);
+    size_t normShaderId = context.create_shader(normVertShader, normFragShader, pUniforms);
+    size_t boxShaderId  = context.create_shader(boxVertShader,  boxFragShader,  pUniforms);
 
     assert(texShaderId == 0);
     assert(normShaderId == 1);
@@ -673,24 +673,7 @@ utils::Pointer<SR_SceneGraph> create_context()
     (void)texShaderId;
     (void)normShaderId;
     (void)boxShaderId;
-
-    //const math::mat4&& viewMatrix = math::look_at(math::vec3{75.f}, math::vec3{0.f, 10.f, 0.f}, math::vec3{0.f, 1.f, 0.f});
-    const math::mat4&& viewMatrix = math::look_at(math::vec3{0.f}, math::vec3{3.f, -5.f, 0.f}, math::vec3{0.f, 1.f, 0.f});
-    const math::mat4&& projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
-
-    render_scene(pGraph.get(), projMatrix*viewMatrix);
-
-    //sr_img_save_ppm(IMAGE_WIDTH, IMAGE_HEIGHT, reinterpret_cast<const math::vec3_t<uint8_t>*>(tex.data()), "window_buffer_test.ppm");
-
-    //SR_Texture& baseTex = context.texture(2);
-    //sr_img_save_ppm(baseTex.width(), baseTex.height(), reinterpret_cast<const math::vec3_t<uint8_t>*>(baseTex.data()), "window_buffer_texture.ppm");
-
-    if (retCode != 0)
-    {
-        abort();
-    }
-
-    std::cout << "First frame rendered." << std::endl;
+    (void)retCode;
 
     return pGraph;
 }
@@ -723,7 +706,6 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
         {
             const size_t          nodeMeshId = meshIds[meshId];
             const SR_Mesh&        m          = pGraph->mMeshes[nodeMeshId];
-            const SR_BoundingBox& box        = pGraph->mMeshBounds[nodeMeshId];
             const SR_Material&    material   = pGraph->mMaterials[m.materialId];
             pUniforms->pTexture = material.pTextures[0];
 
@@ -735,12 +717,7 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
             }
             */
             const size_t shaderId = (size_t)(material.pTextures[0] == nullptr);
-            //const uint32_t shaderId = 0;
-
-            if (!sr_is_visible(box, pUniforms->mvpMatrix))
-            {
-                continue;
-            }
+            //const size_t shaderId = 0;
 
             context.draw(m, shaderId, 0);
         }
@@ -870,7 +847,7 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
             }
             */
             const size_t shaderId = (size_t)(material.pTextures[0] == nullptr);
-            //const uint32_t shaderId = 0;
+            //const size_t shaderId = 0;
 
             ++numTotal;
 
