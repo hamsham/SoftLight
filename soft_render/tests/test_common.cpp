@@ -283,8 +283,15 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
     math::vec4           specular;
 
     // normalize the texture colors to within (0.f, 1.f)
+    if (sr_elements_per_color(albedo->type()) == 3)
     {
         math::vec3_t<uint8_t>&& pixel8 = albedo->nearest<math::vec3_t<uint8_t>>(uv[0], uv[1]);
+        math::vec4_t<uint8_t> pixelF{pixel8[0], pixel8[1], pixel8[2], 255};
+        pixel = color_cast<float, uint8_t>(pixelF);
+    }
+    else
+    {
+        math::vec4_t<uint8_t>&& pixel8 = albedo->nearest<math::vec4_t<uint8_t>>(uv[0], uv[1]);
         math::vec4_t<uint8_t> pixelF{pixel8[0], pixel8[1], pixel8[2], 255};
         pixel = color_cast<float, uint8_t>(pixelF);
     }
@@ -629,11 +636,14 @@ utils::Pointer<SR_SceneGraph> create_context()
     assert(retCode == 0);
 #endif
 
-    //retCode = meshLoader.load("testdata/african_head/african_head.obj");
-    //retCode = meshLoader.load("testdata/bob/Bob.md5mesh");
-    //retCode = meshLoader.load("testdata/rover/testmesh.dae");
-    //retCode = meshLoader.load("testdata/base_model.dae");
     retCode = meshLoader.load("testdata/sibenik/sibenik.obj");
+    assert(retCode != 0);
+
+    retCode = pGraph->import(meshLoader.data());
+    assert(retCode == 0);
+
+    retCode = meshLoader.load("testdata/rover/testmesh.dae");
+    meshLoader.data().mCurrentTransforms[0].move(math::vec3{0.f, -15.f, 0.f}, true);
     assert(retCode != 0);
 
     retCode = pGraph->import(meshLoader.data());
@@ -710,14 +720,7 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
             pUniforms->pTexture = material.pTextures[0];
 
             // Use the textureless shader if needed
-            /*
-            if (!material.pTextures[0])
-            {
-                continue;
-            }
-            */
             const size_t shaderId = (size_t)(material.pTextures[0] == nullptr);
-            //const size_t shaderId = 0;
 
             context.draw(m, shaderId, 0);
         }
@@ -751,7 +754,7 @@ bool is_visible(
     const math::vec4&& bfl       = modelMat * bfl0;
     constexpr float    delta     = 0.f;
 
-    const math::vec3   points[]  = {
+    const math::vec3 points[]  = {
         {trr[0], bfl[1], bfl[2]},
         {trr[0], trr[1], bfl[2]},
         {trr[0], trr[1], trr[2]},
@@ -840,14 +843,7 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
             pUniforms->pTexture = material.pTextures[0];
 
             // Use the textureless shader if needed
-            /*
-            if (!material.pTextures[0])
-            {
-                continue;
-            }
-            */
             const size_t shaderId = (size_t)(material.pTextures[0] == nullptr);
-            //const size_t shaderId = 0;
 
             ++numTotal;
 
