@@ -43,12 +43,14 @@ int sr_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SR_ColorRT
     // simple, so we only use 255 colors per pixel component.
     f << "P6\n" << w << ' ' << h << '\n' << 255 << '\n';
 
+    const size_t numPixels = (size_t)w * (size_t)h;
+
     // iterate through the image height, then the width
     for (coord_shrt_t i = 0; i < h; ++i)
     {
         for(coord_shrt_t j = 0; j < w; ++j)
         {
-            const SR_ColorR8&& c = color_cast<uint8_t, colorType>(colors[w * i + j]);
+            const SR_ColorR8&& c = color_cast<uint8_t, colorType>(colors[numPixels - (w * i + j)]);
             const SR_ColorRGB8 temp{c.r, c.r, c.r};
             f.write(reinterpret_cast<const char*>(&temp), sizeof(SR_ColorRGB8));
         }
@@ -88,12 +90,14 @@ int sr_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SR_ColorRG
     // simple, so we only use 255 colors per pixel component.
     f << "P6\n" << w << ' ' << h << '\n' << 255 << '\n';
 
+    const size_t numPixels = (size_t)w * (size_t)h;
+
     // iterate through the image height, then the width
     for (coord_shrt_t i = 0; i < h; ++i)
     {
         for(coord_shrt_t j = 0; j < w; ++j)
         {
-            const SR_ColorRG8&& c = color_cast<uint8_t, colorType>(colors[w * i + j]);
+            const SR_ColorRG8&& c = color_cast<uint8_t, colorType>(colors[numPixels - (w * i + j)]);
             const SR_ColorRGB8 temp{c[0], c[1], 0};
             f.write(reinterpret_cast<const char*>(&temp), sizeof(SR_ColorRGB8));
         }
@@ -133,13 +137,16 @@ int sr_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SR_ColorRG
     // simple, so we only use 255 colors per pixel component.
     f << "P6\n" << w << ' ' << h << '\n' << 255 << '\n';
 
+    const size_t numPixels = (size_t)w * (size_t)h;
+
     // iterate through the image height, then the width
     for (coord_shrt_t i = 0; i < h; ++i)
     {
         for(coord_shrt_t j = 0; j < w; ++j)
         {
-            const SR_ColorRGB8&& c = color_cast<uint8_t, colorType>(colors[w * i + j]);
-            f.write(reinterpret_cast<const char*>(&c), sizeof(SR_ColorRGB8));
+            const SR_ColorRGB8&& c = color_cast<uint8_t, colorType>(colors[numPixels - (w * i + j)]);
+            const SR_ColorRGB8 o = {c[2], c[1], c[0]};
+            f.write(reinterpret_cast<const char*>(&o), sizeof(SR_ColorRGB8));
         }
     }
 
@@ -177,13 +184,16 @@ int sr_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SR_ColorRG
     // simple, so we only use 255 colors per pixel component.
     f << "P6\n" << w << ' ' << h << '\n' << 255 << '\n';
 
+    const size_t numPixels = (size_t)w * (size_t)h;
+
     // iterate through the image height, then the width
     for (coord_shrt_t i = 0; i < h; ++i)
     {
         for(coord_shrt_t j = 0; j < w; ++j)
         {
-            const SR_ColorRGBA8&& c = color_cast<uint8_t, colorType>(colors[w * i + j]);
-            f.write(reinterpret_cast<const char*>(&c), sizeof(SR_ColorRGB8));
+            const SR_ColorRGBA8&& c = color_cast<uint8_t, colorType>(colors[numPixels - (w * i + j)]);
+            const SR_ColorRGB8 o = {c[2], c[1], c[0]};
+            f.write(reinterpret_cast<const char*>(&o), sizeof(SR_ColorRGB8));
         }
     }
 
