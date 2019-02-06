@@ -322,6 +322,7 @@ int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
         | KeyReleaseMask
         | KeymapStateMask
         | StructureNotifyMask
+        | SubstructureNotifyMask
         | ExposureMask
         | PointerMotionMask
         | ButtonPressMask
@@ -515,7 +516,7 @@ bool SR_RenderWindowXlib::set_size(unsigned width, unsigned height) noexcept
     assert(width <= std::numeric_limits<int>::max());
     assert(height <= std::numeric_limits<int>::max());
 
-    if (!valid())
+    if (!valid() || !width || !height)
     {
         return false;
     }
@@ -526,11 +527,7 @@ bool SR_RenderWindowXlib::set_size(unsigned width, unsigned height) noexcept
         return true;
     }
 
-    XWindowChanges changes;
-    changes.width = width;
-    changes.height = height;
-
-    if (Success == XConfigureWindow(mDisplay, mWindow, CWWidth | CWHeight, &changes))
+    if (Success == XResizeWindow(mDisplay, mWindow, width, height))
     {
         mWidth = width;
         mHeight = height;
@@ -558,11 +555,7 @@ bool SR_RenderWindowXlib::set_position(int x, int y) noexcept
         return true;
     }
 
-    XWindowChanges changes;
-    changes.x = x;
-    changes.y = y;
-
-    if (Success != XConfigureWindow(mDisplay, mWindow, CWX | CWY, &changes))
+    if (Success != XMoveWindow(mDisplay, mWindow, x, y))
     {
         return false;
     }
@@ -997,9 +990,10 @@ bool SR_RenderWindowXlib::peek_event(SR_WindowEvent* const pEvent) noexcept
         case ConfigureNotify:
             pConfig = &mLastEvent->xconfigure;
             pEvent->pNativeWindow = pConfig->window;
+
             if (mX != pConfig->x || mY != pConfig->y)
             {
-                pEvent->type = (SR_WinEventType)(pEvent->type | SR_WinEventType::WIN_EVENT_MOVED);
+                pEvent->type = SR_WinEventType::WIN_EVENT_MOVED;
                 mX = pConfig->x;
                 mY = pConfig->y;
                 pEvent->window.x = (int16_t)pConfig->x;
@@ -1008,11 +1002,11 @@ bool SR_RenderWindowXlib::peek_event(SR_WindowEvent* const pEvent) noexcept
 
             if (mWidth != (unsigned)pConfig->width || mHeight != (unsigned)pConfig->height)
             {
-                pEvent->type = (SR_WinEventType)(pEvent->type | SR_WinEventType::WIN_EVENT_RESIZED);
+                pEvent->type = SR_WinEventType::WIN_EVENT_RESIZED;
                 mWidth = (unsigned)pConfig->width;
                 mHeight = (unsigned)pConfig->height;
-                pEvent->window.x = (uint16_t)pConfig->width;
-                pEvent->window.y = (uint16_t)pConfig->height;
+                pEvent->window.width = (uint16_t)pConfig->width;
+                pEvent->window.height = (uint16_t)pConfig->height;
             }
             break;
 
