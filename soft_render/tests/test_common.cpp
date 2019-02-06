@@ -30,61 +30,6 @@
 
 
 
-/*
-        pos.w = 0;
-        value = tex3Dlod(VolumeS, pos).r;
-
-        src = (float4)value;
-        src.a *= .5f; //reduce the alpha to have a more transparent result
-
-        //Front to back blending
-        // dst.rgb = dst.rgb + (1 - dst.a) * src.a * src.rgb
-        // dst.a   = dst.a   + (1 - dst.a) * src.a
-        src.rgb *= src.a;
-        dst = (1.0f - dst.a)*src + dst;
-
-        //break from the loop when alpha gets high enough
-        if(dst.a >= .95f)
-            break;
-
-        //advance the current position
-        pos.xyz += Step;
-
-        //break if the position is greater than <1, 1, 1>
-        if(pos.x > 1.0f  pos.y > 1.0f  pos.z > 1.0f)
-            break;
- */
-
-
-
-/*
-    vec3 rayDirection;
-    rayDirection.xy = 2.0 * gl_FragCoord.xy / WindowSize - 1.0;
-    rayDirection.z = -FocalLength;
-    rayDirection = (vec4(rayDirection, 0) * Modelview).xyz;
-
-    Ray eye = Ray( RayOrigin, normalize(rayDirection) );
-    AABB aabb = AABB(vec3(-1.0), vec3(+1.0));
-
-    float tnear, tfar;
-    IntersectBox(eye, aabb, tnear, tfar);
-    if (tnear < 0.0) tnear = 0.0;
-
-    vec3 rayStart = eye.Origin + eye.Dir * tnear;
-    vec3 rayStop = eye.Origin + eye.Dir * tfar;
-
-    // Transform from object space to texture coordinate space:
-    rayStart = 0.5 * (rayStart + 1.0);
-    rayStop = 0.5 * (rayStop + 1.0);
-
-    // Perform the ray marching:
-    vec3 pos = rayStart;
-    vec3 step = normalize(rayStop-rayStart) * stepSize;
-    float travel = distance(rayStop, rayStart);
- */
-
-
-
 /*-----------------------------------------------------------------------------
  * Shader to display bounding boxes
 -----------------------------------------------------------------------------*/
@@ -163,7 +108,7 @@ math::vec4 _normal_vert_shader_impl(const size_t vertId, const SR_VertexArray& v
     const math::vec3& vert = *vbo.element<const math::vec3>(vao.offset(0, vertId));
     const math::vec3& norm = *vbo.element<const math::vec3>(vao.offset(1, vertId));
 
-    varyings[0] = pUniforms->modelMatrix * math::vec4{vert[0], vert[1], vert[2], 0.f};
+    varyings[0] = pUniforms->modelMatrix * math::vec4{vert[0], vert[1], vert[2], 1.f};
     varyings[1] = pUniforms->modelMatrix * math::vec4{norm[0], norm[1], norm[2], 0.f};
 
     return pUniforms->mvpMatrix * math::vec4{vert[0], vert[1], vert[2], 1.f};
@@ -189,16 +134,19 @@ SR_VertexShader normal_vert_shader()
 bool _normal_frag_shader_impl(const math::vec4&, const SR_UniformBuffer* uniforms, const math::vec4* varyings, math::vec4* outputs)
 {
     const MeshUniforms* pUniforms     = static_cast<const MeshUniforms*>(uniforms);
-    const Light         l             = pUniforms->light;
     const math::vec4    pos           = varyings[0];
     const math::vec4    norm          = math::normalize(varyings[1]);
     math::vec4&         output        = outputs[0];
 
-    math::vec4          lightDir      = l.pos - pos;
-    const float         lightDist     = math::length(lightDir);
 
-    lightDir = math::normalize(lightDir);
+    // Light direction calculation
+    math::vec4  lightDir  = pUniforms->camPos - pos;
+    const float lightDist = math::length(lightDir);
 
+    // normalize
+    lightDir = lightDir * math::rcp(lightDist);
+
+    const Light         l             = pUniforms->light;
     const float         lightAngle    = math::max(math::dot(lightDir, norm), 0.f);
     const float         constant      = pUniforms->point.constant;
     const float         linear        = pUniforms->point.linear;
@@ -211,7 +159,7 @@ bool _normal_frag_shader_impl(const math::vec4&, const SR_UniformBuffer* uniform
     const float         spotIntensity = math::clamp((theta - s.outerCutoff) * s.epsilon, 0.f, 1.f);
     const math::vec4&&  specular      = diffuse + (l.specular * (spotIntensity * attenuation));
 
-    output = specular;
+    output = math::min(specular, math::vec4{1.f});
 
     return true;
 }
@@ -297,11 +245,13 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
     }
 
     // Light direction calculation
-    const Light l         = pUniforms->light;
-    math::vec4  lightDir  = l.pos - pos;
+    math::vec4  lightDir  = pUniforms->camPos - pos;
     const float lightDist = math::length(lightDir);
 
-    lightDir = math::normalize(lightDir);
+    // normalize
+    lightDir = lightDir * math::rcp(lightDist);
+
+    const Light l = pUniforms->light;
 
     // Diffuse light calculation
     {
@@ -339,7 +289,7 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
 template <class vec_type = math::vec4>
 inline vec_type fresnel_schlick(float cosTheta, const vec_type& surfaceReflection)
 {
-    return surfaceReflection + (vec_type{1.f} - surfaceReflection) * math::pow(1.f - cosTheta, 5.f);
+    return surfaceReflection + (vec_type{1.f} - surfaceReflection) * math::pow<float>(1.f - cosTheta, 5.f);
 }
 
 
@@ -349,13 +299,12 @@ template <class vec_type = math::vec4>
 inline float distribution_ggx(const vec_type& norm, const vec_type& hemisphere, float roughness)
 {
     float roughSquared = roughness * roughness;
-    float roughQuad = roughSquared * roughSquared;
-    float nDotH = math::max(math::dot(norm, hemisphere), 0.f);
-    float nDotH2 = nDotH * nDotH;
-
+    float roughQuad    = roughSquared * roughSquared;
+    float nDotH        = math::max(math::dot(norm, hemisphere), 0.f);
+    float nDotH2       = nDotH * nDotH;
     float distribution = nDotH2 * (roughQuad - 1.f) + 1.f;
 
-    return nDotH2 / (LS_PI * distribution  * distribution );
+    return nDotH2 / (LS_PI * distribution  * distribution);
 }
 
 
@@ -390,79 +339,89 @@ bool _texture_frag_shader_pbr(const math::vec4&, const SR_UniformBuffer* uniform
     const math::vec4     pos       = varyings[0];
     const math::vec4     uv        = varyings[1];
     const math::vec4     norm      = math::normalize(varyings[2]);
-    math::vec4&       output    = outputs[0];
+    math::vec4&          output    = outputs[0];
     const SR_Texture*    pTexture  = pUniforms->pTexture;
     math::vec4           pixel;
 
+    // normalize the texture colors to within (0.f, 1.f)
+    if (sr_elements_per_color(pTexture->type()) == 3)
     {
-        // vectors are faster than colors
         math::vec3_t<uint8_t>&& pixel8 = pTexture->nearest<math::vec3_t<uint8_t>>(uv[0], uv[1]);
-        //const math::vec4&& pixelF = color_cast<float, uint8_t>(pixel8);
-        const math::vec4_t<uint8_t> pixelF{pixel8[0], pixel8[1], pixel8[2], 255};
-        //pixel = math::vec4{pixelF.r, pixelF.g, pixelF.b, 1.f};
-
-        pixel = (math::vec4)pixelF * math::vec4{0.00392156862745f};
-        pixel[0] = math::pow(pixel[0], 2.2f);
-        pixel[1] = math::pow(pixel[1], 2.2f);
-        pixel[2] = math::pow(pixel[2], 2.2f);
+        math::vec4_t<uint8_t> pixelF{pixel8[0], pixel8[1], pixel8[2], 255};
+        pixel = color_cast<float, uint8_t>(pixelF);
+    }
+    else
+    {
+        math::vec4_t<uint8_t>&& pixel8 = pTexture->nearest<math::vec4_t<uint8_t>>(uv[0], uv[1]);
+        math::vec4_t<uint8_t> pixelF{pixel8[0], pixel8[1], pixel8[2], 255};
+        pixel = color_cast<float, uint8_t>(pixelF);
     }
 
+    // gamma correction
+    pixel[0] = math::pow<float>(pixel[0], 2.2f);
+    pixel[1] = math::pow<float>(pixel[1], 2.2f);
+    pixel[2] = math::pow<float>(pixel[2], 2.2f);
+
     // surface model
-    const math::vec4     camPos           = pUniforms->light.pos;
+    const math::vec4     camPos           = pUniforms->camPos;
     const math::vec4&&   viewDir          = math::normalize(camPos - pos);
-    const math::vec4     lightPos         = {30.f, 45.f, 45.f, 0.f};
-    const math::vec4     albedo           = {1.f};
+    const math::vec4     lightPos         = pUniforms->light.pos;
+    const math::vec4     albedo           = pixel;
     constexpr float      metallic         = 0.4f;
-    constexpr float      roughness        = 0.15f;
-    constexpr float      ambientIntensity = 0.25f;
+    constexpr float      roughness        = 0.35f;
+    constexpr float      ambientIntensity = 0.5f;
+    constexpr float      diffuseIntensity = 50.f;
 
     // Metallic reflectance at a normal incidence
     // 0.04f should be close to plastic.
-    const math::vec4   surfaceConstant   = {0.04f, 0.04f, 0.04f, 1.f};
+    const math::vec4   surfaceConstant   = {0.4f, 0.4f, 0.4f, 1.f};
     const math::vec4&& surfaceReflection = math::mix(surfaceConstant, albedo, metallic);
 
     math::vec4         lightDir0         = {0.f};
-    math::vec4&&       lightDirN         = math::normalize(lightPos - pos);
-    math::vec4&&       hemisphere        = math::normalize(viewDir + lightDirN);
 
-    const float        distance          = math::length(lightPos - pos);
-    const float        attenuation       = math::rcp(distance * distance);
-    math::vec4&&       radianceObj       = pUniforms->light.diffuse * attenuation;
+    math::vec4&&       lightDirN         = lightPos - pos;
+    const float        distance          = math::length(lightDirN);
+    lightDirN                            = lightDirN * math::rcp(distance); // normalize
+    math::vec4&&       hemisphere        = math::normalize(viewDir + lightDirN);
+    const float        attenuation       = math::rcp(distance);
+    math::vec4&&       radianceObj       = pUniforms->light.diffuse * attenuation * diffuseIntensity;
 
     const float        ndf               = distribution_ggx(norm, hemisphere, roughness);
-    const float        geom              = geometry_smith(norm, viewDir, lightPos, roughness);
-    const math::vec4&& fresnel           = fresnel_schlick(math::clamp(math::dot(hemisphere, viewDir), 0.f, 1.f), surfaceReflection);
+    const float        geom              = geometry_smith(norm, viewDir, lightDirN, roughness);
+    const math::vec4&& fresnel           = fresnel_schlick(math::max(math::dot(hemisphere, viewDir), 0.f), surfaceReflection);
 
     const math::vec4&& brdf              = fresnel * ndf * geom;
-    const float        cookTorrance      = math::rcp(4.f * math::max(math::dot(norm, viewDir), 0.f) * math::max(math::dot(norm, lightDirN), 0.f));
-    const math::vec4&& specular          = brdf * math::max(cookTorrance, LS_EPSILON); // avoid divide-by-0
+    const float        cookTorrance      = 4.f * math::max(math::dot(norm, viewDir), 0.f) * math::max(math::dot(norm, lightDirN), 0.f) + LS_EPSILON;  // avoid divide-by-0
+    const math::vec4&& specular          = brdf * math::rcp(cookTorrance);
 
-    const math::vec4&  specContrib       = surfaceReflection;
-    const math::vec4&& refractRatio      = (math::vec4{1.f} - specContrib) * (math::vec4{1.f} - metallic);
+    const math::vec4&  specContrib       = fresnel;
+    const math::vec4&& refractRatio      = (math::vec4{1.f, 1.f, 1.f, 1.f} - specContrib) * (math::vec4{1.f, 1.f, 1.f, 1.f} - metallic);
 
-    const float normDotLight             = math::max(math::dot(norm, lightDirN), 0.f);
+    const float normDotLight             = math::max(math::dot(lightDirN, norm), 0.f);
     lightDir0                            += (refractRatio * albedo / LS_PI + specular) * radianceObj * normDotLight;
 
-    const math::vec4&& ambient           = pUniforms->light.ambient * albedo * ambientIntensity * pixel;
+    const math::vec4&& ambient           = pUniforms->light.ambient * ambientIntensity;
 
     // Color normalization and light contribution
-    const math::vec4 outRGB = ambient + lightDir0;
+    math::vec4&& outRGB = albedo * (ambient + lightDir0);
 
     // Tone mapping
-    output /= outRGB + 1.f;
+    outRGB /= outRGB + math::vec4{1.f, 1.f, 1.f, 0.f};
 
     // HDR Tone mapping
-    //const float exposure = 5.f;
-    //outR = 1.f - math::exp(-outR * exposure);
-    //outG = 1.f - math::exp(-outG * exposure);
-    //outB = 1.f - math::exp(-outB * exposure);
+    //const float exposure = 20.f;
+    //outRGB[0] = 1.f - math::exp(-outRGB[0] * exposure);
+    //outRGB[1] = 1.f - math::exp(-outRGB[1] * exposure);
+    //outRGB[2] = 1.f - math::exp(-outRGB[2] * exposure);
 
     // Gamma correction
     constexpr float gamma = 1.f / 2.2f;
-    output[0] = math::clamp(math::pow(outRGB[0], gamma), 0.f, 1.f);
-    output[1] = math::clamp(math::pow(outRGB[1], gamma), 0.f, 1.f);
-    output[2] = math::clamp(math::pow(outRGB[2], gamma), 0.f, 1.f);
+    output[0] = math::clamp(math::pow<float>(outRGB[0], gamma), 0.f, 1.f);
+    output[1] = math::clamp(math::pow<float>(outRGB[1], gamma), 0.f, 1.f);
+    output[2] = math::clamp(math::pow<float>(outRGB[2], gamma), 0.f, 1.f);
     output[3] = 1.f;
+
+    output = outRGB;
 
     return true;
 }
@@ -477,8 +436,8 @@ SR_FragmentShader texture_frag_shader()
     shader.blend       = SR_BLEND_OFF;
     shader.depthTest   = SR_DEPTH_TEST_ON;
     shader.depthMask   = SR_DEPTH_MASK_ON;
-    shader.shader      = _texture_frag_shader_spot;
-    //shader.shader      = _texture_frag_shader_pbr;
+    //shader.shader      = _texture_frag_shader_spot;
+    shader.shader      = _texture_frag_shader_pbr;
 
     return shader;
 }
@@ -663,12 +622,12 @@ utils::Pointer<SR_SceneGraph> create_context()
     std::shared_ptr<MeshUniforms>  pUniforms{(MeshUniforms*)ls::utils::aligned_malloc(sizeof(MeshUniforms)), [](MeshUniforms* p)->void {ls::utils::aligned_free(p);}};
 
     pUniforms->light.pos        = math::vec4{30.f, 45.f, 45.f, 1.f};
-    pUniforms->light.ambient    = math::vec4{1.f};
-    pUniforms->light.diffuse    = math::vec4{1.f};
+    pUniforms->light.ambient    = math::vec4{0.25f, 0.25f, 0.25f, 1.f};
+    pUniforms->light.diffuse    = math::vec4{0.5f, 0.5f, 0.5f, 1.f};
     pUniforms->light.specular   = math::vec4{1.f};
     pUniforms->point.constant   = 1.f;
     pUniforms->point.linear     = 0.009f;
-    pUniforms->point.quadratic  = 0.000018f;
+    pUniforms->point.quadratic  = 0.00018f;
     pUniforms->spot.innerCutoff = std::cos(LS_DEG2RAD(6.5f));
     pUniforms->spot.outerCutoff = std::cos(LS_DEG2RAD(13.f));
     pUniforms->spot.epsilon     = math::rcp(pUniforms->spot.innerCutoff - pUniforms->spot.outerCutoff);

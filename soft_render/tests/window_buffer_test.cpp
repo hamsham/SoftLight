@@ -153,7 +153,7 @@ int main()
     camTrans.set_type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
     //camTrans.extract_transforms(math::look_at(math::vec3{75.f}, math::vec3{0.f, 10.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
     camTrans.extract_transforms(math::look_at(math::vec3{0.f}, math::vec3{3.f, -5.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
-    const math::mat4&& projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
+    math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
 
     if (shouldQuit)
     {
@@ -184,6 +184,19 @@ int main()
         {
             pWindow->pop_event(&evt);
 
+            if (evt.type == SR_WinEventType::WIN_EVENT_MOVED)
+            {
+                std::cout << "Window moved: " << evt.window.x << 'x' << evt.window.y << std::endl;
+            }
+
+            if (evt.type == SR_WinEventType::WIN_EVENT_RESIZED)
+            {
+                std::cout<< "Window resized: " << evt.window.width << 'x' << evt.window.height << std::endl;
+                pRenderBuf->terminate();
+                pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
+                projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
+            }
+
             if (evt.type == SR_WinEventType::WIN_EVENT_KEY_DOWN)
             {
                 const SR_KeySymbol keySym = evt.keyboard.keysym;
@@ -212,20 +225,10 @@ int main()
 
                     case SR_KeySymbol::KEY_SYM_LEFT:
                         pWindow->set_size(IMAGE_WIDTH / 2, IMAGE_HEIGHT / 2);
-                        {
-                            unsigned w, h;
-                            pWindow->get_size(w, h);
-                            std::cout << "Window size changed: " << w << ' ' << h << std::endl;
-                        }
                         break;
 
                     case SR_KeySymbol::KEY_SYM_RIGHT:
                         pWindow->set_size(IMAGE_WIDTH, IMAGE_HEIGHT);
-                        {
-                            unsigned w, h;
-                            pWindow->get_size(w, h);
-                            std::cout << "Window size changed: " << w << ' ' << h << std::endl;
-                        }
                         break;
 
                     case SR_KeySymbol::KEY_SYM_UP:
@@ -301,18 +304,21 @@ int main()
 
                 MeshUniforms* pUniforms = static_cast<MeshUniforms*>(context.shader(1).uniforms().get());
                 const math::vec3&& camTransPos = -camTrans.get_position();
-                pUniforms->light.pos = {camTransPos[0], camTransPos[1], camTransPos[2], 1.f};
+                pUniforms->camPos = {camTransPos[0], camTransPos[1], camTransPos[2], 1.f};
 
                 const math::mat4& v = camTrans.get_transform();
                 pUniforms->spot.direction = math::normalize(math::vec4{v[0][2], v[1][2], v[2][2], 0.f});
             }
             const math::mat4&& vpMatrix = projMatrix * camTrans.get_transform();
 
+            /*
             if (pWindow->width() != pRenderBuf->width() || pWindow->height() != pRenderBuf->height())
             {
                 pRenderBuf->terminate();
                 pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
+                projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
             }
+            */
 
             update_animations(*pGraph, animPlayer, currentAnimId, tickTime);
             pGraph->update();

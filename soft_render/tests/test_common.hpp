@@ -61,6 +61,8 @@ struct MeshUniforms : SR_UniformBuffer
 {
     const SR_Texture* pTexture;
     const SR_BoundingBox* aabb;
+
+    math::vec4 camPos;
     Light light;
     PointLight point;
     SpotLight spot;
