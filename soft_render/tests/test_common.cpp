@@ -358,13 +358,17 @@ bool _texture_frag_shader_pbr(const math::vec4&, const SR_UniformBuffer* uniform
     }
 
     // gamma correction
+    pixel = math::pow(pixel, math::vec4{2.2f});
+    //pixel = math::pow<float>(pixel, math::vec4{2.2f});
+    /*
     pixel[0] = math::pow<float>(pixel[0], 2.2f);
     pixel[1] = math::pow<float>(pixel[1], 2.2f);
     pixel[2] = math::pow<float>(pixel[2], 2.2f);
+    */
 
     // surface model
     const math::vec4     camPos           = pUniforms->camPos;
-    const math::vec4&&   viewDir          = math::normalize(camPos - pos);
+    const math::vec4     viewDir          = math::normalize(camPos - pos);
     const math::vec4     lightPos         = pUniforms->light.pos;
     const math::vec4     albedo           = pixel;
     constexpr float      metallic         = 0.4f;
@@ -379,47 +383,44 @@ bool _texture_frag_shader_pbr(const math::vec4&, const SR_UniformBuffer* uniform
 
     math::vec4         lightDir0         = {0.f};
 
-    math::vec4&&       lightDirN         = lightPos - pos;
+    math::vec4         lightDirN         = lightPos - pos;
     const float        distance          = math::length(lightDirN);
     lightDirN                            = lightDirN * math::rcp(distance); // normalize
-    math::vec4&&       hemisphere        = math::normalize(viewDir + lightDirN);
+    math::vec4         hemisphere        = math::normalize(viewDir + lightDirN);
     const float        attenuation       = math::rcp(distance);
-    math::vec4&&       radianceObj       = pUniforms->light.diffuse * attenuation * diffuseIntensity;
+    math::vec4         radianceObj       = pUniforms->light.diffuse * attenuation * diffuseIntensity;
 
     const float        ndf               = distribution_ggx(norm, hemisphere, roughness);
     const float        geom              = geometry_smith(norm, viewDir, lightDirN, roughness);
-    const math::vec4&& fresnel           = fresnel_schlick(math::max(math::dot(hemisphere, viewDir), 0.f), surfaceReflection);
+    const math::vec4   fresnel           = fresnel_schlick(math::max(math::dot(hemisphere, viewDir), 0.f), surfaceReflection);
 
-    const math::vec4&& brdf              = fresnel * ndf * geom;
+    const math::vec4   brdf              = fresnel * ndf * geom;
     const float        cookTorrance      = 4.f * math::max(math::dot(norm, viewDir), 0.f) * math::max(math::dot(norm, lightDirN), 0.f) + LS_EPSILON;  // avoid divide-by-0
-    const math::vec4&& specular          = brdf * math::rcp(cookTorrance);
+    const math::vec4   specular          = brdf * math::rcp(cookTorrance);
 
     const math::vec4&  specContrib       = fresnel;
-    const math::vec4&& refractRatio      = (math::vec4{1.f, 1.f, 1.f, 1.f} - specContrib) * (math::vec4{1.f, 1.f, 1.f, 1.f} - metallic);
+    const math::vec4   refractRatio      = (math::vec4{1.f} - specContrib) * (math::vec4{1.f} - metallic);
 
     const float normDotLight             = math::max(math::dot(lightDirN, norm), 0.f);
     lightDir0                            += (refractRatio * albedo / LS_PI + specular) * radianceObj * normDotLight;
 
-    const math::vec4&& ambient           = pUniforms->light.ambient * ambientIntensity;
+    const math::vec4   ambient           = pUniforms->light.ambient * ambientIntensity;
 
     // Color normalization and light contribution
-    math::vec4&& outRGB = albedo * (ambient + lightDir0);
+    math::vec4 outRGB = albedo * (ambient + lightDir0);
 
     // Tone mapping
-    outRGB /= outRGB + math::vec4{1.f, 1.f, 1.f, 0.f};
+    //outRGB *= math::rcp(outRGB + math::vec4{1.f, 1.f, 1.f, 0.f});
 
     // HDR Tone mapping
-    //const float exposure = 20.f;
-    //outRGB[0] = 1.f - math::exp(-outRGB[0] * exposure);
-    //outRGB[1] = 1.f - math::exp(-outRGB[1] * exposure);
-    //outRGB[2] = 1.f - math::exp(-outRGB[2] * exposure);
+    const float exposure = 4.f;
+    outRGB = math::vec4{1.f} - math::exp(-outRGB * exposure);
+    outRGB[3] = 1.f;
 
     // Gamma correction
-    constexpr float gamma = 1.f / 2.2f;
-    output[0] = math::clamp(math::pow<float>(outRGB[0], gamma), 0.f, 1.f);
-    output[1] = math::clamp(math::pow<float>(outRGB[1], gamma), 0.f, 1.f);
-    output[2] = math::clamp(math::pow<float>(outRGB[2], gamma), 0.f, 1.f);
-    output[3] = 1.f;
+    //constexpr math::vec4 gamma = {1.f / 2.2f};
+    //outRGB[0] = math::clamp(math::pow<float>(outRGB, gamma), math::vec4{0.f}, math::vec4{1.f});
+    //outRGB[3] = 1.f;
 
     output = outRGB;
 
