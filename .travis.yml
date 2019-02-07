@@ -1,7 +1,6 @@
 language: cpp
 
 
-
 os:
   - osx
   - linux
@@ -19,26 +18,25 @@ osx_image: xcode10.1
 
 
 addons:
-    apt:
-        update: true
-        packages:
-          - cmake
-          - curl
-          - git
-          - libx11-dev
-          - libx11-xcb-dev
-          - x11-utils
-          - libassimp-dev
-          - libfreeimage-dev
-    homebrew:
-        update: true
-        packages:
-          - 
-          - assimp
-          - freeimage
-    chocolatey:
-        packages:
-          - tortoisesvn
+  apt:
+    update: true
+    packages:
+      - cmake
+      - curl
+      - git
+      - libx11-dev
+      - libx11-xcb-dev
+      - x11-utils
+      - libassimp-dev
+      - libfreeimage-dev
+  homebrew:
+    update: true
+    packages:
+      - assimp
+      - freeimage
+  chocolatey:
+    packages:
+      - tortoisesvn
 
 
 install:
@@ -46,12 +44,12 @@ install:
 
 
 git:
-    submodules: true
+  submodules: true
 
 
 branches:
-    only:
-      - master
+  only:
+    - master
 
 
 before_script:
