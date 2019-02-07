@@ -192,7 +192,7 @@ if (NOT MSVC)
         lsmath
         lsutils
         lssetup
-        ${assimp_LIBRARIES}
+        ${ASSIMP_LIBRARIES}
         ${FREEIMAGE_LIBRARIES}
         ${X11_LIBRARIES}
         pthread
@@ -203,7 +203,7 @@ else()
         lsmath
         lsutils
         lssetup
-        ${assimp_LIBRARIES}
+        ${ASSIMP_LIBRARIES}
         ${FREEIMAGE_LIBRARIES}
     )
 endif()

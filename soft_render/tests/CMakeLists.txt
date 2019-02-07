@@ -77,7 +77,7 @@ configure_file(testdata/head256x256x109            testdata/head256x256x109     
 # -------------------------------------
 if (NOT MSVC)
 	set(SR_EXTERNAL_LIBS
-		${assimp_LIBRARIES}
+		${ASSIMP_LIBRARIES}
 		${FREEIMAGE_LIBRARIES}
         ${X11_LIBRARIES}
         ${X11_Xext_LIB}
@@ -85,7 +85,7 @@ if (NOT MSVC)
 	)
 else()
 	set(SR_EXTERNAL_LIBS
-        ${assimp_LIBRARIES}
+        ${ASSIMP_LIBRARIES}
         ${FREEIMAGE_LIBRARIES}
 	)
 endif()

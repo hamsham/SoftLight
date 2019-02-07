@@ -86,7 +86,7 @@ if (ASSIMP_INCLUDE_DIR STREQUAL ASSIMP_INCLUDE_DIR-NOTFOUND OR ASSIMP_LIBRARIES 
     endif()
 
     add_dependencies(assimp IrrXML)
-    set(assimp_LIBRARIES assimp)
+    set(ASSIMP_LIBRARIES assimp)
 
 
 
