@@ -289,7 +289,7 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
 template <class vec_type = math::vec4>
 inline vec_type fresnel_schlick(float cosTheta, const vec_type& surfaceReflection)
 {
-    return surfaceReflection + (vec_type{1.f} - surfaceReflection) * math::pow<float>(1.f - cosTheta, 5.f);
+    return surfaceReflection + (vec_type{1.f} - surfaceReflection) * math::pow(1.f - cosTheta, 5.f);
 }
 
 
@@ -359,12 +359,6 @@ bool _texture_frag_shader_pbr(const math::vec4&, const SR_UniformBuffer* uniform
 
     // gamma correction
     pixel = math::pow(pixel, math::vec4{2.2f});
-    //pixel = math::pow<float>(pixel, math::vec4{2.2f});
-    /*
-    pixel[0] = math::pow<float>(pixel[0], 2.2f);
-    pixel[1] = math::pow<float>(pixel[1], 2.2f);
-    pixel[2] = math::pow<float>(pixel[2], 2.2f);
-    */
 
     // surface model
     const math::vec4     camPos           = pUniforms->camPos;
@@ -402,7 +396,7 @@ bool _texture_frag_shader_pbr(const math::vec4&, const SR_UniformBuffer* uniform
     const math::vec4   refractRatio      = (math::vec4{1.f} - specContrib) * (math::vec4{1.f} - metallic);
 
     const float normDotLight             = math::max(math::dot(lightDirN, norm), 0.f);
-    lightDir0                            += (refractRatio * albedo / LS_PI + specular) * radianceObj * normDotLight;
+    lightDir0                            += (refractRatio * albedo * LS_PI_INVERSE + specular) * radianceObj * normDotLight;
 
     const math::vec4   ambient           = pUniforms->light.ambient * ambientIntensity;
 
@@ -419,7 +413,7 @@ bool _texture_frag_shader_pbr(const math::vec4&, const SR_UniformBuffer* uniform
 
     // Gamma correction
     //constexpr math::vec4 gamma = {1.f / 2.2f};
-    //outRGB[0] = math::clamp(math::pow<float>(outRGB, gamma), math::vec4{0.f}, math::vec4{1.f});
+    //outRGB[0] = math::clamp(math::pow(outRGB, gamma), math::vec4{0.f}, math::vec4{1.f});
     //outRGB[3] = 1.f;
 
     output = outRGB;
