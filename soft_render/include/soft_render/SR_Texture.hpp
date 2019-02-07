@@ -449,7 +449,7 @@ inline SR_Texture::fixed_type SR_Texture::wrap_coordinate(SR_Texture::fixed_type
     return (mWrapping == SR_TEXTURE_WRAP_REPEAT)
            ? ((uvw < fixed_type{0u}
                ? ls::math::fixed_cast<fixed_type>(1u)
-               : fixed_type{0u}) + (uvw % ls::math::fixed_cast<fixed_type>(1u)))
+               : fixed_type{0u}) + ls::math::fmod_1(uvw))
            : ls::math::clamp<fixed_type>(uvw, fixed_type{0u}, ls::math::fixed_cast<fixed_type>(1u));
 }
 
