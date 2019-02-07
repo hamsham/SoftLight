@@ -30,7 +30,7 @@ LPCSTR SR_RENDER_WINDOW_WIN32_CLASS = "SR_RenderWindowWin32";
 constexpr DWORD WINDOW_STYLE_EX =
     0
     | WS_EX_ACCEPTFILES
-    | WS_EX_CLIENTEDGE
+    | WS_EX_OVERLAPPEDWINDOW
     | 0;
 
 constexpr DWORD WINDOW_STYLE =
@@ -253,6 +253,13 @@ LRESULT SR_RenderWindowWin32::win_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
             destroy();
             break;
 
+        case WM_MOVE:
+        case WM_SIZE:
+            mLastMsg.hwnd = mHwnd == hwnd ? hwnd : 0;
+            mLastMsg.message = msg;
+            mLastMsg.wParam = wParam;
+            mLastMsg.lParam = lParam;
+
         default:
             return DefWindowProc(hwnd, msg, wParam, lParam);
     }
@@ -448,25 +455,23 @@ bool SR_RenderWindowWin32::set_size(unsigned w, unsigned h) noexcept
     }
 
     RECT clientArea;
-    clientArea.left = 0;
+    clientArea.left = winRect.right-winRect.left;
     clientArea.right = (int)w;
-    clientArea.top = 0;
+    clientArea.top = winRect.bottom-winRect.top;
     clientArea.bottom = (int)h;
-    if (AdjustWindowRectEx(&clientArea, WINDOW_STYLE, FALSE, WINDOW_STYLE_EX) == FALSE)
+
+    if (AdjustWindowRectEx(&clientArea,WINDOW_STYLE, FALSE, WINDOW_STYLE_EX) == FALSE)
     {
         return false;
     }
 
 
-    return FALSE != SetWindowPos(
-        mHwnd,
-        nullptr,
-        winRect.left,
-        winRect.top,
-        (int)clientArea.right,
-        (int)clientArea.bottom,
-        SWP_NOREPOSITION | SWP_NOSENDCHANGING
-    );
+    if (SetWindowPos(mHwnd, nullptr, clientArea.left, clientArea.top, (int)clientArea.right, (int)clientArea.bottom, SWP_NOREPOSITION | SWP_NOSENDCHANGING))
+    {
+        return UpdateWindow(mHwnd) != FALSE;
+    }
+
+    return false;
 }
 
 
@@ -531,7 +536,12 @@ bool SR_RenderWindowWin32::set_position(int x, int y) noexcept
     unsigned h = 0;
     get_size(w, h);
 
-    return SetWindowPos(mHwnd, nullptr, x, y, w, h, SWP_NOSIZE | SWP_NOSENDCHANGING) != FALSE;
+    if (SetWindowPos(mHwnd, nullptr, x, y, w, h, SWP_NOSIZE | SWP_NOSENDCHANGING) != FALSE)
+    {
+        UpdateWindow(mHwnd);
+    }
+
+    return false;
 }
 
 
