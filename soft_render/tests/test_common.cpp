@@ -24,6 +24,14 @@
     #define SR_TEST_MAX_THREADS 4
 #endif /* SR_TEST_MAX_THREADS */
 
+#ifndef SR_TEST_USE_PBR
+    #define SR_TEST_USE_PBR 0
+#endif /* SR_TEST_USE_PBR */
+
+#ifndef SR_TEST_USE_ANIMS
+    #define SR_TEST_USE_ANIMS 0
+#endif /* SR_TEST_USE_ANIMS */
+
 #ifndef SR_TEST_DEBUG_AABBS
     #define SR_TEST_DEBUG_AABBS 0
 #endif
@@ -230,6 +238,9 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
     math::vec4           diffuse;
     math::vec4           specular;
 
+    constexpr float diffuseIndensity = 2.f;
+    constexpr float specularIndensity = 2.f;
+
     // normalize the texture colors to within (0.f, 1.f)
     if (sr_elements_per_color(albedo->type()) == 3)
     {
@@ -262,7 +273,7 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
         const float quadratic  = p.quadratic;
 
         attenuation = math::rcp(constant + (linear * lightDist) + (quadratic * lightDist * lightDist));
-        diffuse     = l.diffuse * (lightAngle * attenuation);
+        diffuse     = l.diffuse * (lightAngle * attenuation) * diffuseIndensity;
     }
 
     // Specular light calculation
@@ -271,7 +282,7 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
         const float theta         = math::dot(lightDir, s.direction);
         const float spotIntensity = math::clamp((theta - s.outerCutoff) * s.epsilon, 0.f, 1.f);
 
-        specular = l.specular * (spotIntensity * attenuation);
+        specular = l.specular * (spotIntensity * attenuation) * specularIndensity;
     }
 
     // output composition
@@ -431,8 +442,12 @@ SR_FragmentShader texture_frag_shader()
     shader.blend       = SR_BLEND_OFF;
     shader.depthTest   = SR_DEPTH_TEST_ON;
     shader.depthMask   = SR_DEPTH_MASK_ON;
-    //shader.shader      = _texture_frag_shader_spot;
-    shader.shader      = _texture_frag_shader_pbr;
+
+    #if SR_TEST_USE_PBR
+    shader.shader = _texture_frag_shader_pbr;
+    #else
+    shader.shader = _texture_frag_shader_spot;
+    #endif
 
     return shader;
 }
@@ -596,9 +611,11 @@ utils::Pointer<SR_SceneGraph> create_context()
     retCode = pGraph->import(meshLoader.data());
     assert(retCode == 0);
 
+    #if SR_TEST_USE_ANIMS
     retCode = meshLoader.load("testdata/rover/testmesh.dae");
     meshLoader.data().mCurrentTransforms[0].move(math::vec3{0.f, -15.f, 0.f}, true);
     assert(retCode != 0);
+    #endif
 
     retCode = pGraph->import(meshLoader.data());
     assert(retCode == 0);

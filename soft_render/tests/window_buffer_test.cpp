@@ -284,7 +284,8 @@ int main()
 
             if (currSeconds >= 0.5f)
             {
-                std::cout << "MS/F: " << 1000.f*(currSeconds/(float)currFrames) << std::endl;
+                //std::cout << "MS/F: " << 1000.f*(currSeconds/(float)currFrames) << std::endl;
+                std::cout << "FPS: " << ((float)currFrames/currSeconds) << std::endl;
                 currFrames = 0;
                 currSeconds = 0.f;
             }
