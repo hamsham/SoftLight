@@ -17,6 +17,9 @@ mark_as_advanced(EXTERNAL_PROJECT_PREFIX)
 # Include directory for 3rd-party libraries
 include_directories(BEFORE SYSTEM ${EXTERNAL_PROJECT_PREFIX}/include)
 
+# Ensure proper linkage
+link_directories(${EXTERNAL_PROJECT_PREFIX}/lib)
+
 
 
 # #####################################
