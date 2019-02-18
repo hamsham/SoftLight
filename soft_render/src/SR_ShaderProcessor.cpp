@@ -1,9 +1,10 @@
 
-#include <iostream>
 #include <utility> // std::move()
 
 #include "lightsky/setup/Arch.h"
 #include "lightsky/setup/Compiler.h"
+
+#include "lightsky/utils/Log.h"
 
 #include "soft_render/SR_BlitProcesor.hpp"
 #include "soft_render/SR_FragmentProcessor.hpp"
@@ -406,16 +407,15 @@ unsigned SR_ProcessorPool::num_threads(unsigned inNumThreads) noexcept
         }
     }
 
-    std::cout
-        << "Rendering threads updated:"
-        << "\n\tThread Count:       " << inNumThreads
-        << "\n\tBytes per Task:     " << sizeof(SR_ShaderProcessor)
-        << "\n\tBytes of Task Pool: " << sizeof(SR_ProcessorPool)
-        << "\n\tVertex Task Size:   " << sizeof(SR_VertexProcessor)
-        << "\n\tFragment Task Size: " << sizeof(SR_FragmentProcessor)
-        << "\n\tFragment Bin Size:  " << sizeof(SR_FragmentBin)
-        << "\n\tBlitter Task Size:  " << sizeof(SR_BlitProcessor)
-        << std::endl;
+    LS_LOG_MSG(
+        "Rendering threads updated:"
+        "\n\tThread Count:       ", inNumThreads,
+        "\n\tBytes per Task:     ", sizeof(SR_ShaderProcessor),
+        "\n\tBytes of Task Pool: ", sizeof(SR_ProcessorPool),
+        "\n\tVertex Task Size:   ", sizeof(SR_VertexProcessor),
+        "\n\tFragment Task Size: ", sizeof(SR_FragmentProcessor),
+        "\n\tFragment Bin Size:  ", sizeof(SR_FragmentBin),
+        "\n\tBlitter Task Size:  ", sizeof(SR_BlitProcessor));
 
     return inNumThreads;
 }

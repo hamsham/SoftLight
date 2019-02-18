@@ -5,10 +5,10 @@
  * Created on February 2, 2014, 1:42 PM
  */
 
-#include <iostream>
 #include <utility> // std::move
 
 #include "lightsky/utils/Assertions.h"
+#include "lightsky/utils/Log.h"
 
 #include "soft_render/SR_ImgFile.hpp"
 
@@ -25,11 +25,11 @@
 
 void print_img_load_error(FREE_IMAGE_FORMAT fif, const char* msg)
 {
-    std::cerr
-        << "\tAn image file error has occurred:"
-        << "\n\tFormat: " << FreeImage_GetFormatFromFIF(fif)
-        << "\n\t" << msg << "."
-        << std::endl;
+    LS_LOG_ERR(
+        "\tAn image file error has occurred:",
+        "\n\tFormat: ", FreeImage_GetFormatFromFIF(fif),
+        "\n\t", msg, "."
+    );
 }
 
 #else
@@ -87,30 +87,30 @@ SR_DataType get_bitmap_size(FIBITMAP* pImg)
     {
         // n-bit char
         case FIT_BITMAP:
-            std::cout << "\tImage pixel mType: BYTE" << std::endl;
+            LS_LOG_MSG("\tImage pixel mType: BYTE");
             dataType = VERTEX_DATA_BYTE;
             break;
 
             // 16-bit short
         case FIT_INT16:
             dataType = VERTEX_DATA_SHORT;
-            std::cout << "\tImage pixel mType: SHORT" << std::endl;
+            LS_LOG_MSG("\tImage pixel mType: SHORT");
             break;
 
         case FIT_UINT16:
             dataType = VERTEX_DATA_SHORT;
-            std::cout << "\tImage pixel mType: UNSIGNED SHORT" << std::endl;
+            LS_LOG_MSG("\tImage pixel mType: UNSIGNED SHORT");
             break;
 
             // 32-bit int
         case FIT_INT32:
             dataType = VERTEX_DATA_INT;
-            std::cout << "\tImage pixel mType: INT" << std::endl;
+            LS_LOG_MSG("\tImage pixel mType: INT");
             break;
 
         case FIT_UINT32:
             dataType = VERTEX_DATA_INT;
-            std::cout << "\tImage pixel mType: UNSIGNED INT" << std::endl;
+            LS_LOG_MSG("\tImage pixel mType: UNSIGNED INT");
             break;
 
             // 96-bit float
@@ -118,13 +118,13 @@ SR_DataType get_bitmap_size(FIBITMAP* pImg)
             // 128-bit float
         case FIT_RGBAF:
             dataType = VERTEX_DATA_FLOAT;
-            std::cout << "\tImage pixel mType: FLOAT" << std::endl;
+            LS_LOG_MSG("\tImage pixel mType: FLOAT");
             break;
 
             // unknown
         default:
             dataType = VERTEX_DATA_INVALID;
-            std::cout << "\tImage pixel mType: INVALID" << std::endl;
+            LS_LOG_MSG("\tImage pixel mType: INVALID");
             break;
     }
 
@@ -135,14 +135,14 @@ SR_DataType get_bitmap_size(FIBITMAP* pImg)
 
 SR_ColorDataType get_pixel_format(FIBITMAP* pImg, unsigned bpp)
 {
-    std::cout << "\tImage Bits Per Pixel: " << bpp << std::endl;
+    LS_LOG_MSG("\tImage Bits Per Pixel: ", bpp);
 
     // Get the data mType of the image. Convert to an internal format
     const FREE_IMAGE_TYPE dataType = FreeImage_GetImageType(pImg);
 
     if (dataType == FIT_BITMAP)
     {
-        std::cout << "\t8-bit Image" << std::endl;
+        LS_LOG_MSG("\t8-bit Image");
         switch (bpp)
         {
             case 8: return SR_COLOR_R_8U;
@@ -153,7 +153,7 @@ SR_ColorDataType get_pixel_format(FIBITMAP* pImg, unsigned bpp)
     }
     else if (dataType == FIT_INT16 || dataType == FIT_UINT16)
     {
-        std::cout << "\t16-bit Image" << std::endl;
+        LS_LOG_MSG("\t16-bit Image");
         switch (bpp)
         {
             case 16: return SR_COLOR_R_16U;
@@ -164,7 +164,7 @@ SR_ColorDataType get_pixel_format(FIBITMAP* pImg, unsigned bpp)
     }
     else if (dataType == FIT_INT32 || dataType == FIT_UINT32)
     {
-        std::cout << "\t32-bit Image" << std::endl;
+        LS_LOG_MSG("\t32-bit Image");
         switch (bpp)
         {
             case 32: return SR_COLOR_R_32U;
@@ -175,7 +175,7 @@ SR_ColorDataType get_pixel_format(FIBITMAP* pImg, unsigned bpp)
     }
     else if (dataType == FIT_FLOAT)
     {
-        std::cout << "\tFloat Image" << std::endl;
+        LS_LOG_MSG("\tFloat Image");
         switch (bpp)
         {
             case 32: return SR_COLOR_R_FLOAT;
@@ -186,22 +186,22 @@ SR_ColorDataType get_pixel_format(FIBITMAP* pImg, unsigned bpp)
     }
     else if (dataType == FIT_RGB16)
     {
-        std::cout << "\tRGB16 Image" << std::endl;
+        LS_LOG_MSG("\tRGB16 Image");
         return SR_COLOR_RGB_16U;
     }
     else if (dataType == FIT_RGBA16)
     {
-        std::cout << "\tRGBA16 Image" << std::endl;
+        LS_LOG_MSG("\tRGBA16 Image");
         return SR_COLOR_RGBA_16U;
     }
     else if (dataType == FIT_RGBF)
     {
-        std::cout << "\tRGB_F Image" << std::endl;
+        LS_LOG_MSG("\tRGB_F Image");
         return SR_COLOR_RGB_FLOAT;
     }
     else if (dataType == FIT_RGBAF)
     {
-        std::cout << "\tRGBA_F Image" << std::endl;
+        LS_LOG_MSG("\tRGBA_F Image");
         return SR_COLOR_RGBA_FLOAT;
     }
 
@@ -312,12 +312,12 @@ SR_ImgFile& SR_ImgFile::operator=(SR_ImgFile&& img)
 -------------------------------------*/
 SR_ImgFile::img_status_t SR_ImgFile::load(const char* filename)
 {
-    std::cout << "Attempting to load the image " << filename << std::endl;
+    LS_LOG_MSG("Attempting to load the image ", filename);
     unload();
 
     if (!filename || !filename[0])
     {
-        std::cerr << "\tFailed to load an image as no filename was provided.\n" << std::endl;
+        LS_LOG_ERR("\tFailed to load an image as no filename was provided.\n");
         return img_status_t::INVALID_FILE_NAME;
     }
 
@@ -329,16 +329,15 @@ SR_ImgFile::img_status_t SR_ImgFile::load(const char* filename)
 
     if (fileFormat == FIF_UNKNOWN)
     {
-        std::cerr << "\tUnable to determine the file mType for " << filename << ".\n" << std::endl;
+        LS_LOG_ERR("\tUnable to determine the file mType for ", filename, ".\n");
         return img_status_t::INVALID_FILE_TYPE;
     }
 
     if (FreeImage_FIFSupportsReading(fileFormat) == false)
     {
-        std::cerr
-            << "\tSupport for the mType of file used by " << filename
-            << " is not currently implemented.\n"
-            << std::endl;
+        LS_LOG_ERR(
+            "\tSupport for the mType of file used by ", filename,
+            " is not currently implemented.\n");
         return img_status_t::UNSUPPORTED_FILE_TYPE;
     }
 
@@ -350,17 +349,16 @@ SR_ImgFile::img_status_t SR_ImgFile::load(const char* filename)
 
     if (!fileData)
     {
-        std::cerr
-            << "\tUnable to load the image " << filename
-            << " due to an internal library error.\n"
-            << std::endl;
+        LS_LOG_ERR(
+            "\tUnable to load the image ", filename,
+            " due to an internal library error.\n");
         return img_status_t::INTERNAL_ERROR;
     }
 
     const SR_DataType dataType = get_bitmap_size(fileData);
     if (dataType == VERTEX_DATA_INVALID)
     {
-        std::cerr << '\t' << filename << " contains an unsupported pixel format.\n" << std::endl;
+        LS_LOG_ERR('\t', filename, " contains an unsupported pixel format.\n");
         FreeImage_Unload(fileData);
         return img_status_t::UNSUPPORTED_FORMAT;
     }
@@ -372,7 +370,7 @@ SR_ImgFile::img_status_t SR_ImgFile::load(const char* filename)
     this->mBpp = (unsigned)FreeImage_GetBPP(fileData);
     this->mFormat = get_pixel_format(fileData, this->mBpp);
 
-    std::cout << "\tSuccessfully loaded " << filename << ".\n" << std::endl;
+    LS_LOG_MSG("\tSuccessfully loaded ", filename, ".\n");
 
     return img_status_t::FILE_LOAD_SUCCESS;
 }

@@ -2,7 +2,6 @@
 #include <cassert> // assert
 #include <climits> // CHAR_BIT
 #include <cstdlib> // std::getenv
-#include <iostream> // std::cout, std::cerr
 #include <limits> // numeric_limits<>
 #include <memory> // std::move
 #include <new> // std::nothrow
@@ -20,6 +19,7 @@ extern "C"
 }
 
 #include "lightsky/utils/Copy.h"
+#include "lightsky/utils/Log.h"
 
 #include "soft_render/SR_RenderWindowXlib.hpp"
 #include "soft_render/SR_WindowBuffer.hpp"
@@ -29,6 +29,8 @@ extern "C"
 /*-----------------------------------------------------------------------------
  * Anonymous helper functions
 -----------------------------------------------------------------------------*/
+namespace utils = ls::utils;
+
 namespace
 {
 
@@ -47,7 +49,7 @@ bool _xlib_get_position(_XDisplay* const pDisplay, const unsigned long window, i
         XWindowAttributes attribs;
     #endif
 
-    ls::utils::fast_memset(&attribs, 0, sizeof(XWindowAttributes));
+    utils::fast_memset(&attribs, 0, sizeof(XWindowAttributes));
 
     int tempX, tempY;
 
@@ -80,11 +82,7 @@ SR_RenderWindowXlib::~SR_RenderWindowXlib() noexcept
 {
     if (this->valid() && destroy() != 0)
     {
-        std::cerr
-            << "Unable to properly close the render window "
-            << this
-            << " during destruction."
-            << std::endl;
+        LS_LOG_ERR("Unable to properly close the render window ", this, " during destruction.");
     }
 }
 
@@ -292,7 +290,7 @@ int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
     static const char* WIN_MGR_DELETE_MSG = {"WM_DELETE_WINDOW"};
     const auto windowError = [&](const char* errMsg) -> int
     {
-        std::cerr << errMsg << std::endl;
+        LS_LOG_ERR(errMsg);
         if (pEvent)
         {
             delete pEvent;
@@ -337,22 +335,22 @@ int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
 
     assert(!this->valid());
 
-    ls::utils::fast_memset(&visualInfo, 0, sizeof(XVisualInfo));
-    ls::utils::fast_memset(&windowAttribs, 0, sizeof(XSetWindowAttributes));
+    utils::fast_memset(&visualInfo, 0, sizeof(XVisualInfo));
+    utils::fast_memset(&windowAttribs, 0, sizeof(XSetWindowAttributes));
 
-    std::cout << "SR_RenderWindowXlib " << this << " initializing" << std::endl;
+    LS_LOG_MSG("SR_RenderWindowXlib ", this, " initializing");
     {
-        std::cout << "Connecting to X display \"" << pDisplayName << "\"." << std::endl;
+        LS_LOG_MSG("Connecting to X display \"", pDisplayName, "\".");
         pDisplay = XOpenDisplay(pDisplayName);
         if (!pDisplay)
         {
             errCode = -1;
             return windowError("\tUnable to connect to the X server.");
         }
-        std::cout << "\tDone." << std::endl;
+        LS_LOG_MSG("\tDone.");
     }
     {
-        std::cout << "Querying X server for display configuration." << std::endl;
+    LS_LOG_MSG("Querying X server for display configuration.");
         int numVisuals;
         visualInfo.screen = DefaultScreen(pDisplay);
 
@@ -362,20 +360,19 @@ int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
             errCode = -2;
             return windowError("\tFailed to get display information from the X server.");
         }
-        std::cout
-            << "\tDone. Retrieved " << numVisuals << " configurations Using the default:"
-            << "\n\t\tConfig ID:      " << pVisualInfo->visualid
-            << "\n\t\tScreen ID:      " << pVisualInfo->screen
-            << "\n\t\tBit Depth:      " << pVisualInfo->depth
-            << "\n\t\tRed Bits:       " << (pVisualInfo->red_mask & VisualRedMaskMask)
-            << "\n\t\tGreen Bits:     " << (pVisualInfo->green_mask & VisualGreenMaskMask)
-            << "\n\t\tBlue bits:      " << (pVisualInfo->blue_mask & VisualBlueMaskMask)
-            << "\n\t\tColorMap Size:  " << pVisualInfo->colormap_size
-            << "\n\t\tBits per Pixel: " << pVisualInfo->bits_per_rgb
-            << std::endl;
+        LS_LOG_MSG(
+            "\tDone. Retrieved ", numVisuals, " configurations Using the default:"
+            "\n\t\tConfig ID:      ", pVisualInfo->visualid,
+            "\n\t\tScreen ID:      ", pVisualInfo->screen,
+            "\n\t\tBit Depth:      ", pVisualInfo->depth,
+            "\n\t\tRed Bits:       ", (pVisualInfo->red_mask & VisualRedMaskMask),
+            "\n\t\tGreen Bits:     ", (pVisualInfo->green_mask & VisualGreenMaskMask),
+            "\n\t\tBlue bits:      ", (pVisualInfo->blue_mask & VisualBlueMaskMask),
+            "\n\t\tColorMap Size:  ", pVisualInfo->colormap_size,
+            "\n\t\tBits per Pixel: ", pVisualInfo->bits_per_rgb);
     }
     {
-        std::cout << "Configuring X window attributes." << std::endl;
+        LS_LOG_MSG("Configuring X window attributes.");
 
         colorMap = XCreateColormap(pDisplay, RootWindow(pDisplay, visualInfo.screen), pVisualInfo->visual, AllocNone);
 
@@ -405,7 +402,7 @@ int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
             return windowError("\tFailed to create X window from display.");
         }
 
-        std::cout << "\tCreated window " << windowId << '.' << std::endl;
+        LS_LOG_MSG("\tCreated window ", windowId, '.');
 
         XSelectInput(pDisplay, windowId, XLIB_EVENT_MASK);
         atomDelete = XInternAtom(pDisplay, WIN_MGR_DELETE_MSG, False);
@@ -426,14 +423,14 @@ int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
         }
         pEvent->type = None;
 
-        std::cout << "\tDone." << std::endl;
+        LS_LOG_MSG("\tDone.");
     }
 
     XFlush(pDisplay);
     XFree(pVisualInfo);
 
     {
-        std::cout << "Inspecting window for dimensions." << std::endl;
+        LS_LOG_MSG("Inspecting window for dimensions.");
         unsigned borderWidth, depth;
         Window root;
         if (XGetGeometry(pDisplay, windowId, &root, &x, &y, &w, &h, &borderWidth, &depth) != True)
@@ -442,7 +439,7 @@ int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
             return windowError("Unable to retrieve dimensions of a new window.");
         }
         _xlib_get_position(pDisplay, windowId, x, y);
-        std::cout << "\tSuccessfully created a window through X11." << std::endl;
+        LS_LOG_MSG("\tSuccessfully created a window through X11.");
     }
 
     mCurrentState = WindowStateInfo::WINDOW_STARTED;
@@ -458,13 +455,12 @@ int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
     mMouseX = 0;
     mMouseY = 0;
 
-    std::cout
-        << "Done. Successfully initialized SR_RenderWindowXlib " << this << '.'
-        << "\n\tDisplay:    " << pDisplayName
-        << "\n\tWindow ID:  " << mWindow
-        << "\n\tResolution: " << mWidth << 'x' << mHeight
-        << "\n\tPosition:   " << mX << 'x' << mY
-        << std::endl;
+    LS_LOG_MSG(
+        "Done. Successfully initialized SR_RenderWindowXlib ", this, '.',
+        "\n\tDisplay:    ", pDisplayName,
+        "\n\tWindow ID:  ", mWindow,
+        "\n\tResolution: ", mWidth, 'x', mHeight,
+        "\n\tPosition:   ", mX, 'x', mY);
     return 0;
 }
 
@@ -523,7 +519,7 @@ bool SR_RenderWindowXlib::set_size(unsigned width, unsigned height) noexcept
 
     if (mWidth == width && mHeight == height)
     {
-        std::cerr << "Window size unchanged." << std::endl;
+        LS_LOG_ERR("Window size unchanged.");
         return true;
     }
 
@@ -551,7 +547,7 @@ bool SR_RenderWindowXlib::set_position(int x, int y) noexcept
 
     if (mX == x && mY == y)
     {
-        std::cerr << "Window position unchanged." << std::endl;
+        LS_LOG_ERR("Window position unchanged.");
         return true;
     }
 
@@ -669,9 +665,7 @@ void SR_RenderWindowXlib::update() noexcept
 
         default:
             // We should not be in a "starting" or "closed" state
-            std::cerr
-                << "Encountered unexpected window state " << mCurrentState << '.'
-                << std::endl;
+            LS_LOG_ERR("Encountered unexpected window state ", mCurrentState, '.');
             assert(false); // assertions are disabled on release builds
             mCurrentState = WindowStateInfo::WINDOW_CLOSING;
             break;
@@ -679,7 +673,7 @@ void SR_RenderWindowXlib::update() noexcept
 
     if (evtStatus != Success)
     {
-        std::cerr << "X server connection error. Shutting down X connection." << std::endl;
+        LS_LOG_ERR("X server connection error. Shutting down X connection.");
         mCurrentState = WindowStateInfo::WINDOW_CLOSING;
         destroy();
     }

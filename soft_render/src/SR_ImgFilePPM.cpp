@@ -1,9 +1,10 @@
 
 #include <cmath>
-#include <iostream>
 #include <limits>
 #include <stdexcept>
 #include <string>
+
+#include "lightsky/utils/Log.h"
 
 #include "soft_render/SR_Geometry.hpp"
 #include "soft_render/SR_ImgFilePPM.hpp"
@@ -74,7 +75,7 @@ SR_ColorRGB8* sr_img_load_ppm(coord_shrt_t& w, coord_shrt_t& h, const char* cons
         do {
             if (!f.good())
             {
-                std::cerr << "Failed to read " << pFilename << ". End of file reached." << std::endl;
+                LS_LOG_ERR("Failed to read ", pFilename, ". End of file reached.");
                 readBuffer.clear();
                 return readBuffer;
             }
@@ -99,7 +100,7 @@ SR_ColorRGB8* sr_img_load_ppm(coord_shrt_t& w, coord_shrt_t& h, const char* cons
     ppmType = std::move(readNextItem());
     if (ppmType.empty() || (ppmType != "P6" && ppmType != "P3"))
     {
-        std::cerr << "Unknown PPM format in " << pFilename << ": " << ppmType << std::endl;
+        LS_LOG_ERR("Unknown PPM format in ", pFilename, ": ", ppmType);
         return nullptr;
     }
 
@@ -112,31 +113,31 @@ SR_ColorRGB8* sr_img_load_ppm(coord_shrt_t& w, coord_shrt_t& h, const char* cons
     }
     catch (std::invalid_argument& ia)
     {
-        std::cerr << "Unable to read value from PPM file: " << ia.what() << std::endl;
+        LS_LOG_ERR("Unable to read value from PPM file: ", ia.what());
         return nullptr;
     }   
     catch (std::out_of_range& oor)
     {
-        std::cerr << "Unable to read number from PPM file: " << oor.what() << std::endl;
+        LS_LOG_ERR("Unable to read number from PPM file: ", oor.what());
         return nullptr;
     }
 
     if (width < 1 || width > std::numeric_limits<coord_shrt_t>::max())
     {
-        std::cerr << "Invalid PPM image width: " << width << std::endl;
+        LS_LOG_ERR("Invalid PPM image width: ", width);
         return nullptr;
     }
 
     if (height < 1 || height > std::numeric_limits<coord_shrt_t>::max())
     {
-        std::cerr << "Invalid PPM image height: " << height << std::endl;
+        LS_LOG_ERR("Invalid PPM image height: ", height);
         return nullptr;
     }
 
     // PPM images support up to 65536 values per pixel component
     if (pixelMaxVal > 65535)
     {
-        std::cerr << "Unsupported maximum color value: " << pixelMaxVal << std::endl;
+        LS_LOG_ERR("Unsupported maximum color value: ", pixelMaxVal);
         return nullptr;
     }
 
@@ -146,7 +147,7 @@ SR_ColorRGB8* sr_img_load_ppm(coord_shrt_t& w, coord_shrt_t& h, const char* cons
     {
         if (!f.good())
         {
-            std::cerr << "Bag stream encountered while streaming buffer data from " << pFilename << std::endl;
+            LS_LOG_ERR("Bag stream encountered while streaming buffer data from ", pFilename);
             return nullptr;
         }
 
@@ -181,7 +182,7 @@ SR_ColorRGB8* sr_img_load_ppm(coord_shrt_t& w, coord_shrt_t& h, const char* cons
     w = (coord_shrt_t)width;
     h = (coord_shrt_t)height;
 
-    std::cout << "Successfully loaded a " << w << " x " << h << " PPM image: " << pFilename << std::endl;
+    LS_LOG_MSG("Successfully loaded a ", w, 'x', h, " PPM image: ", pFilename);
 
     return pImg;
 }

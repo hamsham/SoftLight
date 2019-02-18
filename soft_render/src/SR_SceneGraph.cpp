@@ -22,27 +22,6 @@
 -----------------------------------------------------------------------------*/
 namespace
 {
-/*
-void print_list(const std::vector<ls::draw::SR_SceneNode>& l) {
-    for (const ls::draw::SR_SceneNode& n : l) {
-        std::cout << n.nodeId << ' ';
-    }
-
-    std::cout << std::endl;
-}
-
-
-
-void print_list(const std::vector<ls::draw::SR_Transform>& l) {
-    for (const ls::draw::SR_Transform& t : l) {
-        std::cout << t.mParentId << ' ';
-    }
-
-    std::cout << std::endl;
-}
-*/
-
-
 
 /*-------------------------------------
  * Rotate the nodes in a list
@@ -561,12 +540,6 @@ bool SR_SceneGraph::reparent_node(const size_t nodeIndex, const size_t newParent
 
         mCurrentTransforms[i].set_dirty();
     }
-
-    /*
-    std::cout << "To this:";
-    std::cout << "\n\t"; print_list(nodes);
-    std::cout << "\t"; print_list(currentTransforms);
-    */
 
     // Animations need love too
     for (SR_Animation& anim : mAnimations)

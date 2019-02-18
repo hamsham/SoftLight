@@ -4,13 +4,13 @@
 #include <winuser.h>
 
 #include <cassert>
-#include <iostream>
 #include <string>
 
 #include "lightsky/setup/Compiler.h"
 
-#include "soft_render/SR_Color.hpp"
+#include "lightsky/utils/Log.h"
 
+#include "soft_render/SR_Color.hpp"
 #include "soft_render/SR_KeySym.hpp"
 #include "soft_render/SR_RenderWindowWin32.hpp"
 #include "soft_render/SR_WindowBufferWin32.hpp"
@@ -99,11 +99,7 @@ SR_RenderWindowWin32::~SR_RenderWindowWin32() noexcept
 {
     if (this->valid() && destroy() != 0)
     {
-        std::cerr
-            << "Unable to properly close the render window "
-            << this
-            << " during destruction."
-            << std::endl;
+        LS_LOG_ERR("Unable to properly close the render window ", this, " during destruction.");
     }
 }
 
@@ -242,7 +238,6 @@ LRESULT SR_RenderWindowWin32::win_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
     switch (msg)
     {
         case WM_COMMAND:
-            std::cout << "Command: " << wParam << std::endl;
             break;
 
         case WM_CLOSE:
@@ -296,7 +291,7 @@ int SR_RenderWindowWin32::init(unsigned width, unsigned height) noexcept
 {
     assert(!this->valid());
 
-    std::cout << "SR_RenderWindowWin32 " << this << " initializing" << std::endl;
+    LS_LOG_MSG("SR_RenderWindowWin32 ", this, " initializing");
 
     WNDCLASSEX wc;
     HWND hwnd;
@@ -316,7 +311,7 @@ int SR_RenderWindowWin32::init(unsigned width, unsigned height) noexcept
 
     if (!RegisterClassEx(&wc))
     {
-        std::cerr << "\tFailed to create a window class." << std::endl;
+        LS_LOG_ERR("\tFailed to create a window class.");
         return -1;
     }
 
@@ -346,7 +341,7 @@ int SR_RenderWindowWin32::init(unsigned width, unsigned height) noexcept
     if (!hwnd)
     {
         UnregisterClass(SR_RENDER_WINDOW_WIN32_CLASS, wc.hInstance);
-        std::cerr << "\tFailed to create a window handle." << std::endl;
+        LS_LOG_ERR("\tFailed to create a window handle.");
         return -2;
     }
 
@@ -360,13 +355,12 @@ int SR_RenderWindowWin32::init(unsigned width, unsigned height) noexcept
     mMouseX = 0;
     mMouseY = 0;
 
-    std::cout
-        << "Done. Successfully initialized SR_RenderWindowWin32 " << this << '.'
-        << "\n\tDisplay:    " << wc.lpszClassName
-        << "\n\tWindow ID:  " << mHwnd
-        << "\n\tResolution: " << clientArea.right << 'x' << clientArea.bottom
-        << "\n\tPosition:   " << clientArea.left << 'x' << clientArea.top
-        << std::endl;
+    LS_LOG_MSG(
+        "Done. Successfully initialized SR_RenderWindowWin32 ", this, '.'
+        "\n\tDisplay:    ", wc.lpszClassName
+        "\n\tWindow ID:  ", mHwnd
+        "\n\tResolution: ", clientArea.right, 'x', clientArea.bottom
+        "\n\tPosition:   ", clientArea.left,  'x', clientArea.top);
 
     return 0;
 }
@@ -594,9 +588,7 @@ void SR_RenderWindowWin32::update() noexcept
 
         default:
             // We should not be in a "starting" or "closed" state
-            std::cerr
-                << "Encountered unexpected window state " << mCurrentState << '.'
-                << std::endl;
+            LS_LOG_ERR("Encountered unexpected window state ", mCurrentState, '.');
             assert(false); // assertions are disabled on release builds
             mCurrentState = WindowStateInfo::WINDOW_CLOSING;
             return;
@@ -675,7 +667,7 @@ bool SR_RenderWindowWin32::pause() noexcept
         case WindowStateInfo::WINDOW_STARTED:
             ShowWindow(mHwnd, SW_SHOWDEFAULT);
             UpdateWindow(mHwnd);
-            std::cout << "Window started in a paused state." << std::endl;
+            LS_LOG_MSG("Window started in a paused state.");
         case WindowStateInfo::WINDOW_RUNNING:
         case WindowStateInfo::WINDOW_PAUSED:
         case WindowStateInfo::WINDOW_CLOSING:
@@ -713,7 +705,7 @@ bool SR_RenderWindowWin32::run() noexcept
         case WindowStateInfo::WINDOW_STARTED:
             ShowWindow(mHwnd, SW_SHOWDEFAULT);
             UpdateWindow(mHwnd);
-            std::cout << "Window started in a running state." << std::endl;
+            LS_LOG_MSG"Window started in a running state.");
         case WindowStateInfo::WINDOW_CLOSING:
         case WindowStateInfo::WINDOW_RUNNING:
         case WindowStateInfo::WINDOW_PAUSED:
@@ -994,7 +986,7 @@ void SR_RenderWindowWin32::render(SR_WindowBuffer& buffer) noexcept
 
     if (numScanLines == 0)
     {
-        std::cerr << "Failed to blit a framebuffer. Error code: " << GetLastError() << std::endl;
+        LS_LOG_ERR("Failed to blit a framebuffer. Error code: ", GetLastError());
     }
 
     ReleaseDC(mHwnd, winDc);
