@@ -357,9 +357,9 @@ int SR_RenderWindowWin32::init(unsigned width, unsigned height) noexcept
 
     LS_LOG_MSG(
         "Done. Successfully initialized SR_RenderWindowWin32 ", this, '.'
-        "\n\tDisplay:    ", wc.lpszClassName
-        "\n\tWindow ID:  ", mHwnd
-        "\n\tResolution: ", clientArea.right, 'x', clientArea.bottom
+        "\n\tDisplay:    ", wc.lpszClassName,
+        "\n\tWindow ID:  ", mHwnd,
+        "\n\tResolution: ", clientArea.right, 'x', clientArea.bottom,
         "\n\tPosition:   ", clientArea.left,  'x', clientArea.top);
 
     return 0;
