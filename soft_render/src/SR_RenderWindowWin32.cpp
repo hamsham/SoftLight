@@ -356,7 +356,7 @@ int SR_RenderWindowWin32::init(unsigned width, unsigned height) noexcept
     mMouseY = 0;
 
     LS_LOG_MSG(
-        "Done. Successfully initialized SR_RenderWindowWin32 ", this, '.'
+        "Done. Successfully initialized SR_RenderWindowWin32 ", this, '.',
         "\n\tDisplay:    ", wc.lpszClassName,
         "\n\tWindow ID:  ", mHwnd,
         "\n\tResolution: ", clientArea.right, 'x', clientArea.bottom,
@@ -705,7 +705,7 @@ bool SR_RenderWindowWin32::run() noexcept
         case WindowStateInfo::WINDOW_STARTED:
             ShowWindow(mHwnd, SW_SHOWDEFAULT);
             UpdateWindow(mHwnd);
-            LS_LOG_MSG"Window started in a running state.");
+            LS_LOG_MSG("Window started in a running state.");
         case WindowStateInfo::WINDOW_CLOSING:
         case WindowStateInfo::WINDOW_RUNNING:
         case WindowStateInfo::WINDOW_PAUSED:
