@@ -421,7 +421,7 @@ void SR_VertexProcessor::execute() noexcept
         pIbo = &mContext->ibo(vao.get_index_buffer());
     }
 
-    if (mMesh.mode & (RENDER_MODE_INDEXED_POINTS | RENDER_MODE_INDEXED_POINTS))
+    if (mMesh.mode & (RENDER_MODE_POINTS | RENDER_MODE_INDEXED_POINTS))
     {
         begin += mThreadId;
         const size_t step = mNumThreads;
@@ -480,7 +480,6 @@ void SR_VertexProcessor::execute() noexcept
         const size_t step = mNumThreads * 3u;
         const bool usingIndices = mMesh.mode == RENDER_MODE_INDEXED_TRI_WIRE;
         math::vec4 tempWorldCoord;
-        math::vec4 tempScreenCoord;
 
         for (size_t i = begin; i < end; i += step)
         {
@@ -489,39 +488,41 @@ void SR_VertexProcessor::execute() noexcept
             worldCoords[0]  = shader(vertId[0], vao, vbo, pUniforms, pVaryings);
             worldCoords[1]  = shader(vertId[1], vao, vbo, pUniforms, pVaryings + numVaryings);
             worldCoords[2]  = shader(vertId[2], vao, vbo, pUniforms, pVaryings + (numVaryings * 2));
-            screenCoords[0] = world_to_screen_3(worldCoords[0], widthScale, heightScale);
-            screenCoords[1] = world_to_screen_3(worldCoords[1], widthScale, heightScale);
-            screenCoords[2] = world_to_screen_3(worldCoords[2], widthScale, heightScale);
 
             // verts 0 & 1
             if (worldCoords[0][3] >= 0.f && worldCoords[1][3] >= 0.f)
             {
+                screenCoords[0] = world_to_screen_3(worldCoords[0], widthScale, heightScale);
+                screenCoords[1] = world_to_screen_3(worldCoords[1], widthScale, heightScale);
+
                 if (sr_clip_liang_barsky(screenCoords, fboW, fboH))
                 {
                     push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
                 }
             }
-
-            tempWorldCoord  = worldCoords[1];
-            tempScreenCoord = screenCoords[1];
-            worldCoords[1]  = worldCoords[2];
-            screenCoords[1] = screenCoords[2];
 
             // verts 0 & 2
+            tempWorldCoord = worldCoords[1];
+            worldCoords[1] = worldCoords[2];
             if (worldCoords[0][3] >= 0.f && worldCoords[1][3] >= 0.f)
             {
+                screenCoords[0] = world_to_screen_3(worldCoords[0], widthScale, heightScale);
+                screenCoords[1] = world_to_screen_3(worldCoords[1], widthScale, heightScale);
+
                 if (sr_clip_liang_barsky(screenCoords, fboW, fboH))
                 {
                     push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
                 }
             }
 
-            worldCoords[0]  = tempWorldCoord;
-            screenCoords[0] = tempScreenCoord;
 
             // verts 1 & 2
+            worldCoords[0] = tempWorldCoord;
             if (worldCoords[0][3] >= 0.f && worldCoords[1][3] >= 0.f)
             {
+                screenCoords[0] = world_to_screen_3(worldCoords[0], widthScale, heightScale);
+                screenCoords[1] = world_to_screen_3(worldCoords[1], widthScale, heightScale);
+
                 if (sr_clip_liang_barsky(screenCoords, fboW, fboH))
                 {
                     push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
