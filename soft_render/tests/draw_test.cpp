@@ -70,8 +70,8 @@ int main()
     utils::Pointer<SR_SceneGraph> pGraph{new SR_SceneGraph{}};
     SR_Context& context = pGraph->mContext;
 
-    retCode = context.num_threads(4);
-    assert(retCode == 4);
+    retCode = context.num_threads(1);
+    assert(retCode == 1);
 
     size_t fboId = context.create_framebuffer();
     size_t texId = context.create_texture();
@@ -103,14 +103,14 @@ int main()
     vbo.assign(tri, 0, numVboBytes);
 
     SR_IndexBuffer& ibo = context.ibo(iboId);
-    unsigned char indices[6] = {0, 2, 0, 1, 1, 2};
-    retCode = ibo.init(6, SR_DataType::VERTEX_DATA_BYTE);
+    unsigned char indices[3] = {0, 1, 2};
+    retCode = ibo.init(3, SR_DataType::VERTEX_DATA_BYTE);
     if (retCode != 0)
     {
         std::cerr << "Error while creating an IBO: " << retCode << std::endl;
         abort();
     }
-    ibo.assign(indices, 0, 6);
+    ibo.assign(indices, 0, 3);
 
     SR_VertexArray& vao = context.vao(vaoId);
     vao.set_vertex_buffer(vboId);
@@ -165,7 +165,7 @@ int main()
     m.elementBegin = 0;
     m.elementEnd = context.ibos().begin()->count();
     m.vaoId = vaoId;
-    m.mode = RENDER_MODE_INDEXED_LINES;
+    m.mode = RENDER_MODE_INDEXED_TRI_WIRE;
 
     context.draw(m, shaderId, fboId);
 
