@@ -1,6 +1,4 @@
 
-#include <iostream>
-
 #include "lightsky/utils/Sort.hpp" // utils::sort_quick
 
 #include "lightsky/math/vec4.h"
@@ -32,7 +30,7 @@ namespace
 /*--------------------------------------
  * Convert world coordinates to screen coordinates (temporary until NDC clipping is added)
 --------------------------------------*/
-inline math::vec4 world_to_screen_3(const math::vec4& v, const float widthScale, const float heightScale) noexcept
+inline math::vec4 sr_world_to_screen_coords(const math::vec4& v, const float widthScale, const float heightScale) noexcept
 {
     const float wInv = 1.f / v.v[3];
     math::vec4&& temp = v * wInv;
@@ -67,25 +65,31 @@ inline size_t get_next_vertex(const SR_IndexBuffer* pIbo, size_t vId) noexcept
 inline math::vec3_t<size_t> get_next_vertex3(const SR_IndexBuffer* pIbo, size_t vId) noexcept
 {
     math::vec3_t<size_t> ret;
+    const unsigned char* pByte;
+    const unsigned short* pShort;
+    const unsigned int* pInt;
 
     switch (pIbo->type())
     {
         case VERTEX_DATA_BYTE:
-            ret[0] = *reinterpret_cast<const unsigned char*>(pIbo->element(vId+0));
-            ret[1] = *reinterpret_cast<const unsigned char*>(pIbo->element(vId+1));
-            ret[2] = *reinterpret_cast<const unsigned char*>(pIbo->element(vId+2));
+            pByte = reinterpret_cast<const unsigned char*>(pIbo->element(vId));
+            ret[0] = (size_t)pByte[0];
+            ret[1] = (size_t)pByte[1];
+            ret[2] = (size_t)pByte[2];
             break;
 
         case VERTEX_DATA_SHORT:
-            ret[0] = *reinterpret_cast<const unsigned short*>(pIbo->element(vId+0));
-            ret[1] = *reinterpret_cast<const unsigned short*>(pIbo->element(vId+1));
-            ret[2] = *reinterpret_cast<const unsigned short*>(pIbo->element(vId+2));
+            pShort = reinterpret_cast<const unsigned short*>(pIbo->element(vId));
+            ret[0] = (size_t)pShort[0];
+            ret[1] = (size_t)pShort[1];
+            ret[2] = (size_t)pShort[2];
             break;
 
         case VERTEX_DATA_INT:
-            ret[0] = *reinterpret_cast<const unsigned int*>(pIbo->element(vId+0));
-            ret[1] = *reinterpret_cast<const unsigned int*>(pIbo->element(vId+1));
-            ret[2] = *reinterpret_cast<const unsigned int*>(pIbo->element(vId+2));
+            pInt = reinterpret_cast<const unsigned int*>(pIbo->element(vId));
+            ret[0] = (size_t)pInt[0];
+            ret[1] = (size_t)pInt[1];
+            ret[2] = (size_t)pInt[2];
             break;
 
         default:
@@ -435,7 +439,7 @@ void SR_VertexProcessor::execute() noexcept
 
             if (worldCoords[0][3] > 0.f)
             {
-                screenCoords[0] = world_to_screen_3(worldCoords[0], widthScale, heightScale);
+                screenCoords[0] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);
                 push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
             }
         }
@@ -463,8 +467,8 @@ void SR_VertexProcessor::execute() noexcept
 
             if (worldCoords[0][3] >= 0.f && worldCoords[1][3] >= 0.f)
             {
-                screenCoords[0] = world_to_screen_3(worldCoords[0], widthScale, heightScale);
-                screenCoords[1] = world_to_screen_3(worldCoords[1], widthScale, heightScale);
+                screenCoords[0] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);
+                screenCoords[1] = sr_world_to_screen_coords(worldCoords[1], widthScale, heightScale);
 
                 if (sr_clip_liang_barsky(screenCoords, fboW, fboH))
                 {
@@ -492,8 +496,8 @@ void SR_VertexProcessor::execute() noexcept
             // verts 0 & 1
             if (worldCoords[0][3] >= 0.f && worldCoords[1][3] >= 0.f)
             {
-                screenCoords[0] = world_to_screen_3(worldCoords[0], widthScale, heightScale);
-                screenCoords[1] = world_to_screen_3(worldCoords[1], widthScale, heightScale);
+                screenCoords[0] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);
+                screenCoords[1] = sr_world_to_screen_coords(worldCoords[1], widthScale, heightScale);
 
                 if (sr_clip_liang_barsky(screenCoords, fboW, fboH))
                 {
@@ -506,8 +510,8 @@ void SR_VertexProcessor::execute() noexcept
             worldCoords[1] = worldCoords[2];
             if (worldCoords[0][3] >= 0.f && worldCoords[1][3] >= 0.f)
             {
-                screenCoords[0] = world_to_screen_3(worldCoords[0], widthScale, heightScale);
-                screenCoords[1] = world_to_screen_3(worldCoords[1], widthScale, heightScale);
+                screenCoords[0] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);
+                screenCoords[1] = sr_world_to_screen_coords(worldCoords[1], widthScale, heightScale);
 
                 if (sr_clip_liang_barsky(screenCoords, fboW, fboH))
                 {
@@ -520,8 +524,8 @@ void SR_VertexProcessor::execute() noexcept
             worldCoords[0] = tempWorldCoord;
             if (worldCoords[0][3] >= 0.f && worldCoords[1][3] >= 0.f)
             {
-                screenCoords[0] = world_to_screen_3(worldCoords[0], widthScale, heightScale);
-                screenCoords[1] = world_to_screen_3(worldCoords[1], widthScale, heightScale);
+                screenCoords[0] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);
+                screenCoords[1] = sr_world_to_screen_coords(worldCoords[1], widthScale, heightScale);
 
                 if (sr_clip_liang_barsky(screenCoords, fboW, fboH))
                 {
@@ -544,9 +548,9 @@ void SR_VertexProcessor::execute() noexcept
             worldCoords[1]  = shader(vertId[1], vao, vbo, pUniforms, pVaryings + numVaryings);
             worldCoords[2]  = shader(vertId[2], vao, vbo, pUniforms, pVaryings + (numVaryings << 1));
 
-            screenCoords[0] = world_to_screen_3(worldCoords[0], widthScale, heightScale);
-            screenCoords[1] = world_to_screen_3(worldCoords[1], widthScale, heightScale);
-            screenCoords[2] = world_to_screen_3(worldCoords[2], widthScale, heightScale);
+            screenCoords[0] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);
+            screenCoords[1] = sr_world_to_screen_coords(worldCoords[1], widthScale, heightScale);
+            screenCoords[2] = sr_world_to_screen_coords(worldCoords[2], widthScale, heightScale);
 
             if ((cullMode == SR_CULL_BACK_FACE && backface_visible(screenCoords, worldCoords))
             || (cullMode == SR_CULL_FRONT_FACE && frontface_visible(screenCoords, worldCoords))
