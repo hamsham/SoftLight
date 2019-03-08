@@ -116,10 +116,10 @@ math::vec4 _normal_vert_shader_impl(const size_t vertId, const SR_VertexArray& v
     const math::vec3& vert = *vbo.element<const math::vec3>(vao.offset(0, vertId));
     const math::vec3& norm = *vbo.element<const math::vec3>(vao.offset(1, vertId));
 
-    varyings[0] = pUniforms->modelMatrix * math::vec4{vert[0], vert[1], vert[2], 1.f};
-    varyings[1] = pUniforms->modelMatrix * math::vec4{norm[0], norm[1], norm[2], 0.f};
+    varyings[0] = pUniforms->modelMatrix * math::vec4_cast(vert, 1.f);
+    varyings[1] = pUniforms->modelMatrix * math::vec4_cast(norm, 0.f);
 
-    return pUniforms->mvpMatrix * math::vec4{vert[0], vert[1], vert[2], 1.f};
+    return pUniforms->mvpMatrix * math::vec4_cast(vert, 1.f);
 }
 
 
@@ -202,11 +202,11 @@ math::vec4 _texture_vert_shader_impl(const size_t vertId, const SR_VertexArray& 
     const math::vec2&   uv        = *vbo.element<const math::vec2>(vao.offset(1, vertId));
     const math::vec3&   norm      = *vbo.element<const math::vec3>(vao.offset(2, vertId));
 
-    varyings[0] = pUniforms->modelMatrix * math::vec4{vert[0], vert[1], vert[2], 1.f};
-    varyings[1] = math::vec4{uv.v[0], uv.v[1], 0.f, 0.f};
-    varyings[2] = math::normalize(pUniforms->modelMatrix * math::vec4{norm[0], norm[1], norm[2], 0.f});
+    varyings[0] = pUniforms->modelMatrix * math::vec4_cast(vert, 1.f);
+    varyings[1] = math::vec4_cast(uv, 0.f, 0.f);
+    varyings[2] = math::normalize(pUniforms->modelMatrix * math::vec4_cast(norm, 0.f));
 
-    return pUniforms->mvpMatrix * math::vec4{vert[0], vert[1], vert[2], 1.f};
+    return pUniforms->mvpMatrix * math::vec4_cast(vert, 1.f);
 }
 
 
@@ -244,14 +244,13 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
     // normalize the texture colors to within (0.f, 1.f)
     if (sr_elements_per_color(albedo->type()) == 3)
     {
-        math::vec3_t<uint8_t>&& pixel8 = albedo->nearest<math::vec3_t<uint8_t>>(uv[0], uv[1]);
-        math::vec4_t<uint8_t> pixelF{pixel8[0], pixel8[1], pixel8[2], 255};
+        const math::vec3_t<uint8_t>&& pixel8 = albedo->nearest<math::vec3_t<uint8_t>>(uv[0], uv[1]);
+        const math::vec4_t<uint8_t>&& pixelF = math::vec4_cast<uint8_t>(pixel8, 255);
         pixel = color_cast<float, uint8_t>(pixelF);
     }
     else
     {
-        math::vec4_t<uint8_t>&& pixel8 = albedo->nearest<math::vec4_t<uint8_t>>(uv[0], uv[1]);
-        math::vec4_t<uint8_t> pixelF{pixel8[0], pixel8[1], pixel8[2], 255};
+        const math::vec4_t<uint8_t>&& pixelF = albedo->nearest<math::vec4_t<uint8_t>>(uv[0], uv[1]);
         pixel = color_cast<float, uint8_t>(pixelF);
     }
 
@@ -357,14 +356,13 @@ bool _texture_frag_shader_pbr(const math::vec4&, const SR_UniformBuffer* uniform
     // normalize the texture colors to within (0.f, 1.f)
     if (sr_elements_per_color(pTexture->type()) == 3)
     {
-        math::vec3_t<uint8_t>&& pixel8 = pTexture->nearest<math::vec3_t<uint8_t>>(uv[0], uv[1]);
-        math::vec4_t<uint8_t> pixelF{pixel8[0], pixel8[1], pixel8[2], 255};
+        const math::vec3_t<uint8_t>&& pixel8 = pTexture->nearest<math::vec3_t<uint8_t>>(uv[0], uv[1]);
+        const math::vec4_t<uint8_t>&& pixelF = math::vec4_cast<uint8_t>(pixel8, 255);
         pixel = color_cast<float, uint8_t>(pixelF);
     }
     else
     {
-        math::vec4_t<uint8_t>&& pixel8 = pTexture->nearest<math::vec4_t<uint8_t>>(uv[0], uv[1]);
-        math::vec4_t<uint8_t> pixelF{pixel8[0], pixel8[1], pixel8[2], 255};
+        const math::vec4_t<uint8_t>&& pixelF = pTexture->nearest<math::vec4_t<uint8_t>>(uv[0], uv[1]);
         pixel = color_cast<float, uint8_t>(pixelF);
     }
 
