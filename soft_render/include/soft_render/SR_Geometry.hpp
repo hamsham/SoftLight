@@ -300,9 +300,9 @@ inline ls::math::vec3_t<data_t> sr_barycentric(
     const ls::math::vec2_t<data_t>& c
 ) noexcept
 {
-    const ls::math::vec3_t<data_t>   u = {c[0]-a[0], b[0]-a[0], a[0]-p[0]};
-    const ls::math::vec3_t<data_t>   v = {c[1]-a[1], b[1]-a[1], a[1]-p[1]};
-    const ls::math::vec3_t<data_t>&& s = ls::math::cross<data_t>(u, v);
+    const ls::math::vec4_t<data_t>   u = {c[0]-a[0], b[0]-a[0], a[0]-p[0], (data_t)0};
+    const ls::math::vec4_t<data_t>   v = {c[1]-a[1], b[1]-a[1], a[1]-p[1], (data_t)0};
+    const ls::math::vec4_t<data_t>&& s = ls::math::cross<data_t>(u, v);
 
     const data_t si = ls::math::rcp<data_t>(s[2]);
     const data_t s2 = s[0] * si;
@@ -322,9 +322,9 @@ inline ls::math::vec3_t<data_t> sr_barycentric(
     const ls::math::vec3_t<data_t>& c
 ) noexcept
 {
-    const ls::math::vec3_t<data_t>   u = {c[0]-a[0], b[0]-a[0], a[0]-p[0]};
-    const ls::math::vec3_t<data_t>   v = {c[1]-a[1], b[1]-a[1], a[1]-p[1]};
-    const ls::math::vec3_t<data_t>&& s = ls::math::cross<data_t>(u, v);
+    const ls::math::vec4_t<data_t>   u = {c[0]-a[0], b[0]-a[0], a[0]-p[0], (data_t)0};
+    const ls::math::vec4_t<data_t>   v = {c[1]-a[1], b[1]-a[1], a[1]-p[1], (data_t)0};
+    const ls::math::vec4_t<data_t>&& s = ls::math::cross<data_t>(u, v);
 
     const data_t si = ls::math::rcp<data_t>(s[2]);
     const data_t s2 = s[0] * si;
@@ -344,9 +344,9 @@ inline ls::math::vec4_t<data_t> sr_barycentric(
     const ls::math::vec4_t<data_t>& c
 ) noexcept
 {
-    const ls::math::vec3_t<data_t>   u = {c[0]-a[0], b[0]-a[0], a[0]-p[0]};
-    const ls::math::vec3_t<data_t>   v = {c[1]-a[1], b[1]-a[1], a[1]-p[1]};
-    const ls::math::vec3_t<data_t>&& s = ls::math::cross<data_t>(u, v);
+    const ls::math::vec4_t<data_t>   u = {c[0]-a[0], b[0]-a[0], a[0]-p[0], 0.f};
+    const ls::math::vec4_t<data_t>   v = {c[1]-a[1], b[1]-a[1], a[1]-p[1], 0.f};
+    const ls::math::vec4_t<data_t>&& s = ls::math::cross<data_t>(u, v);
 
     const data_t si = ls::math::rcp<data_t>(s[2]);
     const data_t s2 = s[0] * si;
