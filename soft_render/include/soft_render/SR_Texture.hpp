@@ -531,7 +531,7 @@ inline const ls::math::vec4_t<float> SR_Texture::texel4<float>(uint16_t x, uint1
     #elif defined(LS_ARCH_ARM)
         return ls::math::vec4_t<float>{vld1q_f32(pTexels)};
     #else
-        return ls::math::vec4_t<color_type>{
+        return ls::math::vec4_t<float>{
             pTexels[0],
             pTexels[1],
             pTexels[2],
