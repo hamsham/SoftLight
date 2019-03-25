@@ -387,9 +387,9 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     const int32_t     increment    = (int32_t)mNumProcessors;
     const math::vec4* screenCoords = mBins[binId].mScreenCoords;
     const math::vec4  depth        {screenCoords[0][2], screenCoords[1][2], screenCoords[2][2], 0.f};
-    math::vec2        p0           {screenCoords[0][0], screenCoords[0][1]};
-    math::vec2        p1           {screenCoords[1][0], screenCoords[1][1]};
-    math::vec2        p2           {screenCoords[2][0], screenCoords[2][1]};
+    math::vec2&&      p0           = math::vec2_cast(screenCoords[0]);
+    math::vec2&&      p1           = math::vec2_cast(screenCoords[1]);
+    math::vec2&&      p2           = math::vec2_cast(screenCoords[2]);
     const math::vec4  persp        = mBins[binId].mPerspDivide;
     const bool        depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON;
     const int32_t     bboxMinX     = (int32_t)math::min(mFboW, math::max(0.f,   math::min(p0[0], p1[0], p2[0])));
