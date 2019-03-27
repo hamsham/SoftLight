@@ -135,7 +135,7 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
     constexpr float       step      = 1.f / 256.f;
     const VolumeUniforms* pUniforms = static_cast<const VolumeUniforms*>(uniforms);
     const math::vec2&&    winDimens = math::vec2{fragCoords[0], fragCoords[1]} * math::rcp(pUniforms->windowSize);
-    const float           focalLen  = math::rcp<float>(math::const_tan(pUniforms->viewAngle*0.5f));
+    const float           focalLen  = math::rcp<float>(math::tan(pUniforms->viewAngle*0.5f));
     const SR_Texture*     volumeTex = pUniforms->pCubeMap;
     const SR_Texture*     alphaTex  = pUniforms->pOpacityMap;
     const SR_Texture*     colorTex  = pUniforms->pColorMap;
@@ -734,7 +734,7 @@ int main()
             {
                 camTrans.apply_transform();
 
-                constexpr float    viewAngle  = math::deg_to_rad(45.f);
+                constexpr float    viewAngle  = math::radians(45.f);
                 //const float        w          = 0.001f * (float)pWindow->width();
                 //const float        h          = 0.001f * (float)pWindow->height();
                 //const math::mat4&& projMatrix = math::ortho(-w, w, -h, h, 0.0001f, 0.1f);

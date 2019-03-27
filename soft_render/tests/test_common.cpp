@@ -711,7 +711,7 @@ bool is_visible(
     const math::mat4& modelMat,
     const SR_BoundingBox& bounds) noexcept
 {
-    const float        viewAngle = math::const_tan(fov*0.5f);
+    const float        viewAngle = math::tan(fov*0.5f);
     const math::vec3&& c         = camTrans.get_abs_position();
     const math::mat3&& t         = math::mat3{math::transpose(camTrans.get_transform())};
     const math::vec3&  cx        = t[0];

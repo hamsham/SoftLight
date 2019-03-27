@@ -114,4 +114,7 @@ sr_add_test(scanline_offset_test scanline_offset_test.cpp)
 sr_add_test(screen_tile_test     screen_tile_test.cpp)
 sr_add_test(z_curve_test         z_curve_test.cpp)
 
+add_executable(volume_test2 volume_test2.cpp)
+target_link_libraries(volume_test2 soft_render lsmath lsutils lssetup vtkutils)
+
 target_compile_definitions(z_curve_test PRIVATE SR_TEXTURE_Z_ORDERING=1)

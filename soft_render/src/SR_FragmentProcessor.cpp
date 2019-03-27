@@ -434,9 +434,9 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
         const float   d0         = yf - p0[1]; // scan-line start/end calculation
         const float   d1         = yf - p1[1];
         const float   alpha      = d0 * p20y;
-        const int     secondHalf = math::sign_bit(d1);
+        const float   secondHalf = math::sign(d1);
         int32_t       xMin       = (int32_t)(p0[0] + (p20x * alpha));
-        int32_t       xMax       = (int32_t)(secondHalf ? (p1[0] + p21xy * d1) : (p0[0] + p10xy * d0));
+        int32_t       xMax       = (int32_t)(secondHalf > 0.f ? (p1[0] + p21xy * d1) : (p0[0] + p10xy * d0));
 
         // Get the beginning and end of the scan-line
         if (xMin > xMax)

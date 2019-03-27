@@ -292,6 +292,7 @@ void SR_VertexProcessor::flush_fragments() const noexcept
     {
         mBinsUsed->store(0, std::memory_order_release);
         mFragProcessors->store(0, std::memory_order_release);
+        return;
     }
 
     // Sync all threads
