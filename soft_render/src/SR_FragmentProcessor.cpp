@@ -55,45 +55,70 @@ inline void LS_IMPERATIVE interpolate_line_varyings(
  * Interpolate varying variables across a triangle
 --------------------------------------*/
 inline void LS_IMPERATIVE interpolate_tri_varyings(
-    const math::vec4&   baryCoords,
+    const float*        baryCoords,
     const uint_fast32_t numVaryings,
     const math::vec4*   inVaryings0,
     math::vec4*         outVaryings) noexcept
 {
-    const math::vec4* inVaryings1 = inVaryings0 + numVaryings;
-    const math::vec4* inVaryings2 = inVaryings1 + numVaryings;
-    uint_fast32_t i = numVaryings;
+    (void)numVaryings;
 
     #if defined(LS_ARCH_X86)
-        const __m128 bc0 = _mm_shuffle_ps(baryCoords.simd, baryCoords.simd, 0x00);
-        const __m128 bc1 = _mm_shuffle_ps(baryCoords.simd, baryCoords.simd, 0x55);
-        const __m128 bc2 = _mm_shuffle_ps(baryCoords.simd, baryCoords.simd, 0xAA);
+        const math::vec4* inVaryings1  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
+        const math::vec4* inVaryings2  = inVaryings1 + SR_SHADER_MAX_VARYING_VECTORS;
 
-        while (i --> 0u)
+        const __m128 bc  = _mm_load_ps(baryCoords);
+        const __m128 bc0 = _mm_shuffle_ps(bc, bc, 0x00);
+        const __m128 bc1 = _mm_shuffle_ps(bc, bc, 0x55);
+        const __m128 bc2 = _mm_shuffle_ps(bc, bc, 0xAA);
+
+        for (unsigned i = SR_SHADER_MAX_VARYING_VECTORS; i --> 0;)
         {
-            const __m128 v0 = _mm_mul_ps((inVaryings0++)->simd, bc0);
-            const __m128 v1 = _mm_fmadd_ps((inVaryings1++)->simd, bc1, v0);
-            const __m128 v2 = _mm_fmadd_ps((inVaryings2++)->simd, bc2, v1);
-            (outVaryings++)->simd = v2;
+            const __m128 v0 = _mm_mul_ps(_mm_load_ps(reinterpret_cast<const float*>(inVaryings0++)), bc0);
+            const __m128 v1 = _mm_fmadd_ps(_mm_load_ps(reinterpret_cast<const float*>(inVaryings1++)), bc1, v0);
+            const __m128 v2 = _mm_fmadd_ps(_mm_load_ps(reinterpret_cast<const float*>(inVaryings2++)), bc2, v1);
+            _mm_store_ps(reinterpret_cast<float*>(outVaryings++), v2);
         }
     #elif defined(LS_ARCH_ARM)
-        const float32x4_t bc0 = vdupq_lane_f32(vget_low_f32(baryCoords.simd),  0);
-        const float32x4_t bc1 = vdupq_lane_f32(vget_low_f32(baryCoords.simd),  1);
-        const float32x4_t bc2 = vdupq_lane_f32(vget_high_f32(baryCoords.simd), 0);
+        const math::vec4* inVaryings1  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
+        const math::vec4* inVaryings2  = inVaryings1 + SR_SHADER_MAX_VARYING_VECTORS;
 
-        while (i --> 0u)
+        const float32x4_t bc  = vld1q_f32(baryCoords);
+        const float32x4_t bc0 = vdupq_lane_f32(vget_low_f32(bc),  0);
+        const float32x4_t bc1 = vdupq_lane_f32(vget_low_f32(bc),  1);
+        const float32x4_t bc2 = vdupq_lane_f32(vget_high_f32(bc), 0);
+
+        for (unsigned i = numVaryings; i --> 0;)
         {
-            const float32x4_t v0 = vmulq_f32(vld1q_f32((inVaryings0++)->v), bc0);
-            const float32x4_t v1 = vmulq_f32(vld1q_f32((inVaryings1++)->v), bc1);
-            const float32x4_t v2 = vmulq_f32(vld1q_f32((inVaryings2++)->v), bc2);
-            (outVaryings++)->simd = vaddq_f32(vaddq_f32(v0, v1), v2);
+            const float32x4_t v0 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings0++)), bc0);
+            const float32x4_t v1 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings1++)), bc1);
+            const float32x4_t v2 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings2++)), bc2);
+            vst1q_f32(reinterpret_cast<float*>(outVaryings++), vaddq_f32(vaddq_f32(v0, v1), v2);
+        }
+    #elif defined(LS_ARCH_AARCH64)
+        const math::vec4* inVaryings1  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
+        const math::vec4* inVaryings2  = inVaryings1 + SR_SHADER_MAX_VARYING_VECTORS;
+
+        const float32x4_t bc  = vld1q_f32(baryCoords);
+        const float32x4_t bc0 = vdupq_lane_f32(vget_low_f32(bc),  0);
+        const float32x4_t bc1 = vdupq_lane_f32(vget_low_f32(bc),  1);
+        const float32x4_t bc2 = vdupq_lane_f32(vget_high_f32(bc), 0);
+
+        for (unsigned i = numVaryings; i --> 0;)
+        {
+            const float32x4_t v0 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings0++)), bc0);
+            const float32x4_t v1 = vfmaq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings1++)), bc1, v0);
+            const float32x4_t v2 = vfmaq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings2++)), bc2, v1);
+            vst1q_f32(reinterpret_cast<float*>(outVaryings++), v2);
         }
     #else
+        const math::vec4* inVaryings1 = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
+        const math::vec4* inVaryings2 = inVaryings1 + SR_SHADER_MAX_VARYING_VECTORS;
+
         const float bc0 = baryCoords.v[0];
         const float bc1 = baryCoords.v[1];
         const float bc2 = baryCoords.v[2];
 
-        while (i --> 0u)
+        for (unsigned i = numVaryings; i --> 0;)
         {
             const math::vec4&& v0 = (*inVaryings0++) * bc0;
             const math::vec4&& v1 = (*inVaryings1++) * bc1;
@@ -522,8 +547,8 @@ void SR_FragmentProcessor::flush_fragments(
     SR_Framebuffer*         fbo         = mFbo;
     math::vec4* const       inVaryings  = mBins[binId].mVaryings;
 
-    math::vec4 pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
-    math::vec4 outVaryings[SR_SHADER_MAX_VARYING_VECTORS];
+    alignas(sizeof(math::vec4)) math::vec4 pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
+    alignas(sizeof(math::vec4)) math::vec4 outVaryings[SR_SHADER_MAX_VARYING_VECTORS];
 
     if (blendMode != SR_BLEND_OFF)
     {
@@ -536,7 +561,7 @@ void SR_FragmentProcessor::flush_fragments(
             const int32_t    zi = (int32_t)outCoords[numQueuedFrags].zf; // better to do the cast here after all candidate pixels have been rejected
 
             // Interpolate varying variables using the barycentric coordinates
-            interpolate_tri_varyings(bc, numVaryings, inVaryings, outVaryings);
+            interpolate_tri_varyings(bc.v, numVaryings, inVaryings, outVaryings);
 
             uint_fast32_t  haveOutputs = pShader(fc, pUniforms, outVaryings, pOutputs);
 
@@ -567,7 +592,7 @@ void SR_FragmentProcessor::flush_fragments(
             const int32_t    zi = (int32_t)outCoords[numQueuedFrags].zf; // better to do the cast here after all candidate pixels have been rejected
 
             // Interpolate varying variables using the barycentric coordinates
-            interpolate_tri_varyings(bc, numVaryings, inVaryings, outVaryings);
+            interpolate_tri_varyings(bc.v, numVaryings, inVaryings, outVaryings);
 
             uint_fast32_t  haveOutputs = pShader(fc, pUniforms, outVaryings, pOutputs);
 

@@ -407,7 +407,6 @@ void SR_VertexProcessor::execute() noexcept
     const SR_CullMode       cullMode     = vertShader.cullMode;
     const auto              shader       = vertShader.shader;
     const SR_UniformBuffer* pUniforms    = mShader->mUniforms.get();
-    const size_t            numVaryings  = vertShader.numVaryings;
     const SR_VertexArray&   vao          = mContext->vao(mMesh.vaoId);
     const SR_VertexBuffer&  vbo          = mContext->vbo(vao.get_vertex_buffer());
     const float             fboW         = (float)mFboW;
@@ -464,7 +463,7 @@ void SR_VertexProcessor::execute() noexcept
             vertId1 = usingIndices ? get_next_vertex(pIbo, index1) : index1;
 
             worldCoords[0] = shader(vertId0, vao, vbo, pUniforms, pVaryings);
-            worldCoords[1] = shader(vertId1, vao, vbo, pUniforms, pVaryings + numVaryings);
+            worldCoords[1] = shader(vertId1, vao, vbo, pUniforms, pVaryings + SR_SHADER_MAX_VARYING_VECTORS);
 
             if (worldCoords[0][3] >= 0.f && worldCoords[1][3] >= 0.f)
             {
@@ -491,8 +490,8 @@ void SR_VertexProcessor::execute() noexcept
             const math::vec3_t<size_t>&& vertId = usingIndices ? get_next_vertex3(pIbo, i) : math::vec3_t<size_t>{i, i+1, i+2};
 
             worldCoords[0]  = shader(vertId[0], vao, vbo, pUniforms, pVaryings);
-            worldCoords[1]  = shader(vertId[1], vao, vbo, pUniforms, pVaryings + numVaryings);
-            worldCoords[2]  = shader(vertId[2], vao, vbo, pUniforms, pVaryings + (numVaryings * 2));
+            worldCoords[1]  = shader(vertId[1], vao, vbo, pUniforms, pVaryings + SR_SHADER_MAX_VARYING_VECTORS);
+            worldCoords[2]  = shader(vertId[2], vao, vbo, pUniforms, pVaryings + (SR_SHADER_MAX_VARYING_VECTORS * 2));
 
             // verts 0 & 1
             if (worldCoords[0][3] >= 0.f && worldCoords[1][3] >= 0.f)
@@ -546,8 +545,8 @@ void SR_VertexProcessor::execute() noexcept
         {
             const math::vec3_t<size_t>&& vertId = usingIndices ? get_next_vertex3(pIbo, i) : math::vec3_t<size_t>{i, i+1, i+2};
             worldCoords[0]  = shader(vertId[0], vao, vbo, pUniforms, pVaryings);
-            worldCoords[1]  = shader(vertId[1], vao, vbo, pUniforms, pVaryings + numVaryings);
-            worldCoords[2]  = shader(vertId[2], vao, vbo, pUniforms, pVaryings + (numVaryings << 1));
+            worldCoords[1]  = shader(vertId[1], vao, vbo, pUniforms, pVaryings + SR_SHADER_MAX_VARYING_VECTORS);
+            worldCoords[2]  = shader(vertId[2], vao, vbo, pUniforms, pVaryings + (SR_SHADER_MAX_VARYING_VECTORS << 1));
 
             screenCoords[0] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);
             screenCoords[1] = sr_world_to_screen_coords(worldCoords[1], widthScale, heightScale);
