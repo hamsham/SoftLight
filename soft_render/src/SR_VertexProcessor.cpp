@@ -256,7 +256,7 @@ void SR_VertexProcessor::flush_fragments() const noexcept
     fragTask.mShader        = mShader;
     fragTask.mFbo           = mFbo;
     fragTask.mBins          = mFragBins;
-    fragTask.mQueues        = mFragQueues[tileId].data();
+    fragTask.mQueues        = mFragQueues + tileId;
     fragTask.mFboW          = (float)(mFboW - 1);
     fragTask.mFboH          = (float)(mFboH - 1);
 

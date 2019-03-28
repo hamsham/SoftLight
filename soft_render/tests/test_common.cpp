@@ -242,7 +242,7 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
     constexpr float specularIndensity = 2.f;
 
     // normalize the texture colors to within (0.f, 1.f)
-    if (sr_elements_per_color(albedo->type()) == 3)
+    if (albedo->channels() == 3)
     {
         const math::vec3_t<uint8_t>&& pixel8 = albedo->nearest<math::vec3_t<uint8_t>>(uv[0], uv[1]);
         const math::vec4_t<uint8_t>&& pixelF = math::vec4_cast<uint8_t>(pixel8, 255);
@@ -354,7 +354,7 @@ bool _texture_frag_shader_pbr(const math::vec4&, const SR_UniformBuffer* uniform
     math::vec4           pixel;
 
     // normalize the texture colors to within (0.f, 1.f)
-    if (sr_elements_per_color(pTexture->type()) == 3)
+    if (pTexture->channels() == 3)
     {
         const math::vec3_t<uint8_t>&& pixel8 = pTexture->nearest<math::vec3_t<uint8_t>>(uv[0], uv[1]);
         const math::vec4_t<uint8_t>&& pixelF = math::vec4_cast<uint8_t>(pixel8, 255);

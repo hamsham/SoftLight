@@ -72,16 +72,17 @@ SR_Texture::~SR_Texture() noexcept
  *
 -------------------------------------*/
 SR_Texture::SR_Texture() noexcept :
+    mWrapping{SR_TEXTURE_WRAP_DEFAULT},
     mWidth{0},
     mHeight{0},
     mDepth{0},
-    mWrapping{SR_TEXTURE_WRAP_DEFAULT},
     mWidthf{0.f},
     mHeightf{0.f},
     mDepthf{0.f},
-    mTexels{nullptr},
     mType{SR_COLOR_RGB_DEFAULT},
-    mBytesPerTexel{0}
+    mBytesPerTexel{0},
+    mNumChannels{0},
+    mTexels{nullptr}
 {}
 
 
@@ -90,16 +91,17 @@ SR_Texture::SR_Texture() noexcept :
  *
 -------------------------------------*/
 SR_Texture::SR_Texture(const SR_Texture& r) noexcept :
+    mWrapping{r.mWrapping},
     mWidth{r.mWidth},
     mHeight{r.mHeight},
     mDepth{r.mDepth},
-    mWrapping{r.mWrapping},
     mWidthf{r.mWidthf},
     mHeightf{r.mHeightf},
     mDepthf{r.mDepthf},
-    mTexels{_sr_copy_texture(r.mWidth, r.mHeight, r.mDepth, r.mBytesPerTexel, r.mTexels)},
     mType{r.mType},
-    mBytesPerTexel{r.mBytesPerTexel}
+    mBytesPerTexel{r.mBytesPerTexel},
+    mNumChannels{r.mNumChannels},
+    mTexels{_sr_copy_texture(r.mWidth, r.mHeight, r.mDepth, r.mBytesPerTexel, r.mTexels)}
 {}
 
 
@@ -108,27 +110,29 @@ SR_Texture::SR_Texture(const SR_Texture& r) noexcept :
  *
 -------------------------------------*/
 SR_Texture::SR_Texture(SR_Texture&& r) noexcept :
+    mWrapping{r.mWrapping},
     mWidth{r.mWidth},
     mHeight{r.mHeight},
     mDepth{r.mDepth},
-    mWrapping{r.mWrapping},
     mWidthf{r.mWidthf},
     mHeightf{r.mHeightf},
     mDepthf{r.mDepthf},
-    mTexels{r.mTexels},
     mType{r.mType},
-    mBytesPerTexel{r.mBytesPerTexel}
+    mBytesPerTexel{r.mBytesPerTexel},
+    mNumChannels{r.mNumChannels},
+    mTexels{r.mTexels}
 {
+    r.mWrapping = SR_TEXTURE_WRAP_DEFAULT;
     r.mWidth = 0;
     r.mHeight = 0;
     r.mDepth = 0;
-    r.mWrapping = SR_TEXTURE_WRAP_DEFAULT;
     r.mWidthf = 0.f;
     r.mHeightf = 0.f;
     r.mDepthf = 0.f;
-    r.mTexels = nullptr;
     r.mType = SR_COLOR_RGB_DEFAULT;
     r.mBytesPerTexel = 0;
+    r.mNumChannels = 0;
+    r.mTexels = nullptr;
 }
 
 
@@ -146,13 +150,14 @@ SR_Texture& SR_Texture::operator=(const SR_Texture& r) noexcept
 
     terminate();
 
+    mWrapping = r.mWrapping;
     mWidth = r.mWidth;
     mHeight = r.mHeight;
     mDepth = r.mDepth;
-    mWrapping = r.mWrapping;
-    mTexels = _sr_copy_texture(r.mWidth, r.mHeight, r.mDepth, r.mBytesPerTexel, r.mTexels);
     mType = r.mType;
     mBytesPerTexel = r.mBytesPerTexel;
+    mNumChannels = r.mNumChannels;
+    mTexels = _sr_copy_texture(r.mWidth, r.mHeight, r.mDepth, r.mBytesPerTexel, r.mTexels);
 
     return *this;
 }
@@ -171,6 +176,9 @@ SR_Texture& SR_Texture::operator=(SR_Texture&& r) noexcept
 
     terminate();
 
+    mWrapping = r.mWrapping;
+    r.mWrapping = SR_TEXTURE_WRAP_DEFAULT;
+
     mWidth = r.mWidth;
     r.mWidth = 0;
 
@@ -179,9 +187,6 @@ SR_Texture& SR_Texture::operator=(SR_Texture&& r) noexcept
 
     mDepth = r.mDepth;
     r.mDepth = 0;
-
-    mWrapping = r.mWrapping;
-    r.mWrapping = SR_TEXTURE_WRAP_DEFAULT;
 
     mWidth = r.mWidth;
     r.mWidthf = 0.f;
@@ -192,14 +197,17 @@ SR_Texture& SR_Texture::operator=(SR_Texture&& r) noexcept
     mDepthf = r.mDepthf;
     r.mDepthf = 0.f;
 
-    mTexels = r.mTexels;
-    r.mTexels = nullptr;
-
     mType = r.mType;
     r.mType = SR_COLOR_RGB_DEFAULT;
 
+    mNumChannels = r.mNumChannels;
+    r.mNumChannels = 0;
+
     mBytesPerTexel = r.mBytesPerTexel;
     r.mBytesPerTexel = 0;
+
+    mTexels = r.mTexels;
+    r.mTexels = nullptr;
 
     return *this;
 }
@@ -237,16 +245,17 @@ int SR_Texture::init(SR_ColorDataType type, uint16_t w, uint16_t h, uint16_t d) 
         terminate();
     }
 
+    mWrapping      = SR_TEXTURE_WRAP_DEFAULT;
     mWidth         = w;
     mHeight        = h;
     mDepth         = d;
-    mWrapping      = SR_TEXTURE_WRAP_DEFAULT;
     mWidthf        = (float)w;
     mHeightf       = (float)h;
     mDepthf        = (float)d;
-    mTexels        = pData;
     mType          = type;
     mBytesPerTexel = (uint32_t)bpt;
+    mNumChannels = sr_elements_per_color(type);
+    mTexels        = pData;
 
     return 0;
 }
@@ -313,19 +322,19 @@ int SR_Texture::init(const SR_ImgFile& imgFile) noexcept
 -------------------------------------*/
 void SR_Texture::terminate() noexcept
 {
+    mWrapping = SR_TEXTURE_WRAP_DEFAULT;
     mWidth = 0;
     mHeight = 0;
     mDepth = 0;
-    mWrapping = SR_TEXTURE_WRAP_DEFAULT;
     mWidthf = 0.f;
     mHeightf = 0.f;
     mDepthf = 0.f;
+    mType = SR_COLOR_RGB_DEFAULT;
+    mBytesPerTexel = 0;
+    mNumChannels = 0;
 
     ls::utils::aligned_free(mTexels);
     mTexels = nullptr;
-
-    mType = SR_COLOR_RGB_DEFAULT;
-    mBytesPerTexel = 0;
 }
 
 

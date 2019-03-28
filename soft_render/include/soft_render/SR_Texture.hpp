@@ -64,25 +64,27 @@ class SR_Texture
     typedef ls::math::long_medp_t fixed_type;
 
   private:
-    uint16_t mWidth;
+    SR_TexWrapMode mWrapping; // 2 bytes
 
-    uint16_t mHeight;
+    uint16_t mWidth; // 2 bytes
 
-    uint16_t mDepth;
+    uint16_t mHeight; // 2 bytes
 
-    SR_TexWrapMode mWrapping;
+    uint16_t mDepth; // 2 bytes
 
-    float mWidthf;
+    float mWidthf; // 4 bytes
 
-    float mHeightf;
+    float mHeightf; // 4 bytes
 
-    float mDepthf;
+    float mDepthf; // 4 bytes
 
-    char* mTexels;
+    SR_ColorDataType mType; // 2 bytes
 
-    SR_ColorDataType mType;
+    uint16_t mBytesPerTexel; // 2 bytes
 
-    uint32_t mBytesPerTexel;
+    uint32_t mNumChannels;
+
+    char* mTexels; // 4-8 bytes
 
   public:
     ~SR_Texture() noexcept;
@@ -111,7 +113,9 @@ class SR_Texture
 
     uint16_t depth() const noexcept;
 
-    uint32_t bpp() const noexcept;
+    uint16_t bpp() const noexcept;
+
+    uint32_t channels() const noexcept;
 
     SR_TexWrapMode wrap_mode() const noexcept;
 
@@ -350,9 +354,19 @@ inline uint16_t SR_Texture::depth() const noexcept
 /*-------------------------------------
  * Get the bytes per pixel
 -------------------------------------*/
-inline uint32_t SR_Texture::bpp() const noexcept
+inline uint16_t SR_Texture::bpp() const noexcept
 {
     return mBytesPerTexel;
+}
+
+
+
+/*-------------------------------------
+ * Get the elements per pixel
+-------------------------------------*/
+inline uint32_t SR_Texture::channels() const noexcept
+{
+    return mNumChannels;
 }
 
 
@@ -412,8 +426,8 @@ inline void* SR_Texture::data() noexcept
 -------------------------------------*/
 inline void SR_Texture::set_texel(uint16_t x, uint16_t y, uint16_t z, const void* pData) noexcept
 {
-    size_t bpp = mBytesPerTexel;
     const ptrdiff_t index = map_coordinate(x, y, z);
+    size_t bpp = mBytesPerTexel;
     const ptrdiff_t offset = bpp * index;
 
     char* pOut = mTexels + offset;
@@ -526,17 +540,12 @@ inline const ls::math::vec4_t<float> SR_Texture::texel4<float>(uint16_t x, uint1
     const ptrdiff_t index = map_coordinate(x, y);
     const float* pTexels = reinterpret_cast<const float*>(mTexels) + index;
 
-    #ifdef LS_ARCH_X86
+    #if defined(LS_ARCH_X86)
         return ls::math::vec4_t<float>{_mm_loadu_ps(pTexels)};
     #elif defined(LS_ARCH_ARM)
         return ls::math::vec4_t<float>{vld1q_f32(pTexels)};
     #else
-        return ls::math::vec4_t<float>{
-            pTexels[0],
-            pTexels[1],
-            pTexels[2],
-            pTexels[3]
-        };
+        return *reinterpret_cast<const ls::math::vec4_t<float>*>(pTexels);
     #endif
 }
 #elif defined(LS_ARCH_X86)
@@ -568,12 +577,7 @@ inline const ls::math::vec4_t<color_type> SR_Texture::texel4(uint16_t x, uint16_
     #else
         const ptrdiff_t index = map_coordinate(x, y);
         const color_type* pTexels = reinterpret_cast<const color_type*>(mTexels) + index;
-        return ls::math::vec4_t<color_type>{
-            pTexels[0],
-            pTexels[1],
-            pTexels[2],
-            pTexels[3]
-        };
+        return *reinterpret_cast<const ls::math::vec4_t<color_type>*>(pTexels);
     #endif
 }
 
@@ -627,12 +631,12 @@ inline ls::math::vec4_t<float> SR_Texture::raw_texel4<float>(uint16_t x, uint16_
     const ptrdiff_t index = x + mWidth * y;
     const float* pBuffer = reinterpret_cast<const float*>(mTexels) + index;
 
-    #ifdef LS_ARCH_X86
+    #if defined(LS_ARCH_X86)
         return ls::math::vec4_t<float>{_mm_loadu_ps(pBuffer)};
     #elif defined(LS_ARCH_ARM)
         return ls::math::vec4_t<float>{vld1q_f32(pBuffer)};
     #else
-        return ls::math::vec4_t<float>{pBuffer[0], pBuffer[1], pBuffer[2], pBuffer[3]};
+        return *reinterpret_cast<const ls::math::vec4_t<float>*>(pBuffer);
     #endif
 }
 
@@ -657,12 +661,12 @@ inline ls::math::vec4_t<float> SR_Texture::raw_texel4<float>(uint16_t x, uint16_
     const ptrdiff_t index = x + mWidth * (y + mHeight * z);
     const float* pBuffer = reinterpret_cast<const float*>(mTexels) + index;
 
-    #ifdef LS_ARCH_X86
+    #if defined(LS_ARCH_X86)
         return ls::math::vec4_t<float>{_mm_loadu_ps(pBuffer)};
     #elif defined(LS_ARCH_ARM)
         return ls::math::vec4_t<float>{vld1q_f32(pBuffer)};
     #else
-        return ls::math::vec4_t<float>{pBuffer[0], pBuffer[1], pBuffer[2], pBuffer[3]};
+        return *reinterpret_cast<const ls::math::vec4_t<float>*>(pBuffer);
     #endif
 }
 
@@ -744,7 +748,10 @@ inline color_type& SR_Texture::raw_texel(ptrdiff_t index) noexcept
 template <typename color_type>
 inline color_type SR_Texture::nearest(float x, float y) const noexcept
 {
-    if (mWrapping == SR_TEXTURE_WRAP_CUTOFF && (ls::math::min(x, y) < 0.f || ls::math::max(x, y) >= 1.f)) return color_type{0};
+    if (mWrapping == SR_TEXTURE_WRAP_CUTOFF && (ls::math::min(x, y) < 0.f || ls::math::max(x, y) >= 1.f))
+    {
+        return color_type{0};
+    }
 
     #if 0
         const uint32_t xi = (uint32_t)(mWidthf  * wrap_coordinate(x));
@@ -771,7 +778,10 @@ inline color_type SR_Texture::nearest(float x, float y) const noexcept
 template <typename color_type>
 inline color_type SR_Texture::nearest(float x, float y, float z) const noexcept
 {
-    if (mWrapping == SR_TEXTURE_WRAP_CUTOFF && (ls::math::min(x, y, z) < 0.f || ls::math::max(x, y, z) >= 1.f)) return color_type{0};
+    if (mWrapping == SR_TEXTURE_WRAP_CUTOFF && (ls::math::min(x, y, z) < 0.f || ls::math::max(x, y, z) >= 1.f))
+    {
+        return color_type{0};
+    }
 
     #if 0
         const uint32_t xi = (uint32_t)(mWidthf  * wrap_coordinate(x));
@@ -798,7 +808,10 @@ inline color_type SR_Texture::nearest(float x, float y, float z) const noexcept
 template <typename color_type>
 color_type SR_Texture::bilinear(float x, float y) const noexcept
 {
-    if (mWrapping == SR_TEXTURE_WRAP_CUTOFF && (ls::math::min(x, y) < 0.f || ls::math::max(x, y) >= 1.f)) return color_type{0};
+    if (mWrapping == SR_TEXTURE_WRAP_CUTOFF && (ls::math::min(x, y) < 0.f || ls::math::max(x, y) >= 1.f))
+    {
+        return color_type{0};
+    }
 
     const float      xf      = wrap_coordinate(x) * mWidthf;
     const float      yf      = wrap_coordinate(y) * mHeightf;
@@ -839,7 +852,10 @@ color_type SR_Texture::bilinear(float x, float y) const noexcept
 template <typename color_type>
 color_type SR_Texture::bilinear(float x, float y, float z) const noexcept
 {
-    if (mWrapping == SR_TEXTURE_WRAP_CUTOFF && (ls::math::min(x, y, z) < 0.f || ls::math::max(x, y, z) >= 1.f)) return color_type{0};
+    if (mWrapping == SR_TEXTURE_WRAP_CUTOFF && (ls::math::min(x, y, z) < 0.f || ls::math::max(x, y, z) >= 1.f))
+    {
+        return color_type{0};
+    }
 
     const float      xf      = wrap_coordinate(x) * mWidthf;
     const float      yf      = wrap_coordinate(y) * mHeightf;
@@ -892,7 +908,10 @@ inline color_type SR_Texture::trilinear(float x, float y) const noexcept
 template <typename color_type>
 color_type SR_Texture::trilinear(float x, float y, float z) const noexcept
 {
-    if (mWrapping == SR_TEXTURE_WRAP_CUTOFF && (ls::math::min(x, y, z) < 0.f || ls::math::max(x, y, z) >= 1.f)) return color_type{0};
+    if (mWrapping == SR_TEXTURE_WRAP_CUTOFF && (ls::math::min(x, y, z) < 0.f || ls::math::max(x, y, z) >= 1.f))
+    {
+        return color_type{0};
+    }
 
     /*
        V000 (1 - x) (1 - y) (1 - z) +

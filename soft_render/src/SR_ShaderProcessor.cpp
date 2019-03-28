@@ -389,7 +389,7 @@ unsigned SR_ProcessorPool::num_threads(unsigned inNumThreads) noexcept
 
     mBinsUsed.store(0, std::memory_order_relaxed);
     mFragBins.reset(_aligned_alloc<SR_FragmentBin>(SR_SHADER_MAX_FRAG_BINS));
-    mFragQueues.reset(_aligned_alloc<std::array<SR_FragCoord, SR_SHADER_MAX_FRAG_QUEUES>>(inNumThreads));
+    mFragQueues.reset(_aligned_alloc<SR_FragCoord>(inNumThreads));
     mThreads.reset(_aligned_alloc<SR_ProcessorPool::Worker*>(inNumThreads));
 
     mNumThreads = inNumThreads;
