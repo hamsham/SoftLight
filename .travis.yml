@@ -62,5 +62,5 @@ before_script:
 
 
 script:
-  cmake --build . --config Release --parallel
+  cmake --build . --config Release
 
