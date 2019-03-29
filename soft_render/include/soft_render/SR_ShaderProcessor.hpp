@@ -9,6 +9,7 @@
 #include "lightsky/utils/WorkerThread.hpp"
 
 #include "lightsky/math/vec4.h"
+#include "lightsky/math/vec3.h"
 
 #include "soft_render/SR_Mesh.hpp"
 
@@ -83,9 +84,7 @@ constexpr bool operator > (const SR_FragmentBin& a, const SR_FragmentBin& b)
 struct SR_FragCoord
 {
     ls::math::vec4 bc[SR_SHADER_MAX_FRAG_QUEUES]; // 32*4
-    float          xf[SR_SHADER_MAX_FRAG_QUEUES]; // 32
-    float          yf[SR_SHADER_MAX_FRAG_QUEUES]; // 32
-    float          zf[SR_SHADER_MAX_FRAG_QUEUES]; // 32
+    ls::math::vec3 xyz[SR_SHADER_MAX_FRAG_QUEUES]; // 32*3
     uint32_t       xy[SR_SHADER_MAX_FRAG_QUEUES]; // 32-bit bitmask of x & y
 
     // 256 bits / 32 bytes

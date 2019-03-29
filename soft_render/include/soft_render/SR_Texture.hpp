@@ -2,8 +2,6 @@
 #ifndef SR_TEXTURE_HPP
 #define SR_TEXTURE_HPP
 
-#include <iostream>
-
 #include <cstddef> // ptrdiff_t
 
 #include "lightsky/setup/Arch.h"
@@ -156,6 +154,12 @@ class SR_Texture
 
     template <typename color_type>
     color_type& texel(uint16_t x, uint16_t y, uint16_t z) noexcept;
+
+    template <typename color_type>
+    const color_type* texel_pointer(uint16_t x, uint16_t y, uint16_t z) const noexcept;
+
+    template <typename color_type>
+    color_type* texel_pointer(uint16_t x, uint16_t y, uint16_t z) noexcept;
 
     template <typename color_type>
     const color_type texel(uint16_t x, uint16_t y) const noexcept;
@@ -510,6 +514,30 @@ inline color_type& SR_Texture::texel(uint16_t x, uint16_t y, uint16_t z) noexcep
  * Retrieve a swizzled texel (const)
 -------------------------------------*/
 template <typename color_type>
+inline const color_type* SR_Texture::texel_pointer(uint16_t x, uint16_t y, uint16_t z) const noexcept
+{
+    const ptrdiff_t index = map_coordinate(x, y, z);
+    return reinterpret_cast<const color_type*>(mTexels) + index;
+}
+
+
+
+/*-------------------------------------
+ * Retrieve a swizzled texel
+-------------------------------------*/
+template <typename color_type>
+inline color_type* SR_Texture::texel_pointer(uint16_t x, uint16_t y, uint16_t z) noexcept
+{
+    const ptrdiff_t index = map_coordinate(x, y, z);
+    return reinterpret_cast<color_type*>(mTexels) + index;
+}
+
+
+
+/*-------------------------------------
+ * Retrieve a swizzled texel (const)
+-------------------------------------*/
+template <typename color_type>
 inline const color_type SR_Texture::texel(uint16_t x, uint16_t y) const noexcept
 {
     const ptrdiff_t index = map_coordinate(x, y);
@@ -764,8 +792,6 @@ inline color_type SR_Texture::nearest(float x, float y) const noexcept
     #endif
 
     const ptrdiff_t index = map_coordinate(xi, yi);
-
-    //std::cout << wrap_coordinate(xf).number << ' ' << wrap_coordinate(yf).number << '\n';
 
     return reinterpret_cast<color_type*>(mTexels)[index];
 }

@@ -1,5 +1,6 @@
 
 #include <cstddef> // ptrdiff_t
+#include <type_traits> // std::is_same
 #include <utility> // std::move
 
 #include "soft_render/SR_Color.hpp"
@@ -32,6 +33,10 @@ inline void assign_pixel(
 {
     // texture objects will truncate excess color components
     typedef typename color_type::value_type ConvertedType;
+
+    // Get a reference to the source texel
+    void* const outTexel = pTexture->texel_pointer<color_type>(x, y, math::min<uint16_t>(pTexture->depth()-1, z));
+
     union
     {
         SR_ColorRGBAType<typename color_type::value_type> rgba;
@@ -40,17 +45,13 @@ inline void assign_pixel(
         typename color_type::value_type                   r;
     } c{color_cast<typename color_type::value_type, float>(*reinterpret_cast<const SR_ColorRGBAf*>(rgba))};
 
-    // whoopsie
-    color_type& outTexel = pTexture->texel<color_type>(x, y, math::min<uint16_t>(pTexture->depth()-1, z));
-    //color_type& outTexel = pTexture->texel<color_type>(x, y, z);
-
     // Should be optimized by the compiler
     switch (color_type::num_components())
     {
-        case 4: *reinterpret_cast<SR_ColorRGBAType<ConvertedType>*>((void*)&outTexel) = c.rgba; break;
-        case 3: *reinterpret_cast<SR_ColorRGBType<ConvertedType>*>((void*)&outTexel)  = c.rgb; break;
-        case 2: *reinterpret_cast<SR_ColorRGType<ConvertedType>*>((void*)&outTexel)   = c.rg; break;
-        case 1: *reinterpret_cast<ConvertedType*>((void*)&outTexel)                   = c.r; break;
+        case 4: *reinterpret_cast<SR_ColorRGBAType<ConvertedType>*>(outTexel) = c.rgba; break;
+        case 3: *reinterpret_cast<SR_ColorRGBType<ConvertedType>*>(outTexel)  = c.rgb; break;
+        case 2: *reinterpret_cast<SR_ColorRGType<ConvertedType>*>(outTexel)   = c.rg; break;
+        case 1: *reinterpret_cast<ConvertedType*>(outTexel)                   = c.r; break;
     }
 }
 
@@ -72,7 +73,7 @@ inline void assign_alpha_pixel(
     typedef typename color_type::value_type ConvertedType;
 
     // Get a reference to the source texel
-    color_type& outTexel = pTexture->texel<color_type>(x, y, math::min<uint16_t>(pTexture->depth()-1, z));
+    void* const outTexel = pTexture->texel_pointer<color_type>(x, y, math::min<uint16_t>(pTexture->depth()-1, z));
 
     // sample the source texel
     union DestColor
@@ -81,7 +82,7 @@ inline void assign_alpha_pixel(
         SR_ColorRGBType<float> rgb;
         SR_ColorRGType<float> rg;
         SR_ColorRType<float> r;
-    } s{rgba}, d{color_cast<float, typename color_type::value_type>(*reinterpret_cast<SR_ColorRGBAType<ConvertedType>*>((void*)&outTexel))};
+    } s{rgba}, d{color_cast<float, typename color_type::value_type>(*reinterpret_cast<SR_ColorRGBAType<ConvertedType>*>(outTexel))};
 
     // This method of blending uses premultiplied alpha. I will need to support
     // configurable blend modes later.
@@ -96,22 +97,22 @@ inline void assign_alpha_pixel(
             case 4:
                 d.rgba[3] = srcAlpha + dstAlpha * modulation;
                 d.rgb = ((s.rgb*srcAlpha) + (d.rgb*dstAlpha*modulation)) * math::rcp(d.rgba[3]);
-                *reinterpret_cast<SR_ColorRGBAType<ConvertedType>*>((void*)&outTexel) = color_cast<typename color_type::value_type, float>(d.rgba);
+                *reinterpret_cast<SR_ColorRGBAType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rgba);
                 break;
 
             case 3:
                 d.rgb = (s.rgb*srcAlpha) + (d.rgb*modulation);
-                *reinterpret_cast<SR_ColorRGBType<ConvertedType>*>((void*)&outTexel) = color_cast<typename color_type::value_type, float>(d.rgb);
+                *reinterpret_cast<SR_ColorRGBType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rgb);
                 break;
 
             case 2:
                 d.rg = (s.rg*srcAlpha) + (d.rg*modulation);
-                *reinterpret_cast<SR_ColorRGType<ConvertedType>*>((void*)&outTexel) = color_cast<typename color_type::value_type, float>(d.rg);
+                *reinterpret_cast<SR_ColorRGType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rg);
                 break;
 
             case 1:
                 d.r.r = (s.r.r*srcAlpha) + (d.r.r*modulation);
-                *reinterpret_cast<SR_ColorRType<ConvertedType>*>((void*)&outTexel) = color_cast<typename color_type::value_type, float>(d.r);
+                *reinterpret_cast<SR_ColorRType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.r);
                 break;
         }
     }
@@ -123,19 +124,19 @@ inline void assign_alpha_pixel(
         switch (color_type::num_components())
         {
             case 4:
-                *reinterpret_cast<SR_ColorRGBAType<ConvertedType>*>((void*)&outTexel) = color_cast<typename color_type::value_type, float>(d.rgba);
+                *reinterpret_cast<SR_ColorRGBAType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rgba);
                 break;
 
             case 3:
-                *reinterpret_cast<SR_ColorRGBType<ConvertedType>*>((void*)&outTexel) = color_cast<typename color_type::value_type, float>(d.rgb);
+                *reinterpret_cast<SR_ColorRGBType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rgb);
                 break;
 
             case 2:
-                *reinterpret_cast<SR_ColorRGType<ConvertedType>*>((void*)&outTexel) = color_cast<typename color_type::value_type, float>(d.rg);
+                *reinterpret_cast<SR_ColorRGType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rg);
                 break;
 
             case 1:
-                *reinterpret_cast<SR_ColorRType<ConvertedType>*>((void*)&outTexel) = color_cast<typename color_type::value_type, float>(d.r);
+                *reinterpret_cast<SR_ColorRType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.r);
                 break;
         }
     }
@@ -147,19 +148,19 @@ inline void assign_alpha_pixel(
         switch (color_type::num_components())
         {
             case 4:
-                *reinterpret_cast<SR_ColorRGBAType<ConvertedType>*>((void*)&outTexel) = color_cast<typename color_type::value_type, float>(d.rgba);
+                *reinterpret_cast<SR_ColorRGBAType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rgba);
                 break;
 
             case 3:
-                *reinterpret_cast<SR_ColorRGBType<ConvertedType>*>((void*)&outTexel) = color_cast<typename color_type::value_type, float>(d.rgb);
+                *reinterpret_cast<SR_ColorRGBType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rgb);
                 break;
 
             case 2:
-                *reinterpret_cast<SR_ColorRGType<ConvertedType>*>((void*)&outTexel) = color_cast<typename color_type::value_type, float>(d.rg);
+                *reinterpret_cast<SR_ColorRGType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rg);
                 break;
 
             case 1:
-                *reinterpret_cast<SR_ColorRType<ConvertedType>*>((void*)&outTexel) = color_cast<typename color_type::value_type, float>(d.r);
+                *reinterpret_cast<SR_ColorRType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.r);
                 break;
         }
     }
@@ -172,19 +173,19 @@ inline void assign_alpha_pixel(
         switch (color_type::num_components())
         {
             case 4:
-                *reinterpret_cast<SR_ColorRGBAType<ConvertedType>*>((void*)&outTexel) = color_cast<typename color_type::value_type, float>(d.rgba);
+                *reinterpret_cast<SR_ColorRGBAType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rgba);
                 break;
 
             case 3:
-                *reinterpret_cast<SR_ColorRGBType<ConvertedType>*>((void*)&outTexel) = color_cast<typename color_type::value_type, float>(d.rgb);
+                *reinterpret_cast<SR_ColorRGBType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rgb);
                 break;
 
             case 2:
-                *reinterpret_cast<SR_ColorRGType<ConvertedType>*>((void*)&outTexel) = color_cast<typename color_type::value_type, float>(d.rg);
+                *reinterpret_cast<SR_ColorRGType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rg);
                 break;
 
             case 1:
-                *reinterpret_cast<SR_ColorRType<ConvertedType>*>((void*)&outTexel) = color_cast<typename color_type::value_type, float>(d.r);
+                *reinterpret_cast<SR_ColorRType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.r);
                 break;
         }
     }

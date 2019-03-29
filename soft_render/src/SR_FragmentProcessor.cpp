@@ -477,7 +477,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
         xMin = math::clamp<int32_t>(xMin, bboxMinX, bboxMaxX);
         xMax = math::clamp<int32_t>(xMax, bboxMinX, bboxMaxX);
 
-        for (int32_t x = xMin; x <= xMax; ++x)
+        for (int32_t x = xMin, y16 = y << 16u; x <= xMax; ++x)
         {
             // calculate barycentric coordinates
             const float xf   = (float)x;
@@ -512,10 +512,8 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             }
 
             outCoords->bc[numQueuedFrags] = bc;
-            outCoords->xf[numQueuedFrags] = xf;
-            outCoords->yf[numQueuedFrags] = yf;
-            outCoords->zf[numQueuedFrags] = z;
-            outCoords->xy[numQueuedFrags] = (0xFFFFu & x) | (y << 16u);
+            outCoords->xyz[numQueuedFrags] = {xf, yf, z};
+            outCoords->xy[numQueuedFrags] = (0xFFFF & x) | y16;
             ++numQueuedFrags;
 
             if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
@@ -564,10 +562,10 @@ void SR_FragmentProcessor::flush_fragments(
             const math::vec4 bc = outCoords->bc[numQueuedFrags];
             interpolate_tri_varyings(bc.v, numVaryings, inVaryings, outVaryings);
 
-            const math::vec4 fc {outCoords->xf[numQueuedFrags], outCoords->yf[numQueuedFrags], outCoords->zf[numQueuedFrags], 1.f};
+            const math::vec4 fc = math::vec4_cast(outCoords->xyz[numQueuedFrags], 1.f);
             uint_fast32_t haveOutputs = pShader(fc, pUniforms, outVaryings, pOutputs);
 
-            const int32_t  zi = (int32_t)outCoords->zf[numQueuedFrags]; // better to do the cast here after all candidate pixels have been rejected
+            const int32_t  zi = (int32_t)fc[2]; // better to do the cast here after all candidate pixels have been rejected
             const uint32_t xy = outCoords->xy[numQueuedFrags];
             const uint16_t x  = 0xFFFFu & xy;
             const uint16_t y  = xy >> 16u;
@@ -583,7 +581,7 @@ void SR_FragmentProcessor::flush_fragments(
 
             if (depthMask)
             {
-                const float zf = outCoords->zf[numQueuedFrags];
+                const float zf = fc[2];
                 fbo->put_depth_pixel<float>(x, y, zf);
             }
         }
@@ -597,13 +595,14 @@ void SR_FragmentProcessor::flush_fragments(
             const math::vec4 bc = outCoords->bc[numQueuedFrags];
             interpolate_tri_varyings(bc.v, numVaryings, inVaryings, outVaryings);
 
-            const math::vec4 fc {outCoords->xf[numQueuedFrags], outCoords->yf[numQueuedFrags], outCoords->zf[numQueuedFrags], 1.f};
-            uint_fast32_t haveOutputs = pShader(fc, pUniforms, outVaryings, pOutputs);
+            const math::vec4 fc = math::vec4_cast(outCoords->xyz[numQueuedFrags], 1.f);
 
-            const int32_t  zi = (int32_t)outCoords->zf[numQueuedFrags]; // better to do the cast here after all candidate pixels have been rejected
+            const int32_t  zi = (int32_t)fc[2]; // better to do the cast here after all candidate pixels have been rejected
             const uint32_t xy = outCoords->xy[numQueuedFrags];
             const uint16_t x  = 0xFFFFu & xy;
             const uint16_t y  = xy >> 16u;
+
+            uint_fast32_t haveOutputs = pShader(fc, pUniforms, outVaryings, pOutputs);
 
             // branchless select
             switch (-haveOutputs & numOutputs)
@@ -616,7 +615,7 @@ void SR_FragmentProcessor::flush_fragments(
 
             if (depthMask)
             {
-                const float zf = outCoords->zf[numQueuedFrags];
+                const float zf = fc[2];
                 fbo->put_depth_pixel<float>(x, y, zf);
             }
         }

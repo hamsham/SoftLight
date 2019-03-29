@@ -9,8 +9,8 @@
 #include "lightsky/math/scalar_utils.h" // floor()
 
 #include "lightsky/utils/Assertions.h"
-#include "lightsky/utils/Copy.h"
-#include "lightsky/utils/Pointer.h"
+#include "lightsky/utils/Copy.h" // fast_memset()
+#include "lightsky/utils/Pointer.h" // aligned_alloc, AlignedDeleter
 
 #include "soft_render/SR_AnimationProperty.hpp"
 
@@ -43,19 +43,19 @@ class SR_AnimationKeyList
     /**
      * @brief numPositions contains the total number of position keys.
      */
-    unsigned mNumFrames;
+    size_t mNumFrames;
 
     /**
      * @brief positionTimes contains the keyframe times of a particular
      * animation's positions.
      */
-    ls::utils::Pointer<SR_AnimPrecision[]> mKeyTimes;
+    ls::utils::Pointer<SR_AnimPrecision[], ls::utils::AlignedDeleter> mKeyTimes;
 
     /**
      * @brief keyData contains a list of variables which can be
      * interpolated during an animation.
      */
-    ls::utils::Pointer<data_t[]> mKeyData;
+    ls::utils::Pointer<data_t[], ls::utils::AlignedDeleter> mKeyData;
 
   public:
     /*
@@ -132,10 +132,10 @@ class SR_AnimationKeyList
     /**
      * Retrieve the number of keyframes in *this.
      *
-     * @return An unsigned integral type, containing the current number of
-     * keyframes contained in *this.
+     * @return A size_t type, containing the current number of key frames
+     * contained in *this.
      */
-    unsigned size() const noexcept;
+    size_t size() const noexcept;
 
     /**
      * Initialize and allocate an array of keyframes for *this to use.
@@ -151,7 +151,7 @@ class SR_AnimationKeyList
      * @return TRUE if the internal array of keyframes was successfully
      * allocated, FALSE if not.
      */
-    bool init(const unsigned keyCount) noexcept;
+    bool init(const size_t keyCount) noexcept;
 
     /**
      * Determine if there are keyframes in *this to use for animation.
@@ -208,7 +208,7 @@ class SR_AnimationKeyList
      * determines when a particular keyframe should be used in an
      * animation.
      */
-    SR_AnimPrecision get_frame_time(const unsigned keyIndex) const noexcept;
+    SR_AnimPrecision get_frame_time(const size_t keyIndex) const noexcept;
 
     /**
      * Retrieve the data of a particular keyframe.
@@ -221,7 +221,7 @@ class SR_AnimationKeyList
      *
      * @return A constant reference to the data within a keyframe.
      */
-    const data_t& get_frame_data(const unsigned keyIndex) const noexcept;
+    const data_t& get_frame_data(const size_t keyIndex) const noexcept;
 
     /**
      * Retrieve the data of a particular keyframe.
@@ -234,7 +234,7 @@ class SR_AnimationKeyList
      *
      * @return A reference to the data within a keyframe.
      */
-    data_t& get_frame_data(const unsigned keyIndex) noexcept;
+    data_t& get_frame_data(const size_t keyIndex) noexcept;
 
     /**
      * Retrieve the data of the first keyframe in *this.
@@ -273,7 +273,7 @@ class SR_AnimationKeyList
      * A constant reference to the data which will be used for a keyframe
      * at a perticular time.
      */
-    void set_frame(const unsigned frameIndex, const SR_AnimPrecision frameTime, const data_t& frameData) noexcept;
+    void set_frame(const size_t frameIndex, const SR_AnimPrecision frameTime, const data_t& frameData) noexcept;
 
     /**
      * Retrieve the interpolation between two keyframes closest to the
@@ -300,14 +300,12 @@ class SR_AnimationKeyList
      * The overall percent of time elapsed in an animation.
      *
      * @param outCurrFrame
-     * A reference to an unsigned integer, which will contain the array
-     * index of the current frame in *this which should be used for
-     * interpolation.
+     * A reference to an integer, which will contain the array index of the
+     * current frame in *this which should be used for interpolation.
      *
      * @param outNextFrame
-     * A reference to an unsigned integer, which will contain the array
-     * index of the next frame in *this which should be used for
-     * interpolation.
+     * A reference to an integer, which will contain the array index of the
+     * next frame in *this which should be used for interpolation.
      *
      * @return A percentage, which should be used to determine the amount
      * of interpolation between the frames at 'outCurrFrane' and
@@ -317,8 +315,8 @@ class SR_AnimationKeyList
      */
     SR_AnimPrecision calc_frame_interpolation(
         const SR_AnimPrecision totalAnimPercent,
-        unsigned& outCurrFrame,
-        unsigned& outNextFrame
+        size_t& outCurrFrame,
+        size_t& outNextFrame
     ) const noexcept;
 };
 
@@ -403,8 +401,11 @@ SR_AnimationKeyList<data_t>& SR_AnimationKeyList<data_t>::operator=(const SR_Ani
 
     mNumFrames = k.mNumFrames;
 
-    ls::utils::fast_memcpy(mKeyTimes.get(), k.mKeyTimes.get(), sizeof(SR_AnimPrecision) * mNumFrames);
-    ls::utils::fast_memcpy(mKeyData.get(), k.mKeyData.get(), sizeof(data_t) * mNumFrames);
+    for (size_t i = 0; i < mNumFrames; ++i)
+    {
+        mKeyTimes[i] = k.mKeyTimes[i];
+        mKeyData[i] = k.mKeyData[i];
+    }
 
     return *this;
 }
@@ -447,7 +448,7 @@ void SR_AnimationKeyList<data_t>::clear() noexcept
 /*-------------------------------------
 -------------------------------------*/
 template<typename data_t>
-inline unsigned SR_AnimationKeyList<data_t>::size() const noexcept
+inline size_t SR_AnimationKeyList<data_t>::size() const noexcept
 {
     return mNumFrames;
 }
@@ -457,7 +458,7 @@ inline unsigned SR_AnimationKeyList<data_t>::size() const noexcept
 /*-------------------------------------
 -------------------------------------*/
 template<typename data_t>
-bool SR_AnimationKeyList<data_t>::init(const unsigned keyCount) noexcept
+bool SR_AnimationKeyList<data_t>::init(const size_t keyCount) noexcept
 {
     if (!keyCount)
     {
@@ -481,8 +482,12 @@ bool SR_AnimationKeyList<data_t>::init(const unsigned keyCount) noexcept
     }
 
     mNumFrames = keyCount;
-    ls::utils::fast_memset(mKeyTimes.get(), 0, sizeof(SR_AnimPrecision) * mNumFrames);
-    ls::utils::fast_memset(mKeyData.get(), 0, sizeof(data_t) * mNumFrames);
+
+    for (size_t i = 0; i < keyCount; ++i)
+    {
+        mKeyTimes[i] = SR_AnimPrecision{0};
+        mKeyData[i] = data_t{0};
+    }
 
     return true;
 }
@@ -530,7 +535,7 @@ void SR_AnimationKeyList<data_t>::set_start_time(const SR_AnimPrecision startOff
     const SR_AnimPrecision currentOffset = get_start_time();
     const SR_AnimPrecision newOffset = currentOffset - startOffset;
 
-    for (unsigned i = 0; i < mNumFrames; ++i)
+    for (size_t i = 0; i < mNumFrames; ++i)
     {
         mKeyTimes[i] = ls::math::clamp<SR_AnimPrecision>(mKeyTimes[i] - newOffset, 0.0, 1.0);
     }
@@ -551,7 +556,7 @@ inline SR_AnimPrecision SR_AnimationKeyList<data_t>::get_end_time() const noexce
 /*-------------------------------------
 -------------------------------------*/
 template<typename data_t>
-inline SR_AnimPrecision SR_AnimationKeyList<data_t>::get_frame_time(const unsigned keyIndex) const noexcept
+inline SR_AnimPrecision SR_AnimationKeyList<data_t>::get_frame_time(const size_t keyIndex) const noexcept
 {
     LS_DEBUG_ASSERT(keyIndex < mNumFrames);
     return mKeyTimes[keyIndex];
@@ -562,7 +567,7 @@ inline SR_AnimPrecision SR_AnimationKeyList<data_t>::get_frame_time(const unsign
 /*-------------------------------------
 -------------------------------------*/
 template<typename data_t>
-inline const data_t& SR_AnimationKeyList<data_t>::get_frame_data(const unsigned keyIndex) const noexcept
+inline const data_t& SR_AnimationKeyList<data_t>::get_frame_data(const size_t keyIndex) const noexcept
 {
     LS_DEBUG_ASSERT(keyIndex < mNumFrames);
     return mKeyData[keyIndex];
@@ -573,7 +578,7 @@ inline const data_t& SR_AnimationKeyList<data_t>::get_frame_data(const unsigned 
 /*-------------------------------------
 -------------------------------------*/
 template<typename data_t>
-inline data_t& SR_AnimationKeyList<data_t>::get_frame_data(const unsigned keyIndex) noexcept
+inline data_t& SR_AnimationKeyList<data_t>::get_frame_data(const size_t keyIndex) noexcept
 {
     LS_DEBUG_ASSERT(keyIndex < mNumFrames);
     return mKeyData[keyIndex];
@@ -607,7 +612,7 @@ inline const data_t& SR_AnimationKeyList<data_t>::get_end_data() const noexcept
 -------------------------------------*/
 template<typename data_t>
 inline void SR_AnimationKeyList<data_t>::set_frame(
-    const unsigned frameIndex,
+    const size_t frameIndex,
     const SR_AnimPrecision frameTime,
     const data_t& frameData
 ) noexcept
@@ -625,8 +630,8 @@ inline void SR_AnimationKeyList<data_t>::set_frame(
 template<typename data_t>
 inline SR_AnimPrecision SR_AnimationKeyList<data_t>::calc_frame_interpolation(
     const SR_AnimPrecision totalAnimPercent,
-    unsigned& outCurrFrame,
-    unsigned& outNextFrame
+    size_t& outCurrFrame,
+    size_t& outNextFrame
 ) const noexcept
 {
     LS_DEBUG_ASSERT(mNumFrames > 0);

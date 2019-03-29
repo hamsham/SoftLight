@@ -276,8 +276,8 @@ int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
     Window windowId = None;
     Atom atomDelete = None;
     #ifdef LS_ARCH_X86
-        alignas(16) XVisualInfo visualInfo;
-        alignas(16) XSetWindowAttributes windowAttribs;
+        alignas(sizeof(__m256)) XVisualInfo visualInfo;
+        alignas(sizeof(__m256)) XSetWindowAttributes windowAttribs;
     #else
         XVisualInfo visualInfo;
         XSetWindowAttributes windowAttribs;
