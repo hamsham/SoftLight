@@ -44,7 +44,7 @@ bool _xlib_get_position(_XDisplay* const pDisplay, const unsigned long window, i
     Window child;
 
     #ifdef LS_ARCH_X86
-        alignas(16) XWindowAttributes attribs;
+        alignas(sizeof(__m256)) XWindowAttributes attribs;
     #else
         XWindowAttributes attribs;
     #endif
