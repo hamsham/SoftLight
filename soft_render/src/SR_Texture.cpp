@@ -253,8 +253,8 @@ int SR_Texture::init(SR_ColorDataType type, uint16_t w, uint16_t h, uint16_t d) 
     mHeightf       = (float)h;
     mDepthf        = (float)d;
     mType          = type;
-    mBytesPerTexel = (uint32_t)bpt;
-    mNumChannels = (uint32_t)sr_elements_per_color(type);
+    mBytesPerTexel = (uint16_t)bpt;
+    mNumChannels   = (uint32_t)sr_elements_per_color(type);
     mTexels        = pData;
 
     return 0;
