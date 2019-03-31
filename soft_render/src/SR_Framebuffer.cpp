@@ -39,11 +39,11 @@ inline void assign_pixel(
 
     union
     {
-        SR_ColorRGBAType<typename color_type::value_type> rgba;
-        SR_ColorRGBType<typename  color_type::value_type> rgb;
-        SR_ColorRGType<typename   color_type::value_type> rg;
-        typename color_type::value_type                   r;
-    } c{color_cast<typename color_type::value_type, float>(*reinterpret_cast<const SR_ColorRGBAf*>(rgba))};
+        SR_ColorRGBAType<ConvertedType> rgba;
+        SR_ColorRGBType<ConvertedType>  rgb;
+        SR_ColorRGType<ConvertedType>   rg;
+        ConvertedType                   r;
+    } c{color_cast<ConvertedType, float>(*reinterpret_cast<const SR_ColorRGBAf*>(rgba))};
 
     // Should be optimized by the compiler
     switch (color_type::num_components())
@@ -54,6 +54,66 @@ inline void assign_pixel(
         case 1: *reinterpret_cast<ConvertedType*>(outTexel)                   = c.r; break;
     }
 }
+
+
+
+/*-------------------------------------
+ * Place a single pixel onto a texture
+-------------------------------------*/
+#ifdef LS_ARCH_X86
+template <>
+inline void assign_pixel<SR_ColorRGBA8>(
+    uint16_t x,
+    uint16_t y,
+    uint16_t z,
+    const float* rgba,
+    SR_Texture* pTexture) noexcept
+{
+    // Get a reference to the source texel
+    int32_t* const outTexel = pTexture->texel_pointer<int32_t>(x, y, math::min<uint16_t>(pTexture->depth()-1, z));
+    SR_ColorRGBA8 inTexel = color_cast<uint8_t, float>(*reinterpret_cast<const SR_ColorRGBAf*>(rgba));
+
+    _mm_stream_si32(outTexel, reinterpret_cast<int32_t&>(inTexel));
+}
+
+
+
+template <>
+inline void assign_pixel<SR_ColorRGBA16>(
+    uint16_t x,
+    uint16_t y,
+    uint16_t z,
+    const float* rgba,
+    SR_Texture* pTexture) noexcept
+{
+    // Get a reference to the source texel
+    long long int* const outTexel = pTexture->texel_pointer<long long int>(x, y, math::min<uint16_t>(pTexture->depth()-1, z));
+
+    union
+    {
+        SR_ColorRGBA16 vec;
+        int64_t scalar;
+    } inTexel{color_cast<uint16_t, float>(*reinterpret_cast<const SR_ColorRGBAf*>(rgba))};
+
+    _mm_stream_si64(outTexel, inTexel.scalar);
+}
+
+
+
+template <>
+inline void assign_pixel<SR_ColorRGBAf>(
+    uint16_t x,
+    uint16_t y,
+    uint16_t z,
+    const float* rgba,
+    SR_Texture* pTexture) noexcept
+{
+    // Get a reference to the source texel
+    SR_ColorRGBAf* const outTexel = pTexture->texel_pointer<SR_ColorRGBAf>(x, y, math::min<uint16_t>(pTexture->depth()-1, z));
+
+    _mm_stream_ps(reinterpret_cast<float*>(outTexel), _mm_load_ps(rgba));
+}
+#endif
 
 
 

@@ -329,7 +329,7 @@ void SR_ProcessorPool::flush() noexcept
     {
         SR_ProcessorPool::Worker* const pWorker = mThreads[threadId];
 
-        if (pWorker->have_pending_tasks())
+        if (pWorker->have_pending())
         {
             pWorker->flush();
         }

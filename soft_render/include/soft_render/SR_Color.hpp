@@ -339,8 +339,8 @@ inline typename ls::utils::EnableIf<ls::math::IsFloat<T>::value, SR_ColorRGType<
 color_cast(const typename ls::utils::EnableIf<ls::math::IsIntegral<U>::value, SR_ColorRGType<U>>::type& p)
 {
     return ls::math::IsSigned<U>::value
-           ? SR_ColorRGType<T>{0.5f} * ((SR_ColorRGType<T>)p * (T{1} / std::numeric_limits<U>::max())) + 0.5f
-           : (SR_ColorRGType<T>)p * (T{1} / std::numeric_limits<U>::max());
+           ? (SR_ColorRGType<T>{0.5f} * ((SR_ColorRGType<T>)p * (T{1} / std::numeric_limits<U>::max())) + 0.5f)
+           : ((SR_ColorRGType<T>)p * (T{1} / std::numeric_limits<U>::max()));
 }
 
 
@@ -432,8 +432,8 @@ inline typename ls::utils::EnableIf<ls::math::IsFloat<T>::value, SR_ColorRGBType
 color_cast(const typename ls::utils::EnableIf<ls::math::IsIntegral<U>::value, SR_ColorRGBType<U>>::type& p)
 {
     return ls::math::IsSigned<U>::value
-           ? SR_ColorRGBType<T>{0.5f} * ((SR_ColorRGBType<T>)p * (T{1} / std::numeric_limits<U>::max())) + 0.5f
-           : (SR_ColorRGBType<T>)p * (T{1} / std::numeric_limits<U>::max());
+           ? (SR_ColorRGBType<T>{0.5f} * ((SR_ColorRGBType<T>)p * (T{1} / std::numeric_limits<U>::max())) + 0.5f)
+           : ((SR_ColorRGBType<T>)p * (T{1} / std::numeric_limits<U>::max()));
 }
 
 
@@ -525,8 +525,8 @@ inline typename ls::utils::EnableIf<ls::math::IsFloat<T>::value, SR_ColorRGBATyp
 color_cast(const typename ls::utils::EnableIf<ls::math::IsIntegral<U>::value, SR_ColorRGBAType<U>>::type& p)
 {
     return ls::math::IsSigned<U>::value
-    ? SR_ColorRGBAType<T>{0.5f} * ((SR_ColorRGBAType<T>)p * (T{1} / std::numeric_limits<U>::max())) + 0.5f
-    : (SR_ColorRGBAType<T>)p * (T{1} / std::numeric_limits<U>::max());
+    ? (SR_ColorRGBAType<T>{0.5f} * ((SR_ColorRGBAType<T>)p * (T{1} / std::numeric_limits<U>::max())) + 0.5f)
+    : ((SR_ColorRGBAType<T>)p * (T{1} / std::numeric_limits<U>::max()));
 }
 
 
@@ -536,6 +536,24 @@ inline SR_ColorRGBAType<float> color_cast<float, uint8_t>(const SR_ColorRGBAType
 {
     return ((SR_ColorRGBAType<float>)p) * 0.00392156862745f;
 }
+
+
+
+/*
+template <>
+inline SR_ColorRGBAType<float> color_cast<float, uint16_t>(const SR_ColorRGBAType<uint16_t>& p)
+{
+    return (SR_ColorRGBAType<float>)p * 1.52590218967e-05f;
+}
+
+
+
+template <>
+inline SR_ColorRGBAType<float> color_cast<float, uint32_t>(const SR_ColorRGBAType<uint32_t>& p)
+{
+    return (SR_ColorRGBAType<float>)p * 2.32830643708e-10f;
+}
+*/
 
 
 

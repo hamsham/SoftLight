@@ -1,4 +1,6 @@
 
+#include <algorithm>
+
 #include "lightsky/utils/Sort.hpp" // utils::sort_quick
 
 #include "lightsky/math/vec4.h"
@@ -268,11 +270,13 @@ void SR_VertexProcessor::flush_fragments() const noexcept
         // corrected coloring
         if (mShader->fragment_shader().blend == SR_BLEND_OFF)
         {
-            ls::utils::sort_quick<SR_FragmentBin, ls::utils::IsGreater<SR_FragmentBin>>(mFragBins, math::min<uint64_t>(mBinsUsed->load(), SR_SHADER_MAX_FRAG_BINS));
+            //ls::utils::sort_quick<SR_FragmentBin, ls::utils::IsGreater<SR_FragmentBin>>(mFragBins, math::min<uint64_t>(mBinsUsed->load(), SR_SHADER_MAX_FRAG_BINS));
+            std::make_heap(mFragBins, mFragBins+mBinsUsed->load(std::memory_order_relaxed), ls::utils::IsLess<SR_FragmentBin>{});
         }
         else
         {
-            ls::utils::sort_quick<SR_FragmentBin, ls::utils::IsLess<SR_FragmentBin>>(mFragBins, math::min<uint64_t>(mBinsUsed->load(), SR_SHADER_MAX_FRAG_BINS));
+            //ls::utils::sort_quick<SR_FragmentBin, ls::utils::IsLess<SR_FragmentBin>>(mFragBins, math::min<uint64_t>(mBinsUsed->load(), SR_SHADER_MAX_FRAG_BINS));
+            std::make_heap(mFragBins, mFragBins+mBinsUsed->load(std::memory_order_relaxed), ls::utils::IsGreater<SR_FragmentBin>{});
         }
         mFragProcessors->store(syncPoint1, std::memory_order_release);
     }
