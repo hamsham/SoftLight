@@ -63,7 +63,7 @@ if (FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NOTFOUND OR FREEIMAGE
             CONFIGURE_COMMAND
                 ""
             BUILD_COMMAND
-                make
+                ${CMAKE_MAKE_PROGRAM}
             BUILD_IN_SOURCE
                 1
             INSTALL_COMMAND
