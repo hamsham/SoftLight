@@ -3,6 +3,8 @@
 #include <type_traits> // std::is_same
 #include <utility> // std::move
 
+#include "lightsky/setup/Compiler.h" // LS_COMPILER_MSC
+
 #include "soft_render/SR_Color.hpp"
 
 #include "soft_render/SR_Framebuffer.hpp"
@@ -95,7 +97,11 @@ inline void assign_pixel<SR_ColorRGBA16>(
         int64_t scalar;
     } inTexel{color_cast<uint16_t, float>(*reinterpret_cast<const SR_ColorRGBAf*>(rgba))};
 
-    _mm_stream_si64(outTexel, inTexel.scalar);
+    #ifdef LS_COMPILER_MSC
+        _mm_stream_si64x(outTexel, inTexel.scalar);
+    #else
+        _mm_stream_si64(outTexel, inTexel.scalar);
+    #endif
 }
 
 

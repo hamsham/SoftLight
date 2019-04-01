@@ -10,6 +10,8 @@
 #include <memory> // std::nothrow
 #include <utility> // std::move()
 
+#include "lightsky/utils/Pointer.h" // aligned_alloc
+
 #include "soft_render/SR_Color.hpp"
 #include "soft_render/SR_RenderWindowWin32.hpp"
 #include "soft_render/SR_Texture.hpp"
@@ -105,7 +107,7 @@ int SR_WindowBufferWin32::init(SR_RenderWindow& win, unsigned width, unsigned he
         return -2;
     }
 
-    PBITMAPINFO pInfo = new BITMAPINFO;
+    PBITMAPINFO pInfo = (PBITMAPINFO)ls::utils::aligned_malloc(sizeof(BITMAPINFO));
     ls::utils::fast_memset(pInfo, 0, sizeof(BITMAPINFO));
 
     // invert the image's Y-axis to maintain consistency with Xlib
@@ -121,7 +123,7 @@ int SR_WindowBufferWin32::init(SR_RenderWindow& win, unsigned width, unsigned he
     pInfo->bmiHeader.biClrUsed       = 0;
     pInfo->bmiHeader.biClrImportant  = 0;
 
-    SR_ColorRGBA8* pBitmap = new SR_ColorRGBA8[width * height];
+    SR_ColorRGBA8* pBitmap = (SR_ColorRGBA8*)ls::utils::aligned_malloc(sizeof(SR_ColorRGBA8) * width * height);
 
     mBitmapInfo = pInfo;
     mBuffer     = pBitmap;
@@ -140,10 +142,10 @@ int SR_WindowBufferWin32::terminate() noexcept
 {
     if (mBuffer)
     {
-        delete reinterpret_cast<PBITMAPINFO>(mBitmapInfo);
+        ls::utils::aligned_free(mBitmapInfo);
         mBitmapInfo = nullptr;
 
-        delete [] mBuffer;
+        ls::utils::aligned_free(mBuffer);
         mBuffer = nullptr;
 
         mWidth = 0;
