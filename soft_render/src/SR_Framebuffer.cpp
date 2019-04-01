@@ -10,6 +10,10 @@
 #include "soft_render/SR_Framebuffer.hpp"
 #include "soft_render/SR_Texture.hpp"
 
+#if defined(LS_COMPILER_MSC) && defined(LS_ARCH_X86)
+    #include <intrin.h> // _mm_stream_si64x
+#endif /* LS_COMPILER_MSC */
+
 namespace math = ls::math;
 
 
