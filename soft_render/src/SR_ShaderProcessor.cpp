@@ -388,6 +388,7 @@ unsigned SR_ProcessorPool::num_threads(unsigned inNumThreads) noexcept
     }
 
     mBinsUsed.store(0, std::memory_order_relaxed);
+    mBinIds.reset(_aligned_alloc<uint32_t>(SR_SHADER_MAX_FRAG_BINS));
     mFragBins.reset(_aligned_alloc<SR_FragmentBin>(SR_SHADER_MAX_FRAG_BINS));
     mFragQueues.reset(_aligned_alloc<SR_FragCoord>(inNumThreads));
     mThreads.reset(_aligned_alloc<SR_ProcessorPool::Worker*>(inNumThreads));
@@ -446,6 +447,7 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context* c, const SR_Mesh*
     vertTask.mFboH           = fbo->height();
     vertTask.mMesh           = *m;
     vertTask.mBinsUsed       = &mBinsUsed;
+    vertTask.mBinIds         = mBinIds.get();
     vertTask.mFragBins       = mFragBins.get();
     vertTask.mFragQueues     = mFragQueues.get();
 

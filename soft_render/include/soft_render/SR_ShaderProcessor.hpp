@@ -109,6 +109,8 @@ class SR_ProcessorPool
 
     std::atomic_uint_fast64_t mBinsUsed;
 
+    ls::utils::Pointer<uint32_t[], ls::utils::AlignedDeleter> mBinIds;
+
     ls::utils::Pointer<SR_FragmentBin[], ls::utils::AlignedDeleter> mFragBins;
 
     ls::utils::Pointer<SR_FragCoord[], ls::utils::AlignedDeleter> mFragQueues;

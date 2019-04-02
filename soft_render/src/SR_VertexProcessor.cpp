@@ -257,6 +257,7 @@ void SR_VertexProcessor::flush_fragments() const noexcept
     fragTask.mNumBins       = math::min<uint64_t>(mBinsUsed->load(std::memory_order_relaxed), SR_SHADER_MAX_FRAG_BINS);
     fragTask.mShader        = mShader;
     fragTask.mFbo           = mFbo;
+    fragTask.mBinIds        = mBinIds;
     fragTask.mBins          = mFragBins;
     fragTask.mQueues        = mFragQueues + tileId;
     fragTask.mFboW          = (float)(mFboW - 1);
@@ -271,12 +272,18 @@ void SR_VertexProcessor::flush_fragments() const noexcept
         if (mShader->fragment_shader().blend == SR_BLEND_OFF)
         {
             //ls::utils::sort_quick<SR_FragmentBin, ls::utils::IsGreater<SR_FragmentBin>>(mFragBins, math::min<uint64_t>(mBinsUsed->load(), SR_SHADER_MAX_FRAG_BINS));
-            std::make_heap(mFragBins, mFragBins+mBinsUsed->load(std::memory_order_relaxed), ls::utils::IsLess<SR_FragmentBin>{});
+            //std::make_heap(mFragBins, mFragBins+mBinsUsed->load(std::memory_order_relaxed), ls::utils::IsLess<SR_FragmentBin>{});
+            ls::utils::sort_quick<uint32_t>(mBinIds, mBinsUsed->load(std::memory_order_relaxed), [&](uint32_t a, uint32_t b)->bool {
+                return mFragBins[a] > mFragBins[b];
+            });
         }
         else
         {
             //ls::utils::sort_quick<SR_FragmentBin, ls::utils::IsLess<SR_FragmentBin>>(mFragBins, math::min<uint64_t>(mBinsUsed->load(), SR_SHADER_MAX_FRAG_BINS));
-            std::make_heap(mFragBins, mFragBins+mBinsUsed->load(std::memory_order_relaxed), ls::utils::IsGreater<SR_FragmentBin>{});
+            //std::make_heap(mFragBins, mFragBins+mBinsUsed->load(std::memory_order_relaxed), ls::utils::IsGreater<SR_FragmentBin>{});
+            ls::utils::sort_quick<uint32_t>(mBinIds, mBinsUsed->load(std::memory_order_relaxed), [&](uint32_t a, uint32_t b)->bool {
+                return mFragBins[a] < mFragBins[b];
+            });
         }
         mFragProcessors->store(syncPoint1, std::memory_order_release);
     }
@@ -391,6 +398,7 @@ void SR_VertexProcessor::push_fragments(
         }
 
         // place a triangle into the next available bin
+        mBinIds[binId] = (uint32_t)binId;
         pFragBins[binId] = bin;
     }
 

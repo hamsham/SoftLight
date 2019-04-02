@@ -642,7 +642,7 @@ void SR_FragmentProcessor::execute() noexcept
 
             for (uint64_t numBinsProcessed = 0; numBinsProcessed < mNumBins; ++numBinsProcessed)
             {
-                render_point(numBinsProcessed, mFbo, dimens);
+                render_point(mBinIds[numBinsProcessed], mFbo, dimens);
             }
             break;
         }
@@ -660,7 +660,7 @@ void SR_FragmentProcessor::execute() noexcept
 
             for (uint64_t numBinsProcessed = 0; numBinsProcessed < mNumBins; ++numBinsProcessed)
             {
-                render_line(numBinsProcessed, mFbo, dimens);
+                render_line(mBinIds[numBinsProcessed], mFbo, dimens);
             }
             break;
         }
@@ -671,7 +671,7 @@ void SR_FragmentProcessor::execute() noexcept
             // There's No need to subdivide the output framebuffer
             for (uint64_t numBinsProcessed = 0; numBinsProcessed < mNumBins; ++numBinsProcessed)
             {
-                render_triangle(numBinsProcessed, mFbo->get_depth_buffer());
+                render_triangle(mBinIds[numBinsProcessed], mFbo->get_depth_buffer());
             }
             break;
     }

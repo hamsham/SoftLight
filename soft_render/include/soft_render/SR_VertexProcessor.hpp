@@ -54,6 +54,7 @@ struct SR_VertexProcessor
 
     // 64-128 bits
     std::atomic_uint_fast64_t* mBinsUsed;
+    uint32_t* mBinIds;
     SR_FragmentBin* mFragBins;
     SR_FragCoord* mFragQueues;
 
