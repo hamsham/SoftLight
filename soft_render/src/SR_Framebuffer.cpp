@@ -101,7 +101,7 @@ inline void assign_pixel<SR_ColorRGBA16>(
         int64_t scalar;
     } inTexel{color_cast<uint16_t, float>(*reinterpret_cast<const SR_ColorRGBAf*>(rgba))};
 
-    #ifdef LS_COMPILER_MSC
+    #if defined(LS_COMPILER_MSC)
         _mm_stream_si64x(outTexel, inTexel.scalar);
     #else
         _mm_stream_si64(outTexel, inTexel.scalar);
