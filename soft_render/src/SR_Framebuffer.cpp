@@ -10,10 +10,6 @@
 #include "soft_render/SR_Framebuffer.hpp"
 #include "soft_render/SR_Texture.hpp"
 
-#if defined(LS_COMPILER_MSC) && defined(LS_ARCH_X86)
-    #include <intrin.h> // _mm_stream_si64x
-#endif /* LS_COMPILER_MSC */
-
 namespace math = ls::math;
 
 
@@ -93,19 +89,15 @@ inline void assign_pixel<SR_ColorRGBA16>(
     SR_Texture* pTexture) noexcept
 {
     // Get a reference to the source texel
-    long long int* const outTexel = pTexture->texel_pointer<long long int>(x, y, math::min<uint16_t>(pTexture->depth()-1, z));
+    __m64* const outTexel = pTexture->texel_pointer<__m64>(x, y, math::min<uint16_t>(pTexture->depth()-1, z));
 
     union
     {
         SR_ColorRGBA16 vec;
-        int64_t scalar;
+        __m64 scalar;
     } inTexel{color_cast<uint16_t, float>(*reinterpret_cast<const SR_ColorRGBAf*>(rgba))};
 
-    #if defined(LS_COMPILER_MSC)
-        _mm_stream_si64x(outTexel, inTexel.scalar);
-    #else
-        _mm_stream_si64(outTexel, inTexel.scalar);
-    #endif
+    _mm_stream_pi(outTexel, inTexel.scalar);
 }
 
 
