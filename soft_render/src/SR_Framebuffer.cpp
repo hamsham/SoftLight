@@ -89,15 +89,29 @@ inline void assign_pixel<SR_ColorRGBA16>(
     SR_Texture* pTexture) noexcept
 {
     // Get a reference to the source texel
-    __m64* const outTexel = pTexture->texel_pointer<__m64>(x, y, math::min<uint16_t>(pTexture->depth()-1, z));
 
-    union
-    {
-        SR_ColorRGBA16 vec;
-        __m64 scalar;
-    } inTexel{color_cast<uint16_t, float>(*reinterpret_cast<const SR_ColorRGBAf*>(rgba))};
+    // MSVC supports __int64 while gcc/clang support __m64
+    #if defined(LS_COMPILER_MSC)
+        __int64* const outTexel = pTexture->texel_pointer<__int64>(x, y, math::min<uint16_t>(pTexture->depth()-1, z));
 
-    _mm_stream_pi(outTexel, inTexel.scalar);
+        union
+        {
+            SR_ColorRGBA16 vec;
+            __int64 scalar;
+        } inTexel{color_cast<uint16_t, float>(*reinterpret_cast<const SR_ColorRGBAf*>(rgba))};
+    
+        _mm_stream_si64(outTexel, inTexel.scalar);
+    #else
+        __m64* const outTexel = pTexture->texel_pointer<__m64>(x, y, math::min<uint16_t>(pTexture->depth()-1, z));
+    
+        union
+        {
+            SR_ColorRGBA16 vec;
+            __m64 scalar;
+        } inTexel{ color_cast<uint16_t, float>(*reinterpret_cast<const SR_ColorRGBAf*>(rgba)) };
+    
+        _mm_stream_pi(outTexel, inTexel.scalar);
+    #endif
 }
 
 
