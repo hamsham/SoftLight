@@ -90,8 +90,8 @@ inline void assign_pixel<SR_ColorRGBA16>(
 {
     // Get a reference to the source texel
 
-    // MSVC supports __int64 while gcc/clang support __m64
-    #if defined(LS_COMPILER_MSC)
+    // MSVConly supports __m64 on 32-bit builds
+    #if defined(LS_COMPILER_MSC) && LS_ARCH_X86 >= 64
         __int64* const outTexel = pTexture->texel_pointer<__int64>(x, y, math::min<uint16_t>(pTexture->depth()-1, z));
 
         union
