@@ -61,6 +61,8 @@ SoftLight is a very flexible software rasterizer. Check out the below screenshot
 
 ![Scene Graph Animations](https://github.com/hamsham/SoftLight/blob/master/examples/softlight_anims.png)
 
+![Volume Rendering, ~9 FPS, 16 Threads, Ryzen 1800X](https://github.com/hamsham/SoftLight/blob/master/examples/softlight_volumes.png)
+
 
 
 ## Samples

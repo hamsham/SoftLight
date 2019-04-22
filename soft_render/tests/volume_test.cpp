@@ -67,7 +67,7 @@ SR_VertexShader volume_vert_shader()
 {
     SR_VertexShader shader;
     shader.numVaryings = 0;
-    shader.cullMode = SR_CULL_FRONT_FACE;
+    shader.cullMode = SR_CULL_BACK_FACE;
     shader.shader = _volume_vert_shader;
 
     return shader;
