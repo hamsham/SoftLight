@@ -101,6 +101,7 @@ inline void assign_pixel<SR_ColorRGBA16>(
         } inTexel{color_cast<uint16_t, float>(*reinterpret_cast<const SR_ColorRGBAf*>(rgba))};
     
         _mm_stream_si64(outTexel, inTexel.scalar);
+        _mm_empty(); // required by all MMX functions
     #else
         __m64* const outTexel = pTexture->texel_pointer<__m64>(x, y, math::min<uint16_t>(pTexture->depth()-1, z));
     
