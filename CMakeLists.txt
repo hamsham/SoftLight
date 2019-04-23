@@ -96,7 +96,8 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     add_definitions(/Oy) # Omit frame pointers
     add_definitions(/permissive-) # enable conformance mode
     add_definitions(/Wall) # enable all warnings
-    add_definitions(/sdl)
+    add_definitions(/sdl-) # Disable Security Development Lifecycle checks
+    add_definitions(/GS-) # Disable global security cookies
     add_definitions(/W3) # production-quality warnings
     add_definitions(/WX) # warnings are errors
     add_definitions(/Zc:rvalueCast /Zc:strictStrings /Zc:inline)
@@ -106,10 +107,15 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /LTCG:INCREMENTAL")
     set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /LTCG:INCREMENTAL")
     set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} /LTCG:INCREMENTAL")
-    
+
+    # Extra enabled warnings
+    add_definitions(/we4700) # Enable check for use of uninitialized variables
+    add_definitions(/we4533) # Code initializing a variable will not be executed
+
+    # Disabled warnings
     add_definitions(/wd4146) # unsigned negation using the '-' operator
     add_definitions(/wd4996) # insecure use of wcstombs
-    add_definitions(/wd4365) # Impplicit conversion from signed to unsigned (built into the standard library :/ )
+    add_definitions(/wd4365) # Implicit conversion from signed to unsigned (built into the standard library :/ )
     add_definitions(/wd4820) # Padding being added to structures using "alignas"... also built into the standard libary
     add_definitions(/wd4571) # Catch semantics changed
     add_definitions(/wd4625) # Implicly deleted copy constructor
