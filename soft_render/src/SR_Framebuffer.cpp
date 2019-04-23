@@ -111,6 +111,7 @@ inline void assign_pixel<SR_ColorRGBA16>(
         } inTexel{ color_cast<uint16_t, float>(*reinterpret_cast<const SR_ColorRGBAf*>(rgba)) };
     
         _mm_stream_pi(outTexel, inTexel.scalar);
+        _mm_empty();
     #endif
 }
 
