@@ -299,7 +299,7 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
 template <class vec_type = math::vec4>
 inline vec_type fresnel_schlick(float cosTheta, const vec_type& surfaceReflection)
 {
-    return surfaceReflection + (vec_type{1.f} - surfaceReflection) * math::pow(1.f - cosTheta, 5.f);
+    return math::fmadd(vec_type{1.f} - surfaceReflection, math::pow(1.f - cosTheta, 5.f), surfaceReflection);
 }
 
 
@@ -711,34 +711,37 @@ bool is_visible(
     const math::mat4& modelMat,
     const SR_BoundingBox& bounds) noexcept
 {
-    const float        viewAngle = math::tan(fov*0.5f);
-    const math::vec3&& c         = camTrans.get_abs_position();
-    const math::mat3&& t         = math::mat3{math::transpose(camTrans.get_transform())};
-    const math::vec3&  cx        = t[0];
-    const math::vec3&  cy        = t[1];
-    const math::vec3&& cz        = -t[2];
-    const math::vec4&  trr0      = bounds.get_top_rear_right();
-    const math::vec4&  bfl0      = bounds.get_bot_front_left();
-    const math::vec4&& trr       = modelMat * trr0;
-    const math::vec4&& bfl       = modelMat * bfl0;
-    constexpr float    delta     = 0.f;
+    const float      viewAngle = math::tan(fov*0.5f);
+    const math::vec3 c         = camTrans.get_abs_position();
+    const math::mat3 t         = math::mat3{math::transpose(camTrans.get_transform())};
+    const math::vec3 cx        = t[0];
+    const math::vec3 cy        = t[1];
+    const math::vec3 cz        = -t[2];
+    const math::vec4 trr       = bounds.get_top_rear_right();
+    const math::vec4 bfl       = bounds.get_bot_front_left();
+    const float      delta     = 0.f;
 
-    const math::vec3 points[]  = {
-        {trr[0], bfl[1], bfl[2]},
-        {trr[0], trr[1], bfl[2]},
-        {trr[0], trr[1], trr[2]},
-        {bfl[0], trr[1], trr[2]},
-        {bfl[0], bfl[1], trr[2]},
-        {bfl[0], bfl[1], bfl[2]},
-        {trr[0], bfl[1], trr[2]},
-        {bfl[0], trr[1], bfl[2]}
+    math::vec4 points[]  = {
+        {trr[0], bfl[1], bfl[2], 1.f},
+        {trr[0], trr[1], bfl[2], 1.f},
+        {trr[0], trr[1], trr[2], 1.f},
+        {bfl[0], trr[1], trr[2], 1.f},
+        {bfl[0], bfl[1], trr[2], 1.f},
+        {bfl[0], bfl[1], bfl[2], 1.f},
+        {trr[0], bfl[1], trr[2], 1.f},
+        {bfl[0], trr[1], bfl[2], 1.f}
     };
 
     float objX, objY, objZ, xAspect, yAspect;
 
     for (unsigned i = 0; i < LS_ARRAY_SIZE(points); ++i)
     {
-        const math::vec3& p = points[i];
+        points[i] = modelMat * points[i];
+    }
+
+    for (unsigned i = 0; i < LS_ARRAY_SIZE(points); ++i)
+    {
+        const math::vec3& p = math::vec3_cast(points[i]);
 
         // compute vector from camera position to p
         const math::vec3&& v = p - c;
@@ -771,11 +774,10 @@ bool is_visible(
         return true;
     }
 
-    const math::vec3&  cWorld  = camTrans.get_position();
-    const math::vec3   bboxMin = {bfl[0], bfl[1], bfl[2]};
-    const math::vec3   bboxMax = {trr[0], trr[1], trr[2]};
+    const math::vec3 bboxMin = math::vec3_cast(modelMat * bfl);
+    const math::vec3 bboxMax = math::vec3_cast(modelMat * trr);
 
-    return cWorld > bboxMin && cWorld < bboxMax;
+    return c > bboxMin && c < bboxMax;
 }
 
 
@@ -787,6 +789,10 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
     MeshUniforms*  pUniforms = static_cast<MeshUniforms*>(context.shader(0).uniforms().get());
     unsigned       numHidden = 0;
     unsigned       numTotal  = 0;
+
+    (void)aspect;
+    (void)fov;
+    (void)camTrans;
 
     for (SR_SceneNode& n : pGraph->mNodes)
     {
@@ -816,7 +822,7 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
 
             ++numTotal;
 
-            if (!is_visible(aspect, fov, camTrans, modelMat, box))// && !sr_is_visible(box, pUniforms->mvpMatrix))
+            if (!is_visible(aspect, fov, camTrans, modelMat, box))
             {
                 ++numHidden;
                 continue;
