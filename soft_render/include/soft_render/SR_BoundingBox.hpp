@@ -186,8 +186,8 @@ class SR_BoundingBox
     Constructor
 -------------------------------------*/
 inline SR_BoundingBox::SR_BoundingBox() noexcept :
-    mTopRearRight{1.f, 1.f, 1.f, 0.f},
-    mBotFrontLeft{-1.f, -1.f, -1.f, 0.f}
+    mTopRearRight{1.f, 1.f, 1.f, 1.f},
+    mBotFrontLeft{-1.f, -1.f, -1.f, 1.f}
 {}
 
 
@@ -280,7 +280,7 @@ inline bool SR_BoundingBox::is_in_box(const SR_BoundingBox& bb) const noexcept
 -------------------------------------*/
 inline void SR_BoundingBox::set_top_rear_right(const ls::math::vec3& v) noexcept
 {
-    mTopRearRight = ls::math::vec4{v[0], v[1], v[2], 0.f};
+    mTopRearRight = ls::math::vec4{v[0], v[1], v[2], 1.f};
 }
 
 
@@ -310,7 +310,7 @@ inline const ls::math::vec4& SR_BoundingBox::get_top_rear_right() const noexcept
 -------------------------------------*/
 inline void SR_BoundingBox::set_bot_front_left(const ls::math::vec3& v) noexcept
 {
-    mBotFrontLeft = ls::math::vec4{v[0], v[1], v[2], 0.f};
+    mBotFrontLeft = ls::math::vec4{v[0], v[1], v[2], 1.f};
 }
 
 
@@ -340,8 +340,8 @@ inline const ls::math::vec4& SR_BoundingBox::get_bot_front_left() const noexcept
 -------------------------------------*/
 inline void SR_BoundingBox::reset_size() noexcept
 {
-    set_top_rear_right(ls::math::vec4{1.f, 1.f, 1.f, 0.f});
-    set_bot_front_left(ls::math::vec4{-1.f, -1.f, -1.f, 0.f});
+    set_top_rear_right(ls::math::vec4{1.f, 1.f, 1.f, 1.f});
+    set_bot_front_left(ls::math::vec4{-1.f, -1.f, -1.f, 1.f});
 }
 
 
@@ -351,7 +351,7 @@ inline void SR_BoundingBox::reset_size() noexcept
 -------------------------------------*/
 inline void SR_BoundingBox::compare_and_update(const ls::math::vec3& point) noexcept
 {
-    compare_and_update(ls::math::vec4{point[0], point[1], point[2], 0.f});
+    compare_and_update(ls::math::vec4{point[0], point[1], point[2], 1.f});
 }
 
 
