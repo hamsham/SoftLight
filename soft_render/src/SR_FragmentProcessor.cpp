@@ -405,6 +405,8 @@ void SR_FragmentProcessor::render_line(
 /*--------------------------------------
  * Triangle Rasterization
 --------------------------------------*/
+#if 0
+
 void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_Texture* depthBuffer) const noexcept
 {
     uint32_t  numQueuedFrags = 0;
@@ -477,7 +479,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
         xMin = math::clamp<int32_t>(xMin, bboxMinX, bboxMaxX);
         xMax = math::clamp<int32_t>(xMax, bboxMinX, bboxMaxX);
 
-        for (int32_t x = xMin, y16 = y << 16u; x <= xMax; ++x)
+        for (int32_t x = xMin, y16 = y << 16; x <= xMax; ++x)
         {
             // calculate barycentric coordinates
             const float xf   = (float)x;
@@ -513,7 +515,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
 
             outCoords->bc[numQueuedFrags] = bc;
             outCoords->xyz[numQueuedFrags] = {xf, yf, z};
-            outCoords->xy[numQueuedFrags] = (0xFFFF & x) | y16;
+            outCoords->xy[numQueuedFrags] = (uint32_t)((0xFFFF & x) | y16);
             ++numQueuedFrags;
 
             if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
@@ -530,6 +532,131 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
         flush_fragments(binId, numQueuedFrags, outCoords);
     }
 }
+
+#else
+
+void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_Texture* depthBuffer) const noexcept
+{
+    const uint32_t    yOffset      = (uint32_t)mThreadId;
+    const uint32_t    increment    = (uint32_t)mNumProcessors;
+    const math::vec4* screenCoords = mBins[binId].mScreenCoords;
+    const math::vec4  depth        {screenCoords[0][2], screenCoords[1][2], screenCoords[2][2], 0.f};
+    math::vec4        p0           = screenCoords[0];
+    math::vec4        p1           = screenCoords[1];
+    math::vec4        p2           = screenCoords[2];
+    const math::vec4  persp        = mBins[binId].mPerspDivide;
+    const int32_t     depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON);
+    const int32_t     bboxMinX     = (int32_t)math::min(mFboW, math::max(0.f,   math::min(p0[0], p1[0], p2[0])));
+    const int32_t     bboxMinY     = (int32_t)math::min(mFboH, math::max(0.f,   math::ceil(math::min(p0[1], p1[1], p2[1]))));
+    const int32_t     bboxMaxX     = (int32_t)math::max(0.f,   math::min(mFboW, math::max(p0[0], p1[0], p2[0])));
+    const int32_t     bboxMaxY     = (int32_t)math::max(0.f,   math::min(mFboH, math::max(p0[1], p1[1], p2[1])));
+    const math::vec4  t0[3]        {math::vec4{p2[0]-p0[0]}, math::vec4{p1[0]-p0[0]}, math::vec4{p0[0]}};
+    const math::vec4  t1[3]        {math::vec4{p2[1]-p0[1]}, math::vec4{p1[1]-p0[1]}, math::vec4{p0[1]}};
+    const math::vec4  scaleInv     = {(t0[0] * t1[1]) - (t0[1] * t1[0])};
+    const math::vec4  scale        = math::rcp(scaleInv);
+    SR_FragCoord*     outCoords    = mQueues;
+
+    // Don't render triangles which are too small to see
+    if (math::abs(scaleInv[0]) < 1.f)
+    {
+        return;
+    }
+
+    if (p0[1] < p1[1]) std::swap(p0, p1);
+    if (p0[1] < p2[1]) std::swap(p0, p2);
+    if (p1[1] < p2[1]) std::swap(p1, p2);
+
+    const float p10x  = p1[0] - p0[0];
+    const float p20x  = p2[0] - p0[0];
+    const float p21x  = p2[0] - p1[0];
+    const float p10y  = math::rcp(p1[1] - p0[1]);
+    const float p21y  = math::rcp(p2[1] - p1[1]);
+    const float p20y  = math::rcp(p2[1] - p0[1]);
+    const float p10xy = p10x * p10y;
+    const float p21xy = p21x * p21y;
+
+    unsigned numQueuedFrags = 0;
+    const int32_t scanlineOffset = sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
+
+    for (int32_t y = bboxMinY+scanlineOffset; y <= bboxMaxY; y += increment)
+    {
+        // calculate the bounds of the current scan-line
+        const float      yf         = (float)y;
+        const math::vec4 ty         = t1[2] - yf;
+        const math::vec4 t00y       = t0[0] * ty;
+        const math::vec4 t01y       = t0[1] * ty;
+        const float      d0         = yf - p0[1];
+        const float      d1         = yf - p1[1];
+        const float      alpha      = d0 * p20y;
+        const int        secondHalf = math::sign(d1);
+        int32_t          xMin       = (int32_t)(p0[0] + (p20x * alpha));
+        int32_t          xMax       = (int32_t)(secondHalf ? (p1[0] + p21xy * d1) : (p0[0] + p10xy * d0));
+
+        // Get the beginning and end of the scan-line
+        if (xMin > xMax) std::swap(xMin, xMax);
+        xMin = math::clamp<int32_t>(xMin, bboxMinX, bboxMaxX);
+        xMax = math::clamp<int32_t>(xMax, bboxMinX, bboxMaxX);
+
+        math::vec4i x = math::vec4i{xMin} + math::vec4i{0, 1, 2, 3};
+
+        for (int32_t y16 = y << 16u; x[0] <= xMax; x += 4)
+        {
+            // calculate barycentric coordinates
+            const math::vec4 xf = (math::vec4)x;
+            const math::vec4 tx = t0[2] - xf;
+            const math::vec4 u0 = (t01y - (tx * t1[1])) * scale;
+            const math::vec4 u1 = ((tx * t1[0]) - t00y) * scale;
+
+            //math::vec3   bc {1.f - (u0 + u1), u1, u0};
+            const math::mat4 bcF = math::transpose(
+                math::mat4{
+                    math::vec4{math::vec4{1.f} - (u0 + u1)},
+                    u1,
+                    u0,
+                    math::vec4{0.f}
+                }
+            );
+
+            // depth texture lookup will always be slow
+            const math::vec4 z              {depth * bcF};
+            const math::vec4 depthBufTexels {depthBuffer->texel4<float>(x[0], y)};
+            const int        depthTest      = depthTesting & math::sign_mask(z - depthBufTexels);
+
+            const int32_t end = (x[0]+4 > xMax) ? (xMax-x[0]) : 4;
+
+            for (int32_t i = 0; i < end; ++i)
+            {
+                if (depthTest & (0x01 << i))
+                {
+                    continue;
+                }
+
+                // perspective correction
+                math::vec4 bc4 {bcF[i] * persp};
+                const float bW = math::sum_inv(bc4);
+                bc4 *= bW;
+
+                outCoords->bc[numQueuedFrags] = bc4;
+                outCoords->xyz[numQueuedFrags] = {xf[i], yf, z[i]};
+                outCoords->xy[numQueuedFrags] = (0xFFFF & x[i]) | y16;
+                ++numQueuedFrags;
+
+                if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
+                {
+                    numQueuedFrags = 0;
+                    flush_fragments(binId, SR_SHADER_MAX_FRAG_QUEUES, outCoords);
+                }
+            }
+        }
+    }
+
+    if (numQueuedFrags)
+    {
+        flush_fragments(binId, numQueuedFrags, outCoords);
+    }
+}
+
+#endif
 
 
 
