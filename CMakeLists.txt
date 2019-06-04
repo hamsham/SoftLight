@@ -97,7 +97,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     add_definitions(/permissive-) # enable conformance mode
     add_definitions(/Wall) # enable all warnings
     add_definitions(/sdl-) # Disable Security Development Lifecycle checks
-    #add_definitions(/GS-) # Disable global security cookies
+    add_definitions(/GS-) # Disable global security cookies
     add_definitions(/W3) # production-quality warnings
     add_definitions(/WX) # warnings are errors
     add_definitions(/Zc:rvalueCast /Zc:strictStrings /Zc:inline)
