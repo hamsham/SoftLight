@@ -19,7 +19,6 @@ namespace math = ls::math;
 /*-------------------------------------
  * External function declarations to keep compile times short
 -------------------------------------*/
-/*
 template void SR_BlitProcessor::blit_nearest_r<uint8_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
 template void SR_BlitProcessor::blit_nearest_r<uint16_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
 template void SR_BlitProcessor::blit_nearest_r<uint32_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
@@ -47,7 +46,6 @@ template void SR_BlitProcessor::blit_nearest_rgba<uint32_t>(SR_ColorRGBA8* const
 template void SR_BlitProcessor::blit_nearest_rgba<uint64_t>(SR_ColorRGBA8* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
 template void SR_BlitProcessor::blit_nearest_rgba<float>(SR_ColorRGBA8* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
 template void SR_BlitProcessor::blit_nearest_rgba<double>(SR_ColorRGBA8* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
-*/
 
 
 

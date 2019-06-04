@@ -25,7 +25,7 @@
 #endif /* SR_TEST_MAX_THREADS */
 
 #ifndef SR_TEST_USE_PBR
-    #define SR_TEST_USE_PBR 0
+    #define SR_TEST_USE_PBR 1
 #endif /* SR_TEST_USE_PBR */
 
 #ifndef SR_TEST_USE_ANIMS

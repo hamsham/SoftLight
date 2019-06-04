@@ -254,7 +254,7 @@ void SR_VertexProcessor::flush_fragments() const noexcept
     fragTask.mThreadId      = (uint16_t)tileId;
     fragTask.mMode          = mMesh.mode;
     fragTask.mNumProcessors = mNumThreads;
-    fragTask.mNumBins       = math::min<uint64_t>(mBinsUsed->load(std::memory_order_relaxed), SR_SHADER_MAX_FRAG_BINS);
+    fragTask.mNumBins       = math::min<uint64_t>(mBinsUsed->load(std::memory_order_consume), SR_SHADER_MAX_FRAG_BINS);
     fragTask.mShader        = mShader;
     fragTask.mFbo           = mFbo;
     fragTask.mBinIds        = mBinIds;
@@ -288,7 +288,7 @@ void SR_VertexProcessor::flush_fragments() const noexcept
         mFragProcessors->store(syncPoint1, std::memory_order_release);
     }
 
-    while (mFragProcessors->load(std::memory_order_relaxed) < syncPoint1)
+    while (mFragProcessors->load(std::memory_order_consume) < syncPoint1)
     {
         std::this_thread::yield();
     }
@@ -307,7 +307,7 @@ void SR_VertexProcessor::flush_fragments() const noexcept
     }
 
     // Sync all threads
-    while (mFragProcessors->load(std::memory_order_relaxed) != 0)
+    while (mFragProcessors->load(std::memory_order_consume) != 0)
     {
         std::this_thread::yield();
     }
@@ -574,15 +574,15 @@ void SR_VertexProcessor::execute() noexcept
     }
 
     mBusyProcessors->fetch_sub(1, std::memory_order_acq_rel);
-    while (mBusyProcessors->load(std::memory_order_consume) > 0)
+    while (mBusyProcessors->load(std::memory_order_acquire) > 0)
     {
-        if (mFragProcessors->load(std::memory_order_consume))
+        if (mFragProcessors->load(std::memory_order_acquire))
         {
             flush_fragments();
         }
     }
 
-    if (mBinsUsed->load(std::memory_order_consume))
+    if (mBinsUsed->load(std::memory_order_acquire))
     {
         flush_fragments();
     }

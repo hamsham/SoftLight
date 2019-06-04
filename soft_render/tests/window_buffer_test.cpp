@@ -290,12 +290,10 @@ int main()
                 currSeconds = 0.f;
             }
 
-            /*
             if (totalFrames >= 600)
             {
                 shouldQuit = true;
             }
-            */
 
             update_cam_position(camTrans, tickTime, pKeySyms);
 
@@ -328,8 +326,8 @@ int main()
             context.framebuffer(0).clear_color_buffers();
             context.framebuffer(0).clear_depth_buffer();
 
-            render_scene(pGraph.get(), vpMatrix);
-            //render_scene(pGraph.get(), vpMatrix, ((float)pRenderBuf->width() / (float)pWindow->height()), LS_DEG2RAD(60.f), camTrans);
+            //render_scene(pGraph.get(), vpMatrix);
+            render_scene(pGraph.get(), vpMatrix, ((float)pRenderBuf->width() / (float)pWindow->height()), LS_DEG2RAD(60.f), camTrans);
 
             context.blit(*pRenderBuf, 0);
             pWindow->render(*pRenderBuf);

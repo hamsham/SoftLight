@@ -776,24 +776,30 @@ inline color_type& SR_Texture::raw_texel(ptrdiff_t index) noexcept
 template <typename color_type>
 inline color_type SR_Texture::nearest(float x, float y) const noexcept
 {
-    if (mWrapping == SR_TEXTURE_WRAP_CUTOFF && (ls::math::min(x, y) < 0.f || ls::math::max(x, y) >= 1.f))
+    color_type ret;
+
+    if (mWrapping != SR_TEXTURE_WRAP_CUTOFF || (ls::math::min(x, y) >= 0.f && ls::math::max(x, y) < 1.f))
     {
-        return color_type{0};
+        #if 0
+            const uint32_t xi = (uint32_t)(mWidthf  * wrap_coordinate(x));
+            const uint32_t yi = (uint32_t)(mHeightf * wrap_coordinate(y));
+        #else
+            const fixed_type    xf = ls::math::fixed_cast<fixed_type, float>(x);
+            const fixed_type    yf = ls::math::fixed_cast<fixed_type, float>(y);
+            const uint32_t xi = ls::math::integer_cast<uint32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(mWidth) * wrap_coordinate(xf));
+            const uint32_t yi = ls::math::integer_cast<uint32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(mHeight) * wrap_coordinate(yf));
+        #endif
+
+        const ptrdiff_t index = map_coordinate(xi, yi);
+
+        ret = reinterpret_cast<color_type*>(mTexels)[index];
+    }
+    else
+    {
+        ret = color_type{0};
     }
 
-    #if 0
-        const uint32_t xi = (uint32_t)(mWidthf  * wrap_coordinate(x));
-        const uint32_t yi = (uint32_t)(mHeightf * wrap_coordinate(y));
-    #else
-        const fixed_type    xf = ls::math::fixed_cast<fixed_type, float>(x);
-        const fixed_type    yf = ls::math::fixed_cast<fixed_type, float>(y);
-        const uint32_t xi = ls::math::integer_cast<uint32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(mWidth) * wrap_coordinate(xf));
-        const uint32_t yi = ls::math::integer_cast<uint32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(mHeight) * wrap_coordinate(yf));
-    #endif
-
-    const ptrdiff_t index = map_coordinate(xi, yi);
-
-    return reinterpret_cast<color_type*>(mTexels)[index];
+    return ret;
 }
 
 
