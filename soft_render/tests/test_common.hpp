@@ -32,7 +32,7 @@ struct Light
     math::vec4 pos;
     math::vec4 ambient;
     math::vec4 diffuse;
-    math::vec4 specular;
+    math::vec4 spot;
 };
 
 
