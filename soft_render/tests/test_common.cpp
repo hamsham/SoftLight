@@ -25,7 +25,7 @@
 #endif /* SR_TEST_MAX_THREADS */
 
 #ifndef SR_TEST_USE_PBR
-    #define SR_TEST_USE_PBR 1
+    #define SR_TEST_USE_PBR 0
 #endif /* SR_TEST_USE_PBR */
 
 #ifndef SR_TEST_USE_ANIMS
@@ -165,7 +165,7 @@ bool _normal_frag_shader_impl(const math::vec4&, const SR_UniformBuffer* uniform
     const SpotLight     s             = pUniforms->spot;
     const float         theta         = math::dot(lightDir, s.direction);
     const float         spotIntensity = math::clamp((theta - s.outerCutoff) * s.epsilon, 0.f, 1.f);
-    const math::vec4&&  specular      = diffuse + (l.specular * (spotIntensity * attenuation));
+    const math::vec4&&  specular      = diffuse + (l.spot * (spotIntensity * attenuation));
 
     output = math::min(specular, math::vec4{1.f});
 
@@ -236,10 +236,13 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
     float                attenuation;
     math::vec4           pixel;
     math::vec4           diffuse;
-    math::vec4           specular;
+    math::vec4           spot;
+    float                specular;
 
-    constexpr float diffuseIndensity = 2.f;
-    constexpr float specularIndensity = 2.f;
+    constexpr float diffuseMultiplier = 2.f;
+    constexpr float spotMultiplier = 2.f;
+    constexpr float specularity = 0.5f;
+    constexpr float shininess = 50.f;
 
     // normalize the texture colors to within (0.f, 1.f)
     if (albedo->channels() == 3)
@@ -272,22 +275,30 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
         const float quadratic  = p.quadratic;
 
         attenuation = math::rcp(constant + (linear * lightDist) + (quadratic * lightDist * lightDist));
-        diffuse     = l.diffuse * (lightAngle * attenuation) * diffuseIndensity;
+        diffuse     = l.diffuse * (lightAngle * attenuation) * diffuseMultiplier;
     }
 
-    // Specular light calculation
+    // Spot light calculation
     {
         const SpotLight s         = pUniforms->spot;
         const float theta         = math::dot(lightDir, s.direction);
         const float spotIntensity = math::clamp((theta - s.outerCutoff) * s.epsilon, 0.f, 1.f);
 
-        specular = l.specular * (spotIntensity * attenuation) * specularIndensity;
+        spot = l.spot * (spotIntensity * attenuation) * spotMultiplier;
+    }
+
+    // specular reflection calculation
+    {
+        const math::vec4 eyeVec  = pUniforms->camPos - pos;
+        const math::vec4 halfVec = math::normalize((-l.pos-pos) + eyeVec);
+        const float reflectDir   = math::max(math::dot(halfVec, norm), 0.f);
+        specular                 = specularity * math::pow(reflectDir, shininess);
     }
 
     // output composition
     {
-        pixel = pixel * (diffuse + specular);
-        outputs[0] = math::min(pixel, math::vec4{1.f});
+        const math::vec4 accumulation = math::min(diffuse+spot+specular, math::vec4{1.f});
+        outputs[0] = pixel * accumulation;
     }
 
     return true;
@@ -634,7 +645,7 @@ utils::Pointer<SR_SceneGraph> create_context()
     pUniforms->light.pos        = math::vec4{30.f, 45.f, 45.f, 1.f};
     pUniforms->light.ambient    = math::vec4{0.25f, 0.25f, 0.25f, 1.f};
     pUniforms->light.diffuse    = math::vec4{0.5f, 0.5f, 0.5f, 1.f};
-    pUniforms->light.specular   = math::vec4{1.f};
+    pUniforms->light.spot       = math::vec4{1.f};
     pUniforms->point.constant   = 1.f;
     pUniforms->point.linear     = 0.009f;
     pUniforms->point.quadratic  = 0.00018f;
