@@ -19,7 +19,7 @@ if(MSVC)
     if(MSVC12)
         set(ASSIMP_MSVC_VERSION "vc120")
     elseif(MSVC14)
-        set(ASSIMP_MSVC_VERSION "vc141")
+        set(ASSIMP_MSVC_VERSION "vc140")
     endif()
 
     if(MSVC12 OR MSVC14)
