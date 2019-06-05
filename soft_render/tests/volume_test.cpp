@@ -365,7 +365,7 @@ int scene_load_cube(SR_SceneGraph& graph)
     mesh.elementBegin = 0;
     mesh.elementEnd = numVerts;
     mesh.mode = SR_RenderMode::RENDER_MODE_TRIANGLES;
-    mesh.materialId = (uint16_t)-1;
+    mesh.materialId = (uint32_t)-1;
 
     return 0;
 }

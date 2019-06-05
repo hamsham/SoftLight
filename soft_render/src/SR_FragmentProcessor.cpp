@@ -188,18 +188,103 @@ void SR_FragmentProcessor::render_point(
 
 
 /*--------------------------------------
- * Process the line fragments
+ * Methods for clipping a line segment
  *
- * This method of Bresenham's line-drawing algorithm was developed by Will
- * Navidson Yamamushi:
- *     https://gist.github.com/yamamushi/5823518
+ * This method was adapted from Stephen M. Cameron's implementation of the
+ * Liang-Barsky line clipping algorithm:
+ *     https://github.com/smcameron/liang-barsky-in-c
  *
- * I believe he extracted his implementation from Anthony Thyssen:
- * http://www.ict.griffith.edu.au/anthony/info/graphics/bresenham.procs
- *
- * Anthony Thyssen received his implementation from Bob Pendelton's excerpt in
- * Graphics Gems I (1990):
- * ftp://ftp.isc.org/pub/usenet/comp.sources.unix/volume26/line3d
+ * His method was also adapted from Hin Jang's C++ implementation:
+ *     http://hinjang.com/articles/04.html#eight
+--------------------------------------*/
+bool clip_segment(float num, float denom, float& tE, float& tL)
+{
+    if (math::abs(denom) < LS_EPSILON)
+        return num < 0.f;
+
+    const float t = num / denom;
+
+    if (denom > 0.f)
+    {
+        if (t > tL)
+        {
+            return false;
+        }
+
+        if (t > tE)
+        {
+            tE = t;
+        }
+    }
+    else
+    {
+        if (t < tE)
+        {
+            return false;
+        }
+
+        if (t < tL)
+        {
+            tL = t;
+        }
+    }
+
+    return true;
+}
+
+bool sr_clip_liang_barsky(math::vec2 screenCoords[2], const ls::math::vec4_t<int32_t> dimens)
+{
+    float tE, tL;
+    float& x1 = screenCoords[0][0];
+    float& y1 = screenCoords[0][1];
+    float& x2 = screenCoords[1][0];
+    float& y2 = screenCoords[1][1];
+    const float dx = x2 - x1;
+    const float dy = y2 - y1;
+
+    float xMin = (float)dimens[0];
+    float xMax = (float)dimens[1];
+    float yMin = (float)dimens[2];
+    float yMax = (float)dimens[3];
+
+    if (math::abs(dx) < LS_EPSILON && math::abs(dy) < LS_EPSILON)
+    {
+        if (x1 >= xMin && x1 <= xMax && y1 >= yMin && y1 <= yMax)
+        {
+            return true;
+        }
+    }
+
+    tE = 0.f;
+    tL = 1.f;
+
+    if (clip_segment(xMin-x1,  dx, tE, tL) &&
+        clip_segment(x1-xMax, -dx, tE, tL) &&
+        clip_segment(yMin-y1,  dy, tE, tL) &&
+        clip_segment(y1-yMax, -dy, tE, tL))
+    {
+        if (tL < 1.f)
+        {
+            x2 = x1 + tL * dx;
+            y2 = y1 + tL * dy;
+        }
+
+        if (tE > 0.f)
+        {
+            x1 += tE * dx;
+            y1 += tE * dy;
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
+
+
+/*--------------------------------------
+ * Process the line fragments using a simple DDA algorithm
 --------------------------------------*/
 void SR_FragmentProcessor::render_line(
     const uint_fast64_t binId,
@@ -215,188 +300,78 @@ void SR_FragmentProcessor::render_line(
     const auto              shader      = fragShader.shader;
     const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
 
-    const math::vec4& screenCoord0 = mBins[binId].mScreenCoords[0];
-    const math::vec4& screenCoord1 = mBins[binId].mScreenCoords[1];
-    math::vec4* const inVaryings   = mBins[binId].mVaryings;
+    const math::vec2  screenCoord0  = math::vec2_cast(mBins[binId].mScreenCoords[0]);
+    const math::vec2  screenCoord1  = math::vec2_cast(mBins[binId].mScreenCoords[1]);
+    float             z0            = mBins[binId].mScreenCoords[0][2];
+    float             z1            = mBins[binId].mScreenCoords[1][2];
+    math::vec4* const inVaryings    = mBins[binId].mVaryings;
+    math::vec4        outVaryings   [SR_SHADER_MAX_VARYING_VECTORS];
+    math::vec2        clipCoords[2] = {screenCoord0, screenCoord1};
 
-    math::vec4 outVaryings[SR_SHADER_MAX_VARYING_VECTORS];
-
-    int32_t       pointX = (int32_t)screenCoord0[0];
-    int32_t       pointY = (int32_t)screenCoord0[1];
-    float         pointZ = screenCoord0[2];
-    const float   dx     = screenCoord1[0] - screenCoord0[0];
-    const float   dy     = screenCoord1[1] - screenCoord0[1];
-    const float   dz     = screenCoord1[2] - screenCoord0[2];
-    const int32_t l      = (int32_t)math::abs(dx);
-    const int32_t m      = (int32_t)math::abs(dy);
-    const int32_t n      = (int32_t)math::abs(dz);
-    const int32_t dx2    = l << 1;
-    const int32_t dy2    = m << 1;
-    const int32_t dz2    = n << 1;
-    const int32_t x_inc  = (dx < 0.f) ? -1 : 1;
-    const int32_t y_inc  = (dy < 0.f) ? -1 : 1;
-
-    int32_t err_1, err_2;
-
-    if ((l >= m) && (l >= n))
+    if (!sr_clip_liang_barsky(clipCoords, dimens))
     {
-        const float percentEnd = math::abs(dx);
-        const float z_inc = dz / percentEnd;
-        err_1 = dy2 - l;
-        err_2 = dz2 - l;
-
-        for (int32_t i = 0; i < l; ++i)
-        {
-            interpolate_line_varyings(pointZ, numVaryings, inVaryings, outVaryings);
-
-            if (noDepthTest || fbo->test_depth_pixel(pointX, pointY, pointZ))
-            {
-                const math::vec4 fragCoord{(float)pointX, (float)pointY, pointZ, 1.f};
-
-                if (shader(fragCoord, pUniforms, outVaryings, pOutputs))
-                {
-                    if (depthMask)
-                    {
-                        fbo->put_depth_pixel<float>(pointX, pointY, pointZ);
-                    }
-
-                    for (std::size_t targetId = 0; targetId < numOutputs; ++targetId)
-                    {
-                        fbo->put_pixel(targetId, pointX, pointY, 0, pOutputs[targetId]);
-                    }
-                }
-            }
-
-            if (err_1 > 0)
-            {
-                pointY += y_inc;
-                err_1 -= dx2;
-            }
-
-            if (err_2 > 0)
-            {
-                pointZ += z_inc;
-                err_2 -= dx2;
-            }
-
-            err_1 += dy2;
-            err_2 += dz2;
-            pointX += x_inc;
-        }
-    }
-    else if ((m >= l) && (m >= n))
-    {
-        const float percentEnd = math::abs(dy);
-        const float z_inc = dz / percentEnd;
-        err_1 = dx2 - m;
-        err_2 = dz2 - m;
-
-        for (int32_t i = 0; i < m; ++i)
-        {
-            interpolate_line_varyings(pointZ, numVaryings, inVaryings, outVaryings);
-
-            if (noDepthTest || fbo->test_depth_pixel(pointX, pointY, pointZ))
-            {
-                const math::vec4 fragCoord{(float)pointX, (float)pointY, pointZ, 1.f};
-
-                if (shader(fragCoord, pUniforms, outVaryings, pOutputs))
-                {
-                    if (depthMask)
-                    {
-                        fbo->put_depth_pixel<float>(pointX, pointY, pointZ);
-                    }
-
-                    for (std::size_t targetId = 0; targetId < numOutputs; ++targetId)
-                    {
-                        fbo->put_pixel(targetId, pointX, pointY, 0, pOutputs[targetId]);
-                    }
-                }
-            }
-
-            if (err_1 > 0)
-            {
-                pointX += x_inc;
-                err_1 -= dy2;
-            }
-
-            if (err_2 > 0)
-            {
-                pointZ += z_inc;
-                err_2 -= dy2;
-            }
-
-            err_1 += dx2;
-            err_2 += dz2;
-            pointY += y_inc;
-        }
-    }
-    else
-    {
-        const float percentEnd = math::abs(dz);
-        const float z_inc = dz / percentEnd;
-        err_1 = dy2 - n;
-        err_2 = dx2 - n;
-
-        for (int32_t i = 0; i < n; ++i)
-        {
-            interpolate_line_varyings(pointZ, numVaryings, inVaryings, outVaryings);
-
-            if (noDepthTest || fbo->test_depth_pixel(pointX, pointY, pointZ))
-            {
-                const math::vec4 fragCoord{(float)pointX, (float)pointY, pointZ, 1.f};
-
-                if (shader(fragCoord, pUniforms, outVaryings, pOutputs))
-                {
-                    if (depthMask)
-                    {
-                        fbo->put_depth_pixel<float>(pointX, pointY, pointZ);
-                    }
-
-                    for (std::size_t targetId = 0; targetId < numOutputs; ++targetId)
-                    {
-                        fbo->put_pixel(targetId, pointX, pointY, 0, pOutputs[targetId]);
-                    }
-                }
-            }
-
-            if (err_1 > 0)
-            {
-                pointY += y_inc;
-                err_1 -= dz2;
-            }
-
-            if (err_2 > 0)
-            {
-                pointX += x_inc;
-                err_2 -= dz2;
-            }
-
-            err_1 += dy2;
-            err_2 += dx2;
-            pointZ += z_inc;
-        }
+        return;
     }
 
-    // Final bounds check
-    if (pointX >= dimens[0] && pointX <= dimens[1] && pointY >= dimens[2] && pointY <= dimens[3])
+    const float   x1s   = screenCoord0[0];
+    const float   y1s   = screenCoord0[1];
+    const float   x2s   = screenCoord1[0];
+    const float   y2s   = screenCoord1[1];
+    const float   mx    = math::max(x1s, x2s);
+    const float   my    = math::max(y1s, y2s);
+    const float   x1    = clipCoords[0][0];
+    const float   y1    = clipCoords[0][1];
+    const float   x2    = clipCoords[1][0];
+    const float   y2    = clipCoords[1][1];
+    float         x     = x1;
+    float         y     = y1;
+    const float   end   = 1.f / math::length(math::vec2{mx, my});
+    float         dx    = x2 - x1;
+    float         dy    = y2 - y1;
+    const float   step  = math::abs((dx >= dy ? dx : dy));
+    const int32_t istep = (int32_t)step;
+
+    dx = (step >= 0.f) ? (dx/step) : 0.f;
+    dy = (step >= 0.f) ? (dy/step) : 0.f;
+
+    const SR_Texture* depthBuf = fbo->get_depth_buffer();
+
+    for (int32_t i = 0; i < istep; ++i)
     {
-        if (noDepthTest || fbo->test_depth_pixel(pointX, pointY, pointZ))
+        const int32_t xi      = (int32_t)math::round(x);
+        const int32_t yi      = (int32_t)math::round(y);
+        const float   currLen = math::length(math::vec2{x, y});
+        const float   interp  = 1.f-currLen*end;
+        const float   z       = math::mix(z0, z1, interp);
+
+        if (noDepthTest || depthBuf->texel<float>((uint16_t)xi, (uint16_t)yi) < z)
         {
-            const math::vec4 fragCoord{(float)pointX, (float)pointY, pointZ, 1.f};
+            interpolate_line_varyings(interp, numVaryings, inVaryings, outVaryings);
 
-            if (shader(fragCoord, pUniforms, outVaryings, pOutputs))
+            const math::vec4 fragCoord{x, y, z, 1.f};
+
+            const uint16_t zi = (uint16_t)z;
+            const uint_fast32_t haveOutputs = shader(fragCoord, pUniforms, outVaryings, pOutputs);
+
+
+            // branchless select
+            switch (-haveOutputs & numOutputs)
             {
-                if (depthMask)
-                {
-                    fbo->put_depth_pixel<float>(pointX, pointY, pointZ);
-                }
+                case 4: fbo->put_pixel(3, xi, yi, zi, pOutputs[3]);
+                case 3: fbo->put_pixel(2, xi, yi, zi, pOutputs[2]);
+                case 2: fbo->put_pixel(1, xi, yi, zi, pOutputs[1]);
+                case 1: fbo->put_pixel(0, xi, yi, zi, pOutputs[0]);
+                //case 1: fbo->put_pixel(0, xi, yi, zi, math::vec4{1.f, 0, 1.f, 1.f});
+            }
 
-                for (std::size_t targetId = 0; targetId < numOutputs; ++targetId)
-                {
-                    fbo->put_pixel(targetId, pointX, pointY, 0, pOutputs[targetId]);
-                }
+            if (depthMask)
+            {
+                fbo->put_depth_pixel<float>(xi, yi, z);
             }
         }
+
+        x += dx;
+        y += dy;
     }
 }
 

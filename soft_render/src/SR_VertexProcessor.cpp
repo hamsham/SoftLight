@@ -105,97 +105,6 @@ inline math::vec3_t<size_t> get_next_vertex3(const SR_IndexBuffer* pIbo, size_t 
 
 
 /*--------------------------------------
- * Methods for clipping a line segment
- *
- * This method was adapted from Stephen M. Cameron's implementation of the
- * Liang-Barsky line clipping algorithm:
- *     https://github.com/smcameron/liang-barsky-in-c
- *
- * His method was also adapted from Hin Jang's C++ implementation:
- *     http://hinjang.com/articles/04.html#eight
---------------------------------------*/
-bool clip_segment(float num, float denom, float& tE, float& tL)
-{
-    if (math::abs(denom) < LS_EPSILON)
-        return num < 0.f;
-
-    const float t = num / denom;
-
-    if (denom > 0.f)
-    {
-        if (t > tL)
-        {
-            return false;
-        }
-
-        if (t > tE)
-        {
-            tE = t;
-        }
-    }
-    else
-    {
-        if (t < tE)
-        {
-            return false;
-        }
-
-        if (t < tL)
-        {
-            tL = t;
-        }
-    }
-
-    return true;
-}
-
-bool sr_clip_liang_barsky(math::vec4 screenCoords[SR_SHADER_MAX_SCREEN_COORDS], float xMax, float yMax)
-{
-    float tE, tL;
-    float& x1 = screenCoords[0][0];
-    float& y1 = screenCoords[0][1];
-    float& x2 = screenCoords[1][0];
-    float& y2 = screenCoords[1][1];
-    const float dx = x2 - x1;
-    const float dy = y2 - y1;
-
-    if (math::abs(dx) < LS_EPSILON && math::abs(dy) < LS_EPSILON)
-    {
-        if (x1 >= 0.f && x1 <= xMax && y1 >= 0.f && y1 <= yMax)
-        {
-            return true;
-        }
-    }
-
-    tE = 0.f;
-    tL = 1.f;
-
-    if (clip_segment(-x1,      dx, tE, tL) &&
-        clip_segment(x1-xMax, -dx, tE, tL) &&
-        clip_segment(-y1,      dy, tE, tL) &&
-        clip_segment(y1-yMax, -dy, tE, tL))
-    {
-        if (tL < 1.f)
-        {
-            x2 = x1 + tL * dx;
-            y2 = y1 + tL * dy;
-        }
-
-        if (tE > 0.f)
-        {
-            x1 += tE * dx;
-            y1 += tE * dy;
-        }
-
-        return true;
-    }
-
-    return false;
-}
-
-
-
-/*--------------------------------------
  * Cull backfaces of a triangle
 --------------------------------------*/
 inline bool backface_visible(math::vec4 screenCoords[SR_SHADER_MAX_SCREEN_COORDS], const math::vec4 worldCoords[SR_SHADER_MAX_WORLD_COORDS]) noexcept
@@ -482,10 +391,7 @@ void SR_VertexProcessor::execute() noexcept
                 screenCoords[0] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);
                 screenCoords[1] = sr_world_to_screen_coords(worldCoords[1], widthScale, heightScale);
 
-                if (sr_clip_liang_barsky(screenCoords, fboW, fboH))
-                {
-                    push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
-                }
+                push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
             }
         }
     }
@@ -511,10 +417,7 @@ void SR_VertexProcessor::execute() noexcept
                 screenCoords[0] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);
                 screenCoords[1] = sr_world_to_screen_coords(worldCoords[1], widthScale, heightScale);
 
-                if (sr_clip_liang_barsky(screenCoords, fboW, fboH))
-                {
-                    push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
-                }
+                push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
             }
 
             // verts 0 & 2
@@ -522,15 +425,11 @@ void SR_VertexProcessor::execute() noexcept
             worldCoords[1] = worldCoords[2];
             if (worldCoords[0][3] >= 0.f && worldCoords[1][3] >= 0.f)
             {
-                screenCoords[0] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);
-                screenCoords[1] = sr_world_to_screen_coords(worldCoords[1], widthScale, heightScale);
+                screenCoords[1] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);
+                screenCoords[0] = sr_world_to_screen_coords(worldCoords[1], widthScale, heightScale);
 
-                if (sr_clip_liang_barsky(screenCoords, fboW, fboH))
-                {
-                    push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
-                }
+                push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
             }
-
 
             // verts 1 & 2
             worldCoords[0] = tempWorldCoord;
@@ -539,10 +438,7 @@ void SR_VertexProcessor::execute() noexcept
                 screenCoords[0] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);
                 screenCoords[1] = sr_world_to_screen_coords(worldCoords[1], widthScale, heightScale);
 
-                if (sr_clip_liang_barsky(screenCoords, fboW, fboH))
-                {
-                    push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
-                }
+                push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
             }
         }
     }

@@ -7,6 +7,7 @@
 #include "soft_render/SR_Camera.hpp"
 #include "soft_render/SR_Framebuffer.hpp"
 #include "soft_render/SR_ImgFilePPM.hpp"
+#include "soft_render/SR_IndexBuffer.hpp"
 #include "soft_render/SR_Material.hpp"
 #include "soft_render/SR_Mesh.hpp"
 #include "soft_render/SR_SceneFileLoader.hpp"
@@ -25,7 +26,7 @@
 #endif /* SR_TEST_MAX_THREADS */
 
 #ifndef SR_TEST_USE_PBR
-    #define SR_TEST_USE_PBR 1
+    #define SR_TEST_USE_PBR 0
 #endif /* SR_TEST_USE_PBR */
 
 #ifndef SR_TEST_USE_ANIMS
@@ -44,20 +45,27 @@
 /*--------------------------------------
  * Vertex Shader
 --------------------------------------*/
-math::vec4 _box_vert_shader_impl(const size_t vertId, const SR_VertexArray&, const SR_VertexBuffer&, const SR_UniformBuffer* uniforms, math::vec4*)
+math::vec4 _box_vert_shader_impl(const size_t vertId, const SR_VertexArray&, const SR_VertexBuffer&, const SR_UniformBuffer* uniforms, math::vec4* varyings)
 {
     const MeshUniforms* pUniforms = static_cast<const MeshUniforms*>(uniforms);
     const math::vec4&   trr       = pUniforms->aabb->get_top_rear_right();
     const math::vec4&   bfl       = pUniforms->aabb->get_bot_front_left();
     const math::vec4    points[]  = {
-        {trr[0], bfl[1], bfl[2], 1.f},
-        {trr[0], trr[1], bfl[2], 1.f},
+        {bfl[0], bfl[1], trr[2], 1.f},
+        {trr[0], bfl[1], trr[2], 1.f},
         {trr[0], trr[1], trr[2], 1.f},
         {bfl[0], trr[1], trr[2], 1.f},
-        {bfl[0], bfl[1], trr[2], 1.f},
         {bfl[0], bfl[1], bfl[2], 1.f},
-        {trr[0], bfl[1], trr[2], 1.f},
+        {trr[0], bfl[1], bfl[2], 1.f},
+        {trr[0], trr[1], bfl[2], 1.f},
         {bfl[0], trr[1], bfl[2], 1.f}
+    };
+
+    varyings[0] = math::vec4{
+        (vertId % 3 == 0) ? 1.f : 0.f,
+        (vertId % 3 == 1) ? 1.f : 0.f,
+        (vertId % 3 == 2) ? 1.f : 0.f,
+        1.f
     };
 
     return pUniforms->mvpMatrix * points[vertId % LS_ARRAY_SIZE(points)];
@@ -116,7 +124,7 @@ math::vec4 _normal_vert_shader_impl(const size_t vertId, const SR_VertexArray& v
     const math::vec3& vert = *vbo.element<const math::vec3>(vao.offset(0, vertId));
     const math::vec3& norm = *vbo.element<const math::vec3>(vao.offset(1, vertId));
 
-    varyings[0] = pUniforms->modelMatrix * math::vec4_cast(vert, 1.f);
+    varyings[0] = pUniforms->modelMatrix * math::vec4_cast(vert, 0.f);
     varyings[1] = pUniforms->modelMatrix * math::vec4_cast(norm, 0.f);
 
     return pUniforms->mvpMatrix * math::vec4_cast(vert, 1.f);
@@ -164,7 +172,7 @@ bool _normal_frag_shader_impl(const math::vec4&, const SR_UniformBuffer* uniform
 
     const SpotLight     s             = pUniforms->spot;
     const float         theta         = math::dot(lightDir, s.direction);
-    const float         spotIntensity = math::clamp((theta - s.outerCutoff) * s.epsilon, 0.f, 1.f);
+    const float         spotIntensity = math::smoothstep(s.innerCutoff, s.outerCutoff, theta);
     const math::vec4&&  specular      = diffuse + (l.spot * (spotIntensity * attenuation));
 
     output = math::min(specular, math::vec4{1.f});
@@ -202,7 +210,7 @@ math::vec4 _texture_vert_shader_impl(const size_t vertId, const SR_VertexArray& 
     const math::vec2&   uv        = *vbo.element<const math::vec2>(vao.offset(1, vertId));
     const math::vec3&   norm      = *vbo.element<const math::vec3>(vao.offset(2, vertId));
 
-    varyings[0] = pUniforms->modelMatrix * math::vec4_cast(vert, 1.f);
+    varyings[0] = pUniforms->modelMatrix * math::vec4_cast(vert, 0.f);
     varyings[1] = math::vec4_cast(uv, 0.f, 0.f);
     varyings[2] = math::normalize(pUniforms->modelMatrix * math::vec4_cast(norm, 0.f));
 
@@ -240,7 +248,6 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
     float                specular;
 
     constexpr float diffuseMultiplier = 2.f;
-    constexpr float spotMultiplier = 2.f;
     constexpr float specularity = 0.5f;
     constexpr float shininess = 50.f;
 
@@ -282,9 +289,9 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
     {
         const SpotLight s         = pUniforms->spot;
         const float theta         = math::dot(lightDir, s.direction);
-        const float spotIntensity = math::clamp((theta - s.outerCutoff) * s.epsilon, 0.f, 1.f);
+        const float spotIntensity = math::smoothstep(s.innerCutoff, s.outerCutoff, theta);
 
-        spot = l.spot * (spotIntensity * attenuation) * spotMultiplier;
+        spot = l.spot * (spotIntensity * attenuation) * s.epsilon;
     }
 
     // specular reflection calculation
@@ -470,90 +477,93 @@ int scene_load_cube(SR_SceneGraph& graph)
 {
     int retCode = 0;
     SR_Context& context = graph.mContext;
-    constexpr unsigned numVerts = 36;
-    constexpr size_t stride = sizeof(math::vec3);
+    constexpr unsigned numVerts = 8;
+    constexpr unsigned numIndices = 36;
     size_t numVboBytes = 0;
 
     size_t vboId = context.create_vbo();
     SR_VertexBuffer& vbo = context.vbo(vboId);
-    retCode = vbo.init(numVerts*stride);
+    retCode = vbo.init(numVerts*sizeof(math::vec3));
     if (retCode != 0)
     {
         std::cerr << "Error while creating a VBO: " << retCode << std::endl;
         abort();
     }
 
+    size_t iboId = context.create_ibo();
+    SR_IndexBuffer& ibo = context.ibo(iboId);
+    retCode = ibo.init(numIndices, SR_DataType::VERTEX_DATA_BYTE);
+    if (retCode != 0)
+    {
+        std::cerr << "Error while creating an IBO: " << retCode << std::endl;
+        abort();
+    }
+
     size_t vaoId = context.create_vao();
     SR_VertexArray& vao = context.vao(vaoId);
     vao.set_vertex_buffer(vboId);
-    retCode = vao.set_num_bindings(3);
-    if (retCode != 3)
+    vao.set_index_buffer(iboId);
+    retCode = vao.set_num_bindings(1);
+    if (retCode != 1)
     {
         std::cerr << "Error while setting the number of VAO bindings: " << retCode << std::endl;
         abort();
     }
 
-    math::vec3 verts[numVerts];
-    verts[0]  = math::vec3{-1.f, -1.f, 1.f};
-    verts[1]  = math::vec3{1.f, -1.f, 1.f};
-    verts[2]  = math::vec3{1.f, 1.f, 1.f};
-    verts[3]  = math::vec3{1.f, 1.f, 1.f};
-    verts[4]  = math::vec3{-1.f, 1.f, 1.f};
-    verts[5]  = math::vec3{-1.f, -1.f, 1.f};
-    verts[6]  = math::vec3{1.f, -1.f, 1.f};
-    verts[7]  = math::vec3{1.f, -1.f, -1.f};
-    verts[8]  = math::vec3{1.f, 1.f, -1.f};
-    verts[9]  = math::vec3{1.f, 1.f, -1.f};
-    verts[10] = math::vec3{1.f, 1.f, 1.f};
-    verts[11] = math::vec3{1.f, -1.f, 1.f};
-    verts[12] = math::vec3{-1.f, 1.f, -1.f};
-    verts[13] = math::vec3{1.f, 1.f, -1.f};
-    verts[14] = math::vec3{1.f, -1.f, -1.f};
-    verts[15] = math::vec3{1.f, -1.f, -1.f};
-    verts[16] = math::vec3{-1.f, -1.f, -1.f};
-    verts[17] = math::vec3{-1.f, 1.f, -1.f};
-    verts[18] = math::vec3{-1.f, -1.f, -1.f};
-    verts[19] = math::vec3{-1.f, -1.f, 1.f};
-    verts[20] = math::vec3{-1.f, 1.f, 1.f};
-    verts[21] = math::vec3{-1.f, 1.f, 1.f};
-    verts[22] = math::vec3{-1.f, 1.f, -1.f};
-    verts[23] = math::vec3{-1.f, -1.f, -1.f};
-    verts[24] = math::vec3{-1.f, -1.f, -1.f};
-    verts[25] = math::vec3{1.f, -1.f, -1.f};
-    verts[26] = math::vec3{1.f, -1.f, 1.f};
-    verts[27] = math::vec3{1.f, -1.f, 1.f};
-    verts[28] = math::vec3{-1.f, -1.f, 1.f};
-    verts[29] = math::vec3{-1.f, -1.f, -1.f};
-    verts[30] = math::vec3{-1.f, 1.f, 1.f};
-    verts[31] = math::vec3{1.f, 1.f, 1.f};
-    verts[32] = math::vec3{1.f, 1.f, -1.f};
-    verts[33] = math::vec3{1.f, 1.f, -1.f};
-    verts[34] = math::vec3{-1.f, 1.f, -1.f};
-    verts[35] = math::vec3{-1.f, 1.f, 1.f};
+    constexpr math::vec3 verts[numVerts] = {
+        {-1.f, -1.f,  1.f},
+        { 1.f, -1.f,  1.f},
+        { 1.f,  1.f,  1.f},
+        {-1.f,  1.f,  1.f},
+        {-1.f, -1.f, -1.f},
+        { 1.f, -1.f, -1.f},
+        { 1.f,  1.f, -1.f},
+        {-1.f,  1.f, -1.f}
+    };
+
+    constexpr uint8_t indices[numIndices] = {
+        // front
+        0, 1, 2,
+        2, 3, 0,
+        // right
+        1, 5, 6,
+        6, 2, 1,
+        // back
+        7, 6, 5,
+        5, 4, 7,
+        // left
+        4, 0, 3,
+        3, 7, 4,
+        // bottom
+        4, 5, 1,
+        1, 0, 4,
+        // top
+        3, 2, 6,
+        6, 7, 3
+    };
 
     // Create the vertex buffer
     vbo.assign(verts, numVboBytes, sizeof(verts));
-    vao.set_binding(0, numVboBytes, stride, SR_Dimension::VERTEX_DIMENSION_3, SR_DataType::VERTEX_DATA_FLOAT);
-    numVboBytes += sizeof(verts);
-
-    assert(numVboBytes == (numVerts*stride));
+    ibo.assign(indices, 0, numIndices);
+    vao.set_binding(0, numVboBytes, sizeof(math::vec3), SR_Dimension::VERTEX_DIMENSION_3, SR_DataType::VERTEX_DATA_FLOAT);
 
     ls::utils::Pointer<size_t[]> meshId{new size_t[1]};
     meshId[0] = 0;
 
     graph.mNodes.push_back({SR_SceneNodeType::NODE_TYPE_EMPTY, 0, 0, SCENE_NODE_ROOT_ID});
-    graph.mBaseTransforms.push_back(math::mat4{1.f});
+    graph.mBaseTransforms.emplace_back(math::mat4{1.f});
     graph.mCurrentTransforms.push_back(SR_Transform{math::mat4{1.f}, SR_TRANSFORM_TYPE_MODEL});
-    graph.mNodeNames.push_back(std::string{"AABB"});
-    graph.mModelMatrices.push_back(math::mat4{1.f});
+    graph.mNodeNames.emplace_back(std::string{"AABB"});
+    graph.mModelMatrices.emplace_back(math::mat4{1.f});
     graph.mNodeMeshes.emplace_back(std::move(meshId));
     graph.mNumNodeMeshes.push_back(1);
     graph.mMeshes.emplace_back(SR_Mesh());
+
     SR_Mesh& mesh = graph.mMeshes.back();
     mesh.vaoId = vaoId;
     mesh.elementBegin = 0;
-    mesh.elementEnd = numVerts;
-    mesh.mode = SR_RenderMode::RENDER_MODE_TRI_WIRE;
+    mesh.elementEnd = sizeof(indices)-1;
+    mesh.mode = SR_RenderMode::RENDER_MODE_INDEXED_TRI_WIRE;
     mesh.materialId = (uint32_t)-1;
 
     return 0;
@@ -649,9 +659,9 @@ utils::Pointer<SR_SceneGraph> create_context()
     pUniforms->point.constant   = 1.f;
     pUniforms->point.linear     = 0.009f;
     pUniforms->point.quadratic  = 0.00018f;
-    pUniforms->spot.innerCutoff = std::cos(LS_DEG2RAD(6.5f));
-    pUniforms->spot.outerCutoff = std::cos(LS_DEG2RAD(13.f));
-    pUniforms->spot.epsilon     = math::rcp(pUniforms->spot.innerCutoff - pUniforms->spot.outerCutoff);
+    pUniforms->spot.innerCutoff = std::cos(LS_DEG2RAD(13.f));
+    pUniforms->spot.outerCutoff = std::cos(LS_DEG2RAD(6.5f));
+    pUniforms->spot.epsilon     = pUniforms->spot.outerCutoff / pUniforms->spot.innerCutoff;
 
     size_t texShaderId  = context.create_shader(texVertShader,  texFragShader,  pUniforms);
     size_t normShaderId = context.create_shader(normVertShader, normFragShader, pUniforms);
@@ -733,13 +743,13 @@ bool is_visible(
     const float      delta     = 0.f;
 
     math::vec4 points[]  = {
-        {trr[0], bfl[1], bfl[2], 1.f},
-        {trr[0], trr[1], bfl[2], 1.f},
+        {bfl[0], bfl[1], trr[2], 1.f},
+        {trr[0], bfl[1], trr[2], 1.f},
         {trr[0], trr[1], trr[2], 1.f},
         {bfl[0], trr[1], trr[2], 1.f},
-        {bfl[0], bfl[1], trr[2], 1.f},
         {bfl[0], bfl[1], bfl[2], 1.f},
-        {trr[0], bfl[1], trr[2], 1.f},
+        {trr[0], bfl[1], bfl[2], 1.f},
+        {trr[0], trr[1], bfl[2], 1.f},
         {bfl[0], trr[1], bfl[2], 1.f}
     };
 
