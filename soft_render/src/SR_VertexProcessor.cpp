@@ -420,19 +420,24 @@ void SR_VertexProcessor::execute() noexcept
                 push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
             }
 
-            // verts 0 & 2
-            tempWorldCoord = worldCoords[1];
+            // verts 1 & 2
+            tempWorldCoord = worldCoords[0];
+            worldCoords[0] = worldCoords[1];
             worldCoords[1] = worldCoords[2];
+            worldCoords[2] = tempWorldCoord;
             if (worldCoords[0][3] >= 0.f && worldCoords[1][3] >= 0.f)
             {
-                screenCoords[1] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);
-                screenCoords[0] = sr_world_to_screen_coords(worldCoords[1], widthScale, heightScale);
+                screenCoords[0] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);
+                screenCoords[1] = sr_world_to_screen_coords(worldCoords[1], widthScale, heightScale);
 
                 push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
             }
 
-            // verts 1 & 2
-            worldCoords[0] = tempWorldCoord;
+            // verts 2 & 0
+            tempWorldCoord = worldCoords[0];
+            worldCoords[0] = worldCoords[1];
+            worldCoords[1] = worldCoords[2];
+            worldCoords[2] = tempWorldCoord;
             if (worldCoords[0][3] >= 0.f && worldCoords[1][3] >= 0.f)
             {
                 screenCoords[0] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);

@@ -76,7 +76,7 @@ math::vec4 _box_vert_shader_impl(const size_t vertId, const SR_VertexArray&, con
 SR_VertexShader box_vert_shader()
 {
     SR_VertexShader shader;
-    shader.numVaryings = 0;
+    shader.numVaryings = 1;
     shader.cullMode    = SR_CULL_OFF;
     shader.shader      = _box_vert_shader_impl;
 
@@ -88,9 +88,10 @@ SR_VertexShader box_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-bool _box_frag_shader_impl(const math::vec4&, const SR_UniformBuffer*, const math::vec4*, math::vec4* outputs)
+bool _box_frag_shader_impl(const math::vec4&, const SR_UniformBuffer*, const math::vec4* varyings, math::vec4* outputs)
 {
-    outputs[0] = SR_ColorRGBAf{1.f, 0.f, 1.f, 1.f};
+    outputs[0] = varyings[0];
+    //outputs[0] = SR_ColorRGBAf{1.f, 0.f, 1.f, 1.f};
     return true;
 }
 
@@ -99,7 +100,7 @@ bool _box_frag_shader_impl(const math::vec4&, const SR_UniformBuffer*, const mat
 SR_FragmentShader box_frag_shader()
 {
     SR_FragmentShader shader;
-    shader.numVaryings = 0;
+    shader.numVaryings = 1;
     shader.numOutputs  = 1;
     shader.blend       = SR_BLEND_OFF;
     shader.depthTest   = SR_DEPTH_TEST_OFF;
@@ -562,7 +563,7 @@ int scene_load_cube(SR_SceneGraph& graph)
     SR_Mesh& mesh = graph.mMeshes.back();
     mesh.vaoId = vaoId;
     mesh.elementBegin = 0;
-    mesh.elementEnd = sizeof(indices)-1;
+    mesh.elementEnd = numIndices;
     mesh.mode = SR_RenderMode::RENDER_MODE_INDEXED_TRI_WIRE;
     mesh.materialId = (uint32_t)-1;
 
@@ -832,7 +833,7 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
         for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
         {
             const size_t          nodeMeshId = meshIds[meshId];
-            const SR_Mesh&        m          = pGraph->mMeshes[nodeMeshId];
+                  SR_Mesh         m          = pGraph->mMeshes[nodeMeshId];
             const SR_BoundingBox& box        = pGraph->mMeshBounds[nodeMeshId];
             const SR_Material&    material   = pGraph->mMaterials[m.materialId];
 
@@ -848,6 +849,8 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
                 ++numHidden;
                 continue;
             }
+
+            m.mode = SR_RenderMode::RENDER_MODE_INDEXED_TRI_WIRE;
 
             context.draw(m, shaderId, 0);
         }

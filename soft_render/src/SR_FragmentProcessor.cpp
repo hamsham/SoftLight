@@ -1,6 +1,7 @@
 
 #include "lightsky/setup/Api.h" // LS_IMPERATIVE
 
+#include "lightsky/math/fixed.h"
 #include "lightsky/math/mat4.h"
 #include "lightsky/math/mat_utils.h"
 #include "lightsky/math/vec_utils.h"
@@ -143,7 +144,7 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
 void SR_FragmentProcessor::render_point(
     const uint_fast64_t binId,
     SR_Framebuffer* const fbo,
-    const ls::math::vec4_t<int32_t> dimens) noexcept
+    const math::vec4_t<int32_t> dimens) noexcept
 {
     const SR_FragmentShader fragShader  = mShader->mFragShader;
     const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
@@ -232,7 +233,7 @@ bool clip_segment(float num, float denom, float& tE, float& tL)
     return true;
 }
 
-bool sr_clip_liang_barsky(math::vec2 screenCoords[2], const ls::math::vec4_t<int32_t> dimens)
+bool sr_clip_liang_barsky(math::vec2 screenCoords[2], const math::vec4_t<int32_t> dimens)
 {
     float tE, tL;
     float& x1 = screenCoords[0][0];
@@ -289,8 +290,11 @@ bool sr_clip_liang_barsky(math::vec2 screenCoords[2], const ls::math::vec4_t<int
 void SR_FragmentProcessor::render_line(
     const uint_fast64_t binId,
     SR_Framebuffer* fbo,
-    const ls::math::vec4_t<int32_t> dimens) noexcept
+    const math::vec4_t<int32_t> dimens) noexcept
 {
+    typedef math::long_medp_t fixed_type;
+    constexpr fixed_type ZERO = fixed_type{0};
+
     math::vec4              pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
     const SR_FragmentShader fragShader  = mShader->mFragShader;
     const uint32_t          numVaryings = fragShader.numVaryings;
@@ -300,59 +304,56 @@ void SR_FragmentProcessor::render_line(
     const auto              shader      = fragShader.shader;
     const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
 
-    const math::vec2  screenCoord0  = math::vec2_cast(mBins[binId].mScreenCoords[0]);
-    const math::vec2  screenCoord1  = math::vec2_cast(mBins[binId].mScreenCoords[1]);
-    float             z0            = mBins[binId].mScreenCoords[0][2];
-    float             z1            = mBins[binId].mScreenCoords[1][2];
+    const math::vec4  screenCoord0  = mBins[binId].mScreenCoords[0];
+    const math::vec4  screenCoord1  = mBins[binId].mScreenCoords[1];
+    float             z0            = screenCoord0[2];
+    float             z1            = screenCoord1[2];
     math::vec4* const inVaryings    = mBins[binId].mVaryings;
     math::vec4        outVaryings   [SR_SHADER_MAX_VARYING_VECTORS];
-    math::vec2        clipCoords[2] = {screenCoord0, screenCoord1};
+    math::vec2        clipCoords[2] = {math::vec2_cast(screenCoord0), math::vec2_cast(screenCoord1)};
 
     if (!sr_clip_liang_barsky(clipCoords, dimens))
     {
         return;
     }
 
-    const float   x1s   = screenCoord0[0];
-    const float   y1s   = screenCoord0[1];
-    const float   x2s   = screenCoord1[0];
-    const float   y2s   = screenCoord1[1];
-    const float   mx    = math::max(x1s, x2s);
-    const float   my    = math::max(y1s, y2s);
-    const float   x1    = clipCoords[0][0];
-    const float   y1    = clipCoords[0][1];
-    const float   x2    = clipCoords[1][0];
-    const float   y2    = clipCoords[1][1];
-    float         x     = x1;
-    float         y     = y1;
-    const float   end   = 1.f / math::length(math::vec2{mx, my});
-    float         dx    = x2 - x1;
-    float         dy    = y2 - y1;
-    const float   step  = math::abs((dx >= dy ? dx : dy));
-    const int32_t istep = (int32_t)step;
+    const float      x1f   = screenCoord0[0];
+    const float      y1f   = screenCoord0[1];
+    const fixed_type x1    = math::fixed_cast<fixed_type, float>(clipCoords[0][0]);
+    const fixed_type y1    = math::fixed_cast<fixed_type, float>(clipCoords[0][1]);
+    const fixed_type x2    = math::fixed_cast<fixed_type, float>(clipCoords[1][0]);
+    const fixed_type y2    = math::fixed_cast<fixed_type, float>(clipCoords[1][1]);
+    fixed_type       x     = x1;
+    fixed_type       y     = y1;
+    fixed_type       dx    = x2 - x1;
+    fixed_type       dy    = y2 - y1;
+    const fixed_type step  = math::abs((dx >= dy ? dx : dy));
+    const int32_t    istep = math::integer_cast<int32_t, fixed_type>(step);
 
-    dx = (step >= 0.f) ? (dx/step) : 0.f;
-    dy = (step >= 0.f) ? (dy/step) : 0.f;
+    dx = (step > ZERO) ? (dx/step) : ZERO;
+    dy = (step > ZERO) ? (dy/step) : ZERO;
 
+    const float       dist     = 1.f / math::length(math::vec2_cast(screenCoord1)-math::vec2_cast(screenCoord0));
     const SR_Texture* depthBuf = fbo->get_depth_buffer();
 
-    for (int32_t i = 0; i < istep; ++i)
+    for (int32_t i = 0; i <= istep; ++i)
     {
-        const int32_t xi      = (int32_t)math::round(x);
-        const int32_t yi      = (int32_t)math::round(y);
-        const float   currLen = math::length(math::vec2{x, y});
-        const float   interp  = 1.f-currLen*end;
-        const float   z       = math::mix(z0, z1, interp);
+        const float      xf      = math::float_cast<float, fixed_type>(x);
+        const float      yf      = math::float_cast<float, fixed_type>(y);
+        const int32_t    xi      = math::integer_cast<int32_t, fixed_type>(math::ceil(x));
+        const int32_t    yi      = math::integer_cast<int32_t, fixed_type>(math::ceil(y));
+
+        const float      currLen = math::length(math::vec2{xf-x1f, yf-y1f});
+        const float      interp  = (currLen*dist);
+        const float      z       = math::mix(z0, z1, interp);
 
         if (noDepthTest || depthBuf->texel<float>((uint16_t)xi, (uint16_t)yi) < z)
         {
             interpolate_line_varyings(interp, numVaryings, inVaryings, outVaryings);
 
-            const math::vec4 fragCoord{x, y, z, 1.f};
-
-            const uint16_t zi = (uint16_t)z;
+            const math::vec4    fragCoord   {xf, yf, z, 1.f};
             const uint_fast32_t haveOutputs = shader(fragCoord, pUniforms, outVaryings, pOutputs);
-
+            const uint16_t      zi          = (uint16_t)z;
 
             // branchless select
             switch (-haveOutputs & numOutputs)
