@@ -411,38 +411,14 @@ void SR_VertexProcessor::execute() noexcept
             worldCoords[1]  = shader(vertId[1], vao, vbo, pUniforms, pVaryings + SR_SHADER_MAX_VARYING_VECTORS);
             worldCoords[2]  = shader(vertId[2], vao, vbo, pUniforms, pVaryings + (SR_SHADER_MAX_VARYING_VECTORS * 2));
 
-            // verts 0 & 1
-            if (worldCoords[0][3] >= 0.f && worldCoords[1][3] >= 0.f)
+            screenCoords[0] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);
+            screenCoords[1] = sr_world_to_screen_coords(worldCoords[1], widthScale, heightScale);
+            screenCoords[2] = sr_world_to_screen_coords(worldCoords[2], widthScale, heightScale);
+
+            if ((cullMode == SR_CULL_BACK_FACE && backface_visible(screenCoords, worldCoords))
+                || (cullMode == SR_CULL_FRONT_FACE && frontface_visible(screenCoords, worldCoords))
+                || (cullMode == SR_CULL_OFF && face_visible(worldCoords)))
             {
-                screenCoords[0] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);
-                screenCoords[1] = sr_world_to_screen_coords(worldCoords[1], widthScale, heightScale);
-
-                push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
-            }
-
-            // verts 1 & 2
-            tempWorldCoord = worldCoords[0];
-            worldCoords[0] = worldCoords[1];
-            worldCoords[1] = worldCoords[2];
-            worldCoords[2] = tempWorldCoord;
-            if (worldCoords[0][3] >= 0.f && worldCoords[1][3] >= 0.f)
-            {
-                screenCoords[0] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);
-                screenCoords[1] = sr_world_to_screen_coords(worldCoords[1], widthScale, heightScale);
-
-                push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
-            }
-
-            // verts 2 & 0
-            tempWorldCoord = worldCoords[0];
-            worldCoords[0] = worldCoords[1];
-            worldCoords[1] = worldCoords[2];
-            worldCoords[2] = tempWorldCoord;
-            if (worldCoords[0][3] >= 0.f && worldCoords[1][3] >= 0.f)
-            {
-                screenCoords[0] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);
-                screenCoords[1] = sr_world_to_screen_coords(worldCoords[1], widthScale, heightScale);
-
                 push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
             }
         }
