@@ -401,7 +401,6 @@ void SR_VertexProcessor::execute() noexcept
         begin += mThreadId * 3u;
         const size_t step = mNumThreads * 3u;
         const bool usingIndices = mMesh.mode == RENDER_MODE_INDEXED_TRI_WIRE;
-        math::vec4 tempWorldCoord;
 
         for (size_t i = begin; i < end; i += step)
         {

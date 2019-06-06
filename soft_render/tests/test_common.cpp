@@ -34,7 +34,7 @@
 #endif /* SR_TEST_USE_ANIMS */
 
 #ifndef SR_TEST_DEBUG_AABBS
-    #define SR_TEST_DEBUG_AABBS 0
+    #define SR_TEST_DEBUG_AABBS 1
 #endif
 
 
@@ -833,7 +833,7 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
         for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
         {
             const size_t          nodeMeshId = meshIds[meshId];
-                  SR_Mesh         m          = pGraph->mMeshes[nodeMeshId];
+            const SR_Mesh&        m          = pGraph->mMeshes[nodeMeshId];
             const SR_BoundingBox& box        = pGraph->mMeshBounds[nodeMeshId];
             const SR_Material&    material   = pGraph->mMaterials[m.materialId];
 
@@ -849,8 +849,6 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
                 ++numHidden;
                 continue;
             }
-
-            m.mode = SR_RenderMode::RENDER_MODE_INDEXED_TRI_WIRE;
 
             context.draw(m, shaderId, 0);
         }
