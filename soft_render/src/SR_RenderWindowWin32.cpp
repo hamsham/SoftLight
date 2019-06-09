@@ -1,4 +1,9 @@
 
+// Thanks again Visual Studio
+#ifndef NOMINMAX
+    #define NOMINMAX
+#endif /* NOMINMAX */
+
 #include <windows.h>
 #include <windowsx.h>
 #include <winuser.h>

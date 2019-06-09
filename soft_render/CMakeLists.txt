@@ -23,7 +23,7 @@ endif()
 # -------------------------------------
 # OS Setup
 # -------------------------------------
-if (NOT WIN32)
+if (NOT WIN32 AND NOT MINGW)
     # X11 is needed for *Nix systems
 	find_package(X11 REQUIRED)
 	

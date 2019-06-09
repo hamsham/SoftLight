@@ -32,20 +32,16 @@
 #include "soft_render/SR_WindowEvent.hpp"
 
 #ifndef IMAGE_WIDTH
-    #define IMAGE_WIDTH 1920
+    #define IMAGE_WIDTH 1280
 #endif /* IMAGE_WIDTH */
 
 #ifndef IMAGE_HEIGHT
-    #define IMAGE_HEIGHT 1080
+    #define IMAGE_HEIGHT 720
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SR_TEST_MAX_THREADS
     #define SR_TEST_MAX_THREADS 4
 #endif /* SR_TEST_MAX_THREADS */
-
-#ifndef SR_TEST_USE_ANIMS
-    #define SR_TEST_USE_ANIMS 1
-#endif /* SR_TEST_USE_ANIMS */
 
 namespace math = ls::math;
 namespace utils = ls::utils;
