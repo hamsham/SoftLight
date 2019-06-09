@@ -7,6 +7,7 @@
 
 #include "soft_render/SR_BoundingBox.hpp"
 #include "soft_render/SR_Camera.hpp"
+#include "soft_render/SR_Transform.hpp"
 
 
 
@@ -72,6 +73,90 @@ bool sr_is_visible(const SR_BoundingBox& bb, const math::mat4& mvpMatrix, const 
     }
 
     return false;
+}
+
+
+
+/*-------------------------------------
+ * Radar-based frustum culling method as described by Hernandez-Rudomin in
+ * their paper "A Rendering Pipeline for Real-time Crowds."
+ *
+ * https://pdfs.semanticscholar.org/4fae/54e3f9e79ba09ead5702648664b9932a1d3f.pdf
+-------------------------------------*/
+bool sr_is_visible(
+    float aspect,
+    float fov,
+    const SR_Transform& camTrans,
+    const math::mat4& modelMat,
+    const SR_BoundingBox& bounds) noexcept
+{
+    const float      viewAngle = math::tan(fov*0.5f);
+    const math::vec3 c         = camTrans.get_abs_position();
+    const math::mat3 t         = math::mat3{math::transpose(camTrans.get_transform())};
+    const math::vec3 cx        = t[0];
+    const math::vec3 cy        = t[1];
+    const math::vec3 cz        = -t[2];
+    const math::vec4 trr       = bounds.get_top_rear_right();
+    const math::vec4 bfl       = bounds.get_bot_front_left();
+    const float      delta     = 0.f;
+
+    math::vec4 points[]  = {
+        {bfl[0], bfl[1], trr[2], 1.f},
+        {trr[0], bfl[1], trr[2], 1.f},
+        {trr[0], trr[1], trr[2], 1.f},
+        {bfl[0], trr[1], trr[2], 1.f},
+        {bfl[0], bfl[1], bfl[2], 1.f},
+        {trr[0], bfl[1], bfl[2], 1.f},
+        {trr[0], trr[1], bfl[2], 1.f},
+        {bfl[0], trr[1], bfl[2], 1.f}
+    };
+
+    float objX, objY, objZ, xAspect, yAspect;
+
+    for (unsigned i = 0; i < LS_ARRAY_SIZE(points); ++i)
+    {
+        points[i] = modelMat * points[i];
+    }
+
+    for (unsigned i = 0; i < LS_ARRAY_SIZE(points); ++i)
+    {
+        const math::vec3& p = math::vec3_cast(points[i]);
+
+        // compute vector from camera position to p
+        const math::vec3&& v = p - c;
+
+        // compute and test the Z coordinate
+        objZ = math::dot(v, cz);
+        if (objZ < 0.f)
+        {
+            continue;
+        }
+
+        // compute and test the Y coordinate
+        objY = math::dot(v, cy);
+        yAspect = objZ * viewAngle;
+        yAspect += delta;
+        if (objY > yAspect || objY < -yAspect)
+        {
+            continue;
+        }
+
+        // compute and test the X coordinate
+        objX = math::dot(v, cx);
+        xAspect = yAspect * aspect;
+        xAspect += delta;
+        if (objX > xAspect || objX < -xAspect)
+        {
+            continue;
+        }
+
+        return true;
+    }
+
+    const math::vec3 bboxMin = math::vec3_cast(modelMat * bfl);
+    const math::vec3 bboxMax = math::vec3_cast(modelMat * trr);
+
+    return c > bboxMin && c < bboxMax;
 }
 
 

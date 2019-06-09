@@ -1,25 +1,49 @@
 
 #include <iostream>
+#include <memory> // std::move()
+#include <thread>
 
-#include "lightsky/math/vec_utils.h"
+#include "lightsky/math/mat_utils.h"
+#include "lightsky/math/quat_utils.h"
 
+#include "lightsky/utils/Pointer.h"
+#include "lightsky/utils/Time.hpp"
+
+#include "soft_render/SR_Animation.hpp"
+#include "soft_render/SR_AnimationChannel.hpp"
+#include "soft_render/SR_AnimationPlayer.hpp"
 #include "soft_render/SR_BoundingBox.hpp"
 #include "soft_render/SR_Camera.hpp"
-#include "soft_render/SR_Framebuffer.hpp"
-#include "soft_render/SR_ImgFilePPM.hpp"
+#include "soft_render/SR_Context.hpp"
 #include "soft_render/SR_IndexBuffer.hpp"
+#include "soft_render/SR_Framebuffer.hpp"
+#include "soft_render/SR_KeySym.hpp"
 #include "soft_render/SR_Material.hpp"
-#include "soft_render/SR_Mesh.hpp"
+#include "soft_render/SR_RenderWindow.hpp"
 #include "soft_render/SR_SceneFileLoader.hpp"
 #include "soft_render/SR_SceneGraph.hpp"
-#include "soft_render/SR_Texture.hpp"
+#include "soft_render/SR_Shader.hpp"
 #include "soft_render/SR_Transform.hpp"
+#include "soft_render/SR_UniformBuffer.hpp"
 #include "soft_render/SR_VertexArray.hpp"
 #include "soft_render/SR_VertexBuffer.hpp"
+#include "soft_render/SR_WindowBuffer.hpp"
+#include "soft_render/SR_WindowEvent.hpp"
 
-#include "test_common.hpp"
+//#include "test_common.hpp"
+
+namespace math = ls::math;
+namespace utils = ls::utils;
 
 
+
+#ifndef IMAGE_WIDTH
+    #define IMAGE_WIDTH 1280
+#endif /* IMAGE_WIDTH */
+
+#ifndef IMAGE_HEIGHT
+    #define IMAGE_HEIGHT 720
+#endif /* IMAGE_HEIGHT */
 
 #ifndef SR_TEST_MAX_THREADS
     #define SR_TEST_MAX_THREADS 4
@@ -30,12 +54,61 @@
 #endif /* SR_TEST_USE_PBR */
 
 #ifndef SR_TEST_USE_ANIMS
-    #define SR_TEST_USE_ANIMS 0
+    #define SR_TEST_USE_ANIMS 1
 #endif /* SR_TEST_USE_ANIMS */
 
 #ifndef SR_TEST_DEBUG_AABBS
-    #define SR_TEST_DEBUG_AABBS 1
+    #define SR_TEST_DEBUG_AABBS 0
 #endif
+
+
+
+/*-----------------------------------------------------------------------------
+ * Structures to create uniform variables shared across all shader stages.
+-----------------------------------------------------------------------------*/
+struct Light
+{
+    math::vec4 pos;
+    math::vec4 ambient;
+    math::vec4 diffuse;
+    math::vec4 spot;
+};
+
+
+
+struct PointLight
+{
+    float constant;
+    float linear;
+    float quadratic;
+    float padding;
+};
+
+
+
+struct SpotLight
+{
+    math::vec4 direction;
+    float outerCutoff;
+    float innerCutoff;
+    float epsilon;
+};
+
+
+
+struct MeshUniforms : SR_UniformBuffer
+{
+    const SR_Texture* pTexture;
+    const SR_BoundingBox* aabb;
+
+    math::vec4 camPos;
+    Light light;
+    PointLight point;
+    SpotLight spot;
+
+    math::mat4 modelMatrix;
+    math::mat4 mvpMatrix;
+};
 
 
 
@@ -472,6 +545,197 @@ SR_FragmentShader texture_frag_shader()
 
 
 /*-------------------------------------
+ *
+-------------------------------------*/
+void setup_animations(SR_SceneGraph& graph, SR_AnimationPlayer& animPlayer)
+{
+    std::vector<SR_Animation>& sceneAnims = graph.mAnimations;
+
+    for (std::vector<SR_AnimationChannel>& animList : graph.mNodeAnims)
+    {
+        for (SR_AnimationChannel& track : animList)
+        {
+            track.mAnimMode = SR_AnimationFlag::SR_ANIM_FLAG_INTERPOLATE;
+        }
+    }
+
+    std::cout << "Running " << sceneAnims.size() << " animations." << std::endl;
+
+    animPlayer.set_play_state(SR_AnimationState::SR_ANIM_STATE_PLAYING);
+    animPlayer.set_num_plays(SR_AnimationPlayer::PLAY_ONCE);
+    animPlayer.set_time_dilation(1.f);
+}
+
+
+
+/*-------------------------------------
+ * Animation updating
+-------------------------------------*/
+void update_animations(SR_SceneGraph& graph, SR_AnimationPlayer& animPlayer, unsigned& currentAnimId, float tickTime)
+{
+    if (graph.mAnimations.empty())
+    {
+        return;
+    }
+
+    // Play the current animation until it stops. Then move onto the next animation.
+    if (animPlayer.is_stopped())
+    {
+        std::cout << "Completed animation " << currentAnimId << ". ";
+        std::vector<SR_Animation>& animations = graph.mAnimations;
+        currentAnimId = (currentAnimId + 1) % animations.size();
+
+        // reset the transformations in graph graph to those at the beginning of an animation
+        SR_Animation& initialState = graph.mAnimations[currentAnimId];
+        initialState.init(graph);
+
+        animPlayer.set_play_state(SR_AnimationState::SR_ANIM_STATE_PLAYING);
+        animPlayer.set_num_plays(SR_AnimationPlayer::PLAY_ONCE);
+
+        std::cout << "Now playing animation " << currentAnimId << '.' << std::endl;
+    }
+
+    animPlayer.tick(graph, currentAnimId, 1000u*tickTime);
+}
+
+
+
+/*-------------------------------------
+ * Update the camera's position
+-------------------------------------*/
+void update_cam_position(SR_Transform& camTrans, float tickTime, utils::Pointer<bool[]>& pKeys)
+{
+    const float camSpeed = 100.f;
+
+    if (pKeys[SR_KeySymbol::KEY_SYM_w] || pKeys[SR_KeySymbol::KEY_SYM_W])
+    {
+        camTrans.move(math::vec3{0.f, 0.f, camSpeed * tickTime}, false);
+    }
+
+    if (pKeys[SR_KeySymbol::KEY_SYM_s] || pKeys[SR_KeySymbol::KEY_SYM_S])
+    {
+        camTrans.move(math::vec3{0.f, 0.f, -camSpeed * tickTime}, false);
+    }
+
+    if (pKeys[SR_KeySymbol::KEY_SYM_e] || pKeys[SR_KeySymbol::KEY_SYM_E])
+    {
+        camTrans.move(math::vec3{0.f, camSpeed * tickTime, 0.f}, false);
+    }
+
+    if (pKeys[SR_KeySymbol::KEY_SYM_q] || pKeys[SR_KeySymbol::KEY_SYM_Q])
+    {
+        camTrans.move(math::vec3{0.f, -camSpeed * tickTime, 0.f}, false);
+    }
+
+    if (pKeys[SR_KeySymbol::KEY_SYM_d] || pKeys[SR_KeySymbol::KEY_SYM_D])
+    {
+        camTrans.move(math::vec3{camSpeed * tickTime, 0.f, 0.f}, false);
+    }
+
+    if (pKeys[SR_KeySymbol::KEY_SYM_a] || pKeys[SR_KeySymbol::KEY_SYM_A])
+    {
+        camTrans.move(math::vec3{-camSpeed * tickTime, 0.f, 0.f}, false);
+    }
+}
+
+
+
+/*-------------------------------------
+ * Render the Scene
+-------------------------------------*/
+void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspect, float fov, const SR_Transform& camTrans)
+{
+    SR_Context&    context   = pGraph->mContext;
+    MeshUniforms*  pUniforms = static_cast<MeshUniforms*>(context.shader(0).uniforms().get());
+    unsigned       numHidden = 0;
+    unsigned       numTotal  = 0;
+
+    (void)aspect;
+    (void)fov;
+    (void)camTrans;
+
+    for (SR_SceneNode& n : pGraph->mNodes)
+    {
+        if (n.type != NODE_TYPE_MESH)
+        {
+            continue;
+        }
+
+        const math::mat4& modelMat = pGraph->mModelMatrices[n.nodeId];
+        const size_t numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
+        const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
+
+        pUniforms->modelMatrix = modelMat;
+        pUniforms->mvpMatrix   = vpMatrix * modelMat;
+
+        for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
+        {
+            const size_t          nodeMeshId = meshIds[meshId];
+            const SR_Mesh&        m          = pGraph->mMeshes[nodeMeshId];
+            const SR_BoundingBox& box        = pGraph->mMeshBounds[nodeMeshId];
+            const SR_Material&    material   = pGraph->mMaterials[m.materialId];
+
+            pUniforms->pTexture = material.pTextures[0];
+
+            // Use the textureless shader if needed
+            const size_t shaderId = (size_t)(material.pTextures[0] == nullptr);
+
+            ++numTotal;
+
+            if (!sr_is_visible(aspect, fov, camTrans, modelMat, box))
+            {
+                ++numHidden;
+                continue;
+            }
+
+            context.draw(m, shaderId, 0);
+        }
+    }
+
+    // debugging
+#if SR_TEST_DEBUG_AABBS
+    const SR_Mesh& boxMesh = pGraph->mMeshes[0];
+
+    for (SR_SceneNode& n : pGraph->mNodes)
+    {
+        if (n.type != NODE_TYPE_MESH)
+        {
+            continue;
+        }
+
+        const math::mat4& modelMat = pGraph->mModelMatrices[n.nodeId];
+        const size_t numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
+        const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
+
+        pUniforms->modelMatrix = modelMat;
+        pUniforms->mvpMatrix   = vpMatrix * modelMat;
+
+        for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
+        {
+            const size_t nodeMeshId = meshIds[meshId];
+            const SR_BoundingBox& box = pGraph->mMeshBounds[nodeMeshId];
+            pUniforms->aabb = &box;
+
+            if (!is_visible(aspect, fov, camTrans, modelMat, box))
+            {
+                continue;
+            }
+
+            context.draw(boxMesh, 2,  0);
+        }
+    }
+#endif
+
+    /*
+    std::cout
+        << "Meshes Hidden: " << numHidden << '/' << numTotal << " (" << 100.f*((float)numHidden/(float)numTotal) << "%)."
+        << std::endl;
+    */
+}
+
+
+
+/*-------------------------------------
  * Load a cube mesh
 -------------------------------------*/
 int scene_load_cube(SR_SceneGraph& graph)
@@ -682,215 +946,228 @@ utils::Pointer<SR_SceneGraph> create_context()
 
 
 /*-----------------------------------------------------------------------------
- * Render a scene
------------------------------------------------------------------------------*/
-void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
-{
-    SR_Context& context = pGraph->mContext;
-    MeshUniforms* pUniforms = static_cast<MeshUniforms*>(context.shader(0).uniforms().get());
-
-    for (SR_SceneNode& n : pGraph->mNodes)
-    {
-        if (n.type != NODE_TYPE_MESH)
-        {
-            continue;
-        }
-
-        const math::mat4& modelMat = pGraph->mModelMatrices[n.nodeId];
-        const size_t numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
-        const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
-
-        pUniforms->modelMatrix = modelMat;
-        pUniforms->mvpMatrix   = vpMatrix * modelMat;
-
-        for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
-        {
-            const size_t          nodeMeshId = meshIds[meshId];
-            const SR_Mesh&        m          = pGraph->mMeshes[nodeMeshId];
-            const SR_Material&    material   = pGraph->mMaterials[m.materialId];
-            pUniforms->pTexture = material.pTextures[0];
-
-            // Use the textureless shader if needed
-            const size_t shaderId = (size_t)(material.pTextures[0] == nullptr);
-
-            context.draw(m, shaderId, 0);
-        }
-    }
-}
-
-
-
-/*-------------------------------------
- * Radar-based frustum culling method as described by Hernandez-Rudomin in
- * their paper "A Rendering Pipeline for Real-time Crowds."
  *
- * https://pdfs.semanticscholar.org/4fae/54e3f9e79ba09ead5702648664b9932a1d3f.pdf
--------------------------------------*/
-bool is_visible(
-    float aspect,
-    float fov,
-    const SR_Transform& camTrans,
-    const math::mat4& modelMat,
-    const SR_BoundingBox& bounds) noexcept
+-----------------------------------------------------------------------------*/
+int main()
 {
-    const float      viewAngle = math::tan(fov*0.5f);
-    const math::vec3 c         = camTrans.get_abs_position();
-    const math::mat3 t         = math::mat3{math::transpose(camTrans.get_transform())};
-    const math::vec3 cx        = t[0];
-    const math::vec3 cy        = t[1];
-    const math::vec3 cz        = -t[2];
-    const math::vec4 trr       = bounds.get_top_rear_right();
-    const math::vec4 bfl       = bounds.get_bot_front_left();
-    const float      delta     = 0.f;
+    utils::Pointer<SR_RenderWindow> pWindow{std::move(SR_RenderWindow::create())};
+    utils::Pointer<SR_WindowBuffer> pRenderBuf{SR_WindowBuffer::create()};
+    utils::Pointer<SR_SceneGraph>   pGraph{std::move(create_context())};
+    utils::Pointer<bool[]>          pKeySyms{new bool[256]};
 
-    math::vec4 points[]  = {
-        {bfl[0], bfl[1], trr[2], 1.f},
-        {trr[0], bfl[1], trr[2], 1.f},
-        {trr[0], trr[1], trr[2], 1.f},
-        {bfl[0], trr[1], trr[2], 1.f},
-        {bfl[0], bfl[1], bfl[2], 1.f},
-        {trr[0], bfl[1], bfl[2], 1.f},
-        {trr[0], trr[1], bfl[2], 1.f},
-        {bfl[0], trr[1], bfl[2], 1.f}
-    };
+    std::fill_n(pKeySyms.get(), 256, false);
 
-    float objX, objY, objZ, xAspect, yAspect;
+    SR_Context& context = pGraph->mContext;
+    SR_AnimationPlayer animPlayer;
+    unsigned currentAnimId = 0;
 
-    for (unsigned i = 0; i < LS_ARRAY_SIZE(points); ++i)
+    setup_animations(*pGraph, animPlayer);
+
+    int shouldQuit = pWindow->init(IMAGE_WIDTH, IMAGE_HEIGHT);
+
+    utils::Clock<float> timer;
+    unsigned currFrames = 0;
+    unsigned totalFrames = 0;
+    float currSeconds = 0.f;
+    float totalSeconds = 0.f;
+    float dx = 0.f;
+    float dy = 0.f;
+
+    unsigned numThreads = context.num_threads();
+
+    SR_Transform camTrans;
+    camTrans.set_type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
+    //camTrans.extract_transforms(math::look_at(math::vec3{75.f}, math::vec3{0.f, 10.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
+    camTrans.extract_transforms(math::look_at(math::vec3{0.f}, math::vec3{3.f, -5.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
+    math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
+
+    if (shouldQuit)
     {
-        points[i] = modelMat * points[i];
+        return shouldQuit;
     }
 
-    for (unsigned i = 0; i < LS_ARRAY_SIZE(points); ++i)
+    if (!pWindow->run())
     {
-        const math::vec3& p = math::vec3_cast(points[i]);
-
-        // compute vector from camera position to p
-        const math::vec3&& v = p - c;
-
-        // compute and test the Z coordinate
-        objZ = math::dot(v, cz);
-        if (objZ < 0.f)
-        {
-            continue;
-        }
-
-        // compute and test the Y coordinate
-        objY = math::dot(v, cy);
-        yAspect = objZ * viewAngle;
-        yAspect += delta;
-        if (objY > yAspect || objY < -yAspect)
-        {
-            continue;
-        }
-
-        // compute and test the X coordinate
-        objX = math::dot(v, cx);
-        xAspect = yAspect * aspect;
-        xAspect += delta;
-        if (objX > xAspect || objX < -xAspect)
-        {
-            continue;
-        }
-
-        return true;
+        std::cerr << "Unable to run the test window!" << std::endl;
+        pWindow->destroy();
+        return -1;
     }
 
-    const math::vec3 bboxMin = math::vec3_cast(modelMat * bfl);
-    const math::vec3 bboxMax = math::vec3_cast(modelMat * trr);
-
-    return c > bboxMin && c < bboxMax;
-}
-
-
-
-
-void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspect, float fov, const SR_Transform& camTrans)
-{
-    SR_Context&    context   = pGraph->mContext;
-    MeshUniforms*  pUniforms = static_cast<MeshUniforms*>(context.shader(0).uniforms().get());
-    unsigned       numHidden = 0;
-    unsigned       numTotal  = 0;
-
-    (void)aspect;
-    (void)fov;
-    (void)camTrans;
-
-    for (SR_SceneNode& n : pGraph->mNodes)
+    if (pRenderBuf->init(*pWindow, IMAGE_WIDTH, IMAGE_HEIGHT) != 0 || pWindow->set_title("Mesh Test") != 0)
     {
-        if (n.type != NODE_TYPE_MESH)
+        return -2;
+    }
+
+    pWindow->set_keys_repeat(false); // text mode
+    timer.start();
+
+    while (!shouldQuit)
+    {
+        pWindow->update();
+        SR_WindowEvent evt;
+
+        if (pWindow->has_event())
         {
-            continue;
-        }
+            pWindow->pop_event(&evt);
 
-        const math::mat4& modelMat = pGraph->mModelMatrices[n.nodeId];
-        const size_t numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
-        const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
-
-        pUniforms->modelMatrix = modelMat;
-        pUniforms->mvpMatrix   = vpMatrix * modelMat;
-
-        for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
-        {
-            const size_t          nodeMeshId = meshIds[meshId];
-            const SR_Mesh&        m          = pGraph->mMeshes[nodeMeshId];
-            const SR_BoundingBox& box        = pGraph->mMeshBounds[nodeMeshId];
-            const SR_Material&    material   = pGraph->mMaterials[m.materialId];
-
-            pUniforms->pTexture = material.pTextures[0];
-
-            // Use the textureless shader if needed
-            const size_t shaderId = (size_t)(material.pTextures[0] == nullptr);
-
-            ++numTotal;
-
-            if (!is_visible(aspect, fov, camTrans, modelMat, box))
+            if (evt.type == SR_WinEventType::WIN_EVENT_MOVED)
             {
-                ++numHidden;
-                continue;
+                std::cout << "Window moved: " << evt.window.x << 'x' << evt.window.y << std::endl;
             }
 
-            context.draw(m, shaderId, 0);
-        }
-    }
-
-    // debugging
-#if SR_TEST_DEBUG_AABBS
-    const SR_Mesh& boxMesh = pGraph->mMeshes[0];
-
-    for (SR_SceneNode& n : pGraph->mNodes)
-    {
-        if (n.type != NODE_TYPE_MESH)
-        {
-            continue;
-        }
-
-        const math::mat4& modelMat = pGraph->mModelMatrices[n.nodeId];
-        const size_t numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
-        const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
-
-        pUniforms->modelMatrix = modelMat;
-        pUniforms->mvpMatrix   = vpMatrix * modelMat;
-
-        for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
-        {
-            const size_t nodeMeshId = meshIds[meshId];
-            const SR_BoundingBox& box = pGraph->mMeshBounds[nodeMeshId];
-            pUniforms->aabb = &box;
-
-            if (!is_visible(aspect, fov, camTrans, modelMat, box))
+            if (evt.type == SR_WinEventType::WIN_EVENT_RESIZED)
             {
-                continue;
+                std::cout<< "Window resized: " << evt.window.width << 'x' << evt.window.height << std::endl;
+                pRenderBuf->terminate();
+                pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
+                projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
             }
 
-            context.draw(boxMesh, 2,  0);
+            if (evt.type == SR_WinEventType::WIN_EVENT_KEY_DOWN)
+            {
+                const SR_KeySymbol keySym = evt.keyboard.keysym;
+                pKeySyms[keySym] = true;
+            }
+            else if (evt.type == SR_WinEventType::WIN_EVENT_KEY_UP)
+            {
+                const SR_KeySymbol keySym = evt.keyboard.keysym;
+                pKeySyms[keySym] = false;
+
+                switch (keySym)
+                {
+                    case SR_KeySymbol::KEY_SYM_SPACE:
+                        if (pWindow->state() == WindowStateInfo::WINDOW_RUNNING)
+                        {
+                            std::cout << "Space button pressed. Pausing." << std::endl;
+                            pWindow->pause();
+                        }
+                        else
+                        {
+                            std::cout << "Space button pressed. Resuming." << std::endl;
+                            pWindow->run();
+                            timer.start();
+                        }
+                        break;
+
+                    case SR_KeySymbol::KEY_SYM_LEFT:
+                        pWindow->set_size(IMAGE_WIDTH / 2, IMAGE_HEIGHT / 2);
+                        break;
+
+                    case SR_KeySymbol::KEY_SYM_RIGHT:
+                        pWindow->set_size(IMAGE_WIDTH, IMAGE_HEIGHT);
+                        break;
+
+                    case SR_KeySymbol::KEY_SYM_UP:
+                        numThreads = math::min(numThreads + 1u, std::thread::hardware_concurrency());
+                        context.num_threads(numThreads);
+                        break;
+
+                    case SR_KeySymbol::KEY_SYM_DOWN:
+                        numThreads = math::max(numThreads - 1u, 1u);
+                        context.num_threads(numThreads);
+                        break;
+
+                    case SR_KeySymbol::KEY_SYM_F1:
+                        pWindow->set_mouse_capture(!pWindow->is_mouse_captured());
+                        pWindow->set_keys_repeat(!pWindow->keys_repeat()); // no text mode
+                        std::cout << "Mouse Capture: " << pWindow->is_mouse_captured() << std::endl;
+                        break;
+
+                    case SR_KeySymbol::KEY_SYM_ESCAPE:
+                        std::cout << "Escape button pressed. Exiting." << std::endl;
+                        shouldQuit = true;
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+            else if (evt.type == SR_WinEventType::WIN_EVENT_CLOSING)
+            {
+                std::cout << "Window close event caught. Exiting." << std::endl;
+                shouldQuit = true;
+            }
+            else if (evt.type == SR_WinEventType::WIN_EVENT_MOUSE_MOVED)
+            {
+                if (pWindow->is_mouse_captured())
+                {
+                    SR_MousePosEvent& mouse = evt.mousePos;
+                    dx = ((float)mouse.dx / (float)pWindow->width()) * 0.05f;
+                    dy = ((float)mouse.dy / (float)pWindow->height()) * -0.05f;
+                    camTrans.rotate(math::vec3{dx, dy, 0.f});
+                }
+            }
+        }
+        else
+        {
+            timer.tick();
+            const float tickTime = timer.tick_time().count();
+
+            ++currFrames;
+            ++totalFrames;
+            currSeconds += tickTime;
+            totalSeconds += tickTime;
+
+            if (currSeconds >= 0.5f)
+            {
+                //std::cout << "MS/F: " << 1000.f*(currSeconds/(float)currFrames) << std::endl;
+                std::cout << "FPS: " << ((float)currFrames/currSeconds) << std::endl;
+                currFrames = 0;
+                currSeconds = 0.f;
+            }
+
+            if (totalFrames >= 600)
+            {
+                shouldQuit = true;
+            }
+
+            update_cam_position(camTrans, tickTime, pKeySyms);
+
+            if (camTrans.is_dirty())
+            {
+                camTrans.apply_transform();
+
+                MeshUniforms* pUniforms = static_cast<MeshUniforms*>(context.shader(1).uniforms().get());
+                const math::vec3&& camTransPos = -camTrans.get_position();
+                pUniforms->camPos = {camTransPos[0], camTransPos[1], camTransPos[2], 1.f};
+
+                const math::mat4& v = camTrans.get_transform();
+                pUniforms->spot.direction = math::normalize(math::vec4{v[0][2], v[1][2], v[2][2], 0.f});
+            }
+            const math::mat4&& vpMatrix = projMatrix * camTrans.get_transform();
+
+            /*
+            if (pWindow->width() != pRenderBuf->width() || pWindow->height() != pRenderBuf->height())
+            {
+                pRenderBuf->terminate();
+                pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
+                projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
+            }
+            */
+
+            update_animations(*pGraph, animPlayer, currentAnimId, tickTime);
+            pGraph->update();
+
+            //context.framebuffer(0).clear_color_buffer(0, SR_ColorRGB{128, 128, 168});
+            context.framebuffer(0).clear_color_buffers();
+            context.framebuffer(0).clear_depth_buffer();
+
+            //render_scene(pGraph.get(), vpMatrix);
+            render_scene(pGraph.get(), vpMatrix, ((float)pRenderBuf->width() / (float)pWindow->height()), LS_DEG2RAD(60.f), camTrans);
+
+            context.blit(*pRenderBuf, 0);
+            pWindow->render(*pRenderBuf);
+        }
+
+        // All events handled. Now check on the state of the window.
+        if (pWindow->state() == WindowStateInfo::WINDOW_CLOSING)
+        {
+            std::cout << "Window close state encountered. Exiting." << std::endl;
+            shouldQuit = true;
         }
     }
-#endif
 
-    /*
-    std::cout
-        << "Meshes Hidden: " << numHidden << '/' << numTotal << " (" << 100.f*((float)numHidden/(float)numTotal) << "%)."
-        << std::endl;
-    */
+    pRenderBuf->terminate();
+
+    return pWindow->destroy();
 }

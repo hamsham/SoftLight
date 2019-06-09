@@ -15,6 +15,8 @@ class SR_Camera;
 
 class SR_BoundingBox;
 
+class SR_Transform;
+
 
 
 /*-----------------------------------------------------------------------------
@@ -64,6 +66,21 @@ inline bool sr_is_visible(const ls::math::vec3& point, const ls::math::mat4& mvp
  * "mvpMatrix", FALSE if not.
  */
 bool sr_is_visible(const SR_BoundingBox& bb, const ls::math::mat4& mvpMatrix, const float fovDivisor = 1.f) noexcept;
+
+
+
+/*-------------------------------------
+ * Radar-based frustum culling method as described by Hernandez-Rudomin in
+ * their paper "A Rendering Pipeline for Real-time Crowds."
+ *
+ * https://pdfs.semanticscholar.org/4fae/54e3f9e79ba09ead5702648664b9932a1d3f.pdf
+-------------------------------------*/
+bool sr_is_visible(
+    float aspect,
+    float fov,
+    const SR_Transform& camTrans,
+    const ls::math::mat4& modelMat,
+    const SR_BoundingBox& bounds) noexcept;
 
 
 
