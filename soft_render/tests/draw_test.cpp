@@ -1,6 +1,9 @@
 
 #include <iostream>
 
+#include "lightsky/math/mat_utils.h"
+
+#include "soft_render/SR_BoundingBox.hpp"
 #include "soft_render/SR_Context.hpp"
 #include "soft_render/SR_Framebuffer.hpp"
 #include "soft_render/SR_IndexBuffer.hpp"
@@ -11,7 +14,8 @@
 #include "soft_render/SR_ImgFilePPM.hpp"
 #include "soft_render/SR_SceneGraph.hpp"
 
-#include "test_common.hpp"
+namespace math = ls::math;
+namespace utils = ls::utils;
 
 
 
@@ -34,6 +38,7 @@ SR_VertexShader line_vert_shader()
 {
     SR_VertexShader shader;
     shader.numVaryings = 0;
+    shader.cullMode = SR_CULL_OFF;
     shader.shader = _line_vert_shader_impl;
 
     return shader;
@@ -57,6 +62,9 @@ SR_FragmentShader line_frag_shader()
     SR_FragmentShader shader;
     shader.numVaryings = 0;
     shader.numOutputs = 1;
+    shader.blend = SR_BLEND_OFF;
+    shader.depthMask = SR_DEPTH_MASK_OFF;
+    shader.depthTest = SR_DEPTH_TEST_OFF;
     shader.shader = _line_frag_shader_impl;
 
     return shader;
@@ -165,7 +173,7 @@ int main()
     m.elementBegin = 0;
     m.elementEnd = context.ibos().begin()->count();
     m.vaoId = vaoId;
-    m.mode = RENDER_MODE_INDEXED_TRI_WIRE;
+    m.mode = RENDER_MODE_TRIANGLES;
 
     context.draw(m, shaderId, fboId);
 

@@ -3,10 +3,13 @@
 #include <iostream>
 #include <memory> // std::move()
 
+#include "lightsky/math/mat_utils.h"
+
 #include "lightsky/utils/Copy.h"
 #include "lightsky/utils/Pointer.h"
 #include "lightsky/utils/Time.hpp"
 
+#include "soft_render/SR_BoundingBox.hpp"
 #include "soft_render/SR_Camera.hpp"
 #include "soft_render/SR_Context.hpp"
 #include "soft_render/SR_ImgFilePPM.hpp"
@@ -17,12 +20,23 @@
 #include "soft_render/SR_RenderWindow.hpp"
 #include "soft_render/SR_SceneGraph.hpp"
 #include "soft_render/SR_Transform.hpp"
+#include "soft_render/SR_UniformBuffer.hpp"
 #include "soft_render/SR_VertexArray.hpp"
 #include "soft_render/SR_VertexBuffer.hpp"
 #include "soft_render/SR_WindowBuffer.hpp"
 #include "soft_render/SR_WindowEvent.hpp"
 
-#include "test_common.hpp"
+#ifndef IMAGE_WIDTH
+    #define IMAGE_WIDTH 1280
+#endif /* IMAGE_WIDTH */
+
+#ifndef IMAGE_HEIGHT
+    #define IMAGE_HEIGHT 720
+#endif /* IMAGE_HEIGHT */
+
+//#include "test_common.hpp"
+namespace math = ls::math;
+namespace utils = ls::utils;
 
 
 

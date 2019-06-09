@@ -3,6 +3,8 @@
 #include <iomanip> // std::setprecision
 #include <limits>
 
+#include "lightsky/math/mat_utils.h"
+
 #include "lightsky/utils/Time.hpp"
 
 #include "soft_render/SR_Context.hpp"
@@ -12,20 +14,24 @@
 #include "soft_render/SR_SceneFileLoader.hpp"
 #include "soft_render/SR_Texture.hpp"
 #include "soft_render/SR_Transform.hpp"
+#include "soft_render/SR_UniformBuffer.hpp"
 #include "soft_render/SR_VertexArray.hpp"
 #include "soft_render/SR_VertexBuffer.hpp"
 
-#include "test_common.hpp"
+//#include "test_common.hpp"
+
+namespace math = ls::math;
+namespace utils = ls::utils;
 
 
 
 #ifndef IMAGE_WIDTH
-    #define IMAGE_WIDTH 1000
-#endif /* IMAGE_WIDTH  */
+    #define IMAGE_WIDTH 1280
+#endif /* IMAGE_WIDTH */
 
 #ifndef IMAGE_HEIGHT
-    #define IMAGE_HEIGHT 1000
-#endif /* IMAGE_HEIGHT  */
+    #define IMAGE_HEIGHT 720
+#endif /* IMAGE_HEIGHT */
 
 
 
