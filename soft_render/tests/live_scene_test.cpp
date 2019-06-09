@@ -3,6 +3,7 @@
 #include <memory> // std::move()
 #include <thread>
 
+#include "lightsky/math/vec_utils.h"
 #include "lightsky/math/mat_utils.h"
 #include "lightsky/math/quat_utils.h"
 

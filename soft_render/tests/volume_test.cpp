@@ -3,7 +3,9 @@
 #include <iostream>
 #include <memory> // std::move()
 
+#include "lightsky/math/vec_utils.h"
 #include "lightsky/math/mat_utils.h"
+#include "lightsky/math/quat_utils.h"
 
 #include "lightsky/utils/Copy.h"
 #include "lightsky/utils/Pointer.h"

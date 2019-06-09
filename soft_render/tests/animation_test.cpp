@@ -3,6 +3,7 @@
 #include <memory> // std::move()
 #include <thread>
 
+#include "lightsky/math/vec_utils.h"
 #include "lightsky/math/mat_utils.h"
 #include "lightsky/math/quat_utils.h"
 
@@ -31,11 +32,11 @@
 #include "soft_render/SR_WindowEvent.hpp"
 
 #ifndef IMAGE_WIDTH
-    #define IMAGE_WIDTH 1280
+    #define IMAGE_WIDTH 1920
 #endif /* IMAGE_WIDTH */
 
 #ifndef IMAGE_HEIGHT
-    #define IMAGE_HEIGHT 720
+    #define IMAGE_HEIGHT 1080
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SR_TEST_MAX_THREADS
