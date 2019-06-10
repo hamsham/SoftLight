@@ -85,6 +85,8 @@ struct AnimUniforms : SR_UniformBuffer
 {
     const SR_Texture* pTexture;
 
+    math::mat4* pBones;
+
     math::vec4 camPos;
     math::mat4 modelMatrix;
     math::mat4 mvpMatrix;
@@ -171,16 +173,29 @@ SR_FragmentShader normal_frag_shader()
 --------------------------------------*/
 math::vec4 _texture_vert_shader_impl(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4* varyings)
 {
-    const AnimUniforms* pUniforms = static_cast<const AnimUniforms*>(uniforms);
-    const math::vec3&   vert      = *vbo.element<const math::vec3>(vao.offset(0, vertId));
-    const math::vec2&   uv        = *vbo.element<const math::vec2>(vao.offset(1, vertId));
-    const math::vec3&   norm      = *vbo.element<const math::vec3>(vao.offset(2, vertId));
+    const AnimUniforms* pUniforms   = static_cast<const AnimUniforms*>(uniforms);
+    const math::vec3&   vert        = *vbo.element<const math::vec3>(vao.offset(0, vertId));
+    const math::vec2&   uv          = *vbo.element<const math::vec2>(vao.offset(1, vertId));
+    const math::vec3&   norm        = *vbo.element<const math::vec3>(vao.offset(2, vertId));
+    /*
+    const math::vec4i&  boneIds     = *vbo.element<const math::vec4i>(vao.offset(3, vertId));
+    const math::vec4&   boneWeights = *vbo.element<const math::vec4>(vao.offset(4, vertId));
 
-    varyings[0] = pUniforms->modelMatrix * math::vec4_cast(vert, 1.f);
+    math::mat4* pBones = pUniforms->pBones;
+    const math::mat4 bone0 = pBones[boneIds[0]] * boneWeights[0];
+    const math::mat4 bone1 = pBones[boneIds[1]] * boneWeights[1];
+    const math::mat4 bone2 = pBones[boneIds[2]] * boneWeights[2];
+    const math::mat4 bone3 = pBones[boneIds[3]] * boneWeights[3];
+    const math::mat4 boneTrans = bone3 + bone2 + bone1 + bone0;
+    */
+    const math::mat4 modelPos = pUniforms->modelMatrix;// * boneTrans;
+    const math::mat4 boneTrans = math::mat4{1.f};
+
+    varyings[0] = modelPos * math::vec4_cast(vert, 1.f);
     varyings[1] = math::vec4_cast(uv, 0.f, 0.f);
-    varyings[2] = math::normalize(pUniforms->modelMatrix * math::vec4_cast(norm, 0.f));
+    varyings[2] = math::normalize(modelPos * math::vec4_cast(norm, 0.f));
 
-    return pUniforms->mvpMatrix * math::vec4_cast(vert, 1.f);
+    return pUniforms->mvpMatrix * boneTrans * math::vec4_cast(vert, 1.f);
 }
 
 
@@ -360,6 +375,8 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
     (void)aspect;
     (void)fov;
     (void)camTrans;
+
+    pUniforms->pBones = pGraph->mModelMatrices.data();
 
     for (SR_SceneNode& n : pGraph->mNodes)
     {

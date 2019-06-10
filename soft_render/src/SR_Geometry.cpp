@@ -318,10 +318,10 @@ SR_Dimension sr_dimens_of_vertex(const SR_CommonVertType vertType)
             return VERTEX_DIMENSION_4;
 
         case BONE_ID_VERTEX:
-            return VERTEX_DIMENSION_1;
+            return VERTEX_DIMENSION_4;
 
         case BONE_WEIGHT_VERTEX:
-            return VERTEX_DIMENSION_1;
+            return VERTEX_DIMENSION_4;
 
         case AMBIENT_VERTEX:
             return VERTEX_DIMENSION_1;

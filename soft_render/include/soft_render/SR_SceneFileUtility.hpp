@@ -37,7 +37,7 @@ enum : unsigned int
     SCENE_FILE_IMPORT_FLAGS = 0
         | aiProcess_SplitLargeMeshes
         | aiProcess_OptimizeMeshes
-        //| aiProcess_OptimizeGraph
+        | aiProcess_LimitBoneWeights
         | aiProcess_FindInstances
         | aiProcess_SortByPType
         | aiProcess_RemoveComponent

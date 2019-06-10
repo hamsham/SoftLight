@@ -408,15 +408,15 @@ size_t SR_SceneGraph::delete_node(const size_t nodeIndex) noexcept
     // Delete any specific data associated with the node.
     switch (typeId)
     {
-        case NODE_TYPE_CAMERA:delete_camera_node_data(dataId);
+        case NODE_TYPE_CAMERA:
+            delete_camera_node_data(dataId);
             break;
 
-        case NODE_TYPE_MESH:delete_mesh_node_data(dataId);
+        case NODE_TYPE_MESH:
+            delete_mesh_node_data(dataId);
             break;
 
         case NODE_TYPE_BONE:
-            break;
-
         case NODE_TYPE_EMPTY:
             break;
     }

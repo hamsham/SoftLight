@@ -226,8 +226,9 @@ bool SR_SceneFilePreload::load(const std::string& filename) noexcept
     mImporter.reset(new Assimp::Importer);
 
     Assimp::Importer& fileImporter = *mImporter;
-    //fileImporter.SetPropertyBool(AI_CONFIG_IMPORT_NO_SKELETON_MESHES, true);
-    //fileImporter.SetPropertyBool(AI_CONFIG_PP_FD_REMOVE, true); // remove degenerate triangles
+    fileImporter.SetPropertyBool(AI_CONFIG_FAVOUR_SPEED, AI_TRUE);
+    fileImporter.SetPropertyInteger(AI_CONFIG_PP_LBW_MAX_WEIGHTS, (int)SR_BONE_MAX_WEIGHTS);
+    fileImporter.SetPropertyBool(AI_CONFIG_PP_FD_REMOVE, AI_TRUE); // remove degenerate triangles
     fileImporter.SetPropertyInteger(AI_CONFIG_FAVOUR_SPEED, AI_TRUE);
     //fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, AI_SLM_DEFAULT_MAX_TRIANGLES);
     //fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, std::numeric_limits<uint8_t>::max());
@@ -555,7 +556,10 @@ bool SR_SceneFileLoader::load_scene(const aiScene* const pScene) noexcept
         return false;
     }
 
-    read_node_hierarchy(pScene, pScene->mRootNode, SCENE_NODE_ROOT_ID);
+    math::mat4 invGlobalTransform = sr_convert_assimp_matrix(pScene->mRootNode->mTransformation);
+    invGlobalTransform = math::inverse(invGlobalTransform);
+
+    read_node_hierarchy(pScene, pScene->mRootNode, SCENE_NODE_ROOT_ID, invGlobalTransform);
 
     for (const SR_SceneNode n : sceneData.mNodes)
     {
@@ -978,7 +982,7 @@ bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh) noexcept
 {
     LS_LOG_MSG("\tImporting bones from a file.");
     std::unordered_map<uint32_t, SR_BoneData>& boneData = mPreloader.mBones;
-    std::unordered_map<uint32_t, math::mat4>& offsets = mPreloader.mBoneOffsets;
+    std::unordered_map<std::string, math::mat4>& offsets = mPreloader.mBoneOffsets;
 
     for (unsigned i = 0; i < pMesh->mNumBones; ++i)
     {
@@ -988,22 +992,48 @@ bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh) noexcept
         newBone.ids = math::vec4_t<int32_t>{0, 0, 0, 0};
         newBone.weights = math::vec4_t<float>{0.f, 0.f, 0.f, 0.f};
 
-        const uint32_t numBones = math::min<uint32_t>((uint32_t)pBone->mNumWeights, (uint32_t)SR_BONE_MAX_WEIGHTS);
+        const uint32_t numWeights = pBone->mNumWeights;
 
-        for (uint32_t b = 0; b < numBones; ++b)
+        // gather all weights from this bone
+        for (uint32_t j = 0; j < numWeights; ++j)
         {
-            const uint32_t vertId = pBone->mWeights[b].mVertexId;
-            if (boneData.find(vertId) != boneData.end())
+            const uint32_t vertId = pBone->mWeights[j].mVertexId;
+            const float weight = pBone->mWeights[j].mWeight;
+
+            // Apply up to SR_BONE_MAX_WEIGHTS weights for a single vertex
+            std::unordered_map<uint32_t, SR_BoneData>::iterator iter = boneData.find(vertId);
+
+            // If we have already accounted for a vertex, apply this weight to
+            // the first non-zero value available for that vertex
+            if (iter != boneData.end())
             {
-                continue;
+                for (uint32_t k = 0; k < SR_BONE_MAX_WEIGHTS; ++k)
+                {
+                    if (iter->second.weights[k] != 0.f)
+                    {
+                        iter->second.ids[k] = vertId;
+                        iter->second.weights[k] = weight;
+                        break;
+                    }
+                }
             }
+            else
+            {
+                // The vertex we're checking does not have any weights
+                // currently associated with it, add one.
+                SR_BoneData newBone;
+                newBone.ids = math::vec4_t<int32_t>{0, 0, 0, 0};
+                newBone.weights = math::vec4_t<float>{0.f, 0.f, 0.f, 0.f};
 
-            newBone.ids[b] = pBone->mWeights[b].mVertexId;
-            newBone.weights[b] = pBone->mWeights[b].mWeight;
-
-            boneData[vertId] = newBone;
-            offsets[vertId]  = sr_convert_assimp_matrix(pBone->mOffsetMatrix);
+                newBone.ids[0] = vertId;
+                newBone.weights[0] = weight;
+                boneData[vertId] = newBone;
+            }
         }
+
+        // Keep track of all offset matrices
+        const std::string boneName{pBone->mName.C_Str()};
+        offsets[boneName] = sr_convert_assimp_matrix(pBone->mOffsetMatrix);
     }
 
     return true;
@@ -1099,7 +1129,8 @@ size_t SR_SceneFileLoader::get_mesh_group_marker(
 void SR_SceneFileLoader::read_node_hierarchy(
     const aiScene* const pScene,
     const aiNode* const pInNode,
-    const size_t parentId
+    const size_t parentId,
+    const ls::math::mat4& invGlobalTransform
 ) noexcept
 {
     // use the size of the node list as an index which should be returned to
@@ -1107,9 +1138,9 @@ void SR_SceneFileLoader::read_node_hierarchy(
     SR_SceneGraph&               sceneData      = mPreloader.mSceneData;
     std::vector<SR_SceneNode>&   nodeList       = sceneData.mNodes;
     std::vector<std::string>&    nodeNames      = sceneData.mNodeNames;
-    std::vector<math::mat4>& baseTransforms = sceneData.mBaseTransforms;
+    std::vector<math::mat4>& baseTransforms     = sceneData.mBaseTransforms;
     std::vector<SR_Transform>&   currTransforms = sceneData.mCurrentTransforms;
-    std::vector<math::mat4>& modelMatrices  = sceneData.mModelMatrices;
+    std::vector<math::mat4>& modelMatrices      = sceneData.mModelMatrices;
 
     //LS_LOG_MSG("\tImporting Scene Node ", nodeList.size(), ": ", pInNode->mName.C_Str());
 
@@ -1121,7 +1152,8 @@ void SR_SceneFileLoader::read_node_hierarchy(
     currentNode.nodeId = nodeList.size() - 1;
 
     // import the node name
-    nodeNames.emplace_back(std::string{pInNode->mName.C_Str()});
+    const std::string nodeName{pInNode->mName.C_Str()};
+    nodeNames.push_back(nodeName);
 
     // import the node transformation
     // This is also needed for camera nodes to be imported properly
@@ -1151,6 +1183,10 @@ void SR_SceneFileLoader::read_node_hierarchy(
         currentNode.type = NODE_TYPE_CAMERA;
         import_camera_node(pScene, camIndex, currentNode);
     }
+    else if (mPreloader.mBoneOffsets.find(nodeName) != mPreloader.mBoneOffsets.end())
+    {
+        currentNode.type = NODE_TYPE_BONE;
+    }
     else if (sr_is_node_type<aiMesh>(pInNode, pScene->mMeshes, pScene->mNumMeshes))
     {
         currentNode.type = NODE_TYPE_MESH;
@@ -1170,7 +1206,15 @@ void SR_SceneFileLoader::read_node_hierarchy(
         // transforms will cause root objects to swap X & Z axes.
         if (parentId != SCENE_NODE_ROOT_ID)
         {
-            nodeTransform.apply_pre_transform(currTransforms[parentId].get_transform());
+            if (currentNode.type == NODE_TYPE_BONE)
+            {
+                const math::mat4& offset = mPreloader.mBoneOffsets[nodeName];
+                nodeTransform.apply_pre_transform(invGlobalTransform * offset * currTransforms[parentId].get_transform());
+            }
+            else
+            {
+                nodeTransform.apply_pre_transform(currTransforms[parentId].get_transform());
+            }
         }
 
         modelMatrices.push_back(currTransforms.back().get_transform());
@@ -1187,7 +1231,7 @@ void SR_SceneFileLoader::read_node_hierarchy(
     {
         const aiNode* const pChildNode = pInNode->mChildren[childId];
 
-        read_node_hierarchy(pScene, pChildNode, currentNode.nodeId);
+        read_node_hierarchy(pScene, pChildNode, currentNode.nodeId, invGlobalTransform);
     }
 }
 

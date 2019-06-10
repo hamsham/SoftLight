@@ -108,7 +108,7 @@ class SR_SceneFilePreload
 
     std::unordered_map<uint32_t, SR_BoneData> mBones;
 
-    std::unordered_map<uint32_t, ls::math::mat4> mBoneOffsets;
+    std::unordered_map<std::string, ls::math::mat4> mBoneOffsets;
 
     const aiScene* preload_mesh_data() noexcept;
 
@@ -243,14 +243,21 @@ class SR_SceneFileLoader
      * An index value of the parent sceneNode contained within an internal
      * array of nodes.
      *
+     * @param invGlobalTransform
+     * The inverse of the global bone transformation.
+     *
      * @return The index of the the last child node recursively placed into
      * the scene node list.
      */
-    void read_node_hierarchy(const aiScene* const pScene, const aiNode* const pNode, const size_t parentId) noexcept;
+    void read_node_hierarchy(
+        const aiScene* const pScene,
+        const aiNode* const pNode,
+        const size_t parentId,
+        const ls::math::mat4& invGlobalTransform
+        ) noexcept;
 
     /**
-     * @brief Import a sceneMeshNode object if an ASSIMP node contains
-     * meshes.
+     * @brief Import a mesh node if an ASSIMP node contains meshes.
      *
      * @param pNode
      * A constant pointer to an assimp mesh node.
