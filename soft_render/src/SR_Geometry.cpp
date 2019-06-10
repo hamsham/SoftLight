@@ -224,12 +224,12 @@ unsigned sr_vertex_attrib_offset(const SR_CommonVertType vertexTypes, const SR_C
                     numBytes += sr_bytes_per_vertex(VERTEX_DATA_FLOAT, VERTEX_DIMENSION_4) * 4;
                     break;
 
-                case BONE_ID_VERTEX: // only 255 bones per mesh for the moment
-                    numBytes += sr_bytes_per_vertex(VERTEX_DATA_BYTE, VERTEX_DIMENSION_1);
+                case BONE_ID_VERTEX: // Maximum of 4 bone IDs per vertex
+                    numBytes += sr_bytes_per_vertex(VERTEX_DATA_INT, VERTEX_DIMENSION_4);
                     break;
 
-                case BONE_WEIGHT_VERTEX:
-                    numBytes += sr_bytes_per_vertex(VERTEX_DATA_FLOAT, VERTEX_DIMENSION_1);
+                case BONE_WEIGHT_VERTEX: // Maximum of 4 bone weights per vertex
+                    numBytes += sr_bytes_per_vertex(VERTEX_DATA_FLOAT, VERTEX_DIMENSION_4);
                     break;
 
                 case AMBIENT_VERTEX:

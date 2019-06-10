@@ -20,7 +20,8 @@ enum SR_SceneNodeType : size_t
 {
     NODE_TYPE_EMPTY,
     NODE_TYPE_MESH,
-    NODE_TYPE_CAMERA
+    NODE_TYPE_CAMERA,
+    NODE_TYPE_BONE
 };
 
 
@@ -71,7 +72,9 @@ struct alignas(sizeof(size_t)) SR_SceneNode final
      * Mesh nodes will use this parameter as an index to a SceneGraph's
      * "mMeshes" and "mMeshCounts".
      * 
-     * Camera Nodes will reference the "cameras" member of a SceneGraph.
+     * Camera Nodes will reference the "mCameras" member of a SceneGraph.
+     *
+     * Bone nodes can use this to access the "mBones" member of a scene graph.
      */
     size_t dataId;
 

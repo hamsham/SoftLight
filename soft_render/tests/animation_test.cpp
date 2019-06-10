@@ -382,6 +382,11 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
             const SR_BoundingBox& box        = pGraph->mMeshBounds[nodeMeshId];
             const SR_Material&    material   = pGraph->mMaterials[m.materialId];
 
+            if (pGraph->mContext.vao(m.vaoId).num_bindings() < 3)
+            {
+                continue;
+            }
+
             pUniforms->pTexture = material.pTextures[0];
 
             // Use the textureless shader if needed
@@ -449,12 +454,14 @@ utils::Pointer<SR_SceneGraph> create_context()
     retCode = fbo.valid();
     assert(retCode == 0);
 
-    retCode = meshLoader.load("testdata/rover/testmesh.dae");
+    //retCode = meshLoader.load("testdata/rover/testmesh.dae");
+    retCode = meshLoader.load("testdata/bob/Bob.md5mesh");
     assert(retCode != 0);
 
     retCode = pGraph->import(meshLoader.data());
     assert(retCode == 0);
 
+    pGraph->mCurrentTransforms[0].scale(math::vec3{0.1f});
     pGraph->update();
 
     const SR_VertexShader&&   normVertShader = normal_vert_shader();

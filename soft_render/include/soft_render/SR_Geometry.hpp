@@ -40,6 +40,24 @@ enum SR_DataType
 
 
 
+/*--------------------------------------
+ * Vertex Data Types
+--------------------------------------*/
+enum SR_BoneInfo : unsigned
+{
+    SR_BONE_MAX_WEIGHTS = 4
+};
+
+
+
+struct SR_BoneData
+{
+    ls::math::vec4_t<int32_t> ids;
+    ls::math::vec4_t<float> weights;
+};
+
+
+
 /*-------------------------------------
  * Common vertex types, Natively supported by the renderer.
 -------------------------------------*/

@@ -2,6 +2,9 @@
 #ifndef SR_SCENE_FILE_UTILITY_HPP
 #define SR_SCENE_FILE_UTILITY_HPP
 
+#include <string>
+#include <unordered_map>
+
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/mesh.h>
@@ -32,21 +35,22 @@ enum SR_TexWrapMode : uint16_t;
 enum : unsigned int
 {
     SCENE_FILE_IMPORT_FLAGS = 0
-        //| aiProcess_SplitLargeMeshes
-        //| aiProcess_OptimizeMeshes
+        | aiProcess_SplitLargeMeshes
+        | aiProcess_OptimizeMeshes
         //| aiProcess_OptimizeGraph
         | aiProcess_FindInstances
         | aiProcess_SortByPType
         | aiProcess_RemoveComponent
         | aiProcess_JoinIdenticalVertices
         | aiProcess_FindDegenerates
-        //| aiProcess_FixInfacingNormals
+        | aiProcess_FixInfacingNormals
         | aiProcess_FindInvalidData
         | aiProcess_ValidateDataStructure
         | aiProcess_ImproveCacheLocality
         | aiProcess_TransformUVCoords
+        | aiProcess_GenUVCoords
         | aiProcess_RemoveRedundantMaterials
-        //| aiProcess_GenSmoothNormals
+        | aiProcess_GenSmoothNormals
         | aiProcess_Triangulate // the renderer can only handle triangles
         | 0
 };
@@ -159,10 +163,10 @@ SR_VaoGroup* sr_get_matching_marker(const SR_CommonVertType inVertType, std::vec
 /*-------------------------------------
  * Calculate the vertex positions for a mesh.
 -------------------------------------*/
-unsigned sr_calc_mesh_geometry_pos(
+char* sr_calc_mesh_geometry_pos(
+    const unsigned index,
     const aiMesh* const pMesh,
-    char* pVbo,
-    const unsigned vertStride
+    char* pVbo
 ) noexcept;
 
 
@@ -170,10 +174,21 @@ unsigned sr_calc_mesh_geometry_pos(
 /*-------------------------------------
  * Convert Assimp UVs to Internal Uvs.
 -------------------------------------*/
-unsigned sr_calc_mesh_geometry_uvs(
+char* sr_calc_mesh_geometry_uvs(
+    const unsigned index,
     const aiMesh* const pMesh,
-    char* pVbo,
-    const unsigned vertStride
+    char* pVbo
+) noexcept;
+
+
+
+/*-------------------------------------
+ * Convert Assimp Colors to Internal Colors.
+-------------------------------------*/
+char* sr_calc_mesh_geometry_colors(
+    const unsigned index,
+    const aiMesh* const pMesh,
+    char* pVbo
 ) noexcept;
 
 
@@ -181,10 +196,10 @@ unsigned sr_calc_mesh_geometry_uvs(
 /*-------------------------------------
  * Convert Assimp Normals to Internal Normals.
 -------------------------------------*/
-unsigned sr_calc_mesh_geometry_norms(
+char* sr_calc_mesh_geometry_norm(
+    const unsigned index,
     const aiMesh* const pMesh,
-    char* pVbo,
-    const unsigned vertStride
+    char* pVbo
 ) noexcept;
 
 
@@ -193,22 +208,23 @@ unsigned sr_calc_mesh_geometry_norms(
  * Convert Assimp Tangents & BiTangents to Internal ones.
  * Add an index for each submesh to the VBO.
 -------------------------------------*/
-unsigned sr_calc_mesh_geometry_tangent(
+char* sr_calc_mesh_geometry_tangent(
+    const unsigned index,
     const aiMesh* const pMesh,
     char* pVbo,
-    const unsigned vertStride,
     const SR_CommonVertType tangentType
 ) noexcept;
 
 
 
 /*-------------------------------------
- * Convert Assimp Colors to Internal Colors.
+ * Convert Assimp bone IDs & weights to Internal ones.
+ * Add an index for each submesh to the VBO.
 -------------------------------------*/
-unsigned sr_calc_mesh_geometry_colors(
-    const aiMesh* const pMesh,
+char* sr_calc_mesh_geometry_bone(
+    const uint32_t index,
     char* pVbo,
-    const unsigned vertStride
+    std::unordered_map<uint32_t, SR_BoneData>& boneData
 ) noexcept;
 
 
@@ -219,7 +235,8 @@ unsigned sr_calc_mesh_geometry_colors(
 unsigned sr_upload_mesh_vertices(
     const aiMesh* const pMesh,
     char* const pVbo,
-    const SR_CommonVertType vertTypes
+    const SR_CommonVertType vertTypes,
+    std::unordered_map<uint32_t, SR_BoneData>& boneData
 ) noexcept;
 
 

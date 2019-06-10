@@ -82,6 +82,7 @@ SR_SceneGraph::SR_SceneGraph() noexcept :
     mBaseTransforms(),
     mCurrentTransforms(),
     mModelMatrices(),
+    mBones(),
     mNodeNames(),
     mAnimations(),
     mNodeAnims(),
@@ -125,6 +126,7 @@ SR_SceneGraph& SR_SceneGraph::operator=(const SR_SceneGraph& s) noexcept
     mBaseTransforms = s.mBaseTransforms;
     mCurrentTransforms = s.mCurrentTransforms;
     mModelMatrices = s.mModelMatrices;
+    mBones = s.mBones;
     mNodeNames = s.mNodeNames;
     mAnimations = s.mAnimations;
     mNodeAnims = s.mNodeAnims;
@@ -168,6 +170,7 @@ SR_SceneGraph& SR_SceneGraph::operator=(SR_SceneGraph&& s) noexcept
     mBaseTransforms = std::move(s.mBaseTransforms);
     mCurrentTransforms = std::move(s.mCurrentTransforms);
     mModelMatrices = std::move(s.mModelMatrices);
+    mBones = std::move(s.mBones);
     mNodeNames = std::move(s.mNodeNames);
     mAnimations = std::move(s.mAnimations);
     mNodeAnims = std::move(s.mNodeAnims);
@@ -194,6 +197,7 @@ void SR_SceneGraph::terminate() noexcept
     mBaseTransforms.clear();
     mCurrentTransforms.clear();
     mModelMatrices.clear();
+    mBones.clear();
     mNodeNames.clear();
     mAnimations.clear();
     mNodeAnims.clear();
@@ -408,6 +412,9 @@ size_t SR_SceneGraph::delete_node(const size_t nodeIndex) noexcept
             break;
 
         case NODE_TYPE_MESH:delete_mesh_node_data(dataId);
+            break;
+
+        case NODE_TYPE_BONE:
             break;
 
         case NODE_TYPE_EMPTY:
@@ -753,6 +760,9 @@ int SR_SceneGraph::import(SR_SceneGraph& inGraph) noexcept
 
     std::move(inGraph.mModelMatrices.begin(), inGraph.mModelMatrices.end(), std::back_inserter(mModelMatrices));
     inGraph.mModelMatrices.clear();
+
+    std::move(inGraph.mBones.begin(), inGraph.mBones.end(), std::back_inserter(mBones));
+    inGraph.mBones.clear();
 
     std::move(inGraph.mNodeNames.begin(), inGraph.mNodeNames.end(), std::back_inserter(mNodeNames));
     inGraph.mNodeNames.clear();

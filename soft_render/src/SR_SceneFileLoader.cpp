@@ -26,6 +26,11 @@
 
 
 
+namespace math = ls::math;
+namespace utils = ls::utils;
+
+
+
 /*-----------------------------------------------------------------------------
  * SR_VaoGroup Class
 -----------------------------------------------------------------------------*/
@@ -405,6 +410,13 @@ bool SR_SceneFilePreload::allocate_cpu_data(const aiScene* const pScene) noexcep
 
     mTexPaths.reserve(pScene->mNumMaterials);
 
+    size_t numBones = 0;
+    for (unsigned i = 0; i < pScene->mNumMeshes; ++i)
+    {
+        const aiMesh* pMesh = pScene->mMeshes[i];
+        numBones += (size_t)pMesh->mNumBones;
+    }
+
     // Reserve data here. There's no telling whether all nodes can be imported
     // or not while Assimp's bones and lights remain unsupported.
     const unsigned numSceneNodes = sr_count_assimp_nodes(pScene->mRootNode);
@@ -412,6 +424,7 @@ bool SR_SceneFilePreload::allocate_cpu_data(const aiScene* const pScene) noexcep
     mSceneData.mNodes.reserve(numSceneNodes);
     mSceneData.mBaseTransforms.reserve(numSceneNodes);
     mSceneData.mCurrentTransforms.reserve(numSceneNodes);
+    mSceneData.mBones.reserve(numBones);
     mSceneData.mNodeNames.reserve(numSceneNodes);
     mSceneData.mAnimations.reserve(pScene->mNumAnimations);
     mSceneData.mCameras.reserve(pScene->mNumCameras);
@@ -590,7 +603,7 @@ bool SR_SceneFileLoader::allocate_gpu_data() noexcept
     }
 
     size_t totalMeshTypes = vboMarkers.size();
-    ls::utils::Pointer<SR_CommonVertType[]> vertTypes{new SR_CommonVertType[totalMeshTypes]};
+    utils::Pointer<SR_CommonVertType[]> vertTypes{new SR_CommonVertType[totalMeshTypes]};
 
     // initialize the VBO attributes
     for (size_t i = 0; i < vboMarkers.size(); ++i)
@@ -633,7 +646,7 @@ bool SR_SceneFileLoader::allocate_gpu_data() noexcept
         SR_CommonVertType inAttribs          = vertTypes[i];
         size_t            currentVaoAttribId = 0;
         SR_VaoGroup&      m                  = vboMarkers[i];
-        const int         numBindings        = ls::math::count_set_bits(inAttribs);
+        const int         numBindings        = math::count_set_bits(inAttribs);
 
         if (vao.set_num_bindings(numBindings) != numBindings)
         {
@@ -697,7 +710,7 @@ int SR_SceneFileLoader::import_materials(const aiScene* const pScene) noexcept
     };
 
     const unsigned numMaterials = pScene->mNumMaterials;
-    ls::utils::Pointer<SR_ImgFile> imgLoader{new SR_ImgFile{}};
+    utils::Pointer<SR_ImgFile> imgLoader{new SR_ImgFile{}};
 
     std::cout << "\tImporting " << numMaterials << " materials from the imported mesh." << std::endl;
 
@@ -740,7 +753,7 @@ void SR_SceneFileLoader::import_texture_path(
 {
     imgLoader.unload();
 
-    const unsigned maxTexCount = ls::math::min<unsigned>(SR_MATERIAL_MAX_TEXTURES, pMaterial->GetTextureCount((aiTextureType)slotType));
+    const unsigned maxTexCount = math::min<unsigned>(SR_MATERIAL_MAX_TEXTURES, pMaterial->GetTextureCount((aiTextureType)slotType));
 
     switch (slotType)
     {
@@ -917,7 +930,14 @@ bool SR_SceneFileLoader::import_mesh_data(const aiScene* const pScene) noexcept
     // devices.
     for (unsigned meshId = 0; meshId < pScene->mNumMeshes; ++meshId)
     {
-        const aiMesh* const     pMesh       = pScene->mMeshes[meshId];
+        const aiMesh* const pMesh = pScene->mMeshes[meshId];
+
+        if (!import_bone_data(pMesh))
+        {
+            LS_LOG_ERR("\t\tUnable to import bone data for the mesh ", pMesh->mName.C_Str());
+            return false;
+        }
+
         const SR_CommonVertType vertType    = sr_convert_assimp_verts(pMesh);
         const size_t            meshGroupId = get_mesh_group_marker(vertType, mPreloader.mVaoGroups);
         SR_VaoGroup&            meshGroup   = tempVboMarks[meshGroupId];
@@ -932,7 +952,7 @@ bool SR_SceneFileLoader::import_mesh_data(const aiScene* const pScene) noexcept
 
         // get the offset to the current mesh so it can be sent to a VBO
         const size_t meshOffset = meshGroup.vboOffset + meshGroup.meshOffset;
-        sr_upload_mesh_vertices(pMesh, pVbo + meshOffset, meshGroup.vertType);
+        sr_upload_mesh_vertices(pMesh, pVbo + meshOffset, meshGroup.vertType, mPreloader.mBones);
 
         // increment the mesh offset for the next mesh
         meshGroup.meshOffset += sr_vertex_stride(meshGroup.vertType) * pMesh->mNumVertices;
@@ -944,6 +964,47 @@ bool SR_SceneFileLoader::import_mesh_data(const aiScene* const pScene) noexcept
     }
 
     LS_LOG_MSG("\t\tDone.");
+
+    return true;
+}
+
+
+
+/*-------------------------------------
+ * Use all information from the preprocess step to allocate and import bone
+ * information.
+-------------------------------------*/
+bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh) noexcept
+{
+    LS_LOG_MSG("\tImporting bones from a file.");
+    std::unordered_map<uint32_t, SR_BoneData>& boneData = mPreloader.mBones;
+    std::unordered_map<uint32_t, math::mat4>& offsets = mPreloader.mBoneOffsets;
+
+    for (unsigned i = 0; i < pMesh->mNumBones; ++i)
+    {
+        const aiBone* pBone = pMesh->mBones[i];
+
+        SR_BoneData newBone;
+        newBone.ids = math::vec4_t<int32_t>{0, 0, 0, 0};
+        newBone.weights = math::vec4_t<float>{0.f, 0.f, 0.f, 0.f};
+
+        const uint32_t numBones = math::min<uint32_t>((uint32_t)pBone->mNumWeights, (uint32_t)SR_BONE_MAX_WEIGHTS);
+
+        for (uint32_t b = 0; b < numBones; ++b)
+        {
+            const uint32_t vertId = pBone->mWeights[b].mVertexId;
+            if (boneData.find(vertId) != boneData.end())
+            {
+                continue;
+            }
+
+            newBone.ids[b] = pBone->mWeights[b].mVertexId;
+            newBone.weights[b] = pBone->mWeights[b].mWeight;
+
+            boneData[vertId] = newBone;
+            offsets[vertId]  = sr_convert_assimp_matrix(pBone->mOffsetMatrix);
+        }
+    }
 
     return true;
 }
@@ -1046,9 +1107,9 @@ void SR_SceneFileLoader::read_node_hierarchy(
     SR_SceneGraph&               sceneData      = mPreloader.mSceneData;
     std::vector<SR_SceneNode>&   nodeList       = sceneData.mNodes;
     std::vector<std::string>&    nodeNames      = sceneData.mNodeNames;
-    std::vector<ls::math::mat4>& baseTransforms = sceneData.mBaseTransforms;
+    std::vector<math::mat4>& baseTransforms = sceneData.mBaseTransforms;
     std::vector<SR_Transform>&   currTransforms = sceneData.mCurrentTransforms;
-    std::vector<ls::math::mat4>& modelMatrices  = sceneData.mModelMatrices;
+    std::vector<math::mat4>& modelMatrices  = sceneData.mModelMatrices;
 
     //LS_LOG_MSG("\tImporting Scene Node ", nodeList.size(), ": ", pInNode->mName.C_Str());
 
@@ -1139,14 +1200,14 @@ void SR_SceneFileLoader::import_mesh_node(const aiNode* const pNode, SR_SceneNod
 {
     SR_SceneGraph& graph = mPreloader.mSceneData;
     std::vector<size_t>& nodeMeshCounts = graph.mNumNodeMeshes;
-    std::vector<ls::utils::Pointer<size_t[]>>& meshList = graph.mNodeMeshes;
+    std::vector<utils::Pointer<size_t[]>>& meshList = graph.mNodeMeshes;
 
     // The check for how many meshes a scene node has must have already been
     // performed.
     const unsigned numMeshes = pNode->mNumMeshes;
     LS_DEBUG_ASSERT(numMeshes > 0);
 
-    ls::utils::Pointer<size_t[]> meshIds{new size_t[numMeshes]};
+    utils::Pointer<size_t[]> meshIds{new size_t[numMeshes]};
     LS_DEBUG_ASSERT(meshIds.get());
 
     // map the internal indices to the assimp node's mesh list
@@ -1220,13 +1281,13 @@ void SR_SceneFileLoader::import_camera_node(
         inUp = pInCam->mUp;
     }
 
-    const ls::math::vec3&& finalPos = sr_convert_assimp_vector(inPos);
-    const ls::math::vec3&& finalDir = sr_convert_assimp_vector(inDir);
-    const ls::math::vec3&& finalUp = sr_convert_assimp_vector(inUp);
+    const math::vec3&& finalPos = sr_convert_assimp_vector(inPos);
+    const math::vec3&& finalDir = sr_convert_assimp_vector(inDir);
+    const math::vec3&& finalUp = sr_convert_assimp_vector(inUp);
     camTrans.look_at(finalPos, finalDir, finalUp);
 
-    const ls::math::vec3& camPos = camTrans.get_position();
-    const ls::math::vec3&& camUp = ls::math::vec3{0.f, 1.f, 0.f};//nodeCam.get_up_direction();
+    const math::vec3& camPos = camTrans.get_position();
+    const math::vec3&& camUp = math::vec3{0.f, 1.f, 0.f};//nodeCam.get_up_direction();
 
     std::cout
         << "\tLoaded the scene camera " << pInCam->mName.C_Str() << ':'

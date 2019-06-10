@@ -57,6 +57,11 @@ SR_CommonVertType sr_convert_assimp_verts(const aiMesh* const pMesh) noexcept
         vertTypes |= SR_CommonVertType::TEXTURE_VERTEX;
     }
 
+    if (pMesh->HasVertexColors(0))
+    {
+        vertTypes |= SR_CommonVertType::COLOR_VERTEX;
+    }
+
     if (pMesh->HasNormals())
     {
         vertTypes |= SR_CommonVertType::NORMAL_VERTEX;
@@ -67,9 +72,9 @@ SR_CommonVertType sr_convert_assimp_verts(const aiMesh* const pMesh) noexcept
         vertTypes |= SR_CommonVertType::TANGENT_VERTEX | SR_CommonVertType::BITANGENT_VERTEX;
     }
 
-    if (pMesh->HasVertexColors(0))
+    if (pMesh->HasBones())
     {
-        vertTypes |= SR_CommonVertType::COLOR_VERTEX;
+        vertTypes |= SR_CommonVertType::BONE_VERTEX;
     }
 
     if (!vertTypes)
@@ -135,10 +140,10 @@ SR_VaoGroup* sr_get_matching_marker(const SR_CommonVertType inVertType, std::vec
  * Calculate a portion of vertex data that a glyph should contain.
 -------------------------------------*/
 template<typename data_t>
-inline char* set_mesh_vertex_data(char* const pVert, const data_t& data, const unsigned vertStride) noexcept
+inline char* set_mesh_vertex_data(char* const pVert, const data_t& data) noexcept
 {
     *reinterpret_cast<data_t* const> (pVert) = data;
-    return pVert + vertStride;
+    return pVert + sizeof(data_t);
 }
 
 
@@ -146,22 +151,16 @@ inline char* set_mesh_vertex_data(char* const pVert, const data_t& data, const u
 /*-------------------------------------
  * Calculate the vertex positions for a mesh.
 -------------------------------------*/
-unsigned sr_calc_mesh_geometry_pos(
+char* sr_calc_mesh_geometry_pos(
+    const unsigned index,
     const aiMesh* const pMesh,
-    char* pVbo,
-    const unsigned vertStride
+    char* pVbo
 ) noexcept
 {
-    const unsigned numVertices = pMesh->mNumVertices;
     const aiVector3D* const pInVerts = pMesh->mVertices;
+    const aiVector3D&       inVert   = pInVerts[index];
 
-    for (unsigned i = 0; i < numVertices; ++i)
-    {
-        const aiVector3D& inVert = pInVerts[i];
-        pVbo = set_mesh_vertex_data(pVbo, sr_convert_assimp_vector(inVert), vertStride);
-    }
-
-    return numVertices * sr_vertex_byte_size(SR_CommonVertType::POSITION_VERTEX);
+    return set_mesh_vertex_data(pVbo, sr_convert_assimp_vector(inVert));
 }
 
 
@@ -169,24 +168,35 @@ unsigned sr_calc_mesh_geometry_pos(
 /*-------------------------------------
  * Convert Assimp UVs to Internal Uvs.
 -------------------------------------*/
-unsigned sr_calc_mesh_geometry_uvs(
+char* sr_calc_mesh_geometry_uvs(
+    const unsigned index,
     const aiMesh* const pMesh,
-    char* pVbo,
-    const unsigned vertStride
+    char* pVbo
 ) noexcept
 {
-    const unsigned numVertices = pMesh->mNumVertices;
     const aiVector3D* const inUvs = pMesh->mTextureCoords[aiTextureType_NONE];
+    const aiVector3D&       inUv  = inUvs[index];
+    const float             uvx   = inUv.x;
+    const float             uvy   = inUv.y;
 
-    for (unsigned i = 0; i < numVertices; ++i)
-    {
-        const aiVector3D& inUv = inUvs[i];
-        const float uvx = inUv.x;
-        const float uvy = inUv.y;
-        pVbo = set_mesh_vertex_data(pVbo, math::vec2{uvx, uvy}, vertStride);
-    }
+    return set_mesh_vertex_data(pVbo, math::vec2{uvx, uvy});
+}
 
-    return numVertices * sr_vertex_byte_size(SR_CommonVertType::TEXTURE_VERTEX);
+
+
+/*-------------------------------------
+ * Convert Assimp Colors to Internal Colors.
+-------------------------------------*/
+char* sr_calc_mesh_geometry_colors(
+    const unsigned index,
+    const aiMesh* const pMesh,
+    char* pVbo
+) noexcept
+{
+    const aiColor4D* const pInColors = pMesh->mColors[aiTextureType_NONE];
+
+    const aiColor4D& inColor = pInColors[index];
+    return set_mesh_vertex_data(pVbo, sr_convert_assimp_color(inColor));
 }
 
 
@@ -194,23 +204,18 @@ unsigned sr_calc_mesh_geometry_uvs(
 /*-------------------------------------
  * Convert Assimp Normals to Internal Normals.
 -------------------------------------*/
-unsigned sr_calc_mesh_geometry_norms(
+char* sr_calc_mesh_geometry_norm(
+    const unsigned index,
     const aiMesh* const pMesh,
-    char* pVbo,
-    const unsigned vertStride
+    char* pVbo
 ) noexcept
 {
-    const unsigned numVertices = pMesh->mNumVertices;
     const aiVector3D* const pInNorms = pMesh->mNormals;
 
-    for (unsigned i = 0; i < numVertices; ++i)
-    {
-        const aiVector3D& inNorm = pInNorms[i];
-        const math::vec3 n = sr_convert_assimp_vector(inNorm);
-        pVbo = set_mesh_vertex_data(pVbo, math::normalize(n), vertStride);
-    }
+    const aiVector3D&  inNorm = pInNorms[index];
+    const math::vec3&& n      = sr_convert_assimp_vector(inNorm);
 
-    return numVertices * sr_vertex_byte_size(SR_CommonVertType::NORMAL_VERTEX);
+    return set_mesh_vertex_data(pVbo, math::normalize(n));
 }
 
 
@@ -219,46 +224,34 @@ unsigned sr_calc_mesh_geometry_norms(
  * Convert Assimp Tangents & BiTangents to Internal ones.
  * Add an index for each submesh to the VBO.
 -------------------------------------*/
-unsigned sr_calc_mesh_geometry_tangent(
+char* sr_calc_mesh_geometry_tangent(
+    const unsigned index,
     const aiMesh* const pMesh,
     char* pVbo,
-    const unsigned vertStride,
     const SR_CommonVertType tangentType
 ) noexcept
 {
-    const unsigned numVertices = pMesh->mNumVertices;
+    const aiVector3D&  inTng = (tangentType == SR_CommonVertType::TANGENT_VERTEX) ? pMesh->mTangents[index] : pMesh->mBitangents[index];
+    const math::vec3&& t     = sr_convert_assimp_vector(inTng);
 
-    for (unsigned i = 0; i < numVertices; ++i)
-    {
-        const aiVector3D& inTng = (tangentType == SR_CommonVertType::TANGENT_VERTEX) ? pMesh->mTangents[i] : pMesh->mBitangents[i];
-        const math::vec3 t = sr_convert_assimp_vector(inTng);
-        pVbo = set_mesh_vertex_data(pVbo, math::normalize(t), vertStride);
-    }
-
-    return numVertices * sr_vertex_byte_size(tangentType);
+    return set_mesh_vertex_data(pVbo, math::normalize(t));
 }
 
 
 
 /*-------------------------------------
- * Convert Assimp Colors to Internal Colors.
+ * Convert Assimp bone IDs & weights to Internal ones.
+ * Add an index for each submesh to the VBO.
 -------------------------------------*/
-unsigned sr_calc_mesh_geometry_colors(
-    const aiMesh* const pMesh,
+char* sr_calc_mesh_geometry_bone(
+    const uint32_t index,
     char* pVbo,
-    const unsigned vertStride
+    std::unordered_map<uint32_t, SR_BoneData>& boneData
 ) noexcept
 {
-    const unsigned numVertices = pMesh->mNumVertices;
-    const aiColor4D* const pInColors = pMesh->mColors[aiTextureType_NONE];
-
-    for (unsigned i = 0; i < numVertices; ++i)
-    {
-        const aiColor4D& inColor = pInColors[i];
-        pVbo = set_mesh_vertex_data(pVbo, sr_convert_assimp_color(inColor), vertStride);
-    }
-
-    return numVertices * sr_vertex_byte_size(SR_CommonVertType::COLOR_VERTEX);
+    const SR_BoneData& bone = boneData[index];
+    pVbo = set_mesh_vertex_data(pVbo, bone.ids);
+    return set_mesh_vertex_data(pVbo, bone.weights);
 }
 
 
@@ -269,48 +262,53 @@ unsigned sr_calc_mesh_geometry_colors(
 unsigned sr_upload_mesh_vertices(
     const aiMesh* const pMesh,
     char* const pVbo,
-    const SR_CommonVertType vertTypes
+    const SR_CommonVertType vertTypes,
+    std::unordered_map<uint32_t, SR_BoneData>& boneData
 ) noexcept
 {
-    const unsigned vertStride = sr_vertex_stride(vertTypes);
-    unsigned offset = 0;
-    unsigned bytesWritten = 0;
+    //const unsigned vertStride  = sr_vertex_stride(vertTypes);
+    const unsigned numVertices = pMesh->mNumVertices;
+    char*          pVboIter    = pVbo;
 
-    if (vertTypes & SR_CommonVertType::POSITION_VERTEX)
+    for (unsigned i = 0; i < numVertices; ++i)
     {
-        bytesWritten += sr_calc_mesh_geometry_pos(pMesh, pVbo + offset, vertStride);
-        offset += sr_vertex_byte_size(SR_CommonVertType::POSITION_VERTEX);
+        if (vertTypes & SR_CommonVertType::POSITION_VERTEX)
+        {
+            pVboIter = sr_calc_mesh_geometry_pos(i, pMesh, pVboIter);
+        }
+
+        if (vertTypes & SR_CommonVertType::TEXTURE_VERTEX)
+        {
+            pVboIter = sr_calc_mesh_geometry_uvs(i, pMesh, pVboIter);
+        }
+
+        if (vertTypes & SR_CommonVertType::COLOR_VERTEX)
+        {
+            pVboIter = sr_calc_mesh_geometry_colors(i, pMesh, pVboIter);
+        }
+
+        if (vertTypes & SR_CommonVertType::NORMAL_VERTEX)
+        {
+            pVboIter = sr_calc_mesh_geometry_norm(i, pMesh, pVboIter);
+        }
+
+        if (vertTypes & SR_CommonVertType::TANGENT_VERTEX)
+        {
+            pVboIter = sr_calc_mesh_geometry_tangent(i, pMesh, pVboIter, SR_CommonVertType::TANGENT_VERTEX);
+        }
+
+        if (vertTypes & SR_CommonVertType::BITANGENT_VERTEX)
+        {
+            pVboIter = sr_calc_mesh_geometry_tangent(i, pMesh, pVboIter, SR_CommonVertType::BITANGENT_VERTEX);
+        }
+
+        if (vertTypes & SR_CommonVertType::BONE_VERTEX)
+        {
+            pVboIter = sr_calc_mesh_geometry_bone((uint32_t)i, pVboIter, boneData);
+        }
     }
 
-    if (vertTypes & SR_CommonVertType::TEXTURE_VERTEX)
-    {
-        bytesWritten += sr_calc_mesh_geometry_uvs(pMesh, pVbo + offset, vertStride);
-        offset += sr_vertex_byte_size(SR_CommonVertType::TEXTURE_VERTEX);
-    }
-
-    if (vertTypes & SR_CommonVertType::NORMAL_VERTEX)
-    {
-        bytesWritten += sr_calc_mesh_geometry_norms(pMesh, pVbo + offset, vertStride);
-        offset += sr_vertex_byte_size(SR_CommonVertType::NORMAL_VERTEX);
-    }
-
-    if (vertTypes & SR_CommonVertType::TANGENT_VERTEX)
-    {
-        bytesWritten += sr_calc_mesh_geometry_tangent(pMesh, pVbo + offset, vertStride, SR_CommonVertType::TANGENT_VERTEX);
-        offset += sr_vertex_byte_size(SR_CommonVertType::TANGENT_VERTEX);
-    }
-
-    if (vertTypes & SR_CommonVertType::BITANGENT_VERTEX)
-    {
-        bytesWritten += sr_calc_mesh_geometry_tangent(pMesh, pVbo + offset, vertStride, SR_CommonVertType::BITANGENT_VERTEX);
-        offset += sr_vertex_byte_size(SR_CommonVertType::BITANGENT_VERTEX);
-    }
-
-    if (vertTypes & SR_CommonVertType::COLOR_VERTEX)
-    {
-        bytesWritten += sr_calc_mesh_geometry_colors(pMesh, pVbo + offset, vertStride);
-        offset += sr_vertex_byte_size(SR_CommonVertType::COLOR_VERTEX);
-    }
+    const unsigned bytesWritten = numVertices * sr_vertex_byte_size(vertTypes);
 
     return bytesWritten;
 }

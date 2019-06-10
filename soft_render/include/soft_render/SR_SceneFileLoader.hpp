@@ -106,6 +106,10 @@ class SR_SceneFilePreload
 
     std::unordered_map<std::string, unsigned> mTexPaths;
 
+    std::unordered_map<uint32_t, SR_BoneData> mBones;
+
+    std::unordered_map<uint32_t, ls::math::mat4> mBoneOffsets;
+
     const aiScene* preload_mesh_data() noexcept;
 
     bool allocate_cpu_data(const aiScene* const pScene) noexcept;
@@ -219,6 +223,8 @@ class SR_SceneFileLoader
     SR_Texture* load_texture_at_path(const std::string& path, SR_ImgFile& imgLoader, int wrapMode) noexcept;
 
     bool import_mesh_data(const aiScene* const pScene) noexcept;
+
+    bool import_bone_data(const aiMesh* const pMesh) noexcept;
 
     char* upload_mesh_indices(const aiMesh* const pMesh, char* pIbo, const size_t baseIndex, const size_t baseVertex, SR_Mesh& outMesh, size_t& outNumIndices) noexcept;
 
@@ -393,7 +399,7 @@ class SR_SceneFileLoader
      * @return A constant reference to the loaded scene grpah object which
      * can be used for validation, rendering, or something else.
      */
-    const SR_SceneGraph& get_loaded_data() const noexcept;
+    const SR_SceneGraph& data() const noexcept;
 
     /**
      * @brief get_loaded_data() allows the loaded scene graph to be
@@ -409,7 +415,7 @@ class SR_SceneFileLoader
 /*-------------------------------------
  * Retrieve the loaded scene data (const)
 -------------------------------------*/
-inline const SR_SceneGraph& SR_SceneFileLoader::get_loaded_data() const noexcept
+inline const SR_SceneGraph& SR_SceneFileLoader::data() const noexcept
 {
     return mPreloader.mSceneData;
 }
