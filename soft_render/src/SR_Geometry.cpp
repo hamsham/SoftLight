@@ -51,12 +51,12 @@ constexpr char VERT_ATTRIB_NAME_MODEL_MATRIX[] = "modelMatAttrib";
 /**
  * @brief Common name for a vertex attribute containing skeletal bone IDs.
  */
-constexpr char VERT_ATTRIB_NAME_BONE_ID[] = "boneWeightAttrib";
+constexpr char VERT_ATTRIB_NAME_BONE_ID[] = "boneIdAttrib";
 
 /**
  * @brief Common name for a vertex attribute containing skeletal bone weights.
  */
-constexpr char VERT_ATTRIB_NAME_BONE_WEIGHT[] = "boneIdAttrib";
+constexpr char VERT_ATTRIB_NAME_BONE_WEIGHT[] = "boneWeightAttrib";
 
 /**
  * @brief Common name for an ambient lighting vertex attribute.
@@ -385,7 +385,7 @@ SR_DataType sr_type_of_vertex(const SR_CommonVertType vertType)
             return VERTEX_DATA_FLOAT;
 
         case BONE_ID_VERTEX:
-            return VERTEX_DATA_BYTE;
+            return VERTEX_DATA_INT;
 
         case BONE_WEIGHT_VERTEX:
             return VERTEX_DATA_FLOAT;

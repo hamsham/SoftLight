@@ -24,7 +24,6 @@ namespace ls
 
 
 
-struct SR_BoneData; // SR_Geometry.hpp
 class SR_Camera;
 struct SR_Mesh;
 struct SR_Material;
@@ -99,10 +98,16 @@ class SR_SceneGraph
     std::vector<ls::math::mat4_t<float>> mModelMatrices;
 
     /**
-     * @brief Referenced by all bone nodes. This can be used to access all
-     * bone ID, weight, and matrix data.
+     * @brief Referenced by all bone nodes using the "SR_SceneNode::dataId"
+     * member. This contains inverse transform matrices.
      */
-    std::vector<SR_BoneData> mBones;
+    std::vector<ls::math::mat4_t<float>> mInvBoneTransforms;
+
+    /**
+     * @brief Referenced by all bone nodes using the "SR_SceneNode::dataId"
+     * member. This contains offset matrix data.
+     */
+    std::vector<ls::math::mat4_t<float>> mBoneOffsets;
 
     /**
      * Referenced by all scene node types using their

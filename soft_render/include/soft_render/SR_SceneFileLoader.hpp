@@ -224,7 +224,7 @@ class SR_SceneFileLoader
 
     bool import_mesh_data(const aiScene* const pScene) noexcept;
 
-    bool import_bone_data(const aiMesh* const pMesh) noexcept;
+    bool import_bone_data(const aiMesh* const pMesh, unsigned baseVertex) noexcept;
 
     char* upload_mesh_indices(const aiMesh* const pMesh, char* pIbo, const size_t baseIndex, const size_t baseVertex, SR_Mesh& outMesh, size_t& outNumIndices) noexcept;
 

@@ -242,7 +242,7 @@ math::vec3 SR_Transform::get_abs_position() const noexcept
 -------------------------------------*/
 void SR_Transform::scale(const math::vec3& deltaScale) noexcept
 {
-    mScaling += deltaScale;
+    mScaling *= deltaScale;
     set_dirty();
 }
 

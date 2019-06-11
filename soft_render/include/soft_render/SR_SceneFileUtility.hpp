@@ -234,6 +234,7 @@ char* sr_calc_mesh_geometry_bone(
 -------------------------------------*/
 unsigned sr_upload_mesh_vertices(
     const aiMesh* const pMesh,
+    const uint32_t baseVert,
     char* const pVbo,
     const SR_CommonVertType vertTypes,
     std::unordered_map<uint32_t, SR_BoneData>& boneData

@@ -377,11 +377,11 @@ const aiScene* SR_SceneFilePreload::preload_mesh_data() noexcept
         SR_VaoGroup& m = mVaoGroups[i];
         LS_LOG_MSG("\t\t                 VAO ", i, ": 0x", std::hex, m.vertType, std::dec);
 
-        for (unsigned i = 0; i < SR_NUM_COMMON_VERTEX_FLAGS; ++i)
+        for (unsigned j = 0; j < SR_NUM_COMMON_VERTEX_FLAGS; ++j)
         {
-            if (!!(m.vertType & SR_COMMON_VERTEX_FLAGS[i]))
+            if (!!(m.vertType & SR_COMMON_VERTEX_FLAGS[j]))
             {
-                LS_LOG_MSG("\t\t                        ", sr_common_vertex_names()[i]);
+                LS_LOG_MSG("\t\t                        ", sr_common_vertex_names()[j]);
             }
         }
     }
@@ -425,7 +425,8 @@ bool SR_SceneFilePreload::allocate_cpu_data(const aiScene* const pScene) noexcep
     mSceneData.mNodes.reserve(numSceneNodes);
     mSceneData.mBaseTransforms.reserve(numSceneNodes);
     mSceneData.mCurrentTransforms.reserve(numSceneNodes);
-    mSceneData.mBones.reserve(numBones);
+    mSceneData.mInvBoneTransforms.reserve(numBones);
+    mSceneData.mBoneOffsets.reserve(numBones);
     mSceneData.mNodeNames.reserve(numSceneNodes);
     mSceneData.mAnimations.reserve(pScene->mNumAnimations);
     mSceneData.mCameras.reserve(pScene->mNumCameras);
@@ -551,19 +552,19 @@ bool SR_SceneFileLoader::load_scene(const aiScene* const pScene) noexcept
 
     // Find all bone nodes and store their offset matrices
     std::unordered_map<std::string, math::mat4>& offsets = mPreloader.mBoneOffsets;
+    math::mat4 invGlobalTransform = sr_convert_assimp_matrix(pScene->mRootNode->mTransformation);
+    invGlobalTransform = math::inverse(invGlobalTransform);
+
     for (unsigned i = 0; i < pScene->mNumMeshes; ++i)
     {
         const aiMesh* const pMesh = pScene->mMeshes[i];
         for (unsigned j = 0; j < pMesh->mNumBones; ++j)
         {
             const aiBone* pBone = pMesh->mBones[j];
-            const std::string&& nodeName = {pBone->mName.C_Str()};
+            const std::string nodeName{pBone->mName.C_Str()};
             offsets[nodeName] = sr_convert_assimp_matrix(pBone->mOffsetMatrix);
         }
     }
-
-    math::mat4 invGlobalTransform = sr_convert_assimp_matrix(pScene->mRootNode->mTransformation);
-    invGlobalTransform = math::inverse(invGlobalTransform);
 
     read_node_hierarchy(pScene, pScene->mRootNode, SCENE_NODE_ROOT_ID, invGlobalTransform);
 
@@ -573,14 +574,23 @@ bool SR_SceneFileLoader::load_scene(const aiScene* const pScene) noexcept
         LS_LOG_MSG(nId, ' ', sceneData.mCurrentTransforms[nId].mParentId);
     }
 
-    for (unsigned i = 0; i < pScene->mNumMeshes; ++i)
+    // to properly get the correct match of bones to vertex IDs, we need to
+    // ensure the mesh base vertex is applied to all vertices affected by bones
     {
-        const aiMesh* const pMesh = pScene->mMeshes[i];
-
-        if (!import_bone_data(pMesh))
+        std::vector<SR_VaoGroup> tempVaoGroups = mPreloader.mVaoGroups;
+        for (unsigned i = 0; i < pScene->mNumMeshes; ++i)
         {
-            LS_LOG_ERR("\t\tUnable to import bone data for the mesh ", pMesh->mName.C_Str());
-            return false;
+            const aiMesh* const pMesh = pScene->mMeshes[i];
+            const SR_CommonVertType inVertType = sr_convert_assimp_verts(pMesh);
+            SR_VaoGroup* outMeshMarker = sr_get_matching_marker(inVertType, tempVaoGroups);
+
+            if (!import_bone_data(pMesh, outMeshMarker->baseVert))
+            {
+                LS_LOG_ERR("\t\tUnable to import bone data for the mesh ", pMesh->mName.C_Str());
+                return false;
+            }
+
+            outMeshMarker->baseVert += pMesh->mNumVertices;
         }
     }
 
@@ -942,7 +952,7 @@ bool SR_SceneFileLoader::import_mesh_data(const aiScene* const pScene) noexcept
 {
     LS_LOG_MSG("\tImporting vertices and indices of individual meshes from a file.");
 
-    std::vector<SR_VaoGroup> tempVboMarks = mPreloader.mVaoGroups;
+    std::vector<SR_VaoGroup>& tempVboMarks = mPreloader.mVaoGroups;
     SR_SceneGraph&           sceneData    = mPreloader.mSceneData;
     SR_Context&              renderData   = sceneData.mContext;
     std::vector<SR_Mesh>&    meshes       = sceneData.mMeshes;
@@ -973,7 +983,7 @@ bool SR_SceneFileLoader::import_mesh_data(const aiScene* const pScene) noexcept
 
         // get the offset to the current mesh so it can be sent to a VBO
         const size_t meshOffset = meshGroup.vboOffset + meshGroup.meshOffset;
-        sr_upload_mesh_vertices(pMesh, pVbo + meshOffset, meshGroup.vertType, mPreloader.mBones);
+        sr_upload_mesh_vertices(pMesh, meshGroup.baseVert, pVbo + meshOffset, meshGroup.vertType, mPreloader.mBones);
 
         // increment the mesh offset for the next mesh
         meshGroup.meshOffset += sr_vertex_stride(meshGroup.vertType) * pMesh->mNumVertices;
@@ -995,7 +1005,7 @@ bool SR_SceneFileLoader::import_mesh_data(const aiScene* const pScene) noexcept
  * Use all information from the preprocess step to allocate and import bone
  * information.
 -------------------------------------*/
-bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh) noexcept
+bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh, unsigned baseVert) noexcept
 {
     LS_LOG_MSG("\tImporting bones from a file.");
     std::vector<std::string>&                    nodeNames = mPreloader.mSceneData.mNodeNames;
@@ -1006,7 +1016,7 @@ bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh) noexcept
         const aiBone*     pBone      = pMesh->mBones[i];
         const std::string boneName   = {pBone->mName.C_Str()};
         const uint32_t    numWeights = pBone->mNumWeights;
-        uint32_t          boneId     = 0;
+        size_t            boneId     = 0;
 
         std::vector<std::string>::iterator&& nameIter = std::find(nodeNames.begin(), nodeNames.end(), boneName);
         if (nameIter != nodeNames.end())
@@ -1017,7 +1027,7 @@ bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh) noexcept
         // gather all weights from this bone
         for (uint32_t j = 0; j < numWeights; ++j)
         {
-            const uint32_t vertId = pBone->mWeights[j].mVertexId;
+            const uint32_t vertId = (uint32_t)(baseVert+pBone->mWeights[j].mVertexId);
             const float    weight = pBone->mWeights[j].mWeight;
 
             // Apply up to SR_BONE_MAX_WEIGHTS weights for a single vertex
@@ -1031,7 +1041,7 @@ bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh) noexcept
                 {
                     if (iter->second.ids[k] == 0)
                     {
-                        iter->second.ids[k]     = boneId;
+                        iter->second.ids[k]     = (int32_t)boneId;
                         iter->second.weights[k] = weight;
                         break;
                     }
@@ -1044,7 +1054,7 @@ bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh) noexcept
                 SR_BoneData newBone;
                 newBone.ids        = math::vec4_t<int32_t>{0, 0, 0, 0};
                 newBone.weights    = math::vec4_t<float>{0.f, 0.f, 0.f, 0.f};
-                newBone.ids[0]     = boneId;
+                newBone.ids[0]     = (int32_t)boneId;
                 newBone.weights[0] = weight;
                 boneData[vertId]   = newBone;
             }
@@ -1201,6 +1211,9 @@ void SR_SceneFileLoader::read_node_hierarchy(
     else if (mPreloader.mBoneOffsets.find(nodeName) != mPreloader.mBoneOffsets.end())
     {
         currentNode.type = NODE_TYPE_BONE;
+        currentNode.dataId = mPreloader.mSceneData.mBoneOffsets.size();
+        mPreloader.mSceneData.mInvBoneTransforms.push_back(invGlobalTransform);
+        mPreloader.mSceneData.mBoneOffsets.push_back(mPreloader.mBoneOffsets[nodeName]);
     }
     else if (sr_is_node_type<aiMesh>(pInNode, pScene->mMeshes, pScene->mNumMeshes))
     {
@@ -1222,13 +1235,6 @@ void SR_SceneFileLoader::read_node_hierarchy(
         if (parentId != SCENE_NODE_ROOT_ID)
         {
             nodeTransform.apply_pre_transform(currTransforms[parentId].get_transform());
-        }
-
-        if (currentNode.type == NODE_TYPE_BONE)
-        {
-            const math::mat4& offset = mPreloader.mBoneOffsets[nodeName];
-            nodeTransform.extract_transforms(invGlobalTransform * nodeTransform.get_transform());
-            nodeTransform.apply_post_transform(offset);
         }
 
         modelMatrices.push_back(currTransforms.back().get_transform());

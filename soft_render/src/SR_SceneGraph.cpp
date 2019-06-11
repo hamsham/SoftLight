@@ -82,7 +82,8 @@ SR_SceneGraph::SR_SceneGraph() noexcept :
     mBaseTransforms(),
     mCurrentTransforms(),
     mModelMatrices(),
-    mBones(),
+    mInvBoneTransforms(),
+    mBoneOffsets(),
     mNodeNames(),
     mAnimations(),
     mNodeAnims(),
@@ -126,7 +127,8 @@ SR_SceneGraph& SR_SceneGraph::operator=(const SR_SceneGraph& s) noexcept
     mBaseTransforms = s.mBaseTransforms;
     mCurrentTransforms = s.mCurrentTransforms;
     mModelMatrices = s.mModelMatrices;
-    mBones = s.mBones;
+    mInvBoneTransforms = s.mInvBoneTransforms;
+    mBoneOffsets = s.mBoneOffsets;
     mNodeNames = s.mNodeNames;
     mAnimations = s.mAnimations;
     mNodeAnims = s.mNodeAnims;
@@ -170,7 +172,8 @@ SR_SceneGraph& SR_SceneGraph::operator=(SR_SceneGraph&& s) noexcept
     mBaseTransforms = std::move(s.mBaseTransforms);
     mCurrentTransforms = std::move(s.mCurrentTransforms);
     mModelMatrices = std::move(s.mModelMatrices);
-    mBones = std::move(s.mBones);
+    mInvBoneTransforms = std::move(s.mInvBoneTransforms);
+    mBoneOffsets = std::move(s.mBoneOffsets);
     mNodeNames = std::move(s.mNodeNames);
     mAnimations = std::move(s.mAnimations);
     mNodeAnims = std::move(s.mNodeAnims);
@@ -197,7 +200,8 @@ void SR_SceneGraph::terminate() noexcept
     mBaseTransforms.clear();
     mCurrentTransforms.clear();
     mModelMatrices.clear();
-    mBones.clear();
+    mInvBoneTransforms.clear();
+    mBoneOffsets.clear();
     mNodeNames.clear();
     mAnimations.clear();
     mNodeAnims.clear();
@@ -247,7 +251,15 @@ void SR_SceneGraph::update_node_transform(const size_t transformId) noexcept
         t.apply_transform();
     }
 
-    mModelMatrices[transformId] = t.get_transform();
+    if (mNodes[transformId].type == NODE_TYPE_BONE)
+    {
+        const size_t boneId = mNodes[transformId].dataId;
+        mModelMatrices[transformId] = mInvBoneTransforms[boneId] * t.get_transform() * mBoneOffsets[boneId];
+    }
+    else
+    {
+        mModelMatrices[transformId] = t.get_transform();
+    }
 
     // TODO: implement transformation packing so the iteration can stop as
     // soon as all child transforms have been updated. There's no reason
@@ -761,8 +773,11 @@ int SR_SceneGraph::import(SR_SceneGraph& inGraph) noexcept
     std::move(inGraph.mModelMatrices.begin(), inGraph.mModelMatrices.end(), std::back_inserter(mModelMatrices));
     inGraph.mModelMatrices.clear();
 
-    std::move(inGraph.mBones.begin(), inGraph.mBones.end(), std::back_inserter(mBones));
-    inGraph.mBones.clear();
+    std::move(inGraph.mInvBoneTransforms.begin(), inGraph.mInvBoneTransforms.end(), std::back_inserter(mInvBoneTransforms));
+    inGraph.mInvBoneTransforms.clear();
+
+    std::move(inGraph.mBoneOffsets.begin(), inGraph.mBoneOffsets.end(), std::back_inserter(mBoneOffsets));
+    inGraph.mBoneOffsets.clear();
 
     std::move(inGraph.mNodeNames.begin(), inGraph.mNodeNames.end(), std::back_inserter(mNodeNames));
     inGraph.mNodeNames.clear();

@@ -40,7 +40,7 @@
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SR_TEST_MAX_THREADS
-    #define SR_TEST_MAX_THREADS 1
+    #define SR_TEST_MAX_THREADS 4
 #endif /* SR_TEST_MAX_THREADS */
 
 namespace math = ls::math;
@@ -89,7 +89,7 @@ struct AnimUniforms : SR_UniformBuffer
 
     math::vec4 camPos;
     math::mat4 modelMatrix;
-    math::mat4 mvpMatrix;
+    math::mat4 vpMatrix;
 };
 
 
@@ -107,10 +107,10 @@ math::vec4 _normal_vert_shader_impl(const size_t vertId, const SR_VertexArray& v
     const math::vec3& vert = *vbo.element<const math::vec3>(vao.offset(0, vertId));
     const math::vec3& norm = *vbo.element<const math::vec3>(vao.offset(1, vertId));
 
-    varyings[0] = pUniforms->modelMatrix * math::vec4_cast(vert, 1.f);
+    varyings[0] = pUniforms->modelMatrix * math::vec4_cast(vert, 0.f);
     varyings[1] = pUniforms->modelMatrix * math::vec4_cast(norm, 0.f);
 
-    return pUniforms->mvpMatrix * math::vec4_cast(vert, 1.f);
+    return pUniforms->vpMatrix * pUniforms->modelMatrix * math::vec4_cast(vert, 1.f);
 }
 
 
@@ -174,12 +174,11 @@ SR_FragmentShader normal_frag_shader()
 math::vec4 _texture_vert_shader_impl(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4* varyings)
 {
     const AnimUniforms* pUniforms   = static_cast<const AnimUniforms*>(uniforms);
-    const math::vec3&   vert        = *vbo.element<const math::vec3>(vao.offset(0, vertId));
-    const math::vec2&   uv          = *vbo.element<const math::vec2>(vao.offset(1, vertId));
-    const math::vec3&   norm        = *vbo.element<const math::vec3>(vao.offset(2, vertId));
-
+    const math::vec3&   vert        = *vbo.element<const math::vec3>( vao.offset(0, vertId));
+    const math::vec2&   uv          = *vbo.element<const math::vec2>( vao.offset(1, vertId));
+    const math::vec3&   norm        = *vbo.element<const math::vec3>( vao.offset(2, vertId));
     const math::vec4i&  boneIds     = *vbo.element<const math::vec4i>(vao.offset(3, vertId));
-    const math::vec4&   boneWeights = *vbo.element<const math::vec4>(vao.offset(4, vertId));
+    const math::vec4&   boneWeights = *vbo.element<const math::vec4>( vao.offset(4, vertId));
 
     /*
     for (unsigned i = 0; i < 4; ++i)
@@ -194,13 +193,13 @@ math::vec4 _texture_vert_shader_impl(const size_t vertId, const SR_VertexArray& 
     const math::mat4&& bone2     = pBones[boneIds[2]] * boneWeights[2];
     const math::mat4&& bone3     = pBones[boneIds[3]] * boneWeights[3];
     const math::mat4&& boneTrans = bone3 + bone2 + bone1 + bone0;
-    const math::mat4   modelPos  = pUniforms->modelMatrix * boneTrans;
+    const math::mat4&& modelPos  = pUniforms->modelMatrix * boneTrans;
 
-    varyings[0] = modelPos * math::vec4_cast(vert, 1.f);
+    varyings[0] = modelPos * math::vec4_cast(vert, 0.f);
     varyings[1] = math::vec4_cast(uv, 0.f, 0.f);
-    varyings[2] = math::normalize(modelPos * math::vec4_cast(norm, 0.f));
+    varyings[2] = math::normalize(boneTrans * math::vec4_cast(norm, 0.f));
 
-    return pUniforms->mvpMatrix * boneTrans * math::vec4_cast(vert, 1.f);
+    return pUniforms->vpMatrix * modelPos * math::vec4_cast(vert, 1.f);
 }
 
 
@@ -332,7 +331,7 @@ void update_animations(SR_SceneGraph& graph, SR_AnimationPlayer& animPlayer, uns
 -------------------------------------*/
 void update_cam_position(SR_Transform& camTrans, float tickTime, utils::Pointer<bool[]>& pKeys)
 {
-    const float camSpeed = 5.f;
+    const float camSpeed = 10.f;
 
     if (pKeys[SR_KeySymbol::KEY_SYM_w] || pKeys[SR_KeySymbol::KEY_SYM_W])
     {
@@ -370,16 +369,10 @@ void update_cam_position(SR_Transform& camTrans, float tickTime, utils::Pointer<
 /*-------------------------------------
  * Render the Scene
 -------------------------------------*/
-void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspect, float fov, const SR_Transform& camTrans)
+void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
 {
     SR_Context&    context   = pGraph->mContext;
     AnimUniforms*  pUniforms = static_cast<AnimUniforms*>(context.shader(0).uniforms().get());
-    unsigned       numHidden = 0;
-    unsigned       numTotal  = 0;
-
-    (void)aspect;
-    (void)fov;
-    (void)camTrans;
 
     pUniforms->pBones = pGraph->mModelMatrices.data();
 
@@ -395,13 +388,12 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
         const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
 
         pUniforms->modelMatrix = modelMat;
-        pUniforms->mvpMatrix   = vpMatrix * modelMat;
+        pUniforms->vpMatrix    = vpMatrix * modelMat;
 
         for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
         {
             const size_t          nodeMeshId = meshIds[meshId];
             const SR_Mesh&        m          = pGraph->mMeshes[nodeMeshId];
-            const SR_BoundingBox& box        = pGraph->mMeshBounds[nodeMeshId];
             const SR_Material&    material   = pGraph->mMaterials[m.materialId];
 
             if (pGraph->mContext.vao(m.vaoId).num_bindings() < 3)
@@ -413,15 +405,6 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
 
             // Use the textureless shader if needed
             const size_t shaderId = (size_t)(material.pTextures[0] == nullptr);
-
-            ++numTotal;
-
-            if (!sr_is_visible(aspect, fov, camTrans, modelMat, box))
-            {
-                ++numHidden;
-                continue;
-            }
-
             context.draw(m, shaderId, 0);
         }
     }
@@ -483,7 +466,8 @@ utils::Pointer<SR_SceneGraph> create_context()
     retCode = pGraph->import(meshLoader.data());
     assert(retCode == 0);
 
-    pGraph->mCurrentTransforms[0].scale(math::vec3{0.1f});
+    pGraph->mCurrentTransforms[0].scale(math::vec3{0.5f});
+    pGraph->mCurrentTransforms[0].rotate(math::vec3{LS_DEG2RAD(90.f), 0.f, 0.f});
     pGraph->update();
 
     const SR_VertexShader&&   normVertShader = normal_vert_shader();
@@ -541,7 +525,7 @@ int main()
     SR_Transform camTrans;
     camTrans.set_type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
     //camTrans.extract_transforms(math::look_at(math::vec3{75.f}, math::vec3{0.f, 10.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
-    camTrans.extract_transforms(math::look_at(math::vec3{3.f}, math::vec3{0.f, 1.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
+    camTrans.extract_transforms(math::look_at(math::vec3{3.f, 0.f, 10.f}, math::vec3{0.f, 4.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
     math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
 
     if (shouldQuit)
@@ -697,7 +681,7 @@ int main()
 
             context.framebuffer(0).clear_color_buffer(0, SR_ColorRGBA{128, 128, 128, 1});
             context.framebuffer(0).clear_depth_buffer();
-            render_scene(pGraph.get(), vpMatrix, ((float)pRenderBuf->width() / (float)pWindow->height()), LS_DEG2RAD(60.f), camTrans);
+            render_scene(pGraph.get(), vpMatrix);
 
             context.blit(*pRenderBuf, 0);
             pWindow->render(*pRenderBuf);

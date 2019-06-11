@@ -261,6 +261,7 @@ char* sr_calc_mesh_geometry_bone(
 -------------------------------------*/
 unsigned sr_upload_mesh_vertices(
     const aiMesh* const pMesh,
+    const uint32_t baseVert,
     char* const pVbo,
     const SR_CommonVertType vertTypes,
     std::unordered_map<uint32_t, SR_BoneData>& boneData
@@ -304,7 +305,7 @@ unsigned sr_upload_mesh_vertices(
 
         if (vertTypes & SR_CommonVertType::BONE_VERTEX)
         {
-            pVboIter = sr_calc_mesh_geometry_bone((uint32_t)i, pVboIter, boneData);
+            pVboIter = sr_calc_mesh_geometry_bone((uint32_t)(i+baseVert), pVboIter, boneData);
         }
     }
 
