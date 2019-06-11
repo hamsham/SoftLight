@@ -389,8 +389,8 @@ SR_AnimationKeyList<data_t>& SR_AnimationKeyList<data_t>::operator=(const SR_Ani
 
     if (k.mNumFrames != mNumFrames)
     {
-        mKeyTimes.reset(new SR_AnimPrecision[k.mNumFrames]);
-        mKeyData.reset(new data_t[k.mNumFrames]);
+        mKeyTimes.reset((SR_AnimPrecision*)ls::utils::aligned_malloc(sizeof(SR_AnimPrecision) * k.mNumFrames));
+        mKeyData.reset((data_t*)ls::utils::aligned_malloc(sizeof(data_t) * k.mNumFrames));
     }
 
     if (!mKeyTimes || !mKeyData)
@@ -471,8 +471,8 @@ bool SR_AnimationKeyList<data_t>::init(const size_t keyCount) noexcept
 
     if (keyCount != mNumFrames)
     {
-        mKeyTimes.reset(new SR_AnimPrecision[keyCount]);
-        mKeyData.reset(new data_t[keyCount]);
+        mKeyTimes.reset((SR_AnimPrecision*)ls::utils::aligned_malloc(sizeof(SR_AnimPrecision) * keyCount));
+        mKeyData.reset((data_t*)ls::utils::aligned_malloc(sizeof(data_t) * keyCount));
     }
 
     if (!mKeyTimes || !mKeyData)
