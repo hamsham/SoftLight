@@ -40,7 +40,7 @@
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SR_TEST_MAX_THREADS
-    #define SR_TEST_MAX_THREADS 4
+    #define SR_TEST_MAX_THREADS 1
 #endif /* SR_TEST_MAX_THREADS */
 
 namespace math = ls::math;
@@ -177,9 +177,16 @@ math::vec4 _texture_vert_shader_impl(const size_t vertId, const SR_VertexArray& 
     const math::vec3&   vert        = *vbo.element<const math::vec3>(vao.offset(0, vertId));
     const math::vec2&   uv          = *vbo.element<const math::vec2>(vao.offset(1, vertId));
     const math::vec3&   norm        = *vbo.element<const math::vec3>(vao.offset(2, vertId));
-    /*
+
     const math::vec4i&  boneIds     = *vbo.element<const math::vec4i>(vao.offset(3, vertId));
     const math::vec4&   boneWeights = *vbo.element<const math::vec4>(vao.offset(4, vertId));
+
+    /*
+    for (unsigned i = 0; i < 4; ++i)
+    {
+        std::cout << "\tBone " << i << " = " << boneIds[i] << ' ' << boneWeights[i] << '\n';
+    }
+    */
 
     math::mat4* pBones = pUniforms->pBones;
     const math::mat4 bone0 = pBones[boneIds[0]] * boneWeights[0];
@@ -187,9 +194,9 @@ math::vec4 _texture_vert_shader_impl(const size_t vertId, const SR_VertexArray& 
     const math::mat4 bone2 = pBones[boneIds[2]] * boneWeights[2];
     const math::mat4 bone3 = pBones[boneIds[3]] * boneWeights[3];
     const math::mat4 boneTrans = bone3 + bone2 + bone1 + bone0;
-    */
-    const math::mat4 modelPos = pUniforms->modelMatrix;// * boneTrans;
-    const math::mat4 boneTrans = math::mat4{1.f};
+
+    const math::mat4 modelPos = pUniforms->modelMatrix * boneTrans;
+    //const math::mat4 boneTrans = math::mat4{1.f};
 
     varyings[0] = modelPos * math::vec4_cast(vert, 1.f);
     varyings[1] = math::vec4_cast(uv, 0.f, 0.f);

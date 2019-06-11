@@ -549,13 +549,6 @@ bool SR_SceneFileLoader::load_scene(const aiScene* const pScene) noexcept
         return false;
     }
 
-    if (!import_mesh_data(pScene))
-    {
-        LS_LOG_ERR("\tError: Failed to load the 3D mesh ", filename, "!\n");
-        unload();
-        return false;
-    }
-
     math::mat4 invGlobalTransform = sr_convert_assimp_matrix(pScene->mRootNode->mTransformation);
     invGlobalTransform = math::inverse(invGlobalTransform);
 
@@ -565,6 +558,24 @@ bool SR_SceneFileLoader::load_scene(const aiScene* const pScene) noexcept
     {
         const size_t nId = n.nodeId;
         LS_LOG_MSG(nId, ' ', sceneData.mCurrentTransforms[nId].mParentId);
+    }
+
+    for (unsigned i = 0; i < pScene->mNumMeshes; ++i)
+    {
+        const aiMesh* const pMesh = pScene->mMeshes[i];
+
+        if (!import_bone_data(pMesh))
+        {
+            LS_LOG_ERR("\t\tUnable to import bone data for the mesh ", pMesh->mName.C_Str());
+            return false;
+        }
+    }
+
+    if (!import_mesh_data(pScene))
+    {
+        LS_LOG_ERR("\tError: Failed to load the 3D mesh ", filename, "!\n");
+        unload();
+        return false;
     }
 
     if (!import_animations(pScene))
@@ -934,14 +945,7 @@ bool SR_SceneFileLoader::import_mesh_data(const aiScene* const pScene) noexcept
     // devices.
     for (unsigned meshId = 0; meshId < pScene->mNumMeshes; ++meshId)
     {
-        const aiMesh* const pMesh = pScene->mMeshes[meshId];
-
-        if (!import_bone_data(pMesh))
-        {
-            LS_LOG_ERR("\t\tUnable to import bone data for the mesh ", pMesh->mName.C_Str());
-            return false;
-        }
-
+        const aiMesh* const     pMesh       = pScene->mMeshes[meshId];
         const SR_CommonVertType vertType    = sr_convert_assimp_verts(pMesh);
         const size_t            meshGroupId = get_mesh_group_marker(vertType, mPreloader.mVaoGroups);
         SR_VaoGroup&            meshGroup   = tempVboMarks[meshGroupId];
@@ -981,37 +985,41 @@ bool SR_SceneFileLoader::import_mesh_data(const aiScene* const pScene) noexcept
 bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh) noexcept
 {
     LS_LOG_MSG("\tImporting bones from a file.");
-    std::unordered_map<uint32_t, SR_BoneData>& boneData = mPreloader.mBones;
-    std::unordered_map<std::string, math::mat4>& offsets = mPreloader.mBoneOffsets;
+    std::vector<std::string>&                    nodeNames = mPreloader.mSceneData.mNodeNames;
+    std::unordered_map<uint32_t, SR_BoneData>&   boneData  = mPreloader.mBones;
+    std::unordered_map<std::string, math::mat4>& offsets   = mPreloader.mBoneOffsets;
 
     for (unsigned i = 0; i < pMesh->mNumBones; ++i)
     {
-        const aiBone* pBone = pMesh->mBones[i];
+        const aiBone*     pBone      = pMesh->mBones[i];
+        const std::string boneName   = {pBone->mName.C_Str()};
+        const uint32_t    numWeights = pBone->mNumWeights;
+        uint32_t          boneId     = 0;
 
-        SR_BoneData newBone;
-        newBone.ids = math::vec4_t<int32_t>{0, 0, 0, 0};
-        newBone.weights = math::vec4_t<float>{0.f, 0.f, 0.f, 0.f};
-
-        const uint32_t numWeights = pBone->mNumWeights;
+        std::vector<std::string>::iterator&& nameIter = std::find(nodeNames.begin(), nodeNames.end(), boneName);
+        if (nameIter != nodeNames.end())
+        {
+            boneId = std::distance(nodeNames.begin(), nameIter);
+        }
 
         // gather all weights from this bone
         for (uint32_t j = 0; j < numWeights; ++j)
         {
             const uint32_t vertId = pBone->mWeights[j].mVertexId;
-            const float weight = pBone->mWeights[j].mWeight;
+            const float    weight = pBone->mWeights[j].mWeight;
 
             // Apply up to SR_BONE_MAX_WEIGHTS weights for a single vertex
-            std::unordered_map<uint32_t, SR_BoneData>::iterator iter = boneData.find(vertId);
+            std::unordered_map<uint32_t, SR_BoneData>::iterator&& iter = boneData.find(vertId);
 
             // If we have already accounted for a vertex, apply this weight to
             // the first non-zero value available for that vertex
             if (iter != boneData.end())
             {
-                for (uint32_t k = 0; k < SR_BONE_MAX_WEIGHTS; ++k)
+                for (uint32_t k = 1; k < SR_BONE_MAX_WEIGHTS; ++k)
                 {
-                    if (iter->second.weights[k] != 0.f)
+                    if (iter->second.ids[k] != 0)
                     {
-                        iter->second.ids[k] = vertId;
+                        iter->second.ids[k]     = boneId;
                         iter->second.weights[k] = weight;
                         break;
                     }
@@ -1022,17 +1030,15 @@ bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh) noexcept
                 // The vertex we're checking does not have any weights
                 // currently associated with it, add one.
                 SR_BoneData newBone;
-                newBone.ids = math::vec4_t<int32_t>{0, 0, 0, 0};
-                newBone.weights = math::vec4_t<float>{0.f, 0.f, 0.f, 0.f};
-
-                newBone.ids[0] = vertId;
+                newBone.ids        = math::vec4_t<int32_t>{0, 0, 0, 0};
+                newBone.weights    = math::vec4_t<float>{0.f, 0.f, 0.f, 0.f};
+                newBone.ids[0]     = boneId;
                 newBone.weights[0] = weight;
-                boneData[vertId] = newBone;
+                boneData[vertId]   = newBone;
             }
         }
 
         // Keep track of all offset matrices
-        const std::string boneName{pBone->mName.C_Str()};
         offsets[boneName] = sr_convert_assimp_matrix(pBone->mOffsetMatrix);
     }
 
@@ -1209,7 +1215,7 @@ void SR_SceneFileLoader::read_node_hierarchy(
             if (currentNode.type == NODE_TYPE_BONE)
             {
                 const math::mat4& offset = mPreloader.mBoneOffsets[nodeName];
-                nodeTransform.apply_pre_transform(invGlobalTransform * offset * currTransforms[parentId].get_transform());
+                nodeTransform.apply_pre_transform(invGlobalTransform * currTransforms[parentId].get_transform() * offset);
             }
             else
             {
