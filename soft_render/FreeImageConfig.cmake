@@ -6,7 +6,9 @@ find_package(FreeImage MODULE)
 # #####################################
 # External build for FreeImage
 # #####################################
-if (FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NOTFOUND OR FREEIMAGE_LIBRARY STREQUAL FREEIMAGE_LIBRARY-NOTFOUND)
+option(BUILD_FREEIMAGE "Force FreeImage to build from source." OFF)
+
+if (BUILD_FREEIMAGE OR FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NOTFOUND OR FREEIMAGE_LIBRARY STREQUAL FREEIMAGE_LIBRARY-NOTFOUND)
 
     message("-- Building FreeImage from source")
   

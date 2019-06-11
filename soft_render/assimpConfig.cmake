@@ -6,7 +6,9 @@ find_package(assimp MODULE)
 # #####################################
 # External build for ASSIMP
 # #####################################
-if (ASSIMP_INCLUDE_DIR STREQUAL ASSIMP_INCLUDE_DIR-NOTFOUND OR ASSIMP_LIBRARIES STREQUAL ASSIMP_LIBRARIES-NOTFOUND)
+option(BUILD_ASSIMP "Force ASSIMP to build from source." OFF)
+
+if (BUILD_ASSIMP OR ASSIMP_INCLUDE_DIR STREQUAL ASSIMP_INCLUDE_DIR-NOTFOUND OR ASSIMP_LIBRARIES STREQUAL ASSIMP_LIBRARIES-NOTFOUND)
 
     message("-- Building ASSIMP from source")
   
