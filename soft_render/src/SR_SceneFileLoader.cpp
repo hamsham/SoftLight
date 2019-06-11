@@ -549,6 +549,19 @@ bool SR_SceneFileLoader::load_scene(const aiScene* const pScene) noexcept
         return false;
     }
 
+    // Find all bone nodes and store their offset matrices
+    std::unordered_map<std::string, math::mat4>& offsets = mPreloader.mBoneOffsets;
+    for (unsigned i = 0; i < pScene->mNumMeshes; ++i)
+    {
+        const aiMesh* const pMesh = pScene->mMeshes[i];
+        for (unsigned j = 0; j < pMesh->mNumBones; ++j)
+        {
+            const aiBone* pBone = pMesh->mBones[j];
+            const std::string&& nodeName = {pBone->mName.C_Str()};
+            offsets[nodeName] = sr_convert_assimp_matrix(pBone->mOffsetMatrix);
+        }
+    }
+
     math::mat4 invGlobalTransform = sr_convert_assimp_matrix(pScene->mRootNode->mTransformation);
     invGlobalTransform = math::inverse(invGlobalTransform);
 
@@ -987,7 +1000,6 @@ bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh) noexcept
     LS_LOG_MSG("\tImporting bones from a file.");
     std::vector<std::string>&                    nodeNames = mPreloader.mSceneData.mNodeNames;
     std::unordered_map<uint32_t, SR_BoneData>&   boneData  = mPreloader.mBones;
-    std::unordered_map<std::string, math::mat4>& offsets   = mPreloader.mBoneOffsets;
 
     for (unsigned i = 0; i < pMesh->mNumBones; ++i)
     {
@@ -1017,7 +1029,7 @@ bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh) noexcept
             {
                 for (uint32_t k = 1; k < SR_BONE_MAX_WEIGHTS; ++k)
                 {
-                    if (iter->second.ids[k] != 0)
+                    if (iter->second.ids[k] == 0)
                     {
                         iter->second.ids[k]     = boneId;
                         iter->second.weights[k] = weight;
@@ -1037,9 +1049,6 @@ bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh) noexcept
                 boneData[vertId]   = newBone;
             }
         }
-
-        // Keep track of all offset matrices
-        offsets[boneName] = sr_convert_assimp_matrix(pBone->mOffsetMatrix);
     }
 
     return true;
@@ -1136,7 +1145,7 @@ void SR_SceneFileLoader::read_node_hierarchy(
     const aiScene* const pScene,
     const aiNode* const pInNode,
     const size_t parentId,
-    const ls::math::mat4& invGlobalTransform
+    const math::mat4& invGlobalTransform
 ) noexcept
 {
     // use the size of the node list as an index which should be returned to
@@ -1144,9 +1153,9 @@ void SR_SceneFileLoader::read_node_hierarchy(
     SR_SceneGraph&               sceneData      = mPreloader.mSceneData;
     std::vector<SR_SceneNode>&   nodeList       = sceneData.mNodes;
     std::vector<std::string>&    nodeNames      = sceneData.mNodeNames;
-    std::vector<math::mat4>& baseTransforms     = sceneData.mBaseTransforms;
+    std::vector<math::mat4>&     baseTransforms = sceneData.mBaseTransforms;
     std::vector<SR_Transform>&   currTransforms = sceneData.mCurrentTransforms;
-    std::vector<math::mat4>& modelMatrices      = sceneData.mModelMatrices;
+    std::vector<math::mat4>&     modelMatrices  = sceneData.mModelMatrices;
 
     //LS_LOG_MSG("\tImporting Scene Node ", nodeList.size(), ": ", pInNode->mName.C_Str());
 
@@ -1212,15 +1221,14 @@ void SR_SceneFileLoader::read_node_hierarchy(
         // transforms will cause root objects to swap X & Z axes.
         if (parentId != SCENE_NODE_ROOT_ID)
         {
-            if (currentNode.type == NODE_TYPE_BONE)
-            {
-                const math::mat4& offset = mPreloader.mBoneOffsets[nodeName];
-                nodeTransform.apply_pre_transform(invGlobalTransform * currTransforms[parentId].get_transform() * offset);
-            }
-            else
-            {
-                nodeTransform.apply_pre_transform(currTransforms[parentId].get_transform());
-            }
+            nodeTransform.apply_pre_transform(currTransforms[parentId].get_transform());
+        }
+
+        if (currentNode.type == NODE_TYPE_BONE)
+        {
+            const math::mat4& offset = mPreloader.mBoneOffsets[nodeName];
+            nodeTransform.extract_transforms(invGlobalTransform * nodeTransform.get_transform());
+            nodeTransform.apply_post_transform(offset);
         }
 
         modelMatrices.push_back(currTransforms.back().get_transform());

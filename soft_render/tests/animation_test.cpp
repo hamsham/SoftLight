@@ -188,15 +188,13 @@ math::vec4 _texture_vert_shader_impl(const size_t vertId, const SR_VertexArray& 
     }
     */
 
-    math::mat4* pBones = pUniforms->pBones;
-    const math::mat4 bone0 = pBones[boneIds[0]] * boneWeights[0];
-    const math::mat4 bone1 = pBones[boneIds[1]] * boneWeights[1];
-    const math::mat4 bone2 = pBones[boneIds[2]] * boneWeights[2];
-    const math::mat4 bone3 = pBones[boneIds[3]] * boneWeights[3];
-    const math::mat4 boneTrans = bone3 + bone2 + bone1 + bone0;
-
-    const math::mat4 modelPos = pUniforms->modelMatrix * boneTrans;
-    //const math::mat4 boneTrans = math::mat4{1.f};
+    const math::mat4*  pBones    = pUniforms->pBones;
+    const math::mat4&& bone0     = pBones[boneIds[0]] * boneWeights[0];
+    const math::mat4&& bone1     = pBones[boneIds[1]] * boneWeights[1];
+    const math::mat4&& bone2     = pBones[boneIds[2]] * boneWeights[2];
+    const math::mat4&& bone3     = pBones[boneIds[3]] * boneWeights[3];
+    const math::mat4&& boneTrans = bone3 + bone2 + bone1 + bone0;
+    const math::mat4   modelPos  = pUniforms->modelMatrix * boneTrans;
 
     varyings[0] = modelPos * math::vec4_cast(vert, 1.f);
     varyings[1] = math::vec4_cast(uv, 0.f, 0.f);
