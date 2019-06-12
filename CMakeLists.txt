@@ -91,16 +91,22 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     endif()
     
     add_definitions(/GL) # global program optimization
+    add_definitions(/Gw) # Whole-program optimization
+    add_definitions(/GA) # Windows program optimizations
+    add_definitions(/MT) # Enable multi-threaded application linking
+    #add_definitions(/Gv) # Enable __vectorcall conventions
     add_definitions(/Oi) # enable instrinsic functions
     add_definitions(/Ot) # favor fast code
     add_definitions(/Oy) # Omit frame pointers
+    add_definitions(/Ox) # Optimize, optimize, optimize
     add_definitions(/permissive-) # enable conformance mode
     add_definitions(/Wall) # enable all warnings
-    add_definitions(/sdl-) # Disable Security Development Lifecycle checks
     add_definitions(/GS-) # Disable global security cookies
+    add_definitions(/sdl-) # Disable Security Development Lifecycle checks
     add_definitions(/W3) # production-quality warnings
     add_definitions(/WX) # warnings are errors
     add_definitions(/Zc:rvalueCast /Zc:strictStrings /Zc:inline)
+    add_definitions(/fp:fast)
 
     # Prevent libraries from being rebuilt
     set(CMAKE_EXE_LINKER_FLAGS    "${CMAKE_EXE_LINKER_FLAGS}    /LTCG:INCREMENTAL")
