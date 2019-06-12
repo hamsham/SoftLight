@@ -1183,7 +1183,7 @@ void SR_SceneFileLoader::read_node_hierarchy(
     // import the node transformation
     // This is also needed for camera nodes to be imported properly
     {
-        SR_Transform baseTrans;
+        SR_Transform baseTrans{};
         aiVector3D inPos, inScale;
         aiQuaternion inRotation;
 
