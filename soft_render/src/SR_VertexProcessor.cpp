@@ -40,7 +40,7 @@ inline math::vec4 sr_world_to_screen_coords(const math::vec4& v, const float wid
     temp[0] = widthScale  + temp[0] * widthScale;
     temp[1] = heightScale + temp[1] * heightScale;
 
-    return math::vec4{temp[0], temp[1], temp[2], 0.f};
+    return math::vec4{temp[0], temp[1], temp[2], wInv};
 }
 
 
@@ -231,7 +231,6 @@ void SR_VertexProcessor::push_fragments(
     float fboW,
     float fboH,
     math::vec4* const screenCoords,
-    math::vec4* const worldCoords,
     const math::vec4* varyings
 ) const noexcept
 {
@@ -287,7 +286,16 @@ void SR_VertexProcessor::push_fragments(
         bin.mScreenCoords[0] = p0;
         bin.mScreenCoords[1] = p1;
         bin.mScreenCoords[2] = p2;
-        bin.mPerspDivide     = math::rcp(math::vec4{worldCoords[0][3], worldCoords[1][3], worldCoords[2][3], 1.f});
+
+        const float denom = 1.f / ((p0[0]-p2[0])*(p1[1]-p0[1]) - (p0[0]-p1[0])*(p2[1]-p0[1]));
+        bin.mBarycentricCoords[0] = denom*math::vec4(p1[1]-p2[1], p2[1]-p0[1], p0[1]-p1[1], 0.f);
+        bin.mBarycentricCoords[1] = denom*math::vec4(p2[0]-p1[0], p0[0]-p2[0], p1[0]-p0[0], 0.f);
+        bin.mBarycentricCoords[2] = denom*math::vec4(
+            p1[0]*p2[1] - p2[0]*p1[1],
+            p2[0]*p0[1] - p0[0]*p2[1],
+            p0[0]*p1[1] - p1[0]*p0[1],
+            0.f
+        );
 
         for (unsigned i = 0; i < LS_ARRAY_SIZE(bin.mVaryings); ++i)
         {
@@ -324,22 +332,21 @@ void SR_VertexProcessor::push_fragments(
 --------------------------------------*/
 void SR_VertexProcessor::execute() noexcept
 {
-    const SR_VertexShader   vertShader   = mShader->mVertShader;
-    const SR_CullMode       cullMode     = vertShader.cullMode;
-    const auto              shader       = vertShader.shader;
-    const SR_UniformBuffer* pUniforms    = mShader->mUniforms.get();
-    const SR_VertexArray&   vao          = mContext->vao(mMesh.vaoId);
-    const SR_VertexBuffer&  vbo          = mContext->vbo(vao.get_vertex_buffer());
-    const float             fboW         = (float)mFboW;
-    const float             fboH         = (float)mFboH;
-    const float             widthScale   = fboW * 0.5f;
-    const float             heightScale  = fboH * 0.5f;
-    size_t                  begin        = mMesh.elementBegin;
-    const size_t            end          = mMesh.elementEnd;
-    const SR_IndexBuffer*   pIbo         = nullptr;
-    ls::math::vec4          worldCoords  [SR_SHADER_MAX_WORLD_COORDS];
-    ls::math::vec4          screenCoords [SR_SHADER_MAX_SCREEN_COORDS];
-    math::vec4              pVaryings    [SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS];
+    const SR_VertexShader   vertShader  = mShader->mVertShader;
+    const SR_CullMode       cullMode    = vertShader.cullMode;
+    const auto              shader      = vertShader.shader;
+    const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
+    const SR_VertexArray&   vao         = mContext->vao(mMesh.vaoId);
+    const SR_VertexBuffer&  vbo         = mContext->vbo(vao.get_vertex_buffer());
+    const float             fboW        = (float)mFboW;
+    const float             fboH        = (float)mFboH;
+    const float             widthScale  = fboW * 0.5f;
+    const float             heightScale = fboH * 0.5f;
+    size_t                  begin       = mMesh.elementBegin;
+    const size_t            end         = mMesh.elementEnd;
+    const SR_IndexBuffer*   pIbo        = nullptr;
+    ls::math::vec4          vertCoords  [SR_SHADER_MAX_SCREEN_COORDS];
+    math::vec4              pVaryings   [SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS];
 
     if (vao.has_index_buffer())
     {
@@ -356,12 +363,12 @@ void SR_VertexProcessor::execute() noexcept
         {
             const size_t vertId0 = usingIndices ? get_next_vertex(pIbo, i) : i;
 
-            worldCoords[0] = shader(vertId0, vao, vbo, pUniforms, pVaryings);
+            vertCoords[0] = shader(vertId0, vao, vbo, pUniforms, pVaryings);
 
-            if (worldCoords[0][3] > 0.f)
+            if (vertCoords[0][3] > 0.f)
             {
-                screenCoords[0] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);
-                push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
+                vertCoords[0] = sr_world_to_screen_coords(vertCoords[0], widthScale, heightScale);
+                push_fragments(fboW, fboH, vertCoords, pVaryings);
             }
         }
     }
@@ -383,15 +390,15 @@ void SR_VertexProcessor::execute() noexcept
             vertId0 = usingIndices ? get_next_vertex(pIbo, index0) : index0;
             vertId1 = usingIndices ? get_next_vertex(pIbo, index1) : index1;
 
-            worldCoords[0] = shader(vertId0, vao, vbo, pUniforms, pVaryings);
-            worldCoords[1] = shader(vertId1, vao, vbo, pUniforms, pVaryings + SR_SHADER_MAX_VARYING_VECTORS);
+            vertCoords[0] = shader(vertId0, vao, vbo, pUniforms, pVaryings);
+            vertCoords[1] = shader(vertId1, vao, vbo, pUniforms, pVaryings + SR_SHADER_MAX_VARYING_VECTORS);
 
-            if (worldCoords[0][3] >= 0.f && worldCoords[1][3] >= 0.f)
+            if (vertCoords[0][3] >= 0.f && vertCoords[1][3] >= 0.f)
             {
-                screenCoords[0] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);
-                screenCoords[1] = sr_world_to_screen_coords(worldCoords[1], widthScale, heightScale);
+                vertCoords[0] = sr_world_to_screen_coords(vertCoords[0], widthScale, heightScale);
+                vertCoords[1] = sr_world_to_screen_coords(vertCoords[1], widthScale, heightScale);
 
-                push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
+                push_fragments(fboW, fboH, vertCoords, pVaryings);
             }
         }
     }
@@ -406,19 +413,19 @@ void SR_VertexProcessor::execute() noexcept
         {
             const math::vec3_t<size_t>&& vertId = usingIndices ? get_next_vertex3(pIbo, i) : math::vec3_t<size_t>{i, i+1, i+2};
 
-            worldCoords[0]  = shader(vertId[0], vao, vbo, pUniforms, pVaryings);
-            worldCoords[1]  = shader(vertId[1], vao, vbo, pUniforms, pVaryings + SR_SHADER_MAX_VARYING_VECTORS);
-            worldCoords[2]  = shader(vertId[2], vao, vbo, pUniforms, pVaryings + (SR_SHADER_MAX_VARYING_VECTORS * 2));
+            vertCoords[0]  = shader(vertId[0], vao, vbo, pUniforms, pVaryings);
+            vertCoords[1]  = shader(vertId[1], vao, vbo, pUniforms, pVaryings + SR_SHADER_MAX_VARYING_VECTORS);
+            vertCoords[2]  = shader(vertId[2], vao, vbo, pUniforms, pVaryings + (SR_SHADER_MAX_VARYING_VECTORS * 2));
 
-            screenCoords[0] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);
-            screenCoords[1] = sr_world_to_screen_coords(worldCoords[1], widthScale, heightScale);
-            screenCoords[2] = sr_world_to_screen_coords(worldCoords[2], widthScale, heightScale);
+            vertCoords[0] = sr_world_to_screen_coords(vertCoords[0], widthScale, heightScale);
+            vertCoords[1] = sr_world_to_screen_coords(vertCoords[1], widthScale, heightScale);
+            vertCoords[2] = sr_world_to_screen_coords(vertCoords[2], widthScale, heightScale);
 
-            if ((cullMode == SR_CULL_BACK_FACE && backface_visible(screenCoords, worldCoords))
-                || (cullMode == SR_CULL_FRONT_FACE && frontface_visible(screenCoords, worldCoords))
-                || (cullMode == SR_CULL_OFF && face_visible(worldCoords)))
+            if ((cullMode == SR_CULL_BACK_FACE && backface_visible(vertCoords, vertCoords))
+                || (cullMode == SR_CULL_FRONT_FACE && frontface_visible(vertCoords, vertCoords))
+                || (cullMode == SR_CULL_OFF && face_visible(vertCoords)))
             {
-                push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
+                push_fragments(fboW, fboH, vertCoords, pVaryings);
             }
         }
     }
@@ -432,19 +439,19 @@ void SR_VertexProcessor::execute() noexcept
         for (size_t i = begin; i < end; i += step)
         {
             const math::vec3_t<size_t>&& vertId = usingIndices ? get_next_vertex3(pIbo, i) : math::vec3_t<size_t>{i, i+1, i+2};
-            worldCoords[0]  = shader(vertId[0], vao, vbo, pUniforms, pVaryings);
-            worldCoords[1]  = shader(vertId[1], vao, vbo, pUniforms, pVaryings + SR_SHADER_MAX_VARYING_VECTORS);
-            worldCoords[2]  = shader(vertId[2], vao, vbo, pUniforms, pVaryings + (SR_SHADER_MAX_VARYING_VECTORS << 1));
+            vertCoords[0]  = shader(vertId[0], vao, vbo, pUniforms, pVaryings);
+            vertCoords[1]  = shader(vertId[1], vao, vbo, pUniforms, pVaryings + SR_SHADER_MAX_VARYING_VECTORS);
+            vertCoords[2]  = shader(vertId[2], vao, vbo, pUniforms, pVaryings + (SR_SHADER_MAX_VARYING_VECTORS << 1));
 
-            screenCoords[0] = sr_world_to_screen_coords(worldCoords[0], widthScale, heightScale);
-            screenCoords[1] = sr_world_to_screen_coords(worldCoords[1], widthScale, heightScale);
-            screenCoords[2] = sr_world_to_screen_coords(worldCoords[2], widthScale, heightScale);
+            vertCoords[0] = sr_world_to_screen_coords(vertCoords[0], widthScale, heightScale);
+            vertCoords[1] = sr_world_to_screen_coords(vertCoords[1], widthScale, heightScale);
+            vertCoords[2] = sr_world_to_screen_coords(vertCoords[2], widthScale, heightScale);
 
-            if ((cullMode == SR_CULL_BACK_FACE && backface_visible(screenCoords, worldCoords))
-            || (cullMode == SR_CULL_FRONT_FACE && frontface_visible(screenCoords, worldCoords))
-            || (cullMode == SR_CULL_OFF && face_visible(worldCoords)))
+            if ((cullMode == SR_CULL_BACK_FACE && backface_visible(vertCoords, vertCoords))
+            || (cullMode == SR_CULL_FRONT_FACE && frontface_visible(vertCoords, vertCoords))
+            || (cullMode == SR_CULL_OFF && face_visible(vertCoords)))
             {
-                push_fragments(fboW, fboH, screenCoords, worldCoords, pVaryings);
+                push_fragments(fboW, fboH, vertCoords, pVaryings);
             }
         }
     }

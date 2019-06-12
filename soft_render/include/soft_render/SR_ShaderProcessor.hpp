@@ -55,8 +55,8 @@ struct alignas(sizeof(ls::math::vec4)) SR_FragmentBin
     // 4-byte floats * 4-element vector * 3 vectors-per-tri = 48 bytes
     ls::math::vec4 mScreenCoords[SR_SHADER_MAX_SCREEN_COORDS];
 
-    // 4-byte floats * 4-element vector = 16 bytes
-    ls::math::vec4 mPerspDivide;
+    // 4-byte floats * 4-element vector * 3 barycentric coordinates = 48 bytes
+    ls::math::vec4 mBarycentricCoords[3];
 
     // 4-byte floats * 4-element vector * 3-vectors-per-tri * 4 varyings-per-vertex = 192 bytes
     ls::math::vec4 mVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS];
@@ -67,13 +67,13 @@ struct alignas(sizeof(ls::math::vec4)) SR_FragmentBin
 // Comparison operator for sorting blended fragments by depth
 constexpr bool operator < (const SR_FragmentBin& a, const SR_FragmentBin& b)
 {
-    return a.mPerspDivide[0] < b.mPerspDivide[0];
+    return a.mScreenCoords[0][2] < b.mScreenCoords[0][2];
 }
 
 // Comparison operator for sorting fragments by depth
 constexpr bool operator > (const SR_FragmentBin& a, const SR_FragmentBin& b)
 {
-    return a.mPerspDivide[0] > b.mPerspDivide[0];
+    return a.mScreenCoords[0][2] > b.mScreenCoords[0][2];
 }
 
 
