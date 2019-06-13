@@ -635,11 +635,11 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     if (p1[1] < p2[1]) std::swap(p1, p2);
 
     const float p10x  = p1[0] - p0[0];
-    const float p20x  = p2[0] - p0[0];
+    //const float p20x  = p2[0] - p0[0];
     const float p21x  = p2[0] - p1[0];
-    const float p10y  = math::rcp(p1[1] - p0[1]);
-    const float p21y  = math::rcp(p2[1] - p1[1]);
-    const float p20y  = math::rcp(p2[1] - p0[1]);
+    const float p10y  = 1.f / (p1[1] - p0[1]);
+    const float p21y  = 1.f / (p2[1] - p1[1]);
+    const float p20y  = 1.f / (p2[1] - p0[1]);
     const float p10xy = p10x * p10y;
     const float p21xy = p21x * p21y;
 
@@ -650,12 +650,12 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     {
         // calculate the bounds of the current scan-line
         const float      yf         = (float)y;
-        const math::vec4 bcY        = (bcClipSpace[1] * yf) + bcClipSpace[2];
+        const math::vec4 bcY        = math::fmadd(bcClipSpace[1], math::vec4{yf}, bcClipSpace[2]);
         const float      d0         = yf - p0[1];
         const float      d1         = yf - p1[1];
         const float      alpha      = d0 * p20y;
         const int        secondHalf = math::sign_mask(d1);
-        int32_t          xMin       = (int32_t)(p0[0] + (p20x * alpha));
+        int32_t          xMin       = (int32_t)(p0[0] + ((p2[0]-p0[0]) * alpha));
         int32_t          xMax       = (int32_t)(secondHalf ? (p1[0] + p21xy * d1) : (p0[0] + p10xy * d0));
 
         // Get the beginning and end of the scan-line
@@ -663,30 +663,29 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
         xMin = math::clamp<int32_t>(xMin, bboxMinX, bboxMaxX);
         xMax = math::clamp<int32_t>(xMax, bboxMinX, bboxMaxX);
 
-        math::vec4i x = math::vec4i{xMin} + math::vec4i{0, 1, 2, 3};
+        math::vec4i x  = math::vec4i{0, 1, 2, 3} + xMin;
+        math::vec4  xf = math::vec4{0.f, 1.f, 2.f, 3.f} + (float)xMin;
 
-        for (int32_t y16 = y << 16; x[0] <= xMax; x += 4)
+        for (int32_t y16 = y << 16; x[0] <= xMax;)
         {
-            // calculate barycentric coordinates
-            const math::vec4&& xf = (math::vec4)x;
-            const math::mat4&& bc = math::outer(xf, bcClipSpace[0]) + bcY;
-
-            // depth texture lookup will always be slow
-            const math::vec4&& depthBufTexels = depthTesting ? math::vec4{depthBuffer->texel4<float>(x[0], y)} : math::vec4{0.f};
-            const math::vec4&& z              {depth * bc};
-            const math::vec4&& depthTest      = depthTesting ? (z - depthBufTexels) : math::vec4{0.f};
-            const int32_t      end            = math::min<int32_t>(xMax-x[0], 4);
+            // calculate barycentric coordinates and perform a depth test
+            const int32_t      x0          = x[0];
+            const math::mat4&& bc          = math::outer(xf, bcClipSpace[0]) + bcY;
+            const math::vec4&& z           = depth * bc;
+            const math::vec4&& depthTexels = depthTesting ? math::vec4{depthBuffer->texel4<float>(x0, y)} : math::vec4{0.f};
+            const int32_t      depthTest   = math::sign_mask(depthTesting ? (z - depthTexels) : math::vec4{0.f});
+            const int32_t      end         = math::min<int32_t>(xMax-x0, 4) & -(depthTest != 0x0F);
 
             for (int32_t i = 0; i < end; ++i)
             {
-                if (depthTest[i] < 0.f)
+                if (depthTest & (0x01 << i))
                 {
                     continue;
                 }
 
                 // perspective correction
-                float persp = math::dot(homogenous, bc[i]);
-                outCoords->bc[numQueuedFrags] = bc[i] * homogenous / persp;
+                float persp = 1.f / math::dot(homogenous, bc[i]);
+                outCoords->bc[numQueuedFrags] = bc[i] * homogenous * persp;
 
                 const math::vec3 outXYZ{xf[i], yf, z[i]};
                 outCoords->xyz[numQueuedFrags] = outXYZ;
@@ -702,6 +701,9 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
                     flush_fragments(binId, SR_SHADER_MAX_FRAG_QUEUES, outCoords);
                 }
             }
+
+            x += 4;
+            xf += 4.f;
         }
     }
 
