@@ -668,19 +668,14 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
         for (int32_t y16 = y << 16; x[0] <= xMax; x += 4)
         {
             // calculate barycentric coordinates
-            const math::vec4 xf = (math::vec4)x;
-            const math::mat4 bc = {
-                math::fmadd(math::vec4{xf[0]}, bcClipSpace[0], bcY),
-                math::fmadd(math::vec4{xf[1]}, bcClipSpace[0], bcY),
-                math::fmadd(math::vec4{xf[2]}, bcClipSpace[0], bcY),
-                math::fmadd(math::vec4{xf[3]}, bcClipSpace[0], bcY)
-            };
+            const math::vec4&& xf = (math::vec4)x;
+            const math::mat4&& bc = math::outer(xf, bcClipSpace[0]) + bcY;
 
             // depth texture lookup will always be slow
-            const math::vec4 depthBufTexels = depthTesting ? math::vec4{depthBuffer->texel4<float>(x[0], y)} : math::vec4{0.f};
-            const math::vec4 z              {depth * bc};
-            const math::vec4 depthTest      = depthTesting ? (z - depthBufTexels) : math::vec4{0.f};
-            const int32_t    end            = math::min<int32_t>(xMax-x[0], 4);
+            const math::vec4&& depthBufTexels = depthTesting ? math::vec4{depthBuffer->texel4<float>(x[0], y)} : math::vec4{0.f};
+            const math::vec4&& z              {depth * bc};
+            const math::vec4&& depthTest      = depthTesting ? (z - depthBufTexels) : math::vec4{0.f};
+            const int32_t      end            = math::min<int32_t>(xMax-x[0], 4);
 
             for (int32_t i = 0; i < end; ++i)
             {
