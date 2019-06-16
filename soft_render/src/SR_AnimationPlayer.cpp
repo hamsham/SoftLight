@@ -131,7 +131,7 @@ void SR_AnimationPlayer::tick(SR_SceneGraph& graph, unsigned animationIndex, int
     const SR_Animation& anim = animations[animationIndex];
 
     if (mNumPlays == PLAY_AUTO) {
-        mNumPlays = (anim.get_play_mode() == SR_AnimPlayMode::SR_ANIM_PLAY_REPEAT)
+        mNumPlays = (anim.play_mode() == SR_AnimPlayMode::SR_ANIM_PLAY_REPEAT)
             ? PLAY_REPEAT
             : PLAY_ONCE;
     }
@@ -142,8 +142,8 @@ void SR_AnimationPlayer::tick(SR_SceneGraph& graph, unsigned animationIndex, int
     }
 
     const SR_AnimPrecision secondsDelta  = SR_AnimPrecision{0.001} * (SR_AnimPrecision)millis;
-    const SR_AnimPrecision ticksDelta    = secondsDelta * anim.get_ticks_per_sec();
-    const SR_AnimPrecision percentDelta  = (ticksDelta * mDilation) / anim.get_duration();
+    const SR_AnimPrecision ticksDelta    = secondsDelta * anim.ticks_per_sec();
+    const SR_AnimPrecision percentDelta  = (ticksDelta * mDilation) / anim.duration();
     const SR_AnimPrecision percentDone   = mCurrentPercent + percentDelta;
     const SR_AnimPrecision nextPercent   = percentDone >= SR_AnimPrecision{0.0} ? percentDone : (SR_AnimPrecision{1}+percentDone);
     

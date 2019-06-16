@@ -167,7 +167,7 @@ class SR_Animation
      * @return An enumeration which can be used to determine if *this has
      * a looping or non-looping Animation.
      */
-    SR_AnimPlayMode get_play_mode() const noexcept;
+    SR_AnimPlayMode play_mode() const noexcept;
 
     /**
      * @brief Set the current play mode used by *this.
@@ -176,7 +176,7 @@ class SR_Animation
      * An enumeration which can be used to determine if *this will contain
      * a looping or non-looping Animation.
      */
-    void set_play_mode(const SR_AnimPlayMode animMode) noexcept;
+    void play_mode(const SR_AnimPlayMode animMode) noexcept;
 
     /**
      * @brief Retrieve the unique, hashed, identifier that can be used to
@@ -185,7 +185,7 @@ class SR_Animation
      * @return An unsigned integer, containing the hashed value of *this
      * Animation's name.
      */
-    size_t get_anim_id() const noexcept;
+    size_t id() const noexcept;
 
     /**
      * @brief Retrieve the name of *this Animation.
@@ -193,7 +193,7 @@ class SR_Animation
      * @return A constant reference to a constant string, containing the
      * name of *this.
      */
-    const std::string& get_anim_name() const noexcept;
+    const std::string& name() const noexcept;
 
     /**
      * @brief Set *this Animation's name.
@@ -205,7 +205,7 @@ class SR_Animation
      * A constant reference to a string, containing the new name of *this.
      */
     template<typename std_string_type>
-    void set_anim_name(std_string_type&& name) noexcept;
+    void name(std_string_type&& name) noexcept;
 
     /**
      * @brief Get the duration, in ticks, of *this Animation.
@@ -217,7 +217,7 @@ class SR_Animation
      * @return A SR_AnimPrecision-precision float, containing the number of ticks
      * that an Animation plays.
      */
-    SR_AnimPrecision get_duration() const noexcept;
+    SR_AnimPrecision duration() const noexcept;
 
     /**
      * @brief Set the duration, in ticks, of *this Animation.
@@ -235,7 +235,7 @@ class SR_Animation
      * @return A SR_AnimPrecision-precision float, containing the speed of *this
      * Animation in ticks/sec.
      */
-    SR_AnimPrecision get_ticks_per_sec() const noexcept;
+    SR_AnimPrecision ticks_per_sec() const noexcept;
 
     /**
      * @brief Set playback speed, in ticks per second, that *this object
@@ -245,7 +245,7 @@ class SR_Animation
      * A SR_AnimPrecision-precision float, containing the speed of *this Animation in
      * ticks/sec.
      */
-    void set_ticks_per_sec(const SR_AnimPrecision numTicks) noexcept;
+    void ticks_per_sec(const SR_AnimPrecision numTicks) noexcept;
 
     /**
      * @brief Retrieve the list of indices which are used to reference scene
@@ -255,7 +255,7 @@ class SR_Animation
      * @return A reference to a constant vector of indices which reference
      * the "currentTransform" objects in a SceneGraph.
      */
-    const std::vector <size_t>& get_transforms() const noexcept;
+    const std::vector<size_t>& get_transforms() const noexcept;
 
     /**
      * @brief Retrieve the list of indices which will be used to reference a
@@ -271,7 +271,7 @@ class SR_Animation
      * per-node animation channels
      * (SceneGraph::nodeAnims[animTrackId][nodeTrackId]).
      */
-    const std::vector <size_t>& get_node_tracks() const noexcept;
+    const std::vector<size_t>& tracks() const noexcept;
 
     /**
      * @brief Retrieve the list of indices which will be used to reference
@@ -284,7 +284,7 @@ class SR_Animation
      * reference an array of AnimationChannel objects in a SceneGraph.
      * (SceneGraph::nodeAnims[animTrackId]).
      */
-    const std::vector <size_t>& get_node_animations() const noexcept;
+    const std::vector<size_t>& animations() const noexcept;
 
     /**
      * @brief Get the number of Animation channels that will be animated by
@@ -293,7 +293,7 @@ class SR_Animation
      * @return The total number of node channels which *this Animation object
      * runs during any given frame.
      */
-    size_t get_num_anim_channels() const noexcept;
+    size_t size() const noexcept;
 
     /**
      * @brief Add an Animation channel to *this.
@@ -305,7 +305,7 @@ class SR_Animation
      * An unsigned integer, containing the index of the AnimationChannel in
      * the input node's std::vector<AnimationChannel> to use for animation.
      */
-    void add_anim_channel(const SR_SceneNode& node, const size_t nodeTrackId) noexcept;
+    void add_channel(const SR_SceneNode& node, const size_t nodeTrackId) noexcept;
 
     /**
      * Remove a single Animation channel from *this.
@@ -313,18 +313,18 @@ class SR_Animation
      * @param trackId
      * The index of the Animation channel to remove.
      */
-    void remove_anim_channel(const size_t trackId) noexcept;
+    void erase(const size_t trackId) noexcept;
 
     /**
      * Remove all Animation keyframes and channels inside of *this.
      */
-    void clear_anim_channels() noexcept;
+    void clear() noexcept;
 
     /**
      * @brief Reserve a number of animation channels to help avoid the chances
      * of a reallocation when adding single animations.
      */
-    void reserve_anim_channels(const size_t reserveSize) noexcept;
+    void reserve(const size_t reserveSize) noexcept;
 
     /**
      * @brief Animate nodes in a sceneGraph.
@@ -362,7 +362,7 @@ class SR_Animation
  * Set the SR_Animation name
 -------------------------------------*/
 template<typename std_string_type>
-void SR_Animation::set_anim_name(std_string_type&& name) noexcept
+void SR_Animation::name(std_string_type&& name) noexcept
 {
     mAnimId = ls::utils::string_hash(name.c_str());
     mName = std::forward<std_string_type>(name);

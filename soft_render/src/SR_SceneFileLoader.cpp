@@ -1400,7 +1400,7 @@ bool SR_SceneFileLoader::import_animations(const aiScene* const pScene) noexcept
         {
             SR_AnimationChannel track;
             const aiNodeAnim* const pInTrack = pInAnim->mChannels[c];
-            const unsigned nodeId = import_animation_track(pInTrack, track, anim.get_duration());
+            const unsigned nodeId = import_animation_track(pInTrack, track, anim.duration());
 
             if (nodeId == UINT_MAX)
             {
@@ -1425,15 +1425,15 @@ bool SR_SceneFileLoader::import_animations(const aiScene* const pScene) noexcept
             nodeChannels.emplace_back(std::move(track));
 
             // Add the node's imported track to the current animation
-            anim.add_anim_channel(node, nodeChannels.size()-1);
+            anim.add_channel(node, nodeChannels.size() - 1);
         }
 
         std::cout
             << "\tLoaded Animation " << i+1 << '/' << totalAnimations
-            << "\n\t\tName:      " << anim.get_anim_name()
-            << "\n\t\tDuration:  " << anim.get_duration()
-            << "\n\t\tTicks/Sec: " << anim.get_ticks_per_sec()
-            << "\n\t\tChannels:  " << anim.get_num_anim_channels()
+            << "\n\t\tName:      " << anim.name()
+            << "\n\t\tDuration:  " << anim.duration()
+            << "\n\t\tTicks/Sec: " << anim.ticks_per_sec()
+            << "\n\t\tChannels:  " << anim.size()
             << std::endl;
     }
 

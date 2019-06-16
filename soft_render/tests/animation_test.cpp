@@ -471,6 +471,10 @@ utils::Pointer<SR_SceneGraph> create_context()
     pGraph->mCurrentTransforms[36].scale(math::vec3{2.f});
     pGraph->mCurrentTransforms[36].move(math::vec3{10.f, 0.f, 0.f});
 
+    pGraph->copy_node(36);
+    pGraph->mCurrentTransforms[72].rotate(math::vec3{LS_DEG2RAD(-90.f), 0.f, 0.f});
+    pGraph->mCurrentTransforms[72].move(math::vec3{-10.f, 0.f, 0.f});
+
     pGraph->update();
 
     const SR_VertexShader&&   normVertShader = normal_vert_shader();
@@ -479,7 +483,7 @@ utils::Pointer<SR_SceneGraph> create_context()
     const SR_FragmentShader&& texFragShader  = texture_frag_shader();
 
     // Uniform variables don't always align properly because of the vtable
-    std::shared_ptr<AnimUniforms>  pUniforms{(AnimUniforms*)ls::utils::aligned_malloc(sizeof(AnimUniforms)), [](AnimUniforms* p)->void {ls::utils::aligned_free(p);}};
+    std::shared_ptr<AnimUniforms> pUniforms{(AnimUniforms*)ls::utils::aligned_malloc(sizeof(AnimUniforms)), [](AnimUniforms* p)->void {ls::utils::aligned_free(p);}};
 
     size_t texShaderId  = context.create_shader(texVertShader,  texFragShader,  pUniforms);
     size_t normShaderId = context.create_shader(normVertShader, normFragShader, pUniforms);
@@ -509,7 +513,7 @@ int main()
 
     SR_Context& context = pGraph->mContext;
     SR_AnimationPlayer animPlayer;
-    //unsigned currentAnimId = 0;
+    unsigned currentAnimId = 0;
 
     setup_animations(*pGraph, animPlayer);
 
@@ -679,7 +683,7 @@ int main()
 
             const math::mat4&& vpMatrix = projMatrix * camTrans.get_transform();
 
-            //update_animations(*pGraph, animPlayer, currentAnimId, tickTime);
+            update_animations(*pGraph, animPlayer, currentAnimId, -tickTime);
             pGraph->update();
 
             context.framebuffer(0).clear_color_buffer(0, SR_ColorRGBA{128, 128, 128, 1});

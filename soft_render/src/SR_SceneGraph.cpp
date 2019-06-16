@@ -338,7 +338,7 @@ void SR_SceneGraph::delete_node_animation_data(const size_t nodeId, const size_t
         {
             if (currentTransIds[j] == nodeId)
             {
-                currentAnim.remove_anim_channel(j);
+                currentAnim.erase(j);
                 continue;
             }
 
@@ -354,7 +354,7 @@ void SR_SceneGraph::delete_node_animation_data(const size_t nodeId, const size_t
         }
 
         // Remove any defunct animations
-        if (!currentAnim.get_num_anim_channels())
+        if (!currentAnim.size())
         {
             mAnimations.erase(mAnimations.begin() + i);
         }
@@ -506,9 +506,9 @@ bool SR_SceneGraph::reparent_node(const size_t nodeIndex, const size_t newParent
 
     LS_DEBUG_ASSERT(nodeIndex < mNodes.size());
 
-    const size_t numChildren    = get_num_total_children(nodeIndex);
+    const size_t numChildren    = num_total_children(nodeIndex);
     const size_t displacement   = 1 + numChildren;
-    const size_t numNewSiblings = get_num_total_children(newParentId);
+    const size_t numNewSiblings = num_total_children(newParentId);
     const size_t newNodeIndex   = 1 + newParentId + numNewSiblings;
 
     // Keep track of the range of elements which need to be updated.
@@ -590,7 +590,7 @@ bool SR_SceneGraph::copy_node(const size_t nodeIndex) noexcept
 
     LS_DEBUG_ASSERT(nodeIndex < mNodes.size());
 
-    const size_t numChildren    = get_num_total_children(nodeIndex);
+    const size_t numChildren    = num_total_children(nodeIndex);
     const size_t displacement   = 1 + numChildren;
 
     const std::vector<SR_SceneNode>::iterator&& nodeIter = mNodes.begin() + nodeIndex;
@@ -620,7 +620,8 @@ bool SR_SceneGraph::copy_node(const size_t nodeIndex) noexcept
     size_t boneOffset = ~((size_t)0);
 
     // node indices must match their ID
-    for (size_t i = 0; i < mNodes.size(); ++i)
+    const size_t numTotalNodes = mNodes.size();
+    for (size_t i = 0; i < numTotalNodes; ++i)
     {
         mNodes[i].nodeId = i;
     }
@@ -729,7 +730,7 @@ size_t SR_SceneGraph::find_node_id(const std::string& nameQuery) const noexcept
 /*-------------------------------------
  * Node Child Counting (total)
 -------------------------------------*/
-size_t SR_SceneGraph::get_num_total_children(const size_t nodeIndex) const noexcept
+size_t SR_SceneGraph::num_total_children(const size_t nodeIndex) const noexcept
 {
     if (nodeIndex == SR_SceneNodeProp::SCENE_NODE_ROOT_ID)
     {
@@ -758,7 +759,7 @@ size_t SR_SceneGraph::get_num_total_children(const size_t nodeIndex) const noexc
 /*-------------------------------------
  * Node Child Counting (immediate)
 -------------------------------------*/
-size_t SR_SceneGraph::get_num_immediate_children(const size_t nodeIndex) const noexcept
+size_t SR_SceneGraph::num_immediate_children(const size_t nodeIndex) const noexcept
 {
     if (nodeIndex == SR_SceneNodeProp::SCENE_NODE_ROOT_ID)
     {

@@ -128,7 +128,7 @@ SR_Animation& SR_Animation::operator =(SR_Animation&& a) noexcept {
 /*-------------------------------------
  * Retrieve the SR_Animation mode
 -------------------------------------*/
-SR_AnimPlayMode SR_Animation::get_play_mode() const noexcept {
+SR_AnimPlayMode SR_Animation::play_mode() const noexcept {
     return mPlayMode;
 }
 
@@ -137,7 +137,7 @@ SR_AnimPlayMode SR_Animation::get_play_mode() const noexcept {
 /*-------------------------------------
  * Set the SR_Animation mode
 -------------------------------------*/
-void SR_Animation::set_play_mode(const SR_AnimPlayMode animMode) noexcept {
+void SR_Animation::play_mode(const SR_AnimPlayMode animMode) noexcept {
     mPlayMode = animMode;
 }
 
@@ -146,7 +146,7 @@ void SR_Animation::set_play_mode(const SR_AnimPlayMode animMode) noexcept {
 /*-------------------------------------
  * Retrieve the SR_Animation's hash number
 -------------------------------------*/
-size_t SR_Animation::get_anim_id() const noexcept {
+size_t SR_Animation::id() const noexcept {
     return mAnimId;
 }
 
@@ -155,7 +155,7 @@ size_t SR_Animation::get_anim_id() const noexcept {
 /*-------------------------------------
  * Retrieve the SR_Animation's name
 -------------------------------------*/
-const std::string& SR_Animation::get_anim_name() const noexcept {
+const std::string& SR_Animation::name() const noexcept {
     return mName;
 }
 
@@ -164,7 +164,7 @@ const std::string& SR_Animation::get_anim_name() const noexcept {
 /*-------------------------------------
  * Set the SR_Animation duration (ticks per second)
 -------------------------------------*/
-SR_AnimPrecision SR_Animation::get_duration() const noexcept {
+SR_AnimPrecision SR_Animation::duration() const noexcept {
     return mTotalTicks;
 }
 
@@ -182,7 +182,7 @@ void SR_Animation::set_duration(const SR_AnimPrecision ticks) noexcept {
 /*-------------------------------------
  * Retrieve the time interpolation (tps).
 -------------------------------------*/
-SR_AnimPrecision SR_Animation::get_ticks_per_sec() const noexcept {
+SR_AnimPrecision SR_Animation::ticks_per_sec() const noexcept {
     return mTicksPerSec;
 }
 
@@ -191,7 +191,7 @@ SR_AnimPrecision SR_Animation::get_ticks_per_sec() const noexcept {
 /*-------------------------------------
  * Retrieve the time interpolation (tps).
 -------------------------------------*/
-void SR_Animation::set_ticks_per_sec(const SR_AnimPrecision numTicks) noexcept {
+void SR_Animation::ticks_per_sec(const SR_AnimPrecision numTicks) noexcept {
     mTicksPerSec = numTicks;
 }
 
@@ -209,7 +209,7 @@ const std::vector<size_t>& SR_Animation::get_transforms() const noexcept {
 /*-------------------------------------
  * Retrieve the animation channels affected by *this.
 -------------------------------------*/
-const std::vector<size_t>& SR_Animation::get_node_tracks() const noexcept {
+const std::vector<size_t>& SR_Animation::tracks() const noexcept {
     return mTrackIds;
 }
 
@@ -218,7 +218,7 @@ const std::vector<size_t>& SR_Animation::get_node_tracks() const noexcept {
 /*-------------------------------------
  * Retrieve an array of animations affected by *this.
 -------------------------------------*/
-const std::vector<size_t>& SR_Animation::get_node_animations() const noexcept {
+const std::vector<size_t>& SR_Animation::animations() const noexcept {
     return mChannelIds;
 }
 
@@ -227,7 +227,7 @@ const std::vector<size_t>& SR_Animation::get_node_animations() const noexcept {
 /*-------------------------------------
  * Get the number of sub-animations
 -------------------------------------*/
-size_t SR_Animation::get_num_anim_channels() const noexcept {
+size_t SR_Animation::size() const noexcept {
     LS_DEBUG_ASSERT(mTransformIds.size() == mChannelIds.size());
     LS_DEBUG_ASSERT(mTransformIds.size() == mTrackIds.size());
     return mTransformIds.size();
@@ -238,7 +238,7 @@ size_t SR_Animation::get_num_anim_channels() const noexcept {
 /*-------------------------------------
  * Add a node's animation track to *this
 -------------------------------------*/
-void SR_Animation::add_anim_channel(const SR_SceneNode& node, const size_t nodeTrackId) noexcept {
+void SR_Animation::add_channel(const SR_SceneNode& node, const size_t nodeTrackId) noexcept {
     mChannelIds.push_back(node.animListId);
     mTrackIds.push_back(nodeTrackId);
     mTransformIds.push_back(node.nodeId);
@@ -249,15 +249,15 @@ void SR_Animation::add_anim_channel(const SR_SceneNode& node, const size_t nodeT
 /*-------------------------------------
  * Remove a node's animation from *this.
 -------------------------------------*/
-void SR_Animation::remove_anim_channel(const size_t channelIndex) noexcept {
+void SR_Animation::erase(const size_t trackId) noexcept {
     LS_DEBUG_ASSERT(mTransformIds.size() == mChannelIds.size());
     LS_DEBUG_ASSERT(mTransformIds.size() == mTrackIds.size());
     
-    LS_DEBUG_ASSERT(channelIndex < mTransformIds.size());
+    LS_DEBUG_ASSERT(trackId < mTransformIds.size());
     
-    mChannelIds.erase(mChannelIds.begin() + channelIndex);
-    mTrackIds.erase(mTrackIds.begin() + channelIndex);
-    mTransformIds.erase(mTransformIds.begin() + channelIndex);
+    mChannelIds.erase(mChannelIds.begin() + trackId);
+    mTrackIds.erase(mTrackIds.begin() + trackId);
+    mTransformIds.erase(mTransformIds.begin() + trackId);
 }
 
 
@@ -265,7 +265,7 @@ void SR_Animation::remove_anim_channel(const size_t channelIndex) noexcept {
 /*-------------------------------------
  * Clear all sub-animations.
 -------------------------------------*/
-void SR_Animation::clear_anim_channels() noexcept {
+void SR_Animation::clear() noexcept {
     mChannelIds.clear();
     mTrackIds.clear();
     mTransformIds.clear();
@@ -276,7 +276,7 @@ void SR_Animation::clear_anim_channels() noexcept {
 /*-------------------------------------
  * Reserve space for animation tracks.
 -------------------------------------*/
-void SR_Animation::reserve_anim_channels(const size_t reserveSize) noexcept {
+void SR_Animation::reserve(const size_t reserveSize) noexcept {
     mChannelIds.reserve(reserveSize);
     mTrackIds.reserve(reserveSize);
     mTransformIds.reserve(reserveSize);
