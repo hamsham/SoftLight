@@ -9,6 +9,7 @@
 
 #include "lightsky/utils/Pointer.h"
 #include "lightsky/utils/Time.hpp"
+#include "lightsky/utils/Tuple.h"
 
 #include "soft_render/SR_BoundingBox.hpp"
 #include "soft_render/SR_Camera.hpp"

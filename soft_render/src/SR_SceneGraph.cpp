@@ -578,6 +578,135 @@ bool SR_SceneGraph::reparent_node(const size_t nodeIndex, const size_t newParent
     return true;
 }
 
+/*-------------------------------------
+ * Node Duplication
+-------------------------------------*/
+bool SR_SceneGraph::copy_node(const size_t nodeIndex) noexcept
+{
+    if (nodeIndex == SR_SceneNodeProp::SCENE_NODE_ROOT_ID)
+    {
+        return false;
+    }
+
+    LS_DEBUG_ASSERT(nodeIndex < mNodes.size());
+
+    const size_t numChildren    = get_num_total_children(nodeIndex);
+    const size_t displacement   = 1 + numChildren;
+
+    const std::vector<SR_SceneNode>::iterator&& nodeIter = mNodes.begin() + nodeIndex;
+    mNodes.insert(nodeIter+displacement, nodeIter, nodeIter+displacement);
+
+    const std::vector<ls::math::mat4>::iterator&& baseTransIter = mBaseTransforms.begin() + nodeIndex;
+    mBaseTransforms.insert(baseTransIter+displacement, baseTransIter, baseTransIter+displacement);
+
+    const std::vector<SR_Transform>::iterator&& nodeTransIter = mCurrentTransforms.begin() + nodeIndex;
+    mCurrentTransforms.insert(nodeTransIter+displacement, nodeTransIter, nodeTransIter+displacement);
+
+    const std::vector<ls::math::mat4>::iterator&& modelMatIter = mModelMatrices.begin() + nodeIndex;
+    mModelMatrices.insert(modelMatIter+displacement, modelMatIter, modelMatIter+displacement);
+
+    const std::vector<std::string>::iterator&& nameIter = mNodeNames.begin() + nodeIndex;
+    mNodeNames.insert(nameIter+displacement, nameIter, nameIter+displacement);
+
+    // easy part is done. now move onto the node data...
+    // how many data elements of each node type are we moving
+    size_t numCameraNodes = 0;
+    size_t numMeshNodes = 0;
+    size_t numBoneNodes = 0;
+
+    // these are to determine where the first node-data element exists
+    size_t camOffset = ~((size_t)0);
+    size_t meshOffset = ~((size_t)0);
+    size_t boneOffset = ~((size_t)0);
+
+    // node indices must match their ID
+    for (size_t i = 0; i < mNodes.size(); ++i)
+    {
+        mNodes[i].nodeId = i;
+    }
+
+    for (size_t i = 0; i < displacement; ++i)
+    {
+        const size_t orig = nodeIndex + i;
+        const size_t dupe = orig + displacement;
+
+        // ensure all parent indices have been adjusted
+        if (i > 0)
+        {
+            mCurrentTransforms[dupe].mParentId = mCurrentTransforms[orig].mParentId + displacement;
+        }
+
+        LS_LOG_MSG("Copying node parent from ", mCurrentTransforms[orig].mParentId, " to ", mCurrentTransforms[dupe].mParentId);
+
+        // Ensure all proper node data gets adjusted
+        switch (mNodes[orig].type)
+        {
+            case NODE_TYPE_BONE:
+                ++numBoneNodes;
+                boneOffset = boneOffset != (~(size_t)0) ? boneOffset : mNodes[orig].dataId;
+                mNodes[dupe].dataId += numBoneNodes;
+                break;
+
+            case NODE_TYPE_CAMERA:
+                ++numCameraNodes;
+                camOffset = camOffset != (~(size_t)0) ? camOffset : mNodes[orig].dataId;
+                mNodes[dupe].dataId += numCameraNodes;
+                break;
+
+            case NODE_TYPE_MESH:
+                ++numMeshNodes;
+                meshOffset = meshOffset != (~(size_t)0) ? meshOffset : mNodes[orig].dataId;
+                mNodes[dupe].dataId += numMeshNodes;
+                break;
+
+            case NODE_TYPE_EMPTY:
+                // empty nodes only contain
+                // have the compiler warn us if we missed an enum...
+                break;
+        }
+    }
+
+    if (numBoneNodes)
+    {
+        LS_LOG_MSG("Copying ", numBoneNodes, " bones.");
+        const size_t lastBone = boneOffset+numBoneNodes;
+        mInvBoneTransforms.insert(mInvBoneTransforms.begin()+lastBone, mInvBoneTransforms.begin()+boneOffset, mInvBoneTransforms.begin()+lastBone);
+        mBoneOffsets.insert(mBoneOffsets.begin()+lastBone, mBoneOffsets.begin()+boneOffset, mBoneOffsets.begin()+lastBone);
+    }
+
+    // no node-specific data held within the cameras
+    if (numCameraNodes)
+    {
+        LS_LOG_MSG("Copying ", numCameraNodes, " cameras.");
+        const size_t lastCam = camOffset+numCameraNodes;
+        mCameras.insert(mCameras.begin()+lastCam, mCameras.begin()+camOffset, mCameras.begin()+lastCam);
+    }
+
+    if (numMeshNodes)
+    {
+        LS_LOG_MSG("Copying ", numMeshNodes, " meshes.");
+        const size_t lastMesh = meshOffset+numMeshNodes;
+        mNodeMeshes.reserve(mNodeMeshes.size()+numMeshNodes);
+        mNumNodeMeshes.insert(mNumNodeMeshes.begin()+lastMesh, mNumNodeMeshes.begin()+meshOffset, mNumNodeMeshes.begin()+lastMesh);
+
+        for (size_t i = 0; i < numMeshNodes; ++i)
+        {
+            size_t orig = meshOffset + i;
+            size_t dupe = lastMesh + i;
+
+            mNodeMeshes.emplace(mNodeMeshes.begin()+lastMesh+i, ls::utils::Pointer<size_t[]>{new size_t[mNumNodeMeshes[orig]]});
+
+            for (size_t j = 0; j < mNumNodeMeshes[orig]; ++j)
+            {
+                mNodeMeshes[dupe][j] = mNodeMeshes[orig][j];
+                LS_LOG_MSG("Copying mesh index ", orig, '-', j, " to ", dupe, '-', j);
+            }
+        }
+    }
+
+    return true;
+}
+
 
 /*-------------------------------------
  * Node Searching

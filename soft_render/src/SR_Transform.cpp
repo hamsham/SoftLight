@@ -66,9 +66,11 @@ inline math::vec3 extractMVVector(const math::mat4& viewMat, const SR_ModelViewA
 /*-------------------------------------
  * Destructor
 -------------------------------------*/
+/*
 SR_Transform::~SR_Transform() noexcept
 {
 }
+*/
 
 
 
@@ -125,9 +127,9 @@ SR_Transform::SR_Transform(SR_Transform&& t) noexcept :
     mOrientation{std::move(t.mOrientation)},
     mModelMat{std::move(t.mModelMat)}
 {
-    t.mParentId = 0;
-    t.mFlags = 0;
-    t.mType = SR_TRANSFORM_TYPE_MODEL;
+    //t.mParentId = 0;
+    //t.mFlags = 0;
+    //t.mType = SR_TRANSFORM_TYPE_MODEL;
 }
 
 
@@ -155,19 +157,28 @@ SR_Transform& SR_Transform::operator=(const SR_Transform& t) noexcept
 -------------------------------------*/
 SR_Transform& SR_Transform::operator=(SR_Transform&& t) noexcept
 {
+    /*
     mParentId = t.mParentId;
-    t.mParentId = 0;
+    //t.mParentId = 0;
 
     mFlags = t.mFlags;
-    t.mFlags = 0;
+    //t.mFlags = 0;
 
     mType = t.mType;
-    t.mType = SR_TRANSFORM_TYPE_MODEL;
+    //t.mType = SR_TRANSFORM_TYPE_MODEL;
 
     mPosition = std::move(t.mPosition);
     mScaling = std::move(t.mScaling);
     mOrientation = std::move(t.mOrientation);
     mModelMat = std::move(t.mModelMat);
+    */
+    mParentId = t.mParentId;
+    mFlags = t.mFlags;
+    mType = t.mType;
+    mPosition = t.mPosition;
+    mScaling = t.mScaling;
+    mOrientation = t.mOrientation;
+    mModelMat = t.mModelMat;
 
     return *this;
 }

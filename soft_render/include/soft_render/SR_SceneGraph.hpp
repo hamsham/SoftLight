@@ -45,6 +45,8 @@ class SR_SceneGraph
      *
      * No two nodes should be able to reference a single camera. Doing so
      * will cause a crash when deleting nodes.
+     *
+     * This member is unique to all camera nodes.
      */
     std::vector<SR_Camera> mCameras;
 
@@ -54,13 +56,17 @@ class SR_SceneGraph
     std::vector<SR_Mesh> mMeshes;
 
     /**
-     * Bounding boxes for meshes
+     * Bounding boxes for meshes.
+     *
+     * This member is unique to all mesh objects.
      */
     std::vector<SR_BoundingBox> mMeshBounds;
 
     /**
      * Referenced by all mesh node types using the following relationship:
-     *      "SceneGraph::nodeMeshes[SR_SceneNode::nodeId]->materialId"
+     *      "SceneGraph::mMeshes[SR_SceneNode::dataId]->materialId"
+     *
+     * This member is shared by all mesh objects.
      */
     std::vector<SR_Material> mMaterials;
 
@@ -81,6 +87,8 @@ class SR_SceneGraph
      * Referenced by all scene node types using their
      * "SR_SceneNode::nodeId" member. Base Transformations are not expected to
      * maintain a reference to their parent transform.
+     *
+     * This member is unique to all nodes.
      */
     std::vector<ls::math::mat4_t<float>> mBaseTransforms;
 
@@ -88,30 +96,40 @@ class SR_SceneGraph
      * Referenced by all scene node types using their
      * "SR_SceneNode::nodeId" member. The current transformation for a scene
      * node is expected to keep track of its parent transformation.
+     *
+     * This member is unique to all nodes.
      */
     std::vector<SR_Transform> mCurrentTransforms;
 
     /**
      * Referenced by all scene node types using their
      * "SR_SceneNode::nodeId" member.
+     *
+     * This member is unique to all nodes.
      */
     std::vector<ls::math::mat4_t<float>> mModelMatrices;
 
     /**
      * @brief Referenced by all bone nodes using the "SR_SceneNode::dataId"
      * member. This contains inverse transform matrices.
+     *
+     * This member is unique to all bone nodes.
      */
     std::vector<ls::math::mat4_t<float>> mInvBoneTransforms;
 
     /**
      * @brief Referenced by all bone nodes using the "SR_SceneNode::dataId"
      * member. This contains offset matrix data.
+     *
+     * This member is unique to all bone nodes.
      */
     std::vector<ls::math::mat4_t<float>> mBoneOffsets;
 
     /**
      * Referenced by all scene node types using their
      * "SR_SceneNode::nodeId" member.
+     *
+     * This member is unique to all nodes.
      */
     std::vector<std::string> mNodeNames;
 
@@ -133,6 +151,8 @@ class SR_SceneGraph
      * Some scene nodes may use more than one mesh. This member, along with the
      * "mNodeMeshCounts" member, will allow several mesh indices to be
      * referenced by a single node.
+     *
+     * This member is unique to all mesh nodes.
      */
     std::vector<ls::utils::Pointer<size_t[]>> mNodeMeshes;
 
@@ -142,6 +162,8 @@ class SR_SceneGraph
      *
      * No two nodes should be able to reference the same mesh count index.
      * Doing so will cause a crash when deleting nodes.
+     *
+     * This member is unique to all mesh nodes.
      */
     std::vector<size_t> mNumNodeMeshes;
 
@@ -311,6 +333,20 @@ class SR_SceneGraph
      * currently an ancestor of the requested parent.
      */
     bool reparent_node(const size_t nodeIndex, const size_t parentIndex = SCENE_NODE_ROOT_ID) noexcept;
+
+    /**
+     * Copy a node.
+     *
+     * This method will duplicate a node and all of its children. Large node
+     * hierarchies will cause a large reallocation of the internal node and
+     * transform arrays. The duplicated node will share the same parent as its
+     * original counterpart.
+     *
+     * @param nodeIndex
+     * An unsigned integral type, containing the array-index of the node to
+     * copy within the graph.
+     */
+    bool copy_node(const size_t nodeIndex) noexcept;
 
     /**
      * Search for a node by its name and return its index.

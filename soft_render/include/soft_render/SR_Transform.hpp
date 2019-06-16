@@ -98,7 +98,7 @@ class SR_Transform
     /**
      * @brief Destructor
      */
-    ~SR_Transform() noexcept;
+    ~SR_Transform() noexcept {};
 
     /**
      * @brief Constructor

@@ -430,8 +430,8 @@ bool SR_SceneFilePreload::allocate_cpu_data(const aiScene* const pScene) noexcep
     mSceneData.mNodeNames.reserve(numSceneNodes);
     mSceneData.mAnimations.reserve(pScene->mNumAnimations);
     mSceneData.mCameras.reserve(pScene->mNumCameras);
-    mSceneData.mNumNodeMeshes.reserve(numSceneNodes);
-    mSceneData.mNodeMeshes.reserve(numSceneNodes);
+    mSceneData.mNumNodeMeshes.reserve(pScene->mNumMeshes);
+    mSceneData.mNodeMeshes.reserve(pScene->mNumMeshes);
 
     return true;
 }
