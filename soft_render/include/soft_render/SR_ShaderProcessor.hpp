@@ -84,7 +84,7 @@ constexpr bool operator > (const SR_FragmentBin& a, const SR_FragmentBin& b)
 struct SR_FragCoord
 {
     ls::math::vec4 bc[SR_SHADER_MAX_FRAG_QUEUES]; // 32*4
-    ls::math::vec3 xyz[SR_SHADER_MAX_FRAG_QUEUES]; // 32*3
+    ls::math::vec4 xyzw[SR_SHADER_MAX_FRAG_QUEUES]; // 32*4
     uint32_t       xy[SR_SHADER_MAX_FRAG_QUEUES]; // 32-bit bitmask of x & y
 
     // 256 bits / 32 bytes

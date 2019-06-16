@@ -472,8 +472,8 @@ void SR_FragmentProcessor::render_wireframe(const uint_fast64_t binId, const SR_
             float persp = math::dot(homogenous, bc);
             outCoords->bc[numQueuedFrags] = bc * homogenous / persp;
 
-            const math::vec3 outXYZ{xf, yf, z};
-            outCoords->xyz[numQueuedFrags] = outXYZ;
+            const math::vec4 outXYZ{xf, yf, z, persp};
+            outCoords->xyzw[numQueuedFrags] = outXYZ;
 
             const uint32_t outXY = (uint32_t)((0xFFFF & x) | y16);
             outCoords->xy[numQueuedFrags] = outXY;
@@ -625,8 +625,8 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     const math::vec4* bcClipSpace  = mBins[binId].mBarycentricCoords;
     const int32_t     depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON);
     const int32_t     bboxMinX     = (int32_t)math::min(mFboW, math::max(0.f,   math::min(p0[0], p1[0], p2[0])));
-    const int32_t     bboxMinY     = (int32_t)math::min(mFboH, math::max(0.f,   math::min(p0[1], p1[1], p2[1]))+0.5f);
-    const int32_t     bboxMaxX     = (int32_t)math::max(0.f,   math::min(mFboW, math::max(p0[0], p1[0], p2[0]))+0.5f);
+    const int32_t     bboxMinY     = (int32_t)math::min(mFboH, math::max(0.f,   math::ceil(math::min(p0[1], p1[1], p2[1]))));
+    const int32_t     bboxMaxX     = (int32_t)math::max(0.f,   math::min(mFboW, math::max(p0[0], p1[0], p2[0])));
     const int32_t     bboxMaxY     = (int32_t)math::max(0.f,   math::min(mFboH, math::max(p0[1], p1[1], p2[1])));
     SR_FragCoord*     outCoords    = mQueues;
 
@@ -687,8 +687,8 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
                 float persp = 1.f / math::dot(homogenous, bc[i]);
                 outCoords->bc[numQueuedFrags] = bc[i] * homogenous * persp;
 
-                const math::vec3 outXYZ{xf[i], yf, z[i]};
-                outCoords->xyz[numQueuedFrags] = outXYZ;
+                const math::vec4 outXYZ{xf[i], yf, z[i], persp};
+                outCoords->xyzw[numQueuedFrags] = outXYZ;
 
                 const uint32_t outXY = (uint32_t)((0xFFFF & x[i]) | y16);
                 outCoords->xy[numQueuedFrags] = outXY;
@@ -746,7 +746,7 @@ void SR_FragmentProcessor::flush_fragments(
             const math::vec4 bc = outCoords->bc[numQueuedFrags];
             interpolate_tri_varyings(bc.v, numVaryings, inVaryings, outVaryings);
 
-            const math::vec4 fc = math::vec4_cast(outCoords->xyz[numQueuedFrags], 1.f);
+            const math::vec4 fc = outCoords->xyzw[numQueuedFrags];
             uint_fast32_t haveOutputs = pShader(fc, pUniforms, outVaryings, pOutputs);
 
             const int32_t  zi = (int32_t)fc[2]; // better to do the cast here after all candidate pixels have been rejected
@@ -779,7 +779,7 @@ void SR_FragmentProcessor::flush_fragments(
             const math::vec4 bc = outCoords->bc[numQueuedFrags];
             interpolate_tri_varyings(bc.v, numVaryings, inVaryings, outVaryings);
 
-            const math::vec4 fc = math::vec4_cast(outCoords->xyz[numQueuedFrags], 1.f);
+            const math::vec4 fc = outCoords->xyzw[numQueuedFrags];
 
             const int32_t  zi = (int32_t)fc[2]; // better to do the cast here after all candidate pixels have been rejected
             const uint32_t xy = outCoords->xy[numQueuedFrags];
