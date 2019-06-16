@@ -84,12 +84,10 @@ struct SpotLight
 struct AnimUniforms : SR_UniformBuffer
 {
     const SR_Texture* pTexture;
-
-    math::mat4* pBones;
-
-    math::vec4 camPos;
-    math::mat4 modelMatrix;
-    math::mat4 vpMatrix;
+    const math::mat4* pBones;
+    math::mat4        modelMatrix;
+    math::mat4        vpMatrix;
+    math::vec4        camPos;
 };
 
 
@@ -177,22 +175,18 @@ math::vec4 _texture_vert_shader_impl(const size_t vertId, const SR_VertexArray& 
     const math::vec3&   vert        = *vbo.element<const math::vec3>( vao.offset(0, vertId));
     const math::vec2&   uv          = *vbo.element<const math::vec2>( vao.offset(1, vertId));
     const math::vec3&   norm        = *vbo.element<const math::vec3>( vao.offset(2, vertId));
-#if 1
+
     const math::vec4i&  boneIds     = *vbo.element<const math::vec4i>(vao.offset(3, vertId));
     const math::vec4&   boneWeights = *vbo.element<const math::vec4>( vao.offset(4, vertId));
+    const math::mat4*   pBones      = pUniforms->pBones;
+    math::mat4          boneTrans   = pBones[boneIds[0]] * boneWeights[0];
 
-    const math::mat4*  pBones  = pUniforms->pBones;
-
-    math::mat4 boneTrans = pBones[boneIds[0]] * boneWeights[0];
     boneTrans += pBones[boneIds[1]] * boneWeights[1];
     boneTrans += pBones[boneIds[2]] * boneWeights[2];
     boneTrans += pBones[boneIds[3]] * boneWeights[3];
 
     const math::mat4&& modelPos = pUniforms->modelMatrix * boneTrans;
-#else
-    const math::mat4& modelPos  = pUniforms->modelMatrix;
-    const math::mat4& boneTrans = pUniforms->modelMatrix;
-#endif
+
     varyings[0] = modelPos * math::vec4_cast(vert, 1.f);
     varyings[1] = math::vec4_cast(uv, 0.f, 0.f);
     varyings[2] = math::normalize(boneTrans * math::vec4_cast(norm, 0.f));

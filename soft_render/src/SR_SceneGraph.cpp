@@ -1,5 +1,5 @@
 
-#include <algorithm>
+#include <algorithm> // std::rotate()
 
 #include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Copy.h"
@@ -446,7 +446,7 @@ size_t SR_SceneGraph::delete_node(const size_t nodeIndex) noexcept
     // Decrement all node ID and data ID indices that are greater than those in
     // the current node. Also deal with the last bit of transformation data in
     // case a recursive deletion is in required.
-    for (size_t i = mNodes.size(); i-- > nodeIndex;)
+    for (size_t i = mNodes.size(); i --> nodeIndex;)
     {
         SR_SceneNode&          nextNode      = mNodes[i];
         const SR_SceneNodeType nextType      = nextNode.type;
@@ -619,7 +619,7 @@ bool SR_SceneGraph::copy_node(const size_t nodeIndex) noexcept
     size_t meshOffset = ~((size_t)0);
     size_t boneOffset = ~((size_t)0);
 
-    // node indices must match their ID
+    // node IDs must match their index within the node array
     const size_t numTotalNodes = mNodes.size();
     for (size_t i = 0; i < numTotalNodes; ++i)
     {
@@ -634,30 +634,30 @@ bool SR_SceneGraph::copy_node(const size_t nodeIndex) noexcept
         // ensure all parent indices have been adjusted
         if (i > 0)
         {
-            mCurrentTransforms[dupe].mParentId = mCurrentTransforms[orig].mParentId + displacement;
+            mCurrentTransforms[dupe].mParentId += displacement;
         }
+
+        // we're copying nodes, not animations
+        mNodes[dupe].animListId = SR_SceneNodeProp::SCENE_NODE_ROOT_ID;
 
         LS_LOG_MSG("Copying node parent from ", mCurrentTransforms[orig].mParentId, " to ", mCurrentTransforms[dupe].mParentId);
 
-        // Ensure all proper node data gets adjusted
+        // Enumerate how much node data is getting moved too
         switch (mNodes[orig].type)
         {
             case NODE_TYPE_BONE:
                 ++numBoneNodes;
                 boneOffset = boneOffset != (~(size_t)0) ? boneOffset : mNodes[orig].dataId;
-                mNodes[dupe].dataId += numBoneNodes;
                 break;
 
             case NODE_TYPE_CAMERA:
                 ++numCameraNodes;
                 camOffset = camOffset != (~(size_t)0) ? camOffset : mNodes[orig].dataId;
-                mNodes[dupe].dataId += numCameraNodes;
                 break;
 
             case NODE_TYPE_MESH:
                 ++numMeshNodes;
                 meshOffset = meshOffset != (~(size_t)0) ? meshOffset : mNodes[orig].dataId;
-                mNodes[dupe].dataId += numMeshNodes;
                 break;
 
             case NODE_TYPE_EMPTY:
@@ -700,10 +700,48 @@ bool SR_SceneGraph::copy_node(const size_t nodeIndex) noexcept
             for (size_t j = 0; j < mNumNodeMeshes[orig]; ++j)
             {
                 mNodeMeshes[dupe][j] = mNodeMeshes[orig][j];
-                LS_LOG_MSG("Copying mesh index ", orig, '-', j, " to ", dupe, '-', j);
+                //LS_LOG_MSG("Copied mesh index ", orig, '-', j, " to ", dupe, '-', j);
             }
         }
     }
+
+    // Ensure all proper node data is now adjusted
+    for (size_t i = nodeIndex + displacement; i < numTotalNodes; ++i)
+    {
+        switch (mNodes[i].type)
+        {
+            case NODE_TYPE_BONE:
+                mNodes[i].dataId += numBoneNodes;
+                break;
+
+            case NODE_TYPE_CAMERA:
+                mNodes[i].dataId += numCameraNodes;
+                break;
+
+            case NODE_TYPE_MESH:
+                mNodes[i].dataId += numMeshNodes;
+                break;
+
+            case NODE_TYPE_EMPTY:
+                // empty nodes only contain
+                // have the compiler warn us if we missed an enum...
+                break;
+        }
+    }
+
+    // handle animation transform IDs
+    /*
+    for (SR_Animation& anim : mAnimations)
+    {
+        for (size_t& animId : anim.mTransformIds)
+        {
+            if (animId > nodeIndex)
+            {
+                animId += displacement;
+            }
+        }
+    }
+    */
 
     return true;
 }

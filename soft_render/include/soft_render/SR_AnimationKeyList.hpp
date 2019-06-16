@@ -159,7 +159,7 @@ class SR_AnimationKeyList
      * @return TRUE if *this object contains at least one keyframe to use
      * of FALSE if not.
      */
-    bool is_valid() const noexcept;
+    bool valid() const noexcept;
 
     /**
      * Retrieve the time difference between the initial keyframe and final
@@ -172,7 +172,7 @@ class SR_AnimationKeyList
      * @return A floating-point value containing the time difference
      * between the starting and ending keyframes.
      */
-    SR_AnimPrecision get_duration() const noexcept;
+    SR_AnimPrecision duration() const noexcept;
 
     /**
      * Retrieve the time of the starting keyframe in *this.
@@ -181,7 +181,7 @@ class SR_AnimationKeyList
      * determines when a particular keyframe should be used to start an
      * animation.
      */
-    SR_AnimPrecision get_start_time() const noexcept;
+    SR_AnimPrecision start_time() const noexcept;
 
     /**
      * Set the time of the starting keyframe in *this.
@@ -190,7 +190,7 @@ class SR_AnimationKeyList
      * A floating-point value within the range (0.0, 1.0) which determines
      * when a particular keyframe should be used to start an animation.
      */
-    void set_start_time(const SR_AnimPrecision startOffset) noexcept;
+    void start_time(const SR_AnimPrecision startOffset) noexcept;
 
     /**
      * Retrieve the time of the final keyframe in *this.
@@ -199,7 +199,7 @@ class SR_AnimationKeyList
      * determines when a particular keyframe should be used to end an
      * animation.
      */
-    SR_AnimPrecision get_end_time() const noexcept;
+    SR_AnimPrecision end_time() const noexcept;
 
     /**
      * Retrieve the time of a single keyframe from *this.
@@ -208,7 +208,7 @@ class SR_AnimationKeyList
      * determines when a particular keyframe should be used in an
      * animation.
      */
-    SR_AnimPrecision get_frame_time(const size_t keyIndex) const noexcept;
+    SR_AnimPrecision frame_time(const size_t keyIndex) const noexcept;
 
     /**
      * Retrieve the data of a particular keyframe.
@@ -221,7 +221,7 @@ class SR_AnimationKeyList
      *
      * @return A constant reference to the data within a keyframe.
      */
-    const data_t& get_frame_data(const size_t keyIndex) const noexcept;
+    const data_t& frame_data(const size_t keyIndex) const noexcept;
 
     /**
      * Retrieve the data of a particular keyframe.
@@ -234,7 +234,7 @@ class SR_AnimationKeyList
      *
      * @return A reference to the data within a keyframe.
      */
-    data_t& get_frame_data(const size_t keyIndex) noexcept;
+    data_t& frame_data(const size_t keyIndex) noexcept;
 
     /**
      * Retrieve the data of the first keyframe in *this.
@@ -244,7 +244,7 @@ class SR_AnimationKeyList
      *
      * @return A reference to the initial keyframe's data.
      */
-    const data_t& get_start_data() const noexcept;
+    const data_t& start_data() const noexcept;
 
     /**
      * Retrieve the data of the last keyframe in *this.
@@ -254,7 +254,7 @@ class SR_AnimationKeyList
      *
      * @return A reference to the last keyframe's data.
      */
-    const data_t& get_end_data() const noexcept;
+    const data_t& end_data() const noexcept;
 
     /**
      * Assign data to a particular frame in *this.
@@ -273,7 +273,7 @@ class SR_AnimationKeyList
      * A constant reference to the data which will be used for a keyframe
      * at a perticular time.
      */
-    void set_frame(const size_t frameIndex, const SR_AnimPrecision frameTime, const data_t& frameData) noexcept;
+    void frame(const size_t frameIndex, const SR_AnimPrecision frameTime, const data_t& frameData) noexcept;
 
     /**
      * Retrieve the interpolation between two keyframes closest to the
@@ -290,7 +290,7 @@ class SR_AnimationKeyList
      * @return The interpolation between two animation frames at a given
      * time of an animation.
      */
-    data_t get_interpolated_data(SR_AnimPrecision percent, const SR_AnimationFlag animFlags) const noexcept;
+    data_t interpolated_data(SR_AnimPrecision percent, const SR_AnimationFlag animFlags) const noexcept;
 
     /**
      * Calculate the percent of interpolation which is required to mix the
@@ -497,7 +497,7 @@ bool SR_AnimationKeyList<data_t>::init(const size_t keyCount) noexcept
 /*-------------------------------------
 -------------------------------------*/
 template<typename data_t>
-inline bool SR_AnimationKeyList<data_t>::is_valid() const noexcept
+inline bool SR_AnimationKeyList<data_t>::valid() const noexcept
 {
     return mNumFrames > 0;
 }
@@ -507,9 +507,9 @@ inline bool SR_AnimationKeyList<data_t>::is_valid() const noexcept
 /*-------------------------------------
 -------------------------------------*/
 template<typename data_t>
-inline SR_AnimPrecision SR_AnimationKeyList<data_t>::get_duration() const noexcept
+inline SR_AnimPrecision SR_AnimationKeyList<data_t>::duration() const noexcept
 {
-    return get_end_time() - get_start_time();
+    return end_time() - start_time();
 }
 
 
@@ -517,7 +517,7 @@ inline SR_AnimPrecision SR_AnimationKeyList<data_t>::get_duration() const noexce
 /*-------------------------------------
 -------------------------------------*/
 template<typename data_t>
-inline SR_AnimPrecision SR_AnimationKeyList<data_t>::get_start_time() const noexcept
+inline SR_AnimPrecision SR_AnimationKeyList<data_t>::start_time() const noexcept
 {
     return mNumFrames ? mKeyTimes[0] : SR_AnimPrecision{0};
 }
@@ -527,12 +527,12 @@ inline SR_AnimPrecision SR_AnimationKeyList<data_t>::get_start_time() const noex
 /*-------------------------------------
 -------------------------------------*/
 template<typename data_t>
-void SR_AnimationKeyList<data_t>::set_start_time(const SR_AnimPrecision startOffset) noexcept
+void SR_AnimationKeyList<data_t>::start_time(const SR_AnimPrecision startOffset) noexcept
 {
     LS_DEBUG_ASSERT(startOffset >= SR_AnimPrecision{0.0});
     LS_DEBUG_ASSERT(startOffset < SR_AnimPrecision{1.0}); // because somewhere, someone hasn't read the documentation
 
-    const SR_AnimPrecision currentOffset = get_start_time();
+    const SR_AnimPrecision currentOffset = start_time();
     const SR_AnimPrecision newOffset = currentOffset - startOffset;
 
     for (size_t i = 0; i < mNumFrames; ++i)
@@ -546,7 +546,7 @@ void SR_AnimationKeyList<data_t>::set_start_time(const SR_AnimPrecision startOff
 /*-------------------------------------
 -------------------------------------*/
 template<typename data_t>
-inline SR_AnimPrecision SR_AnimationKeyList<data_t>::get_end_time() const noexcept
+inline SR_AnimPrecision SR_AnimationKeyList<data_t>::end_time() const noexcept
 {
     return mNumFrames ? mKeyTimes[mNumFrames - 1] : SR_AnimPrecision{0};
 }
@@ -556,7 +556,7 @@ inline SR_AnimPrecision SR_AnimationKeyList<data_t>::get_end_time() const noexce
 /*-------------------------------------
 -------------------------------------*/
 template<typename data_t>
-inline SR_AnimPrecision SR_AnimationKeyList<data_t>::get_frame_time(const size_t keyIndex) const noexcept
+inline SR_AnimPrecision SR_AnimationKeyList<data_t>::frame_time(const size_t keyIndex) const noexcept
 {
     LS_DEBUG_ASSERT(keyIndex < mNumFrames);
     return mKeyTimes[keyIndex];
@@ -567,7 +567,7 @@ inline SR_AnimPrecision SR_AnimationKeyList<data_t>::get_frame_time(const size_t
 /*-------------------------------------
 -------------------------------------*/
 template<typename data_t>
-inline const data_t& SR_AnimationKeyList<data_t>::get_frame_data(const size_t keyIndex) const noexcept
+inline const data_t& SR_AnimationKeyList<data_t>::frame_data(const size_t keyIndex) const noexcept
 {
     LS_DEBUG_ASSERT(keyIndex < mNumFrames);
     return mKeyData[keyIndex];
@@ -578,7 +578,7 @@ inline const data_t& SR_AnimationKeyList<data_t>::get_frame_data(const size_t ke
 /*-------------------------------------
 -------------------------------------*/
 template<typename data_t>
-inline data_t& SR_AnimationKeyList<data_t>::get_frame_data(const size_t keyIndex) noexcept
+inline data_t& SR_AnimationKeyList<data_t>::frame_data(const size_t keyIndex) noexcept
 {
     LS_DEBUG_ASSERT(keyIndex < mNumFrames);
     return mKeyData[keyIndex];
@@ -589,7 +589,7 @@ inline data_t& SR_AnimationKeyList<data_t>::get_frame_data(const size_t keyIndex
 /*-------------------------------------
 -------------------------------------*/
 template<typename data_t>
-inline const data_t& SR_AnimationKeyList<data_t>::get_start_data() const noexcept
+inline const data_t& SR_AnimationKeyList<data_t>::start_data() const noexcept
 {
     LS_DEBUG_ASSERT(mNumFrames > 0);
     return mKeyData[0];
@@ -600,7 +600,7 @@ inline const data_t& SR_AnimationKeyList<data_t>::get_start_data() const noexcep
 /*-------------------------------------
 -------------------------------------*/
 template<typename data_t>
-inline const data_t& SR_AnimationKeyList<data_t>::get_end_data() const noexcept
+inline const data_t& SR_AnimationKeyList<data_t>::end_data() const noexcept
 {
     LS_DEBUG_ASSERT(mNumFrames > 0);
     return mKeyData[mNumFrames - 1];
@@ -611,7 +611,7 @@ inline const data_t& SR_AnimationKeyList<data_t>::get_end_data() const noexcept
 /*-------------------------------------
 -------------------------------------*/
 template<typename data_t>
-inline void SR_AnimationKeyList<data_t>::set_frame(
+inline void SR_AnimationKeyList<data_t>::frame(
     const size_t frameIndex,
     const SR_AnimPrecision frameTime,
     const data_t& frameData
@@ -661,7 +661,7 @@ inline SR_AnimPrecision SR_AnimationKeyList<data_t>::calc_frame_interpolation(
 /*-------------------------------------
 -------------------------------------*/
 template<typename data_t>
-data_t SR_AnimationKeyList<data_t>::get_interpolated_data(SR_AnimPrecision, const SR_AnimationFlag) const noexcept
+data_t SR_AnimationKeyList<data_t>::interpolated_data(SR_AnimPrecision, const SR_AnimationFlag) const noexcept
 {
     LS_ASSERT(false);
     return data_t{};
@@ -670,10 +670,10 @@ data_t SR_AnimationKeyList<data_t>::get_interpolated_data(SR_AnimPrecision, cons
 
 
 template<>
-ls::math::vec3_t<float> SR_AnimationKeyList<ls::math::vec3_t < float>>::get_interpolated_data(SR_AnimPrecision percent, const SR_AnimationFlag animFlags) const noexcept;
+ls::math::vec3_t<float> SR_AnimationKeyList<ls::math::vec3_t < float>>::interpolated_data(SR_AnimPrecision percent, const SR_AnimationFlag animFlags) const noexcept;
 
 template<>
-ls::math::quat_t<float> SR_AnimationKeyList<ls::math::quat_t < float>>::get_interpolated_data(SR_AnimPrecision percent, const SR_AnimationFlag animFlags) const noexcept;
+ls::math::quat_t<float> SR_AnimationKeyList<ls::math::quat_t < float>>::interpolated_data(SR_AnimPrecision percent, const SR_AnimationFlag animFlags) const noexcept;
 
 
 

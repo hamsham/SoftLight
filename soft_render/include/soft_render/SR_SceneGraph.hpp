@@ -135,6 +135,9 @@ class SR_SceneGraph
 
     /**
      * Contains all animations available in the current scene graph.
+     *
+     * Animations reference only the nodes they modify and are not shared among
+     * nodes directly within the scene graph.
      */
     std::vector<SR_Animation> mAnimations;
 

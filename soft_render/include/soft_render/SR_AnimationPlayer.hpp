@@ -189,10 +189,51 @@ class SR_AnimationPlayer
      * input scene graph.
      *
      * @param millis
+     * The total number of milliseconds which have passed since the last tick.
+     *
+     * @param transformOffset
+     * An offset to another transformation in the scene graph. If the offset is
+     * nonzero, the number of subsequent transformations in the scene graph
+     * must match the number of transform IDs contained within *this.
+     */
+    void tick(SR_SceneGraph& graph, size_t animationIndex, int64_t millis, size_t transformOffset = 0) noexcept;
+
+    /**
+     * @brief Animate a scene graph using the using the Animation object
+     * referenced by a specific index. This function does not modify internal
+     * state but will modify transformations contained in the scene graph.
+     *
+     * Dilation is also not used by this function as the time elapsed is set
+     * explicitly.
+     *
+     * No bounds-checking is performed.
+     *
+     * @param graph
+     * A reference to a sceneGraph object which contains one or more
+     * Animation objects.
+     *
+     * @param animationIndex
+     * An array-offset to a specific Animation object contained within the
+     * input scene graph.
+     *
+     * @param millis
      * The total number of milliseconds which have passed since playback
      * started.
+     *
+     * @param transformOffset
+     * An offset to another transformation in the scene graph. If the offset is
+     * nonzero, the number of subsequent transformations in the scene graph
+     * must match the number of transform IDs contained within *this.
+     *
+     * @return The duration of the animation at the requested number of
+     * milliseconds.
      */
-    void tick(SR_SceneGraph& graph, unsigned animationIndex, int64_t millis) noexcept;
+    SR_AnimPrecision tick_explicit(
+        SR_SceneGraph& graph,
+        size_t animationIndex,
+        int64_t requestedMillis,
+        size_t transformOffset = 0
+    ) const noexcept;
 
     /**
      * @brief Get the current state of playback from *this.

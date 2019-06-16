@@ -11,7 +11,8 @@
 /*-------------------------------------
  * Destructor
 -------------------------------------*/
-SR_AnimationPlayer::~SR_AnimationPlayer() noexcept {
+SR_AnimationPlayer::~SR_AnimationPlayer() noexcept
+{
 }
 
 
@@ -60,7 +61,8 @@ SR_AnimationPlayer::SR_AnimationPlayer(SR_AnimationPlayer&& a) noexcept :
 /*-------------------------------------
  * Copy Operator
 -------------------------------------*/
-SR_AnimationPlayer& SR_AnimationPlayer::operator =(const SR_AnimationPlayer& a) noexcept {
+SR_AnimationPlayer& SR_AnimationPlayer::operator =(const SR_AnimationPlayer& a) noexcept
+    {
     mCurrentState = a.mCurrentState;
     mNumPlays = a.mNumPlays;
     mCurrentPercent = a.mCurrentPercent;
@@ -74,7 +76,8 @@ SR_AnimationPlayer& SR_AnimationPlayer::operator =(const SR_AnimationPlayer& a) 
 /*-------------------------------------
  * Move Operator
 -------------------------------------*/
-SR_AnimationPlayer& SR_AnimationPlayer::operator =(SR_AnimationPlayer&& a) noexcept {
+SR_AnimationPlayer& SR_AnimationPlayer::operator =(SR_AnimationPlayer&& a) noexcept
+    {
     mCurrentState = a.mCurrentState;
     a.mCurrentState = SR_ANIM_STATE_STOPPED;
 
@@ -95,7 +98,8 @@ SR_AnimationPlayer& SR_AnimationPlayer::operator =(SR_AnimationPlayer&& a) noexc
 /*-------------------------------------
  * Get the current number of plays
 -------------------------------------*/
-unsigned SR_AnimationPlayer::get_num_plays() const noexcept {
+unsigned SR_AnimationPlayer::get_num_plays() const noexcept
+{
     return mNumPlays;
 }
 
@@ -104,7 +108,8 @@ unsigned SR_AnimationPlayer::get_num_plays() const noexcept {
 /*-------------------------------------
  * Set the current number of plays
 -------------------------------------*/
-void SR_AnimationPlayer::set_num_plays(const unsigned playCount) noexcept {
+void SR_AnimationPlayer::set_num_plays(const unsigned playCount) noexcept
+{
     mNumPlays = playCount;
 }
 
@@ -113,7 +118,8 @@ void SR_AnimationPlayer::set_num_plays(const unsigned playCount) noexcept {
 /*-------------------------------------
  * Get the current tick time (ticks elapsed)
 -------------------------------------*/
-SR_AnimPrecision SR_AnimationPlayer::get_current_ticks() const noexcept {
+SR_AnimPrecision SR_AnimationPlayer::get_current_ticks() const noexcept
+{
     return mCurrentPercent;
 }
 
@@ -122,21 +128,25 @@ SR_AnimPrecision SR_AnimationPlayer::get_current_ticks() const noexcept {
 /*-------------------------------------
  * Progress an SR_Animation
 -------------------------------------*/
-void SR_AnimationPlayer::tick(SR_SceneGraph& graph, unsigned animationIndex, int64_t millis) noexcept {
-    if (mCurrentState != SR_ANIM_STATE_PLAYING) {
+void SR_AnimationPlayer::tick(SR_SceneGraph& graph, size_t animationIndex, int64_t millis, size_t transformOffset) noexcept
+{
+    if (mCurrentState != SR_ANIM_STATE_PLAYING)
+    {
         return;
     }
 
     const std::vector<SR_Animation>& animations = graph.mAnimations;
     const SR_Animation& anim = animations[animationIndex];
 
-    if (mNumPlays == PLAY_AUTO) {
+    if (mNumPlays == PLAY_AUTO)
+    {
         mNumPlays = (anim.play_mode() == SR_AnimPlayMode::SR_ANIM_PLAY_REPEAT)
             ? PLAY_REPEAT
             : PLAY_ONCE;
     }
 
-    if (!mNumPlays) {
+    if (!mNumPlays)
+    {
         stop_anim();
         return;
     }
@@ -146,21 +156,23 @@ void SR_AnimationPlayer::tick(SR_SceneGraph& graph, unsigned animationIndex, int
     const SR_AnimPrecision percentDelta  = (ticksDelta * mDilation) / anim.duration();
     const SR_AnimPrecision percentDone   = mCurrentPercent + percentDelta;
     const SR_AnimPrecision nextPercent   = percentDone >= SR_AnimPrecision{0.0} ? percentDone : (SR_AnimPrecision{1}+percentDone);
-    
-    anim.animate(graph, nextPercent);
+
+    anim.animate(graph, nextPercent, transformOffset);
 
     // check for a looped SR_Animation even when time is going backwards.
     if (percentDone >= SR_AnimPrecision{1}
-    || (mCurrentPercent > SR_AnimPrecision{0} && percentDone < SR_AnimPrecision{0})
-    ) {
-        if (mNumPlays != PLAY_REPEAT) {
+    || (mCurrentPercent > SR_AnimPrecision{0} && percentDone < SR_AnimPrecision{0}))
+    {
+        if (mNumPlays != PLAY_REPEAT)
+        {
             --mNumPlays;
         }
     }
-    
+
     mCurrentPercent = ls::math::fmod(nextPercent, SR_AnimPrecision{1});
 
-    if (!mNumPlays) {
+    if (!mNumPlays)
+    {
         stop_anim();
     }
 }
@@ -168,9 +180,37 @@ void SR_AnimationPlayer::tick(SR_SceneGraph& graph, unsigned animationIndex, int
 
 
 /*-------------------------------------
+ * Progress an SR_Animation to an explicit time
+-------------------------------------*/
+SR_AnimPrecision SR_AnimationPlayer::tick_explicit(
+    SR_SceneGraph& graph, size_t animationIndex,
+    int64_t requestedMillis,
+    size_t transformOffset
+) const noexcept
+{
+    const std::vector<SR_Animation>& animations = graph.mAnimations;
+    const SR_Animation& anim = animations[animationIndex];
+
+    const SR_AnimPrecision secondsDelta  = SR_AnimPrecision{0.001} * (SR_AnimPrecision)requestedMillis;
+    const SR_AnimPrecision ticksDelta    = secondsDelta * anim.ticks_per_sec();
+    const SR_AnimPrecision percentDelta  = ticksDelta / anim.duration();
+    const SR_AnimPrecision percentDone   = percentDelta;
+    const SR_AnimPrecision nextPercent   = percentDone >= SR_AnimPrecision{0.0} ? percentDone : (SR_AnimPrecision{1}+percentDone);
+
+    anim.animate(graph, nextPercent, transformOffset);
+
+    const SR_AnimPrecision percentAt = ls::math::fmod(nextPercent, SR_AnimPrecision{1});
+
+    return percentAt * anim.duration();
+}
+
+
+
+/*-------------------------------------
  * Get the current play state
 -------------------------------------*/
-SR_AnimationState SR_AnimationPlayer::get_anim_state() const noexcept {
+SR_AnimationState SR_AnimationPlayer::get_anim_state() const noexcept
+{
     return mCurrentState;
 }
 
@@ -179,8 +219,10 @@ SR_AnimationState SR_AnimationPlayer::get_anim_state() const noexcept {
 /*-------------------------------------
  * Set the current play state
 -------------------------------------*/
-void SR_AnimationPlayer::set_play_state(const SR_AnimationState playState) noexcept {
-    if (mCurrentState == SR_ANIM_STATE_STOPPED && playState == SR_AnimationState::SR_ANIM_STATE_PLAYING) {
+void SR_AnimationPlayer::set_play_state(const SR_AnimationState playState) noexcept
+{
+    if (mCurrentState == SR_ANIM_STATE_STOPPED && playState == SR_AnimationState::SR_ANIM_STATE_PLAYING)
+    {
         mCurrentPercent = 0.0;
     }
     
@@ -192,7 +234,8 @@ void SR_AnimationPlayer::set_play_state(const SR_AnimationState playState) noexc
 /*-------------------------------------
  * Determine if *this is playing
 -------------------------------------*/
-bool SR_AnimationPlayer::is_playing() const noexcept {
+bool SR_AnimationPlayer::is_playing() const noexcept
+{
     return mCurrentState == SR_ANIM_STATE_PLAYING;
 }
 
@@ -201,7 +244,8 @@ bool SR_AnimationPlayer::is_playing() const noexcept {
 /*-------------------------------------
  * Check if paused
 -------------------------------------*/
-bool SR_AnimationPlayer::is_paused() const noexcept {
+bool SR_AnimationPlayer::is_paused() const noexcept
+{
     return mCurrentState == SR_ANIM_STATE_PAUSED;
 }
 
@@ -210,7 +254,8 @@ bool SR_AnimationPlayer::is_paused() const noexcept {
 /*-------------------------------------
  * Check if stopped
 -------------------------------------*/
-bool SR_AnimationPlayer::is_stopped() const noexcept {
+bool SR_AnimationPlayer::is_stopped() const noexcept
+{
     return mCurrentState == SR_ANIM_STATE_STOPPED;
 }
 
@@ -219,7 +264,8 @@ bool SR_AnimationPlayer::is_stopped() const noexcept {
 /*-------------------------------------
  * Force stop
 -------------------------------------*/
-void SR_AnimationPlayer::stop_anim() noexcept {
+void SR_AnimationPlayer::stop_anim() noexcept
+{
     mCurrentState = SR_ANIM_STATE_STOPPED;
     mCurrentPercent = 0.0;
 }
@@ -229,7 +275,8 @@ void SR_AnimationPlayer::stop_anim() noexcept {
 /*-------------------------------------
  * Get the time speed-up or slow-down value
 -------------------------------------*/
-SR_AnimPrecision SR_AnimationPlayer::get_time_dilation() const noexcept {
+SR_AnimPrecision SR_AnimationPlayer::get_time_dilation() const noexcept
+{
     return mDilation;
 }
 
@@ -238,7 +285,8 @@ SR_AnimPrecision SR_AnimationPlayer::get_time_dilation() const noexcept {
 /*-------------------------------------
  * Set the time speed-up or slow-down value
 -------------------------------------*/
-void SR_AnimationPlayer::set_time_dilation(const SR_AnimPrecision percentNormalTime) noexcept {
+void SR_AnimationPlayer::set_time_dilation(const SR_AnimPrecision percentNormalTime) noexcept
+{
     mDilation = percentNormalTime;
 }
 
@@ -247,7 +295,8 @@ void SR_AnimationPlayer::set_time_dilation(const SR_AnimPrecision percentNormalT
 /*-------------------------------------
  * Reset all internal parameters
 -------------------------------------*/
-void SR_AnimationPlayer::reset() noexcept {
+void SR_AnimationPlayer::reset() noexcept
+{
     mCurrentState = SR_ANIM_STATE_STOPPED;
     mNumPlays = PLAY_AUTO;
     mCurrentPercent = 0.0;

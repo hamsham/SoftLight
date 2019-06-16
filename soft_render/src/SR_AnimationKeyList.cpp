@@ -18,16 +18,16 @@ namespace math = ls::math;
  * 3D vector interpolation
 -------------------------------------*/
 template<>
-math::vec3 SR_AnimationKeyList<math::vec3>::get_interpolated_data(SR_AnimPrecision percent, const SR_AnimationFlag animFlags) const noexcept
+math::vec3 SR_AnimationKeyList<math::vec3>::interpolated_data(SR_AnimPrecision percent, const SR_AnimationFlag animFlags) const noexcept
 {
-    if (percent <= get_start_time())
+    if (percent <= start_time())
     {
-        return get_start_data();
+        return start_data();
     }
 
-    if (percent >= get_end_time() && (animFlags & SR_AnimationFlag::SR_ANIM_FLAG_REPEAT) == 0)
+    if (percent >= end_time() && (animFlags & SR_AnimationFlag::SR_ANIM_FLAG_REPEAT) == 0)
     {
-        return get_end_data();
+        return end_data();
     }
 
     size_t currFrame, nextFrame;
@@ -48,16 +48,16 @@ math::vec3 SR_AnimationKeyList<math::vec3>::get_interpolated_data(SR_AnimPrecisi
  * Quaternion interpolation
 -------------------------------------*/
 template<>
-math::quat SR_AnimationKeyList<math::quat>::get_interpolated_data(SR_AnimPrecision percent, const SR_AnimationFlag animFlags) const noexcept
+math::quat SR_AnimationKeyList<math::quat>::interpolated_data(SR_AnimPrecision percent, const SR_AnimationFlag animFlags) const noexcept
 {
-    if (percent <= get_start_time())
+    if (percent <= start_time())
     {
-        return get_start_data();
+        return start_data();
     }
 
-    if (percent >= get_end_time() && (animFlags & SR_AnimationFlag::SR_ANIM_FLAG_REPEAT) == 0)
+    if (percent >= end_time() && (animFlags & SR_AnimationFlag::SR_ANIM_FLAG_REPEAT) == 0)
     {
-        return get_end_data();
+        return end_data();
     }
 
     size_t currFrame, nextFrame;

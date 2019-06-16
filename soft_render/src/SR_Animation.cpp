@@ -1,6 +1,5 @@
 
-#include <functional>
-#include <utility>
+#include <utility> // std::move()
 
 #include "lightsky/math/Math.h"
 
@@ -23,7 +22,8 @@ namespace math = ls::math;
 /*-------------------------------------
  * Destructor
 -------------------------------------*/
-SR_Animation::~SR_Animation() noexcept {
+SR_Animation::~SR_Animation() noexcept
+{
 }
 
 
@@ -84,7 +84,8 @@ SR_Animation::SR_Animation(SR_Animation&& a) noexcept :
 /*-------------------------------------
  * Copy Operator
 -------------------------------------*/
-SR_Animation& SR_Animation::operator =(const SR_Animation& a) noexcept {
+SR_Animation& SR_Animation::operator =(const SR_Animation& a) noexcept
+    {
     mPlayMode = a.mPlayMode;
     mAnimId = a.mAnimId;
     mTotalTicks = a.mTotalTicks;
@@ -102,7 +103,8 @@ SR_Animation& SR_Animation::operator =(const SR_Animation& a) noexcept {
 /*-------------------------------------
  * Move Operator
 -------------------------------------*/
-SR_Animation& SR_Animation::operator =(SR_Animation&& a) noexcept {
+SR_Animation& SR_Animation::operator =(SR_Animation&& a) noexcept
+    {
     mPlayMode = a.mPlayMode;
     a.mPlayMode = SR_AnimPlayMode::SR_ANIM_PLAY_DEFAULT;
 
@@ -128,7 +130,8 @@ SR_Animation& SR_Animation::operator =(SR_Animation&& a) noexcept {
 /*-------------------------------------
  * Retrieve the SR_Animation mode
 -------------------------------------*/
-SR_AnimPlayMode SR_Animation::play_mode() const noexcept {
+SR_AnimPlayMode SR_Animation::play_mode() const noexcept
+{
     return mPlayMode;
 }
 
@@ -137,7 +140,8 @@ SR_AnimPlayMode SR_Animation::play_mode() const noexcept {
 /*-------------------------------------
  * Set the SR_Animation mode
 -------------------------------------*/
-void SR_Animation::play_mode(const SR_AnimPlayMode animMode) noexcept {
+void SR_Animation::play_mode(const SR_AnimPlayMode animMode) noexcept
+{
     mPlayMode = animMode;
 }
 
@@ -146,7 +150,8 @@ void SR_Animation::play_mode(const SR_AnimPlayMode animMode) noexcept {
 /*-------------------------------------
  * Retrieve the SR_Animation's hash number
 -------------------------------------*/
-size_t SR_Animation::id() const noexcept {
+size_t SR_Animation::id() const noexcept
+{
     return mAnimId;
 }
 
@@ -155,7 +160,8 @@ size_t SR_Animation::id() const noexcept {
 /*-------------------------------------
  * Retrieve the SR_Animation's name
 -------------------------------------*/
-const std::string& SR_Animation::name() const noexcept {
+const std::string& SR_Animation::name() const noexcept
+{
     return mName;
 }
 
@@ -164,7 +170,8 @@ const std::string& SR_Animation::name() const noexcept {
 /*-------------------------------------
  * Set the SR_Animation duration (ticks per second)
 -------------------------------------*/
-SR_AnimPrecision SR_Animation::duration() const noexcept {
+SR_AnimPrecision SR_Animation::duration() const noexcept
+{
     return mTotalTicks;
 }
 
@@ -173,7 +180,8 @@ SR_AnimPrecision SR_Animation::duration() const noexcept {
 /*-------------------------------------
  * Retrieve the SR_Animation duration (tps).
 -------------------------------------*/
-void SR_Animation::duration(const SR_AnimPrecision ticks) noexcept {
+void SR_Animation::duration(const SR_AnimPrecision ticks) noexcept
+{
     mTotalTicks = ticks;
 }
 
@@ -182,7 +190,8 @@ void SR_Animation::duration(const SR_AnimPrecision ticks) noexcept {
 /*-------------------------------------
  * Retrieve the time interpolation (tps).
 -------------------------------------*/
-SR_AnimPrecision SR_Animation::ticks_per_sec() const noexcept {
+SR_AnimPrecision SR_Animation::ticks_per_sec() const noexcept
+{
     return mTicksPerSec;
 }
 
@@ -191,7 +200,8 @@ SR_AnimPrecision SR_Animation::ticks_per_sec() const noexcept {
 /*-------------------------------------
  * Retrieve the time interpolation (tps).
 -------------------------------------*/
-void SR_Animation::ticks_per_sec(const SR_AnimPrecision numTicks) noexcept {
+void SR_Animation::ticks_per_sec(const SR_AnimPrecision numTicks) noexcept
+{
     mTicksPerSec = numTicks;
 }
 
@@ -200,7 +210,8 @@ void SR_Animation::ticks_per_sec(const SR_AnimPrecision numTicks) noexcept {
 /*-------------------------------------
  * Retrieve the transformations affected by *this.
 -------------------------------------*/
-const std::vector<size_t>& SR_Animation::get_transforms() const noexcept {
+const std::vector<size_t>& SR_Animation::transforms() const noexcept
+{
     return mTransformIds;
 }
 
@@ -209,7 +220,8 @@ const std::vector<size_t>& SR_Animation::get_transforms() const noexcept {
 /*-------------------------------------
  * Retrieve the animation channels affected by *this.
 -------------------------------------*/
-const std::vector<size_t>& SR_Animation::tracks() const noexcept {
+const std::vector<size_t>& SR_Animation::tracks() const noexcept
+{
     return mTrackIds;
 }
 
@@ -218,7 +230,8 @@ const std::vector<size_t>& SR_Animation::tracks() const noexcept {
 /*-------------------------------------
  * Retrieve an array of animations affected by *this.
 -------------------------------------*/
-const std::vector<size_t>& SR_Animation::animations() const noexcept {
+const std::vector<size_t>& SR_Animation::animations() const noexcept
+{
     return mChannelIds;
 }
 
@@ -227,7 +240,8 @@ const std::vector<size_t>& SR_Animation::animations() const noexcept {
 /*-------------------------------------
  * Get the number of sub-animations
 -------------------------------------*/
-size_t SR_Animation::size() const noexcept {
+size_t SR_Animation::size() const noexcept
+{
     LS_DEBUG_ASSERT(mTransformIds.size() == mChannelIds.size());
     LS_DEBUG_ASSERT(mTransformIds.size() == mTrackIds.size());
     return mTransformIds.size();
@@ -238,7 +252,8 @@ size_t SR_Animation::size() const noexcept {
 /*-------------------------------------
  * Add a node's animation track to *this
 -------------------------------------*/
-void SR_Animation::add_channel(const SR_SceneNode& node, const size_t nodeTrackId) noexcept {
+void SR_Animation::add_channel(const SR_SceneNode& node, const size_t nodeTrackId) noexcept
+{
     mChannelIds.push_back(node.animListId);
     mTrackIds.push_back(nodeTrackId);
     mTransformIds.push_back(node.nodeId);
@@ -249,7 +264,8 @@ void SR_Animation::add_channel(const SR_SceneNode& node, const size_t nodeTrackI
 /*-------------------------------------
  * Remove a node's animation from *this.
 -------------------------------------*/
-void SR_Animation::erase(const size_t trackId) noexcept {
+void SR_Animation::erase(const size_t trackId) noexcept
+{
     LS_DEBUG_ASSERT(mTransformIds.size() == mChannelIds.size());
     LS_DEBUG_ASSERT(mTransformIds.size() == mTrackIds.size());
     
@@ -265,7 +281,8 @@ void SR_Animation::erase(const size_t trackId) noexcept {
 /*-------------------------------------
  * Clear all sub-animations.
 -------------------------------------*/
-void SR_Animation::clear() noexcept {
+void SR_Animation::clear() noexcept
+{
     mChannelIds.clear();
     mTrackIds.clear();
     mTransformIds.clear();
@@ -276,7 +293,8 @@ void SR_Animation::clear() noexcept {
 /*-------------------------------------
  * Reserve space for animation tracks.
 -------------------------------------*/
-void SR_Animation::reserve(const size_t reserveSize) noexcept {
+void SR_Animation::reserve(const size_t reserveSize) noexcept
+{
     mChannelIds.reserve(reserveSize);
     mTrackIds.reserve(reserveSize);
     mTransformIds.reserve(reserveSize);
@@ -287,36 +305,41 @@ void SR_Animation::reserve(const size_t reserveSize) noexcept {
 /*-------------------------------------
  * Animate a scene graph using all tracks.
 -------------------------------------*/
-void SR_Animation::animate(SR_SceneGraph& graph, const SR_AnimPrecision percentDone) const noexcept {
+void SR_Animation::animate(SR_SceneGraph& graph, const SR_AnimPrecision percentDone, size_t transformOffset) const noexcept
+{
     LS_DEBUG_ASSERT(percentDone >= 0.0);
     LS_DEBUG_ASSERT(mTransformIds.size() == mChannelIds.size());
     LS_DEBUG_ASSERT(mTransformIds.size() == mTrackIds.size());
     
     // prefetch
-    const std::vector<std::vector<SR_AnimationChannel>>& nodeAnims = graph.mNodeAnims;
+    const std::vector<SR_AnimationChannel>* pNodeAnims = graph.mNodeAnims.data();
     SR_Transform* const pTransforms = graph.mCurrentTransforms.data();
     
-    for (size_t i = mTransformIds.size(); i --> 0;) {
-        const size_t animChannelId       = mChannelIds[i]; // SR_SceneGraph.mNodeAnims[node.animId]
-        const size_t nodeTrackId         = mTrackIds[i]; // SR_SceneGraph.mNodeAnims[node.animId][nodeTrackId]
-        const size_t transformId         = mTransformIds[i]; // SR_SceneGraph.currentTransforms[node.nodeId]
-        const SR_AnimationChannel& track = nodeAnims[animChannelId][nodeTrackId];
+    for (size_t i = mTransformIds.size(); i --> 0;)
+    {
+        const size_t animChannelId       = mChannelIds[i];   // maps to SR_SceneGraph.mNodeAnims[node.animId]
+        const size_t nodeTrackId         = mTrackIds[i];     // maps to SR_SceneGraph.mNodeAnims[node.animId][nodeTrackId]
+        const size_t transformId         = mTransformIds[i] + transformOffset; // maps to SR_SceneGraph.mCurrentTransforms[node.nodeId]
+        const SR_AnimationChannel& track = pNodeAnims[animChannelId][nodeTrackId];
         SR_Transform& nodeTransform      = pTransforms[transformId];
         
         LS_DEBUG_ASSERT(transformId != SR_SceneNodeProp::SCENE_NODE_ROOT_ID);
 
-        if (track.has_position_frame(percentDone)) {
-            const math::vec3&& pos = track.get_position_frame(percentDone);
+        if (track.has_position_frame(percentDone))
+        {
+            const math::vec3&& pos = track.position_frame(percentDone);
             nodeTransform.set_position(pos);
         }
 
-        if (track.has_scale_frame(percentDone)) {
-            const math::vec3&& scl = track.get_scale_frame(percentDone);
+        if (track.has_scale_frame(percentDone))
+        {
+            const math::vec3&& scl = track.scale_frame(percentDone);
             nodeTransform.set_scale(scl);
         }
 
-        if (track.has_rotation_frame(percentDone)) {
-            math::quat&& rot = track.get_rotation_frame(percentDone);
+        if (track.has_rotation_frame(percentDone))
+        {
+            math::quat&& rot = track.rotation_frame(percentDone);
             nodeTransform.set_orientation(rot);
         }
     }
@@ -327,31 +350,36 @@ void SR_Animation::animate(SR_SceneGraph& graph, const SR_AnimPrecision percentD
 /*-------------------------------------
  * Animate a scene graph using all tracks.
 -------------------------------------*/
-void SR_Animation::init(SR_SceneGraph& graph, const bool atStart) const noexcept {
+void SR_Animation::init(SR_SceneGraph& graph, const bool atStart) const noexcept
+{
     LS_DEBUG_ASSERT(mTransformIds.size() == mChannelIds.size());
     LS_DEBUG_ASSERT(mTransformIds.size() == mTrackIds.size());
     
     // prefetch
-    const std::vector<std::vector<SR_AnimationChannel>>& nodeAnims = graph.mNodeAnims;
+    const std::vector<SR_AnimationChannel>* pNodeAnims = graph.mNodeAnims.data();
     SR_Transform* pTransforms = graph.mCurrentTransforms.data();
     
-    for (size_t i = mTransformIds.size(); i --> 0;) {
+    for (size_t i = mTransformIds.size(); i --> 0;)
+    {
         const size_t animChannelId       = mChannelIds[i]; // SR_SceneGraph.mNodeAnims[node.animId]
         const size_t nodeTrackId         = mTrackIds[i]; // SR_SceneGraph.mNodeAnims[node.animId][nodeTrackId]
         const size_t transformId         = mTransformIds[i]; // SR_SceneGraph.currentTransforms[node.nodeId]
-        const SR_AnimationChannel& track = nodeAnims[animChannelId][nodeTrackId];
+        const SR_AnimationChannel& track = pNodeAnims[animChannelId][nodeTrackId];
         SR_Transform& nodeTransform      = pTransforms[transformId];
 
-        if (track.mPosFrames.is_valid()) {
-            nodeTransform.set_position(atStart ? track.mPosFrames.get_start_data() : track.mPosFrames.get_end_data());
+        if (track.mPosFrames.valid())
+        {
+            nodeTransform.set_position(atStart ? track.mPosFrames.start_data() : track.mPosFrames.end_data());
         }
 
-        if (track.mScaleFrames.is_valid()) {
-            nodeTransform.set_scale(atStart ? track.mScaleFrames.get_start_data() : track.mScaleFrames.get_end_data());
+        if (track.mScaleFrames.valid())
+        {
+            nodeTransform.set_scale(atStart ? track.mScaleFrames.start_data() : track.mScaleFrames.end_data());
         }
 
-        if (track.mOrientFrames.is_valid()) {
-            nodeTransform.set_orientation(atStart ? track.mOrientFrames.get_start_data() : track.mOrientFrames.get_end_data());
+        if (track.mOrientFrames.valid())
+        {
+            nodeTransform.set_orientation(atStart ? track.mOrientFrames.start_data() : track.mOrientFrames.end_data());
         }
     }
 }

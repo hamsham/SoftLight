@@ -107,7 +107,7 @@ SR_AnimationChannel& SR_AnimationChannel::operator =(SR_AnimationChannel&& ac) n
 /*-------------------------------------
  * Set the number of keys
 -------------------------------------*/
-SR_AnimationFlag SR_AnimationChannel::get_anim_flags() const noexcept
+SR_AnimationFlag SR_AnimationChannel::flags() const noexcept
 {
     return mAnimMode;
 }
@@ -117,11 +117,12 @@ SR_AnimationFlag SR_AnimationChannel::get_anim_flags() const noexcept
 /*-------------------------------------
  * Set the number of keys
 -------------------------------------*/
-bool SR_AnimationChannel::set_num_frames(
-    const unsigned posCount,
-    const unsigned sclCount,
-    const unsigned rotCount
-) noexcept {
+bool SR_AnimationChannel::size(
+    const size_t posCount,
+    const size_t sclCount,
+    const size_t rotCount
+) noexcept
+{
     if (!mPosFrames.init(posCount)
     || !mScaleFrames.init(sclCount)
     || !mOrientFrames.init(rotCount))
@@ -138,7 +139,8 @@ bool SR_AnimationChannel::set_num_frames(
 /*-------------------------------------
  * Clear all SR_Animation keys
 -------------------------------------*/
-void SR_AnimationChannel::clear() noexcept {
+void SR_AnimationChannel::clear() noexcept
+{
     mAnimMode = SR_AnimationFlag::SR_ANIM_FLAG_DEFAULT;
     mPosFrames.clear();
     mScaleFrames.clear();
@@ -150,11 +152,12 @@ void SR_AnimationChannel::clear() noexcept {
 /*-------------------------------------
  * Retrieve the starting time of the current animation track.
 -------------------------------------*/
-SR_AnimPrecision SR_AnimationChannel::get_start_time() const noexcept {
+SR_AnimPrecision SR_AnimationChannel::start_time() const noexcept
+{
     return math::min(
-        mPosFrames.get_start_time(),
-        mScaleFrames.get_start_time(),
-        mOrientFrames.get_start_time()
+        mPosFrames.start_time(),
+        mScaleFrames.start_time(),
+        mOrientFrames.start_time()
     );
 }
 
@@ -163,15 +166,16 @@ SR_AnimPrecision SR_AnimationChannel::get_start_time() const noexcept {
 /*-------------------------------------
  * Assign a start time for the current animation track.
 -------------------------------------*/
-void SR_AnimationChannel::set_start_time(const SR_AnimPrecision startOffset) noexcept {
-    const SR_AnimPrecision posOffset = mPosFrames.get_start_time() - get_start_time();
-    mPosFrames.set_start_time(startOffset+posOffset);
+void SR_AnimationChannel::start_time(const SR_AnimPrecision startOffset) noexcept
+{
+    const SR_AnimPrecision posOffset = mPosFrames.start_time() - start_time();
+    mPosFrames.start_time(startOffset + posOffset);
     
-    const SR_AnimPrecision sclOffset = mScaleFrames.get_start_time() - get_start_time();
-    mScaleFrames.set_start_time(startOffset+sclOffset);
+    const SR_AnimPrecision sclOffset = mScaleFrames.start_time() - start_time();
+    mScaleFrames.start_time(startOffset + sclOffset);
     
-    const SR_AnimPrecision rotOffset = mOrientFrames.get_start_time() - get_start_time();
-    mOrientFrames.set_start_time(startOffset+rotOffset);
+    const SR_AnimPrecision rotOffset = mOrientFrames.start_time() - start_time();
+    mOrientFrames.start_time(startOffset + rotOffset);
 }
 
 
@@ -179,10 +183,11 @@ void SR_AnimationChannel::set_start_time(const SR_AnimPrecision startOffset) noe
 /*-------------------------------------
  * Retrieve the ending time of the current animation track.
 -------------------------------------*/
-SR_AnimPrecision SR_AnimationChannel::get_end_time() const noexcept {
+SR_AnimPrecision SR_AnimationChannel::end_time() const noexcept
+{
     return math::max(
-        mPosFrames.get_end_time(),
-        mScaleFrames.get_end_time(),
-        mOrientFrames.get_end_time()
+        mPosFrames.end_time(),
+        mScaleFrames.end_time(),
+        mOrientFrames.end_time()
     );
 }

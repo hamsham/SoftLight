@@ -1481,7 +1481,7 @@ unsigned SR_SceneFileLoader::import_animation_track(
         return UINT_MAX;
     }
 
-    if (!outAnim.set_num_frames(posFrames, sclFrames, rotFrames))
+    if (!outAnim.size(posFrames, sclFrames, rotFrames))
     {
         std::cout << "Unable to import the Animation \"" << pInAnim->mNodeName.C_Str() << "\"." << std::endl;
         return UINT_MAX;
@@ -1497,21 +1497,21 @@ unsigned SR_SceneFileLoader::import_animation_track(
     for (unsigned p=0; p < outPosFrames.size(); ++p)
     {
         const aiVectorKey& posKey = pInAnim->mPositionKeys[p];
-        outPosFrames.set_frame(p, posKey.mTime/animDuration, sr_convert_assimp_vector(posKey.mValue));
+        outPosFrames.frame(p, posKey.mTime / animDuration, sr_convert_assimp_vector(posKey.mValue));
     }
 
     // Scalings
     for (unsigned s=0; s < outSclFrames.size(); ++s)
     {
         const aiVectorKey& sclKey = pInAnim->mScalingKeys[s];
-        outSclFrames.set_frame(s, sclKey.mTime/animDuration, sr_convert_assimp_vector(sclKey.mValue));
+        outSclFrames.frame(s, sclKey.mTime / animDuration, sr_convert_assimp_vector(sclKey.mValue));
     }
 
     // Rotations
     for (unsigned r=0; r < outRotFrames.size(); ++r)
     {
         const aiQuatKey& rotKey = pInAnim->mRotationKeys[r];
-        outRotFrames.set_frame(r, rotKey.mTime/animDuration, sr_convert_assimp_quaternion(rotKey.mValue));
+        outRotFrames.frame(r, rotKey.mTime / animDuration, sr_convert_assimp_quaternion(rotKey.mValue));
     }
 
     // Convert ASSIMP animation flags into internal ones.
@@ -1536,9 +1536,9 @@ unsigned SR_SceneFileLoader::import_animation_track(
 
     std::cout
         << "\tSuccessfully imported the Animation \"" << pInAnim->mNodeName.C_Str() << '\"'
-        << "\n\t\tPosition Keys: " << outPosFrames.size() << " @ " << outPosFrames.get_duration()
-        << "\n\t\tScaling Keys:  " << outSclFrames.size() << " @ " << outSclFrames.get_duration()
-        << "\n\t\tRotation Keys: " << outRotFrames.size() << " @ " << outRotFrames.get_duration()
+        << "\n\t\tPosition Keys: " << outPosFrames.size() << " @ " << outPosFrames.duration()
+        << "\n\t\tScaling Keys:  " << outSclFrames.size() << " @ " << outSclFrames.duration()
+        << "\n\t\tRotation Keys: " << outRotFrames.size() << " @ " << outRotFrames.duration()
         << std::endl;
 
     return nodeId;

@@ -109,7 +109,7 @@ struct SR_AnimationChannel
      *
      * @return A bitmask of the interpolation modes that are used by *this.
      */
-    SR_AnimationFlag get_anim_flags() const noexcept;
+    SR_AnimationFlag flags() const noexcept;
 
     /**
      * @brief Set the number of frames in *this to animate.
@@ -128,10 +128,10 @@ struct SR_AnimationChannel
      * @return TRUE if the number of requested frames were successfully
      * allocated, FALSE if not.
      */
-    bool set_num_frames(
-        const unsigned positionKeys,
-        const unsigned scalingKeys,
-        const unsigned rotationKeys
+    bool size(
+        const size_t positionKeys,
+        const size_t scalingKeys,
+        const size_t rotationKeys
     ) noexcept;
 
     /**
@@ -195,7 +195,7 @@ struct SR_AnimationChannel
      * A constant reference to a 3D vector, containing the node-relative
      * position which will be stored in *this at a particular frame.
      */
-    void set_position_frame(
+    void position_frame(
         const unsigned frameIndex,
         const SR_AnimPrecision percent,
         const ls::math::vec3_t<float>& pos
@@ -212,7 +212,7 @@ struct SR_AnimationChannel
      * @return A 3D vector, containing the node-relative position which
      * will be stored in *this at a particular frame.
      */
-    ls::math::vec3_t<float> get_position_frame(const SR_AnimPrecision percent) const noexcept;
+    ls::math::vec3_t<float> position_frame(const SR_AnimPrecision percent) const noexcept;
 
     /**
      * @brief Set the scale of a frame.
@@ -231,7 +231,7 @@ struct SR_AnimationChannel
      * A constant reference to a 3D vector, containing the node-relative
      * scaling which will be stored in *this at a particular frame.
      */
-    void set_scale_frame(
+    void scale_frame(
         const unsigned frameIndex,
         const SR_AnimPrecision percent,
         const ls::math::vec3_t<float>& scale
@@ -248,7 +248,7 @@ struct SR_AnimationChannel
      * @return A 3D vector containing the node-relative scaling which will
      * be stored in *this at a particular frame.
      */
-    ls::math::vec3_t<float> get_scale_frame(const SR_AnimPrecision percent) const noexcept;
+    ls::math::vec3_t<float> scale_frame(const SR_AnimPrecision percent) const noexcept;
 
     /**
      * @brief Set the rotation of a frame.
@@ -267,7 +267,7 @@ struct SR_AnimationChannel
      * A constant reference to a quaternion, containing the node-relative
      * rotation which will be stored in *this at a particular frame.
      */
-    void set_rotation_frame(
+    void rotation_frame(
         const unsigned frameIndex,
         const SR_AnimPrecision percent,
         const ls::math::quat_t<float>& rotation
@@ -284,7 +284,7 @@ struct SR_AnimationChannel
      * @return A quaternion containing the node-relative rotation which
      * will be stored in *this at a particular frame.
      */
-    ls::math::quat_t<float> get_rotation_frame(const SR_AnimPrecision percent) const noexcept;
+    ls::math::quat_t<float> rotation_frame(const SR_AnimPrecision percent) const noexcept;
 
     /**
      * @brief Retrieve the position, scale, and rotation of a node at a
@@ -314,7 +314,7 @@ struct SR_AnimationChannel
      *
      * @return TRUE if an interpolation was performed, FALSE if not.
      */
-    bool get_frame(
+    bool frame(
         ls::math::vec3_t<float>& outPosition,
         ls::math::vec3_t<float>& outscale,
         ls::math::quat_t<float>& outRotation,
@@ -327,7 +327,7 @@ struct SR_AnimationChannel
      * @return A floating-point number, containing the time at which *this
      * animation channel starts running.
      */
-    SR_AnimPrecision get_start_time() const noexcept;
+    SR_AnimPrecision start_time() const noexcept;
 
     /**
      * Set the start time for all keyframes in *this. All internal keyframes
@@ -337,7 +337,7 @@ struct SR_AnimationChannel
      * A floating-point number, containing the time at which *this animation
      * channel starts running.
      */
-    void set_start_time(const SR_AnimPrecision startOffset) noexcept;
+    void start_time(const SR_AnimPrecision startOffset) noexcept;
 
     /**
      * Retrieve the time of the last keyframe in *this.
@@ -345,7 +345,7 @@ struct SR_AnimationChannel
      * @return A floating-point number, containing the time at which *this
      * animation channel finishes running.
      */
-    SR_AnimPrecision get_end_time() const noexcept;
+    SR_AnimPrecision end_time() const noexcept;
 
     /**
      * Retrieve the total running time of *this animation channel.
@@ -353,7 +353,7 @@ struct SR_AnimationChannel
      * @return A floating-point number, containing the difference between the
      * last keyframe time and the initial keyframe time.
      */
-    SR_AnimPrecision get_duration() const noexcept;
+    SR_AnimPrecision duration() const noexcept;
 };
 
 
@@ -363,8 +363,8 @@ struct SR_AnimationChannel
 -------------------------------------*/
 inline bool SR_AnimationChannel::has_position_frame(const SR_AnimPrecision animPercent) const noexcept
 {
-    //return mPosFrames.is_valid();
-    return animPercent >= mPosFrames.get_start_time() && animPercent <= mPosFrames.get_end_time();
+    //return mPosFrames.valid();
+    return animPercent >= mPosFrames.start_time() && animPercent <= mPosFrames.end_time();
 }
 
 
@@ -374,8 +374,8 @@ inline bool SR_AnimationChannel::has_position_frame(const SR_AnimPrecision animP
 -------------------------------------*/
 inline bool SR_AnimationChannel::has_scale_frame(const SR_AnimPrecision animPercent) const noexcept
 {
-    //return mScaleFrames.is_valid();
-    return animPercent >= mScaleFrames.get_start_time() && animPercent <= mScaleFrames.get_end_time();
+    //return mScaleFrames.valid();
+    return animPercent >= mScaleFrames.start_time() && animPercent <= mScaleFrames.end_time();
 }
 
 
@@ -385,8 +385,8 @@ inline bool SR_AnimationChannel::has_scale_frame(const SR_AnimPrecision animPerc
 -------------------------------------*/
 inline bool SR_AnimationChannel::has_rotation_frame(const SR_AnimPrecision animPercent) const noexcept
 {
-    //return mOrientFrames.is_valid();
-    return animPercent >= mOrientFrames.get_start_time() && animPercent <= mOrientFrames.get_end_time();
+    //return mOrientFrames.valid();
+    return animPercent >= mOrientFrames.start_time() && animPercent <= mOrientFrames.end_time();
 }
 
 
@@ -394,14 +394,14 @@ inline bool SR_AnimationChannel::has_rotation_frame(const SR_AnimPrecision animP
 /*-------------------------------------
  * Set a single position key
 -------------------------------------*/
-inline void SR_AnimationChannel::set_position_frame(
+inline void SR_AnimationChannel::position_frame(
     const unsigned frameIndex,
     const SR_AnimPrecision percent,
     const ls::math::vec3_t<float>& pos
 ) noexcept
 {
     LS_DEBUG_ASSERT(percent >= -1.0 && percent <= 1.0);
-    mPosFrames.set_frame(frameIndex, percent, pos);
+    mPosFrames.frame(frameIndex, percent, pos);
 }
 
 
@@ -409,14 +409,14 @@ inline void SR_AnimationChannel::set_position_frame(
 /*-------------------------------------
  * Set a single scale key
 -------------------------------------*/
-inline void SR_AnimationChannel::set_scale_frame(
+inline void SR_AnimationChannel::scale_frame(
     const unsigned frameIndex,
     const SR_AnimPrecision percent,
     const ls::math::vec3_t<float>& scale
 ) noexcept
 {
     LS_DEBUG_ASSERT(percent >= -1.0 && percent <= 1.0);
-    mScaleFrames.set_frame(frameIndex, percent, scale);
+    mScaleFrames.frame(frameIndex, percent, scale);
 }
 
 
@@ -424,14 +424,14 @@ inline void SR_AnimationChannel::set_scale_frame(
 /*-------------------------------------
  * Set a single rotation key
 -------------------------------------*/
-inline void SR_AnimationChannel::set_rotation_frame(
+inline void SR_AnimationChannel::rotation_frame(
     const unsigned frameIndex,
     const SR_AnimPrecision percent,
-    const ls::math::quat_t<float>& rot
+    const ls::math::quat_t<float>& rotation
 ) noexcept
 {
     LS_DEBUG_ASSERT(percent >= -1.0 && percent <= 1.0);
-    mOrientFrames.set_frame(frameIndex, percent, rot);
+    mOrientFrames.frame(frameIndex, percent, rotation);
 }
 
 
@@ -439,9 +439,9 @@ inline void SR_AnimationChannel::set_rotation_frame(
 /*-------------------------------------
  * Get a single position key
 -------------------------------------*/
-inline ls::math::vec3 SR_AnimationChannel::get_position_frame(const SR_AnimPrecision percent) const noexcept
+inline ls::math::vec3 SR_AnimationChannel::position_frame(const SR_AnimPrecision percent) const noexcept
 {
-    return mPosFrames.get_interpolated_data(percent, mAnimMode);
+    return mPosFrames.interpolated_data(percent, mAnimMode);
 }
 
 
@@ -449,9 +449,9 @@ inline ls::math::vec3 SR_AnimationChannel::get_position_frame(const SR_AnimPreci
 /*-------------------------------------
  * Get a single scale key
 -------------------------------------*/
-inline ls::math::vec3 SR_AnimationChannel::get_scale_frame(const SR_AnimPrecision percent) const noexcept
+inline ls::math::vec3 SR_AnimationChannel::scale_frame(const SR_AnimPrecision percent) const noexcept
 {
-    return mScaleFrames.get_interpolated_data(percent, mAnimMode);
+    return mScaleFrames.interpolated_data(percent, mAnimMode);
 }
 
 
@@ -459,9 +459,9 @@ inline ls::math::vec3 SR_AnimationChannel::get_scale_frame(const SR_AnimPrecisio
 /*-------------------------------------
  * Get a single rotaion key
 -------------------------------------*/
-inline ls::math::quat SR_AnimationChannel::get_rotation_frame(const SR_AnimPrecision percent) const noexcept
+inline ls::math::quat SR_AnimationChannel::rotation_frame(const SR_AnimPrecision percent) const noexcept
 {
-    return mOrientFrames.get_interpolated_data(percent, mAnimMode);
+    return mOrientFrames.interpolated_data(percent, mAnimMode);
 }
 
 
@@ -469,16 +469,16 @@ inline ls::math::quat SR_AnimationChannel::get_rotation_frame(const SR_AnimPreci
 /*-------------------------------------
  * SR_Animation Key Interpolator
 -------------------------------------*/
-inline bool SR_AnimationChannel::get_frame(
+inline bool SR_AnimationChannel::frame(
     ls::math::vec3& outPosition,
-    ls::math::vec3& outScale,
+    ls::math::vec3& outscale,
     ls::math::quat& outRotation,
-    SR_AnimPrecision percentFinished
+    const SR_AnimPrecision percentFinished
 ) const noexcept
 {
-    outPosition = get_position_frame(percentFinished);
-    outScale = get_scale_frame(percentFinished);
-    outRotation = get_rotation_frame(percentFinished);
+    outPosition = position_frame(percentFinished);
+    outscale = scale_frame(percentFinished);
+    outRotation = rotation_frame(percentFinished);
     return true;
 }
 
@@ -487,9 +487,9 @@ inline bool SR_AnimationChannel::get_frame(
 /*-------------------------------------
  * Retrieve the total track running time
 -------------------------------------*/
-inline SR_AnimPrecision SR_AnimationChannel::get_duration() const noexcept
+inline SR_AnimPrecision SR_AnimationChannel::duration() const noexcept
 {
-    return get_end_time() - get_start_time();
+    return end_time() - start_time();
 }
 
 

@@ -255,7 +255,7 @@ class SR_Animation
      * @return A reference to a constant vector of indices which reference
      * the "currentTransform" objects in a SceneGraph.
      */
-    const std::vector<size_t>& get_transforms() const noexcept;
+    const std::vector<size_t>& transforms() const noexcept;
 
     /**
      * @brief Retrieve the list of indices which will be used to reference a
@@ -339,8 +339,13 @@ class SR_Animation
      * @param percentDone
      * The percent of the animation which has been played in total. An
      * assertion will be raised if this value is less than 0.0.
+     *
+     * @param transformOffset
+     * An offset to another transformation in the scene graph. If the offset is
+     * nonzero, the number of subsequent transformations in the scene graph
+     * must match the number of transform IDs contained within *this.
      */
-    void animate(SR_SceneGraph& graph, const SR_AnimPrecision percentDone) const noexcept;
+    void animate(SR_SceneGraph& graph, const SR_AnimPrecision percentDone, size_t transformOffset = 0) const noexcept;
 
     /**
      * Initialize the animation transformations for all nodes in a scene graph.
