@@ -122,7 +122,7 @@ SR_AnimPrecision SR_AnimationPlayer::get_current_ticks() const noexcept {
 /*-------------------------------------
  * Progress an SR_Animation
 -------------------------------------*/
-void SR_AnimationPlayer::tick(SR_SceneGraph& graph, unsigned animationIndex, uint64_t millis) noexcept {
+void SR_AnimationPlayer::tick(SR_SceneGraph& graph, unsigned animationIndex, int64_t millis) noexcept {
     if (mCurrentState != SR_ANIM_STATE_PLAYING) {
         return;
     }
@@ -141,11 +141,11 @@ void SR_AnimationPlayer::tick(SR_SceneGraph& graph, unsigned animationIndex, uin
         return;
     }
 
-    const SR_AnimPrecision secondsDelta  = 0.001 * (SR_AnimPrecision)millis;
+    const SR_AnimPrecision secondsDelta  = SR_AnimPrecision{0.001} * (SR_AnimPrecision)millis;
     const SR_AnimPrecision ticksDelta    = secondsDelta * anim.get_ticks_per_sec();
     const SR_AnimPrecision percentDelta  = (ticksDelta * mDilation) / anim.get_duration();
     const SR_AnimPrecision percentDone   = mCurrentPercent + percentDelta;
-    const SR_AnimPrecision nextPercent   = percentDone >= 0.0 ? percentDone : ls::math::max(SR_AnimPrecision{1}+percentDone, SR_AnimPrecision{0});
+    const SR_AnimPrecision nextPercent   = percentDone >= SR_AnimPrecision{0.0} ? percentDone : (SR_AnimPrecision{1}+percentDone);
     
     anim.animate(graph, nextPercent);
 

@@ -192,7 +192,7 @@ class SR_AnimationPlayer
      * The total number of milliseconds which have passed since playback
      * started.
      */
-    void tick(SR_SceneGraph& graph, unsigned animationIndex, uint64_t millis) noexcept;
+    void tick(SR_SceneGraph& graph, unsigned animationIndex, int64_t millis) noexcept;
 
     /**
      * @brief Get the current state of playback from *this.
