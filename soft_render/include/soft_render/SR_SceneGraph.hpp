@@ -345,6 +345,8 @@ class SR_SceneGraph
      * @param nodeIndex
      * An unsigned integral type, containing the array-index of the node to
      * copy within the graph.
+     *
+     * @return TRUE if the node at "nodeIndex" could be copied, FALSE if not.
      */
     bool copy_node(const size_t nodeIndex) noexcept;
 
@@ -371,7 +373,7 @@ class SR_SceneGraph
      * @return An unsigned integral type, containing the total number of
      * child nodes that are recursively attached to the queried node.
      */
-    size_t get_num_total_children(const size_t nodeIndex) const noexcept;
+    size_t num_total_children(const size_t nodeIndex) const noexcept;
 
     /**
      * Retrieve the number of children immediately attached to a SR_SceneNode.
@@ -383,7 +385,7 @@ class SR_SceneGraph
      * @return An unsigned integral type, containing the number of child
      * nodes that are attached to the queried node.
      */
-    size_t get_num_immediate_children(const size_t nodeIndex) const noexcept;
+    size_t num_immediate_children(const size_t nodeIndex) const noexcept;
 
     /**
      * Determine if a node is a hierarchal child of another node.

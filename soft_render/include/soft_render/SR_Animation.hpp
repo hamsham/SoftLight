@@ -226,7 +226,7 @@ class SR_Animation
      * A SR_AnimPrecision-precision float, containing the number of ticks that an
      * Animation will play.
      */
-    void set_duration(const SR_AnimPrecision ticks) noexcept;
+    void duration(const SR_AnimPrecision ticks) noexcept;
 
     /**
      * @brief Get playback speed, in ticks per second, that *this object

@@ -364,7 +364,7 @@ SR_Animation sr_setup_imported_animation(
 {
     SR_Animation anim{};
 
-    anim.set_duration(duration);
+    anim.duration(duration);
     anim.name(std::string{name});
     anim.ticks_per_sec(ticksPerSec > 0.0 ? ticksPerSec : 23.976);
     anim.reserve(numChannels);

@@ -173,7 +173,7 @@ SR_AnimPrecision SR_Animation::duration() const noexcept {
 /*-------------------------------------
  * Retrieve the SR_Animation duration (tps).
 -------------------------------------*/
-void SR_Animation::set_duration(const SR_AnimPrecision ticks) noexcept {
+void SR_Animation::duration(const SR_AnimPrecision ticks) noexcept {
     mTotalTicks = ticks;
 }
 
