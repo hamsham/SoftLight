@@ -226,24 +226,6 @@ void SR_SceneGraph::update_node_transform(const size_t transformId) noexcept
     if (doesParentExist)
     {
         SR_Transform& pt = mCurrentTransforms[parentId];
-
-        // update all parent node data before attempting to update *this.
-        if (pt.is_dirty())
-        {
-            update_node_transform(parentId);
-            t.set_dirty();
-        }
-    }
-
-    // Early exit
-    if (!t.is_dirty())
-    {
-        return;
-    }
-
-    if (doesParentExist)
-    {
-        SR_Transform& pt = mCurrentTransforms[parentId];
         t.apply_pre_transform(pt.get_transform());
     }
     else
@@ -251,27 +233,20 @@ void SR_SceneGraph::update_node_transform(const size_t transformId) noexcept
         t.apply_transform();
     }
 
+    // TODO:
+    // Bone nodes should be implemented as a tree in a separate array to allow
+    // animations to be re-used among nodes.
     if (mNodes[transformId].type == NODE_TYPE_BONE)
     {
+        // bones should be part of a skeleton, not tied to meshes or cameras
+        LS_DEBUG_ASSERT(mNodes[parentId].type == NODE_TYPE_BONE || mNodes[parentId].type == NODE_TYPE_EMPTY);
+
         const size_t boneId = mNodes[transformId].dataId;
         mModelMatrices[transformId] = mInvBoneTransforms[boneId] * t.get_transform() * mBoneOffsets[boneId];
     }
     else
     {
         mModelMatrices[transformId] = t.get_transform();
-    }
-
-    // TODO: implement transformation packing so the iteration can stop as
-    // soon as all child transforms have been updated. There's no reason
-    // to iterate past the child transforms in the transform array.
-    for (size_t i = transformId + 1; i < mCurrentTransforms.size(); ++i)
-    {
-        SR_Transform& ct = mCurrentTransforms[i];
-
-        if (ct.mParentId == transformId)
-        {
-            ct.set_dirty();
-        }
     }
 }
 
@@ -281,11 +256,32 @@ void SR_SceneGraph::update_node_transform(const size_t transformId) noexcept
 void SR_SceneGraph::update() noexcept
 {
     // Transformation indices have a 1:1 relationship with node indices.
-    for (size_t i = 0; i < mCurrentTransforms.size(); ++i)
+    // Child nodes always have a parent ID which is less-than their node ID.
+    // If the child node is less than the parent node's ID, we have ourselves
+    // a good-old-fashioned bug.
+    const size_t numNodes = mCurrentTransforms.size();
+    SR_Transform* const pTransforms = mCurrentTransforms.data();
+
+    for (size_t i = 0; i < numNodes; ++i)
     {
-        if (mCurrentTransforms[i].is_dirty())
+        // If a parent node is dirty, update all child nodes, iteratively
+        if (pTransforms[i].is_dirty())
         {
             update_node_transform(i);
+
+            for (size_t j = i+1; j < numNodes; ++j)
+            {
+                if (pTransforms[j].mParentId < i)
+                {
+                    i = j-1;
+                    break;
+                }
+                else
+                {
+                    // force an update to the child node.
+                    update_node_transform(j);
+                }
+            }
         }
     }
 
