@@ -304,6 +304,15 @@ void SR_SceneGraph::delete_mesh_node_data(const size_t nodeDataId) noexcept
 }
 
 /*-------------------------------------
+ * Bone Node Deletion
+-------------------------------------*/
+void SR_SceneGraph::delete_bone_node_data(const size_t nodeDataId) noexcept
+{
+    mInvBoneTransforms.erase(mInvBoneTransforms.begin() + nodeDataId);
+    mBoneOffsets.erase(mBoneOffsets.begin() + nodeDataId);
+}
+
+/*-------------------------------------
  * Camera Deletion
 -------------------------------------*/
 void SR_SceneGraph::delete_camera_node_data(const size_t nodeDataId) noexcept
@@ -425,6 +434,9 @@ size_t SR_SceneGraph::delete_node(const size_t nodeIndex) noexcept
             break;
 
         case NODE_TYPE_BONE:
+            delete_bone_node_data(dataId);
+            break;
+
         case NODE_TYPE_EMPTY:
             break;
     }

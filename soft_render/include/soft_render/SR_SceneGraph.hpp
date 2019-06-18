@@ -196,6 +196,15 @@ class SR_SceneGraph
     void delete_mesh_node_data(const size_t nodeDataId) noexcept;
 
     /**
+     * @brief Remove all data specific to a bone node.
+     *
+     * @param nodeDataId
+     * An unsigned integer, containing the data index of a node being
+     * deleted.
+     */
+    void delete_bone_node_data(const size_t nodeDataId) noexcept;
+
+    /**
      * Remove all data specific to camera nodes.
      *
      * @param nodeDataId
