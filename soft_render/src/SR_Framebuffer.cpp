@@ -29,7 +29,6 @@ template <typename color_type>
 inline void assign_pixel(
     uint16_t x,
     uint16_t y,
-    uint16_t z,
     const float* rgba,
     SR_Texture* pTexture) noexcept
 {
@@ -37,7 +36,7 @@ inline void assign_pixel(
     typedef typename color_type::value_type ConvertedType;
 
     // Get a reference to the source texel
-    void* const outTexel = pTexture->texel_pointer<color_type>(x, y, math::min<uint16_t>(pTexture->depth()-1, z));
+    void* const outTexel = pTexture->texel_pointer<color_type>(x, y);
 
     union
     {
@@ -67,12 +66,11 @@ template <>
 inline void assign_pixel<SR_ColorRGBA8>(
     uint16_t x,
     uint16_t y,
-    uint16_t z,
     const float* rgba,
     SR_Texture* pTexture) noexcept
 {
     // Get a reference to the source texel
-    int32_t* const outTexel = pTexture->texel_pointer<int32_t>(x, y, math::min<uint16_t>(pTexture->depth()-1, z));
+    int32_t* const outTexel = pTexture->texel_pointer<int32_t>(x, y);
     SR_ColorRGBA8 inTexel = color_cast<uint8_t, float>(*reinterpret_cast<const SR_ColorRGBAf*>(rgba));
 
     _mm_stream_si32(outTexel, reinterpret_cast<int32_t&>(inTexel));
@@ -84,7 +82,6 @@ template <>
 inline void assign_pixel<SR_ColorRGBA16>(
     uint16_t x,
     uint16_t y,
-    uint16_t z,
     const float* rgba,
     SR_Texture* pTexture) noexcept
 {
@@ -92,7 +89,7 @@ inline void assign_pixel<SR_ColorRGBA16>(
 
     // MSVConly supports __m64 on 32-bit builds
     #if defined(LS_COMPILER_MSC) && LS_ARCH_X86 >= 64
-        __int64* const outTexel = pTexture->texel_pointer<__int64>(x, y, math::min<uint16_t>(pTexture->depth()-1, z));
+        __int64* const outTexel = pTexture->texel_pointer<__int64>(x, y);
 
         union
         {
@@ -102,7 +99,7 @@ inline void assign_pixel<SR_ColorRGBA16>(
     
         _mm_stream_si64(outTexel, inTexel.scalar);
     #else
-        __m64* const outTexel = pTexture->texel_pointer<__m64>(x, y, math::min<uint16_t>(pTexture->depth()-1, z));
+        __m64* const outTexel = pTexture->texel_pointer<__m64>(x, y);
     
         union
         {
@@ -121,12 +118,11 @@ template <>
 inline void assign_pixel<SR_ColorRGBAf>(
     uint16_t x,
     uint16_t y,
-    uint16_t z,
     const float* rgba,
     SR_Texture* pTexture) noexcept
 {
     // Get a reference to the source texel
-    SR_ColorRGBAf* const outTexel = pTexture->texel_pointer<SR_ColorRGBAf>(x, y, math::min<uint16_t>(pTexture->depth()-1, z));
+    SR_ColorRGBAf* const outTexel = pTexture->texel_pointer<SR_ColorRGBAf>(x, y);
 
     _mm_stream_ps(reinterpret_cast<float*>(outTexel), _mm_load_ps(rgba));
 }
@@ -141,7 +137,6 @@ template <typename color_type>
 inline void assign_alpha_pixel(
     uint16_t x,
     uint16_t y,
-    uint16_t z,
     const math::vec4& rgba,
     SR_Texture* pTexture,
     const SR_BlendMode blendMode) noexcept
@@ -150,7 +145,7 @@ inline void assign_alpha_pixel(
     typedef typename color_type::value_type ConvertedType;
 
     // Get a reference to the source texel
-    void* const outTexel = pTexture->texel_pointer<color_type>(x, y, math::min<uint16_t>(pTexture->depth()-1, z));
+    void* const outTexel = pTexture->texel_pointer<color_type>(x, y);
 
     // sample the source texel
     union DestColor
@@ -640,7 +635,6 @@ bool SR_Framebuffer::put_pixel(
     uint64_t targetId,
     uint16_t x,
     uint16_t y,
-    uint16_t z,
     const math::vec4& colors) noexcept
 {
     const float* const     rgba     = colors.v;
@@ -649,35 +643,35 @@ bool SR_Framebuffer::put_pixel(
 
     switch (type)
     {
-        case SR_COLOR_R_8U:        assign_pixel<SR_ColorR8>(x, y, z, rgba, pTexture); break;
-        case SR_COLOR_RG_8U:       assign_pixel<SR_ColorRG8>(x, y, z, rgba, pTexture); break;
-        case SR_COLOR_RGB_8U:      assign_pixel<SR_ColorRGB8>(x, y, z, rgba, pTexture); break;
-        case SR_COLOR_RGBA_8U:     assign_pixel<SR_ColorRGBA8>(x, y, z, rgba, pTexture); break;
+        case SR_COLOR_R_8U:        assign_pixel<SR_ColorR8>(x, y, rgba, pTexture); break;
+        case SR_COLOR_RG_8U:       assign_pixel<SR_ColorRG8>(x, y, rgba, pTexture); break;
+        case SR_COLOR_RGB_8U:      assign_pixel<SR_ColorRGB8>(x, y, rgba, pTexture); break;
+        case SR_COLOR_RGBA_8U:     assign_pixel<SR_ColorRGBA8>(x, y, rgba, pTexture); break;
 
-        case SR_COLOR_R_16U:       assign_pixel<SR_ColorR16>(x, y, z, rgba, pTexture); break;
-        case SR_COLOR_RG_16U:      assign_pixel<SR_ColorRG16>(x, y, z, rgba, pTexture); break;
-        case SR_COLOR_RGB_16U:     assign_pixel<SR_ColorRGB16>(x, y, z, rgba, pTexture); break;
-        case SR_COLOR_RGBA_16U:    assign_pixel<SR_ColorRGBA16>(x, y, z, rgba, pTexture); break;
+        case SR_COLOR_R_16U:       assign_pixel<SR_ColorR16>(x, y, rgba, pTexture); break;
+        case SR_COLOR_RG_16U:      assign_pixel<SR_ColorRG16>(x, y, rgba, pTexture); break;
+        case SR_COLOR_RGB_16U:     assign_pixel<SR_ColorRGB16>(x, y, rgba, pTexture); break;
+        case SR_COLOR_RGBA_16U:    assign_pixel<SR_ColorRGBA16>(x, y, rgba, pTexture); break;
 
-        case SR_COLOR_R_32U:       assign_pixel<SR_ColorR32>(x, y, z, rgba, pTexture); break;
-        case SR_COLOR_RG_32U:      assign_pixel<SR_ColorRG32>(x, y, z, rgba, pTexture); break;
-        case SR_COLOR_RGB_32U:     assign_pixel<SR_ColorRGB32>(x, y, z, rgba, pTexture); break;
-        case SR_COLOR_RGBA_32U:    assign_pixel<SR_ColorRGBA32>(x, y, z, rgba, pTexture); break;
+        case SR_COLOR_R_32U:       assign_pixel<SR_ColorR32>(x, y, rgba, pTexture); break;
+        case SR_COLOR_RG_32U:      assign_pixel<SR_ColorRG32>(x, y, rgba, pTexture); break;
+        case SR_COLOR_RGB_32U:     assign_pixel<SR_ColorRGB32>(x, y, rgba, pTexture); break;
+        case SR_COLOR_RGBA_32U:    assign_pixel<SR_ColorRGBA32>(x, y, rgba, pTexture); break;
 
-        case SR_COLOR_R_64U:       assign_pixel<SR_ColorR64>(x, y, z, rgba, pTexture); break;
-        case SR_COLOR_RG_64U:      assign_pixel<SR_ColorRG64>(x, y, z, rgba, pTexture); break;
-        case SR_COLOR_RGB_64U:     assign_pixel<SR_ColorRGB64>(x, y, z, rgba, pTexture); break;
-        case SR_COLOR_RGBA_64U:    assign_pixel<SR_ColorRGBA64>(x, y, z, rgba, pTexture); break;
+        case SR_COLOR_R_64U:       assign_pixel<SR_ColorR64>(x, y, rgba, pTexture); break;
+        case SR_COLOR_RG_64U:      assign_pixel<SR_ColorRG64>(x, y, rgba, pTexture); break;
+        case SR_COLOR_RGB_64U:     assign_pixel<SR_ColorRGB64>(x, y, rgba, pTexture); break;
+        case SR_COLOR_RGBA_64U:    assign_pixel<SR_ColorRGBA64>(x, y, rgba, pTexture); break;
 
-        case SR_COLOR_R_FLOAT:     assign_pixel<SR_ColorRf>(x, y, z, rgba, pTexture); break;
-        case SR_COLOR_RG_FLOAT:    assign_pixel<SR_ColorRGf>(x, y, z, rgba, pTexture); break;
-        case SR_COLOR_RGB_FLOAT:   assign_pixel<SR_ColorRGBf>(x, y, z, rgba, pTexture); break;
-        case SR_COLOR_RGBA_FLOAT:  assign_pixel<SR_ColorRGBAf>(x, y, z, rgba, pTexture); break;
+        case SR_COLOR_R_FLOAT:     assign_pixel<SR_ColorRf>(x, y, rgba, pTexture); break;
+        case SR_COLOR_RG_FLOAT:    assign_pixel<SR_ColorRGf>(x, y, rgba, pTexture); break;
+        case SR_COLOR_RGB_FLOAT:   assign_pixel<SR_ColorRGBf>(x, y, rgba, pTexture); break;
+        case SR_COLOR_RGBA_FLOAT:  assign_pixel<SR_ColorRGBAf>(x, y, rgba, pTexture); break;
 
-        case SR_COLOR_R_DOUBLE:    assign_pixel<SR_ColorRd>(x, y, z, rgba, pTexture); break;
-        case SR_COLOR_RG_DOUBLE:   assign_pixel<SR_ColorRGd>(x, y, z, rgba, pTexture); break;
-        case SR_COLOR_RGB_DOUBLE:  assign_pixel<SR_ColorRGBd>(x, y, z, rgba, pTexture); break;
-        case SR_COLOR_RGBA_DOUBLE: assign_pixel<SR_ColorRGBAd>(x, y, z, rgba, pTexture); break;
+        case SR_COLOR_R_DOUBLE:    assign_pixel<SR_ColorRd>(x, y, rgba, pTexture); break;
+        case SR_COLOR_RG_DOUBLE:   assign_pixel<SR_ColorRGd>(x, y, rgba, pTexture); break;
+        case SR_COLOR_RGB_DOUBLE:  assign_pixel<SR_ColorRGBd>(x, y, rgba, pTexture); break;
+        case SR_COLOR_RGBA_DOUBLE: assign_pixel<SR_ColorRGBAd>(x, y, rgba, pTexture); break;
 
         default:
             break;
@@ -695,7 +689,6 @@ bool SR_Framebuffer::put_alpha_pixel(
     uint64_t targetId,
     uint16_t x,
     uint16_t y,
-    uint16_t z,
     const math::vec4& colors,
     const SR_BlendMode blendMode) noexcept
 {
@@ -704,35 +697,35 @@ bool SR_Framebuffer::put_alpha_pixel(
 
     switch (type)
     {
-        case SR_COLOR_R_8U:        assign_alpha_pixel<SR_ColorR8>(x, y, z, colors, pTexture, blendMode); break;
-        case SR_COLOR_RG_8U:       assign_alpha_pixel<SR_ColorRG8>(x, y, z, colors, pTexture, blendMode); break;
-        case SR_COLOR_RGB_8U:      assign_alpha_pixel<SR_ColorRGB8>(x, y, z, colors, pTexture, blendMode); break;
-        case SR_COLOR_RGBA_8U:     assign_alpha_pixel<SR_ColorRGBA8>(x, y, z, colors, pTexture, blendMode); break;
+        case SR_COLOR_R_8U:        assign_alpha_pixel<SR_ColorR8>(x, y, colors, pTexture, blendMode); break;
+        case SR_COLOR_RG_8U:       assign_alpha_pixel<SR_ColorRG8>(x, y, colors, pTexture, blendMode); break;
+        case SR_COLOR_RGB_8U:      assign_alpha_pixel<SR_ColorRGB8>(x, y, colors, pTexture, blendMode); break;
+        case SR_COLOR_RGBA_8U:     assign_alpha_pixel<SR_ColorRGBA8>(x, y, colors, pTexture, blendMode); break;
 
-        case SR_COLOR_R_16U:       assign_alpha_pixel<SR_ColorR16>(x, y, z, colors, pTexture, blendMode); break;
-        case SR_COLOR_RG_16U:      assign_alpha_pixel<SR_ColorRG16>(x, y, z, colors, pTexture, blendMode); break;
-        case SR_COLOR_RGB_16U:     assign_alpha_pixel<SR_ColorRGB16>(x, y, z, colors, pTexture, blendMode); break;
-        case SR_COLOR_RGBA_16U:    assign_alpha_pixel<SR_ColorRGBA16>(x, y, z, colors, pTexture, blendMode); break;
+        case SR_COLOR_R_16U:       assign_alpha_pixel<SR_ColorR16>(x, y, colors, pTexture, blendMode); break;
+        case SR_COLOR_RG_16U:      assign_alpha_pixel<SR_ColorRG16>(x, y, colors, pTexture, blendMode); break;
+        case SR_COLOR_RGB_16U:     assign_alpha_pixel<SR_ColorRGB16>(x, y, colors, pTexture, blendMode); break;
+        case SR_COLOR_RGBA_16U:    assign_alpha_pixel<SR_ColorRGBA16>(x, y, colors, pTexture, blendMode); break;
 
-        case SR_COLOR_R_32U:       assign_alpha_pixel<SR_ColorR32>(x, y, z, colors, pTexture, blendMode); break;
-        case SR_COLOR_RG_32U:      assign_alpha_pixel<SR_ColorRG32>(x, y, z, colors, pTexture, blendMode); break;
-        case SR_COLOR_RGB_32U:     assign_alpha_pixel<SR_ColorRGB32>(x, y, z, colors, pTexture, blendMode); break;
-        case SR_COLOR_RGBA_32U:    assign_alpha_pixel<SR_ColorRGBA32>(x, y, z, colors, pTexture, blendMode); break;
+        case SR_COLOR_R_32U:       assign_alpha_pixel<SR_ColorR32>(x, y, colors, pTexture, blendMode); break;
+        case SR_COLOR_RG_32U:      assign_alpha_pixel<SR_ColorRG32>(x, y, colors, pTexture, blendMode); break;
+        case SR_COLOR_RGB_32U:     assign_alpha_pixel<SR_ColorRGB32>(x, y, colors, pTexture, blendMode); break;
+        case SR_COLOR_RGBA_32U:    assign_alpha_pixel<SR_ColorRGBA32>(x, y, colors, pTexture, blendMode); break;
 
-        case SR_COLOR_R_64U:       assign_alpha_pixel<SR_ColorR64>(x, y, z, colors, pTexture, blendMode); break;
-        case SR_COLOR_RG_64U:      assign_alpha_pixel<SR_ColorRG64>(x, y, z, colors, pTexture, blendMode); break;
-        case SR_COLOR_RGB_64U:     assign_alpha_pixel<SR_ColorRGB64>(x, y, z, colors, pTexture, blendMode); break;
-        case SR_COLOR_RGBA_64U:    assign_alpha_pixel<SR_ColorRGBA64>(x, y, z, colors, pTexture, blendMode); break;
+        case SR_COLOR_R_64U:       assign_alpha_pixel<SR_ColorR64>(x, y, colors, pTexture, blendMode); break;
+        case SR_COLOR_RG_64U:      assign_alpha_pixel<SR_ColorRG64>(x, y, colors, pTexture, blendMode); break;
+        case SR_COLOR_RGB_64U:     assign_alpha_pixel<SR_ColorRGB64>(x, y, colors, pTexture, blendMode); break;
+        case SR_COLOR_RGBA_64U:    assign_alpha_pixel<SR_ColorRGBA64>(x, y, colors, pTexture, blendMode); break;
 
-        case SR_COLOR_R_FLOAT:     assign_alpha_pixel<SR_ColorRf>(x, y, z, colors, pTexture, blendMode); break;
-        case SR_COLOR_RG_FLOAT:    assign_alpha_pixel<SR_ColorRGf>(x, y, z, colors, pTexture, blendMode); break;
-        case SR_COLOR_RGB_FLOAT:   assign_alpha_pixel<SR_ColorRGBf>(x, y, z, colors, pTexture, blendMode); break;
-        case SR_COLOR_RGBA_FLOAT:  assign_alpha_pixel<SR_ColorRGBAf>(x, y, z, colors, pTexture, blendMode); break;
+        case SR_COLOR_R_FLOAT:     assign_alpha_pixel<SR_ColorRf>(x, y, colors, pTexture, blendMode); break;
+        case SR_COLOR_RG_FLOAT:    assign_alpha_pixel<SR_ColorRGf>(x, y, colors, pTexture, blendMode); break;
+        case SR_COLOR_RGB_FLOAT:   assign_alpha_pixel<SR_ColorRGBf>(x, y, colors, pTexture, blendMode); break;
+        case SR_COLOR_RGBA_FLOAT:  assign_alpha_pixel<SR_ColorRGBAf>(x, y, colors, pTexture, blendMode); break;
 
-        case SR_COLOR_R_DOUBLE:    assign_alpha_pixel<SR_ColorRd>(x, y, z, colors, pTexture, blendMode); break;
-        case SR_COLOR_RG_DOUBLE:   assign_alpha_pixel<SR_ColorRGd>(x, y, z, colors, pTexture, blendMode); break;
-        case SR_COLOR_RGB_DOUBLE:  assign_alpha_pixel<SR_ColorRGBd>(x, y, z, colors, pTexture, blendMode); break;
-        case SR_COLOR_RGBA_DOUBLE: assign_alpha_pixel<SR_ColorRGBAd>(x, y, z, colors, pTexture, blendMode); break;
+        case SR_COLOR_R_DOUBLE:    assign_alpha_pixel<SR_ColorRd>(x, y, colors, pTexture, blendMode); break;
+        case SR_COLOR_RG_DOUBLE:   assign_alpha_pixel<SR_ColorRGd>(x, y, colors, pTexture, blendMode); break;
+        case SR_COLOR_RGB_DOUBLE:  assign_alpha_pixel<SR_ColorRGBd>(x, y, colors, pTexture, blendMode); break;
+        case SR_COLOR_RGBA_DOUBLE: assign_alpha_pixel<SR_ColorRGBAd>(x, y, colors, pTexture, blendMode); break;
 
         default:
             break;

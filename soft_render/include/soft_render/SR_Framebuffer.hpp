@@ -90,14 +90,12 @@ class SR_Framebuffer
         uint64_t targetId,
         uint16_t x,
         uint16_t y,
-        uint16_t z,
         const ls::math::vec4_t<float>& rgba) noexcept;
 
     bool put_alpha_pixel(
         uint64_t targetId,
         uint16_t x,
         uint16_t y,
-        uint16_t z,
         const ls::math::vec4_t<float>& rgba,
         const SR_BlendMode blendMode) noexcept;
 

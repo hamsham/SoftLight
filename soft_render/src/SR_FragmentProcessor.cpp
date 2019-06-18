@@ -151,6 +151,8 @@ void SR_FragmentProcessor::render_point(
     const uint32_t          numOutputs  = fragShader.numOutputs;
     const bool              depthMask   = fragShader.depthMask == SR_DEPTH_MASK_ON;
     const auto              pShader     = fragShader.shader;
+    const SR_BlendMode      blendMode   = fragShader.blend;
+    const bool              blend       = blendMode != SR_BLEND_OFF;
     const math::vec4        screenCoord = mBins[binId].mScreenCoords[0];
     const math::vec4        fragCoord   {screenCoord[0], screenCoord[1], screenCoord[2], 1.f};
     const math::vec4*       varyings    = mBins[binId].mVaryings;
@@ -168,14 +170,30 @@ void SR_FragmentProcessor::render_point(
             const uint16_t z = (uint16_t)depth;
             const uint_fast32_t haveOutputs = pShader(fragCoord, pUniforms, varyings, pOutputs);
 
-            // branchless select
-            switch (-haveOutputs & numOutputs)
+            if (blend)
             {
-                case 4: fbo->put_pixel(3, x0, y0, z, pOutputs[3]);
-                case 3: fbo->put_pixel(2, x0, y0, z, pOutputs[2]);
-                case 2: fbo->put_pixel(1, x0, y0, z, pOutputs[1]);
-                case 1: fbo->put_pixel(0, x0, y0, z, pOutputs[0]);
-                //case 1: fbo->put_pixel(0, x0, y0, z, math::vec4{1.f, 0, 1.f, 1.f});
+                // branchless select
+                switch (-haveOutputs & numOutputs)
+                {
+                    case 4: fbo->put_alpha_pixel(3, x0, y0, pOutputs[3], blendMode);
+                    case 3: fbo->put_alpha_pixel(2, x0, y0, pOutputs[2], blendMode);
+                    case 2: fbo->put_alpha_pixel(1, x0, y0, pOutputs[1], blendMode);
+                    case 1: fbo->put_alpha_pixel(0, x0, y0, pOutputs[0], blendMode);
+                        //case 1: fbo->put_pixel(0, xi, yi, zi, math::vec4{1.f, 0, 1.f, 1.f});
+                }
+
+            }
+            else
+            {
+                // branchless select
+                switch (-haveOutputs & numOutputs)
+                {
+                    case 4: fbo->put_pixel(3, x0, y0, pOutputs[3]);
+                    case 3: fbo->put_pixel(2, x0, y0, pOutputs[2]);
+                    case 2: fbo->put_pixel(1, x0, y0, pOutputs[1]);
+                    case 1: fbo->put_pixel(0, x0, y0, pOutputs[0]);
+                        //case 1: fbo->put_pixel(0, xi, yi, zi, math::vec4{1.f, 0, 1.f, 1.f});
+                }
             }
 
             if (depthMask)
@@ -297,6 +315,8 @@ void SR_FragmentProcessor::render_line(
 
     math::vec4              pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
     const SR_FragmentShader fragShader  = mShader->mFragShader;
+    const SR_BlendMode      blendMode   = fragShader.blend;
+    const bool              blend       = blendMode != SR_BLEND_OFF;
     const uint32_t          numVaryings = fragShader.numVaryings;
     const uint32_t          numOutputs  = fragShader.numOutputs;
     const bool              noDepthTest = fragShader.depthTest == SR_DEPTH_TEST_OFF;
@@ -353,16 +373,31 @@ void SR_FragmentProcessor::render_line(
 
             const math::vec4    fragCoord   {xf, yf, z, 1.f};
             const uint_fast32_t haveOutputs = shader(fragCoord, pUniforms, outVaryings, pOutputs);
-            const uint16_t      zi          = (uint16_t)z;
 
-            // branchless select
-            switch (-haveOutputs & numOutputs)
+            if (blend)
             {
-                case 4: fbo->put_pixel(3, xi, yi, zi, pOutputs[3]);
-                case 3: fbo->put_pixel(2, xi, yi, zi, pOutputs[2]);
-                case 2: fbo->put_pixel(1, xi, yi, zi, pOutputs[1]);
-                case 1: fbo->put_pixel(0, xi, yi, zi, pOutputs[0]);
-                //case 1: fbo->put_pixel(0, xi, yi, zi, math::vec4{1.f, 0, 1.f, 1.f});
+                // branchless select
+                switch (-haveOutputs & numOutputs)
+                {
+                    case 4: fbo->put_alpha_pixel(3, xi, yi, pOutputs[3], blendMode);
+                    case 3: fbo->put_alpha_pixel(2, xi, yi, pOutputs[2], blendMode);
+                    case 2: fbo->put_alpha_pixel(1, xi, yi, pOutputs[1], blendMode);
+                    case 1: fbo->put_alpha_pixel(0, xi, yi, pOutputs[0], blendMode);
+                        //case 1: fbo->put_pixel(0, xi, yi, zi, math::vec4{1.f, 0, 1.f, 1.f});
+                }
+
+            }
+            else
+            {
+                // branchless select
+                switch (-haveOutputs & numOutputs)
+                {
+                    case 4: fbo->put_pixel(3, xi, yi, pOutputs[3]);
+                    case 3: fbo->put_pixel(2, xi, yi, pOutputs[2]);
+                    case 2: fbo->put_pixel(1, xi, yi, pOutputs[1]);
+                    case 1: fbo->put_pixel(0, xi, yi, pOutputs[0]);
+                        //case 1: fbo->put_pixel(0, xi, yi, zi, math::vec4{1.f, 0, 1.f, 1.f});
+                }
             }
 
             if (depthMask)
@@ -747,20 +782,19 @@ void SR_FragmentProcessor::flush_fragments(
             interpolate_tri_varyings(bc.v, numVaryings, inVaryings, outVaryings);
 
             const math::vec4 fc = outCoords->xyzw[numQueuedFrags];
-            uint_fast32_t haveOutputs = pShader(fc, pUniforms, outVaryings, pOutputs);
+            const uint32_t   xy = outCoords->xy[numQueuedFrags];
+            const uint16_t   x  = 0xFFFFu & xy;
+            const uint16_t   y  = xy >> 16u;
 
-            const int32_t  zi = (int32_t)fc[2]; // better to do the cast here after all candidate pixels have been rejected
-            const uint32_t xy = outCoords->xy[numQueuedFrags];
-            const uint16_t x  = 0xFFFFu & xy;
-            const uint16_t y  = xy >> 16u;
+            uint_fast32_t haveOutputs = pShader(fc, pUniforms, outVaryings, pOutputs);
 
             // branchless select
             switch (-haveOutputs & numOutputs)
             {
-                case 4: fbo->put_alpha_pixel(3, x, y, (uint16_t)zi, pOutputs[3], blendMode);
-                case 3: fbo->put_alpha_pixel(2, x, y, (uint16_t)zi, pOutputs[2], blendMode);
-                case 2: fbo->put_alpha_pixel(1, x, y, (uint16_t)zi, pOutputs[1], blendMode);
-                case 1: fbo->put_alpha_pixel(0, x, y, (uint16_t)zi, pOutputs[0], blendMode);
+                case 4: fbo->put_alpha_pixel(3, x, y, pOutputs[3], blendMode);
+                case 3: fbo->put_alpha_pixel(2, x, y, pOutputs[2], blendMode);
+                case 2: fbo->put_alpha_pixel(1, x, y, pOutputs[1], blendMode);
+                case 1: fbo->put_alpha_pixel(0, x, y, pOutputs[0], blendMode);
             }
 
             if (depthMask)
@@ -780,21 +814,19 @@ void SR_FragmentProcessor::flush_fragments(
             interpolate_tri_varyings(bc.v, numVaryings, inVaryings, outVaryings);
 
             const math::vec4 fc = outCoords->xyzw[numQueuedFrags];
-
-            const int32_t  zi = (int32_t)fc[2]; // better to do the cast here after all candidate pixels have been rejected
-            const uint32_t xy = outCoords->xy[numQueuedFrags];
-            const uint16_t x  = 0xFFFFu & xy;
-            const uint16_t y  = xy >> 16u;
+            const uint32_t   xy = outCoords->xy[numQueuedFrags];
+            const uint16_t   x  = 0xFFFFu & xy;
+            const uint16_t   y  = xy >> 16u;
 
             uint_fast32_t haveOutputs = pShader(fc, pUniforms, outVaryings, pOutputs);
 
             // branchless select
             switch (-haveOutputs & numOutputs)
             {
-                case 4: fbo->put_pixel(3, x, y, (uint16_t)zi, pOutputs[3]);
-                case 3: fbo->put_pixel(2, x, y, (uint16_t)zi, pOutputs[2]);
-                case 2: fbo->put_pixel(1, x, y, (uint16_t)zi, pOutputs[1]);
-                case 1: fbo->put_pixel(0, x, y, (uint16_t)zi, pOutputs[0]);
+                case 4: fbo->put_pixel(3, x, y, pOutputs[3]);
+                case 3: fbo->put_pixel(2, x, y, pOutputs[2]);
+                case 2: fbo->put_pixel(1, x, y, pOutputs[1]);
+                case 1: fbo->put_pixel(0, x, y, pOutputs[0]);
             }
 
             if (depthMask)
