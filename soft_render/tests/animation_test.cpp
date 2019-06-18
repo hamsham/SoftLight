@@ -459,14 +459,14 @@ utils::Pointer<SR_SceneGraph> create_context()
     assert(retCode == 0);
 
     pGraph->mCurrentTransforms[0].scale(math::vec3{0.5f});
-    pGraph->mCurrentTransforms[0].rotate(math::vec3{LS_DEG2RAD(90.f), 0.f, 0.f});
+    pGraph->mCurrentTransforms[0].rotate(math::vec3{0.f, 0.f, LS_PI_OVER_2});
 
     pGraph->copy_node(0);
     pGraph->mCurrentTransforms[36].scale(math::vec3{2.f});
-    pGraph->mCurrentTransforms[36].move(math::vec3{10.f, 0.f, 0.f});
+    pGraph->mCurrentTransforms[36].move(math::vec3{0.f, 10.f, 0.f});
 
     pGraph->copy_node(36);
-    pGraph->mCurrentTransforms[72].rotate(math::vec3{LS_DEG2RAD(-90.f), 0.f, 0.f});
+    pGraph->mCurrentTransforms[72].rotate(math::vec3{-LS_PI_OVER_4, 0.f, 0.f});
     pGraph->mCurrentTransforms[72].move(math::vec3{-10.f, 0.f, 0.f});
 
     pGraph->update();

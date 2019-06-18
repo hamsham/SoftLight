@@ -552,8 +552,6 @@ bool SR_SceneFileLoader::load_scene(const aiScene* const pScene) noexcept
 
     // Find all bone nodes and store their offset matrices
     std::unordered_map<std::string, math::mat4>& offsets = mPreloader.mBoneOffsets;
-    math::mat4 invGlobalTransform = sr_convert_assimp_matrix(pScene->mRootNode->mTransformation);
-    invGlobalTransform = math::inverse(invGlobalTransform);
 
     for (unsigned i = 0; i < pScene->mNumMeshes; ++i)
     {
@@ -566,6 +564,7 @@ bool SR_SceneFileLoader::load_scene(const aiScene* const pScene) noexcept
         }
     }
 
+    math::mat4 invGlobalTransform{1.f};
     read_node_hierarchy(pScene, pScene->mRootNode, SCENE_NODE_ROOT_ID, invGlobalTransform);
 
     for (const SR_SceneNode n : sceneData.mNodes)
@@ -1153,9 +1152,9 @@ size_t SR_SceneFileLoader::get_mesh_group_marker(
 -------------------------------------*/
 void SR_SceneFileLoader::read_node_hierarchy(
     const aiScene* const pScene,
-    const aiNode* const pInNode,
-    const size_t parentId,
-    const math::mat4& invGlobalTransform
+    const aiNode* const  pInNode,
+    const size_t         parentId,
+    math::mat4&          invGlobalTransform
 ) noexcept
 {
     // use the size of the node list as an index which should be returned to
@@ -1210,6 +1209,12 @@ void SR_SceneFileLoader::read_node_hierarchy(
     }
     else if (mPreloader.mBoneOffsets.find(nodeName) != mPreloader.mBoneOffsets.end())
     {
+        if (pInNode->mParent == pScene->mRootNode)
+        {
+            invGlobalTransform = sr_convert_assimp_matrix(pScene->mRootNode->mTransformation);
+            invGlobalTransform = math::inverse(invGlobalTransform);
+        }
+
         currentNode.type = NODE_TYPE_BONE;
         currentNode.dataId = mPreloader.mSceneData.mBoneOffsets.size();
         mPreloader.mSceneData.mInvBoneTransforms.push_back(invGlobalTransform);

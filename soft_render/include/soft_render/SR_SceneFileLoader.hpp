@@ -251,10 +251,10 @@ class SR_SceneFileLoader
      */
     void read_node_hierarchy(
         const aiScene* const pScene,
-        const aiNode* const pNode,
-        const size_t parentId,
-        const ls::math::mat4& invGlobalTransform
-        ) noexcept;
+        const aiNode* const  pNode,
+        const size_t         parentId,
+        ls::math::mat4&      invGlobalTransform
+    ) noexcept;
 
     /**
      * @brief Import a mesh node if an ASSIMP node contains meshes.
