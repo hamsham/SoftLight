@@ -106,7 +106,7 @@ inline math::vec3_t<size_t> get_next_vertex3(const SR_IndexBuffer* pIbo, size_t 
 /*--------------------------------------
  * Cull backfaces of a triangle
 --------------------------------------*/
-inline LS_INLINE bool backface_visible(math::vec4 screenCoords[SR_SHADER_MAX_SCREEN_COORDS]) noexcept
+inline LS_INLINE bool backface_visible(const math::vec4 screenCoords[SR_SHADER_MAX_SCREEN_COORDS]) noexcept
 {
     return (0.f <= math::dot(math::vec4{0.f, 0.f, 1.f, 0.f}, math::normalize(math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0]))));
 }
@@ -126,9 +126,9 @@ inline LS_INLINE bool frontface_visible(const math::vec4 screenCoords[SR_SHADER_
 /*--------------------------------------
  * Cull only triangle outside of the screen
 --------------------------------------*/
-inline LS_INLINE bool face_visible(const math::vec4 worldCoords[SR_SHADER_MAX_WORLD_COORDS]) noexcept
+inline LS_INLINE bool face_visible(const math::vec4 clipCoords[SR_SHADER_MAX_WORLD_COORDS]) noexcept
 {
-    return math::min(worldCoords[0][3], worldCoords[1][3], worldCoords[2][3]) >= 0.f;
+    return math::min(clipCoords[0][3], clipCoords[1][3], clipCoords[2][3]) >= 0.f;
 }
 
 
