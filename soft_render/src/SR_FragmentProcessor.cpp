@@ -251,13 +251,13 @@ bool clip_segment(float num, float denom, float& tE, float& tL)
     return true;
 }
 
-bool sr_clip_liang_barsky(math::vec2 screenCoords[2], const math::vec4_t<int32_t> dimens)
+bool sr_clip_liang_barsky(math::vec2& a, math::vec2& b, const math::vec4_t<int32_t>& dimens)
 {
     float tE, tL;
-    float& x1 = screenCoords[0][0];
-    float& y1 = screenCoords[0][1];
-    float& x2 = screenCoords[1][0];
-    float& y2 = screenCoords[1][1];
+    float& x1 = a[0];
+    float& y1 = a[1];
+    float& x2 = b[0];
+    float& y2 = b[1];
     const float dx = x2 - x1;
     const float dy = y2 - y1;
 
@@ -298,6 +298,11 @@ bool sr_clip_liang_barsky(math::vec2 screenCoords[2], const math::vec4_t<int32_t
     }
 
     return false;
+}
+
+inline bool sr_clip_liang_barsky(math::vec2 screenCoords[2], const math::vec4_t<int32_t>& dimens)
+{
+    return sr_clip_liang_barsky(screenCoords[0], screenCoords[1], dimens);
 }
 
 
@@ -620,11 +625,11 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             }
 
             // perspective correction
-            float persp = math::dot(homogenous, bc);
-            outCoords->bc[numQueuedFrags] = bc * homogenous / persp;
+            float persp = 1.f / math::dot(homogenous, bc);
+            outCoords->bc[numQueuedFrags] = bc * homogenous * persp;
 
-            const math::vec3 outXYZ{xf, yf, z};
-            outCoords->xyz[numQueuedFrags] = outXYZ;
+            const math::vec4 outXYZW{xf, yf, z, persp};
+            outCoords->xyzw[numQueuedFrags] = outXYZW;
 
             const uint32_t outXY = (uint32_t)((0xFFFF & x) | y16);
             outCoords->xy[numQueuedFrags] = outXY;
@@ -709,7 +714,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             const math::vec4&& z           = depth * bc;
             const math::vec4&& depthTexels = depthTesting ? math::vec4{depthBuffer->texel4<float>(x0, y)} : math::vec4{0.f};
             const int32_t      depthTest   = math::sign_mask(depthTesting ? (z - depthTexels) : math::vec4{0.f});
-            const int32_t      end         = math::min<int32_t>(xMax-x0, 4) & -(depthTest != 0x0F);
+            const int32_t      end         = -(depthTest != 0x0F) & math::min<int32_t>(xMax-x0, 4);
 
             for (int32_t i = 0; i < end; ++i)
             {

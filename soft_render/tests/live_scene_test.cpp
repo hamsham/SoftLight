@@ -49,8 +49,15 @@
     #define SR_TEST_DEBUG_AABBS 0
 #endif
 
+#ifndef SR_BENCHMARK_SCENE
+    #define SR_BENCHMARK_SCENE 0
+#endif /* SR_BENCHMARK_SCENE */
+
 namespace math = ls::math;
 namespace utils = ls::utils;
+
+template <typename... data_t>
+using Tuple = utils::Tuple<data_t...>;
 
 
 
@@ -184,10 +191,13 @@ SR_FragmentShader box_frag_shader()
 --------------------------------------*/
 math::vec4 _normal_vert_shader_impl(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4* varyings)
 {
-    const MeshUniforms* pUniforms = static_cast<const MeshUniforms*>(uniforms);
+    // Used to retrieve packed verex data in a single call
+    typedef Tuple<math::vec3, math::vec3> Vertex;
 
-    const math::vec3& vert = *vbo.element<const math::vec3>(vao.offset(0, vertId));
-    const math::vec3& norm = *vbo.element<const math::vec3>(vao.offset(1, vertId));
+    const MeshUniforms* pUniforms = static_cast<const MeshUniforms*>(uniforms);
+    const Vertex&       v         = *vbo.element<const Vertex>(vao.offset(0, vertId));
+    const math::vec3&   vert      = v.const_element<0>();
+    const math::vec3&   norm      = v.const_element<1>();
 
     varyings[0] = pUniforms->modelMatrix * math::vec4_cast(vert, 0.f);
     varyings[1] = pUniforms->modelMatrix * math::vec4_cast(norm, 0.f);
@@ -270,10 +280,14 @@ SR_FragmentShader normal_frag_shader()
 --------------------------------------*/
 math::vec4 _texture_vert_shader_impl(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4* varyings)
 {
+    // Used to retrieve packed verex data in a single call
+    typedef Tuple<math::vec3, math::vec2, math::vec3> Vertex;
+
     const MeshUniforms* pUniforms = static_cast<const MeshUniforms*>(uniforms);
-    const math::vec3&   vert      = *vbo.element<const math::vec3>(vao.offset(0, vertId));
-    const math::vec2&   uv        = *vbo.element<const math::vec2>(vao.offset(1, vertId));
-    const math::vec3&   norm      = *vbo.element<const math::vec3>(vao.offset(2, vertId));
+    const Vertex&       v         = *vbo.element<const Vertex>(vao.offset(0, vertId));
+    const math::vec3&   vert      = v.const_element<0>();
+    const math::vec2&   uv        = v.const_element<1>();
+    const math::vec3&   norm      = v.const_element<2>();
 
     varyings[0] = pUniforms->modelMatrix * math::vec4_cast(vert, 0.f);
     varyings[1] = math::vec4_cast(uv, 0.f, 0.f);
@@ -1041,10 +1055,12 @@ int main()
                 currSeconds = 0.f;
             }
 
+            #if SR_BENCHMARK_SCENE
             if (totalFrames >= 600)
             {
                 shouldQuit = true;
             }
+            #endif
 
             update_cam_position(camTrans, tickTime, pKeySyms);
 
@@ -1081,6 +1097,10 @@ int main()
     }
 
     pRenderBuf->terminate();
+
+    std::cout
+        << "Rendered " << totalFrames << " frames in " << totalSeconds << " seconds ("
+        << ((double)totalFrames/(double)totalSeconds) << " average fps)." << std::endl;
 
     return pWindow->destroy();
 }

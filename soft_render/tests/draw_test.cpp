@@ -29,7 +29,7 @@ math::vec4 _line_vert_shader_impl(const size_t vertId, const SR_VertexArray& vao
 {
     // Using a value of 1000 for the w-component to help with perspective correction.
     const math::vec3& vert = *vbo.element<const math::vec3>(vao.offset(0, vertId));
-    return math::vec4{vert[0], vert[1], vert[2], 1000.f};
+    return math::ortho(0.f, 640.f, 0.f, 480.f, 0.01f, 100.f) * math::vec4{vert[0], vert[1], vert[2], 1.f};
 }
 
 
@@ -173,7 +173,7 @@ int main()
     m.elementBegin = 0;
     m.elementEnd = context.ibos().begin()->count();
     m.vaoId = vaoId;
-    m.mode = RENDER_MODE_TRIANGLES;
+    m.mode = RENDER_MODE_POINTS;
 
     context.draw(m, shaderId, fboId);
 

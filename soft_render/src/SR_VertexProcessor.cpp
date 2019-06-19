@@ -34,7 +34,7 @@ namespace
 /*--------------------------------------
  * Convert world coordinates to screen coordinates (temporary until NDC clipping is added)
 --------------------------------------*/
-inline math::vec4 sr_world_to_screen_coords(const math::vec4& v, const float widthScale, const float heightScale) noexcept
+inline void sr_world_to_screen_coords(math::vec4& v, const float widthScale, const float heightScale) noexcept
 {
     const float wInv = 1.f / v.v[3];
     math::vec4&& temp = v * wInv;
@@ -42,7 +42,10 @@ inline math::vec4 sr_world_to_screen_coords(const math::vec4& v, const float wid
     temp[0] = widthScale  + temp[0] * widthScale;
     temp[1] = heightScale + temp[1] * heightScale;
 
-    return math::vec4{temp[0], temp[1], temp[2], wInv};
+    v[0] = temp[0];
+    v[1] = temp[1];
+    v[2] = temp[2];
+    v[3] = wInv;
 }
 
 
@@ -363,7 +366,7 @@ void SR_VertexProcessor::execute() noexcept
 
             if (vertCoords[0][3] > 0.f)
             {
-                vertCoords[0] = sr_world_to_screen_coords(vertCoords[0], widthScale, heightScale);
+                sr_world_to_screen_coords(vertCoords[0], widthScale, heightScale);
                 push_fragments(fboW, fboH, vertCoords, pVaryings);
             }
         }
@@ -391,8 +394,8 @@ void SR_VertexProcessor::execute() noexcept
 
             if (vertCoords[0][3] >= 0.f && vertCoords[1][3] >= 0.f)
             {
-                vertCoords[0] = sr_world_to_screen_coords(vertCoords[0], widthScale, heightScale);
-                vertCoords[1] = sr_world_to_screen_coords(vertCoords[1], widthScale, heightScale);
+                sr_world_to_screen_coords(vertCoords[0], widthScale, heightScale);
+                sr_world_to_screen_coords(vertCoords[1], widthScale, heightScale);
 
                 push_fragments(fboW, fboH, vertCoords, pVaryings);
             }
@@ -409,16 +412,22 @@ void SR_VertexProcessor::execute() noexcept
         {
             const math::vec3_t<size_t>&& vertId = usingIndices ? get_next_vertex3(pIbo, i) : math::vec3_t<size_t>{i, i+1, i+2};
 
-            vertCoords[0]  = shader(vertId[0], vao, vbo, pUniforms, pVaryings);
-            vertCoords[1]  = shader(vertId[1], vao, vbo, pUniforms, pVaryings + SR_SHADER_MAX_VARYING_VECTORS);
-            vertCoords[2]  = shader(vertId[2], vao, vbo, pUniforms, pVaryings + (SR_SHADER_MAX_VARYING_VECTORS * 2));
+            vertCoords[0] = shader(vertId[0], vao, vbo, pUniforms, pVaryings);
+            vertCoords[1] = shader(vertId[1], vao, vbo, pUniforms, pVaryings + SR_SHADER_MAX_VARYING_VECTORS);
+            vertCoords[2] = shader(vertId[2], vao, vbo, pUniforms, pVaryings + (SR_SHADER_MAX_VARYING_VECTORS * 2));
 
-            vertCoords[0] = sr_world_to_screen_coords(vertCoords[0], widthScale, heightScale);
-            vertCoords[1] = sr_world_to_screen_coords(vertCoords[1], widthScale, heightScale);
-            vertCoords[2] = sr_world_to_screen_coords(vertCoords[2], widthScale, heightScale);
+            // Clip-space culling
+            if (!face_visible(vertCoords))
+            {
+                continue;
+            }
 
-            if (face_visible(vertCoords)
-            && ((cullMode == SR_CULL_BACK_FACE && backface_visible(vertCoords))
+            sr_world_to_screen_coords(vertCoords[0], widthScale, heightScale);
+            sr_world_to_screen_coords(vertCoords[1], widthScale, heightScale);
+            sr_world_to_screen_coords(vertCoords[2], widthScale, heightScale);
+
+            if (((cullMode == SR_CULL_OFF)
+            || (cullMode == SR_CULL_BACK_FACE && backface_visible(vertCoords))
             || (cullMode == SR_CULL_FRONT_FACE && frontface_visible(vertCoords))))
             {
                 push_fragments(fboW, fboH, vertCoords, pVaryings);
