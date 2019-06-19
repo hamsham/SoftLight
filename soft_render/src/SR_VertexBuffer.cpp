@@ -6,7 +6,7 @@
 
 
 /*--------------------------------------
- *
+ * Destructor
 --------------------------------------*/
 SR_VertexBuffer::~SR_VertexBuffer() noexcept
 {
@@ -16,7 +16,7 @@ SR_VertexBuffer::~SR_VertexBuffer() noexcept
 
 
 /*--------------------------------------
- *
+ * Constructor
 --------------------------------------*/
 SR_VertexBuffer::SR_VertexBuffer() noexcept :
     mNumBytes{},
@@ -26,7 +26,7 @@ SR_VertexBuffer::SR_VertexBuffer() noexcept :
 
 
 /*--------------------------------------
- *
+ * Copy Constructor
 --------------------------------------*/
 SR_VertexBuffer::SR_VertexBuffer(const SR_VertexBuffer& v) noexcept :
     mNumBytes{v.mNumBytes},
@@ -41,7 +41,7 @@ SR_VertexBuffer::SR_VertexBuffer(const SR_VertexBuffer& v) noexcept :
 
 
 /*--------------------------------------
- *
+ * Move Constructor
 --------------------------------------*/
 SR_VertexBuffer::SR_VertexBuffer(SR_VertexBuffer&& v) noexcept :
     mNumBytes{v.mNumBytes},
@@ -53,7 +53,7 @@ SR_VertexBuffer::SR_VertexBuffer(SR_VertexBuffer&& v) noexcept :
 
 
 /*--------------------------------------
- *
+ * Copy Operator
 --------------------------------------*/
 SR_VertexBuffer& SR_VertexBuffer::operator=(const SR_VertexBuffer& v) noexcept
 {
@@ -73,7 +73,7 @@ SR_VertexBuffer& SR_VertexBuffer::operator=(const SR_VertexBuffer& v) noexcept
 
 
 /*--------------------------------------
- *
+ * Move Operator
 --------------------------------------*/
 SR_VertexBuffer& SR_VertexBuffer::operator=(SR_VertexBuffer&& v) noexcept
 {
@@ -91,9 +91,9 @@ SR_VertexBuffer& SR_VertexBuffer::operator=(SR_VertexBuffer&& v) noexcept
 
 
 /*--------------------------------------
- *
+ * Initialize the data in *this
 --------------------------------------*/
-int SR_VertexBuffer::init(size_t numBytes, const void* pData)
+int SR_VertexBuffer::init(size_t numBytes, const void* pData) noexcept
 {
     if (!numBytes)
     {
@@ -114,9 +114,9 @@ int SR_VertexBuffer::init(size_t numBytes, const void* pData)
 
 
 /*--------------------------------------
- *
+ * Delete all data used by *this.
 --------------------------------------*/
-void SR_VertexBuffer::terminate()
+void SR_VertexBuffer::terminate() noexcept
 {
     mNumBytes = 0;
     mBuffer.reset();

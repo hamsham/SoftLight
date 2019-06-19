@@ -1,6 +1,8 @@
 
 #include <algorithm>
 
+#include "lightsky/utils/Assertions.h" // LS_DEBUG_ASSERT
+#include "lightsky/utils/Log.h"
 #include "lightsky/utils/Sort.hpp" // utils::sort_quick
 
 #include "lightsky/math/vec4.h"
@@ -67,35 +69,29 @@ inline size_t get_next_vertex(const SR_IndexBuffer* pIbo, size_t vId) noexcept
 inline math::vec3_t<size_t> get_next_vertex3(const SR_IndexBuffer* pIbo, size_t vId) noexcept
 {
     math::vec3_t<size_t> ret;
-    const unsigned char* pByte;
-    const unsigned short* pShort;
-    const unsigned int* pInt;
+    math::vec3_t<unsigned char> byteIds;
+    math::vec3_t<unsigned short> shortIds;
+    math::vec3_t<unsigned int> intIds;
 
     switch (pIbo->type())
     {
         case VERTEX_DATA_BYTE:
-            pByte = reinterpret_cast<const unsigned char*>(pIbo->element(vId));
-            ret[0] = (size_t)pByte[0];
-            ret[1] = (size_t)pByte[1];
-            ret[2] = (size_t)pByte[2];
+            byteIds = *reinterpret_cast<const decltype(byteIds)*>(pIbo->element(vId));
+            ret = (math::vec3_t<size_t>)byteIds;
             break;
 
         case VERTEX_DATA_SHORT:
-            pShort = reinterpret_cast<const unsigned short*>(pIbo->element(vId));
-            ret[0] = (size_t)pShort[0];
-            ret[1] = (size_t)pShort[1];
-            ret[2] = (size_t)pShort[2];
+            shortIds = *reinterpret_cast<const decltype(shortIds)*>(pIbo->element(vId));
+            ret = (math::vec3_t<size_t>)shortIds;
             break;
 
         case VERTEX_DATA_INT:
-            pInt = reinterpret_cast<const unsigned int*>(pIbo->element(vId));
-            ret[0] = (size_t)pInt[0];
-            ret[1] = (size_t)pInt[1];
-            ret[2] = (size_t)pInt[2];
+            intIds = *reinterpret_cast<const decltype(intIds)*>(pIbo->element(vId));
+            ret = (math::vec3_t<size_t>)intIds;
             break;
 
         default:
-            abort();
+            LS_DEBUG_ASSERT(false);
             break;
     }
 
@@ -107,10 +103,9 @@ inline math::vec3_t<size_t> get_next_vertex3(const SR_IndexBuffer* pIbo, size_t 
 /*--------------------------------------
  * Cull backfaces of a triangle
 --------------------------------------*/
-inline bool backface_visible(math::vec4 screenCoords[SR_SHADER_MAX_SCREEN_COORDS], const math::vec4 worldCoords[SR_SHADER_MAX_WORLD_COORDS]) noexcept
+inline LS_INLINE bool backface_visible(math::vec4 screenCoords[SR_SHADER_MAX_SCREEN_COORDS]) noexcept
 {
-    return math::min(worldCoords[0][3], worldCoords[1][3], worldCoords[2][3]) > 0.f &&
-           (0.f < math::dot(math::vec4{0.f, 0.f, 1.f, 0.f}, math::normalize(math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0]))));
+    return (0.f <= math::dot(math::vec4{0.f, 0.f, 1.f, 0.f}, math::normalize(math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0]))));
 }
 
 
@@ -118,10 +113,9 @@ inline bool backface_visible(math::vec4 screenCoords[SR_SHADER_MAX_SCREEN_COORDS
 /*--------------------------------------
  * Cull frontfaces of a triangle
 --------------------------------------*/
-inline bool frontface_visible(const math::vec4 screenCoords[SR_SHADER_MAX_SCREEN_COORDS], const math::vec4 worldCoords[SR_SHADER_MAX_WORLD_COORDS]) noexcept
+inline LS_INLINE bool frontface_visible(const math::vec4 screenCoords[SR_SHADER_MAX_SCREEN_COORDS]) noexcept
 {
-    return math::min(worldCoords[0][3], worldCoords[1][3], worldCoords[2][3]) >= 0.f &&
-           (0.f > math::dot(math::vec4{0.f, 0.f, 1.f, 0.f}, math::normalize(math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0]))));
+    return (0.f >= math::dot(math::vec4{0.f, 0.f, 1.f, 0.f}, math::normalize(math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0]))));
 }
 
 
@@ -129,9 +123,9 @@ inline bool frontface_visible(const math::vec4 screenCoords[SR_SHADER_MAX_SCREEN
 /*--------------------------------------
  * Cull only triangle outside of the screen
 --------------------------------------*/
-inline bool face_visible(const math::vec4 worldCoords[SR_SHADER_MAX_WORLD_COORDS]) noexcept
+inline LS_INLINE bool face_visible(const math::vec4 worldCoords[SR_SHADER_MAX_WORLD_COORDS]) noexcept
 {
-    return math::min(worldCoords[0][3], worldCoords[1][3], worldCoords[2][3]) > 0.f;
+    return math::min(worldCoords[0][3], worldCoords[1][3], worldCoords[2][3]) >= 0.f;
 }
 
 
@@ -273,6 +267,8 @@ void SR_VertexProcessor::push_fragments(
         bboxMaxY = math::max(p0[1], p1[1], p2[1]);
     }
 
+    //LS_LOG_MSG(bboxMinX, ' ', bboxMinY, " x ", bboxMaxX, ' ', bboxMaxY);
+
     const int isFragVisible = (bboxMaxX >= 0.f && fboW >= bboxMinX && bboxMaxY >= 0.f && fboH >= bboxMinY);
 
     if (isFragVisible)
@@ -402,12 +398,12 @@ void SR_VertexProcessor::execute() noexcept
             }
         }
     }
-    else if (mMesh.mode == RENDER_MODE_TRI_WIRE || mMesh.mode == RENDER_MODE_INDEXED_TRI_WIRE)
+    else if (mMesh.mode & (RENDER_MODE_TRIANGLES | RENDER_MODE_INDEXED_TRIANGLES | RENDER_MODE_TRI_WIRE | RENDER_MODE_INDEXED_TRI_WIRE))
     {
         // 3 vertices per set of lines
         begin += mThreadId * 3u;
         const size_t step = mNumThreads * 3u;
-        const bool usingIndices = mMesh.mode == RENDER_MODE_INDEXED_TRI_WIRE;
+        const int usingIndices = mMesh.mode & ((RENDER_MODE_INDEXED_TRIANGLES | RENDER_MODE_INDEXED_TRI_WIRE) ^ (RENDER_MODE_TRIANGLES | RENDER_MODE_TRI_WIRE));
 
         for (size_t i = begin; i < end; i += step)
         {
@@ -421,35 +417,9 @@ void SR_VertexProcessor::execute() noexcept
             vertCoords[1] = sr_world_to_screen_coords(vertCoords[1], widthScale, heightScale);
             vertCoords[2] = sr_world_to_screen_coords(vertCoords[2], widthScale, heightScale);
 
-            if ((cullMode == SR_CULL_BACK_FACE && backface_visible(vertCoords, vertCoords))
-                || (cullMode == SR_CULL_FRONT_FACE && frontface_visible(vertCoords, vertCoords))
-                || (cullMode == SR_CULL_OFF && face_visible(vertCoords)))
-            {
-                push_fragments(fboW, fboH, vertCoords, pVaryings);
-            }
-        }
-    }
-    else if (mMesh.mode & (RENDER_MODE_TRIANGLES | RENDER_MODE_INDEXED_TRIANGLES))
-    {
-        // 3 vertices per triangle
-        begin += mThreadId * 3u;
-        const size_t step = mNumThreads * 3u;
-        const bool usingIndices = mMesh.mode == RENDER_MODE_INDEXED_TRIANGLES;
-
-        for (size_t i = begin; i < end; i += step)
-        {
-            const math::vec3_t<size_t>&& vertId = usingIndices ? get_next_vertex3(pIbo, i) : math::vec3_t<size_t>{i, i+1, i+2};
-            vertCoords[0]  = shader(vertId[0], vao, vbo, pUniforms, pVaryings);
-            vertCoords[1]  = shader(vertId[1], vao, vbo, pUniforms, pVaryings + SR_SHADER_MAX_VARYING_VECTORS);
-            vertCoords[2]  = shader(vertId[2], vao, vbo, pUniforms, pVaryings + (SR_SHADER_MAX_VARYING_VECTORS << 1));
-
-            vertCoords[0] = sr_world_to_screen_coords(vertCoords[0], widthScale, heightScale);
-            vertCoords[1] = sr_world_to_screen_coords(vertCoords[1], widthScale, heightScale);
-            vertCoords[2] = sr_world_to_screen_coords(vertCoords[2], widthScale, heightScale);
-
-            if ((cullMode == SR_CULL_BACK_FACE && backface_visible(vertCoords, vertCoords))
-            || (cullMode == SR_CULL_FRONT_FACE && frontface_visible(vertCoords, vertCoords))
-            || (cullMode == SR_CULL_OFF && face_visible(vertCoords)))
+            if (face_visible(vertCoords)
+            && ((cullMode == SR_CULL_BACK_FACE && backface_visible(vertCoords))
+            || (cullMode == SR_CULL_FRONT_FACE && frontface_visible(vertCoords))))
             {
                 push_fragments(fboW, fboH, vertCoords, pVaryings);
             }

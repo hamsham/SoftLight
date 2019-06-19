@@ -6,7 +6,7 @@
 
 
 /*--------------------------------------
- *
+ * Destructor
 --------------------------------------*/
 SR_IndexBuffer::~SR_IndexBuffer() noexcept
 {
@@ -16,7 +16,7 @@ SR_IndexBuffer::~SR_IndexBuffer() noexcept
 
 
 /*--------------------------------------
- *
+ * Constructor
 --------------------------------------*/
 SR_IndexBuffer::SR_IndexBuffer() noexcept :
     mType{SR_DataType::VERTEX_DATA_INT},
@@ -28,7 +28,7 @@ SR_IndexBuffer::SR_IndexBuffer() noexcept :
 
 
 /*--------------------------------------
- *
+ * Copy Constructor
 --------------------------------------*/
 SR_IndexBuffer::SR_IndexBuffer(const SR_IndexBuffer& v) noexcept :
     mType{v.mType},
@@ -47,7 +47,7 @@ SR_IndexBuffer::SR_IndexBuffer(const SR_IndexBuffer& v) noexcept :
 
 
 /*--------------------------------------
- *
+ * Move Constructor
 --------------------------------------*/
 SR_IndexBuffer::SR_IndexBuffer(SR_IndexBuffer&& v) noexcept :
     mType{v.mType},
@@ -63,7 +63,7 @@ SR_IndexBuffer::SR_IndexBuffer(SR_IndexBuffer&& v) noexcept :
 
 
 /*--------------------------------------
- *
+ * Copy Operator
 --------------------------------------*/
 SR_IndexBuffer& SR_IndexBuffer::operator=(const SR_IndexBuffer& v) noexcept
 {
@@ -86,7 +86,7 @@ SR_IndexBuffer& SR_IndexBuffer::operator=(const SR_IndexBuffer& v) noexcept
 
 
 /*--------------------------------------
- *
+ * Move Operator
 --------------------------------------*/
 SR_IndexBuffer& SR_IndexBuffer::operator=(SR_IndexBuffer&& v) noexcept
 {
@@ -110,9 +110,9 @@ SR_IndexBuffer& SR_IndexBuffer::operator=(SR_IndexBuffer&& v) noexcept
 
 
 /*--------------------------------------
- *
+ * Initialize the data in *this to empty values
 --------------------------------------*/
-int SR_IndexBuffer::init(uint32_t numElements, SR_DataType type, const void* pData)
+int SR_IndexBuffer::init(uint32_t numElements, SR_DataType type, const void* pData) noexcept
 {
     assert(type == SR_DataType::VERTEX_DATA_BYTE ||
            type == SR_DataType::VERTEX_DATA_SHORT ||
@@ -142,9 +142,9 @@ int SR_IndexBuffer::init(uint32_t numElements, SR_DataType type, const void* pDa
 
 
 /*--------------------------------------
- *
+ * Delete all data in *this.
 --------------------------------------*/
-void SR_IndexBuffer::terminate()
+void SR_IndexBuffer::terminate() noexcept
 {
     mType = SR_DataType::VERTEX_DATA_INT;
     mBytesPerId = sr_bytes_per_vertex(mType, SR_Dimension::VERTEX_DIMENSION_1);

@@ -1,18 +1,14 @@
 
-#include <limits> // std::numeric_limits
 #include <utility> // std::move()
 
 #include "soft_render/SR_VertexArray.hpp"
 
 
-constexpr uint32_t SR_INVALID_BUFFER_ID = std::numeric_limits<uint32_t>::max();
-
-
 
 /*--------------------------------------
- *
+ * Destructor
 --------------------------------------*/
-SR_VertexArray::~SR_VertexArray()
+SR_VertexArray::~SR_VertexArray() noexcept
 {
     terminate();
 }
@@ -20,9 +16,9 @@ SR_VertexArray::~SR_VertexArray()
 
 
 /*--------------------------------------
- *
+ * Constructor
 --------------------------------------*/
-SR_VertexArray::SR_VertexArray() :
+SR_VertexArray::SR_VertexArray() noexcept :
     mVboId{SR_INVALID_BUFFER_ID},
     mIboId{SR_INVALID_BUFFER_ID},
     mDimens{},
@@ -34,9 +30,9 @@ SR_VertexArray::SR_VertexArray() :
 
 
 /*--------------------------------------
- *
+ * Copy Constructor
 --------------------------------------*/
-SR_VertexArray::SR_VertexArray(const SR_VertexArray& v) :
+SR_VertexArray::SR_VertexArray(const SR_VertexArray& v) noexcept :
     mVboId{v.mVboId},
     mIboId{v.mIboId},
     mDimens{v.mDimens},
@@ -48,9 +44,9 @@ SR_VertexArray::SR_VertexArray(const SR_VertexArray& v) :
 
 
 /*--------------------------------------
- *
+ * Move Constructor
 --------------------------------------*/
-SR_VertexArray::SR_VertexArray(SR_VertexArray&& v) :
+SR_VertexArray::SR_VertexArray(SR_VertexArray&& v) noexcept :
     mVboId{v.mVboId},
     mIboId{v.mIboId},
     mDimens{std::move(v.mDimens)},
@@ -65,9 +61,9 @@ SR_VertexArray::SR_VertexArray(SR_VertexArray&& v) :
 
 
 /*--------------------------------------
- *
+ * Copy Operator
 --------------------------------------*/
-SR_VertexArray& SR_VertexArray::operator=(const SR_VertexArray& v)
+SR_VertexArray& SR_VertexArray::operator=(const SR_VertexArray& v) noexcept
 {
     if (this != &v)
     {
@@ -86,9 +82,9 @@ SR_VertexArray& SR_VertexArray::operator=(const SR_VertexArray& v)
 
 
 /*--------------------------------------
- *
+ * Move Operator
 --------------------------------------*/
-SR_VertexArray& SR_VertexArray::operator=(SR_VertexArray&& v)
+SR_VertexArray& SR_VertexArray::operator=(SR_VertexArray&& v) noexcept
 {
     if (this != &v)
     {
@@ -110,9 +106,9 @@ SR_VertexArray& SR_VertexArray::operator=(SR_VertexArray&& v)
 
 
 /*--------------------------------------
- *
+ * Set the number of VBO bindings to monitor
 --------------------------------------*/
-int SR_VertexArray::set_num_bindings(std::size_t numBindings)
+int SR_VertexArray::set_num_bindings(std::size_t numBindings) noexcept
 {
     if (numBindings == num_bindings())
     {
@@ -144,24 +140,14 @@ int SR_VertexArray::set_num_bindings(std::size_t numBindings)
 
 
 /*--------------------------------------
- *
---------------------------------------*/
-std::size_t SR_VertexArray::num_bindings() const
-{
-    return mDimens.size();
-}
-
-
-
-/*--------------------------------------
- *
+ * Set the metadata of a VBO binding
 --------------------------------------*/
 void SR_VertexArray::set_binding(
     std::size_t bindId,
     ptrdiff_t offset,
     ptrdiff_t stride,
     SR_Dimension numDimens,
-    SR_DataType vertType)
+    SR_DataType vertType) noexcept
 {
     mDimens[bindId]  = numDimens;
     mTypes[bindId]   = vertType;
@@ -172,59 +158,9 @@ void SR_VertexArray::set_binding(
 
 
 /*--------------------------------------
- *
+ * Remove a VBO binding
 --------------------------------------*/
-ptrdiff_t SR_VertexArray::offset(std::size_t bindId) const
-{
-    return mOffsets[bindId];
-}
-
-
-
-/*--------------------------------------
- *
---------------------------------------*/
-ptrdiff_t SR_VertexArray::offset(std::size_t bindId, std::size_t vertId) const
-{
-    return mOffsets[bindId] + (mStrides[bindId] * vertId);
-}
-
-
-
-/*--------------------------------------
- *
---------------------------------------*/
-ptrdiff_t SR_VertexArray::stride(std::size_t bindId) const
-{
-    return mStrides[bindId];
-}
-
-
-
-/*--------------------------------------
- *
---------------------------------------*/
-SR_DataType SR_VertexArray::type(std::size_t bindId) const
-{
-    return mTypes[bindId];
-}
-
-
-
-/*--------------------------------------
- *
---------------------------------------*/
-SR_Dimension SR_VertexArray::dimensions(std::size_t bindId) const
-{
-    return mDimens[bindId];
-}
-
-
-
-/*--------------------------------------
- *
---------------------------------------*/
-void SR_VertexArray::remove_binding(std::size_t bindId)
+void SR_VertexArray::remove_binding(std::size_t bindId) noexcept
 {
     mDimens.erase(mDimens.begin() + bindId);
     mTypes.erase(mTypes.begin() + bindId);
@@ -235,69 +171,9 @@ void SR_VertexArray::remove_binding(std::size_t bindId)
 
 
 /*--------------------------------------
- *
+ * Clear all data assigned to *this.
 --------------------------------------*/
-void SR_VertexArray::set_vertex_buffer(size_t vboId)
-{
-    mVboId = vboId;
-}
-
-
-
-/*--------------------------------------
- *
---------------------------------------*/
-void SR_VertexArray::remove_vertex_buffer()
-{
-    mVboId = SR_INVALID_BUFFER_ID;
-}
-
-
-
-/*--------------------------------------
- *
---------------------------------------*/
-bool SR_VertexArray::has_vertex_buffer() const
-{
-    return mVboId != SR_INVALID_BUFFER_ID;
-}
-
-
-
-/*--------------------------------------
- *
---------------------------------------*/
-void SR_VertexArray::set_index_buffer(size_t iboId)
-{
-    mIboId = iboId;
-}
-
-
-
-/*--------------------------------------
- *
---------------------------------------*/
-void SR_VertexArray::remove_index_buffer()
-{
-    mIboId = SR_INVALID_BUFFER_ID;
-}
-
-
-
-/*--------------------------------------
- *
---------------------------------------*/
-bool SR_VertexArray::has_index_buffer() const
-{
-    return mIboId != SR_INVALID_BUFFER_ID;
-}
-
-
-
-/*--------------------------------------
- *
---------------------------------------*/
-void SR_VertexArray::terminate()
+void SR_VertexArray::terminate() noexcept
 {
     mVboId = SR_INVALID_BUFFER_ID;
     mIboId = SR_INVALID_BUFFER_ID;
