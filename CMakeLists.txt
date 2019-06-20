@@ -98,7 +98,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     add_definitions(/Oi) # enable instrinsic functions
     add_definitions(/Ot) # favor fast code
     add_definitions(/Oy) # Omit frame pointers
-    add_definitions(/Ox) # Optimize, optimize, optimize
+    #add_definitions(/Ox) # Optimize, optimize, optimize
     add_definitions(/permissive-) # enable conformance mode
     add_definitions(/Wall) # enable all warnings
     add_definitions(/GS-) # Disable global security cookies

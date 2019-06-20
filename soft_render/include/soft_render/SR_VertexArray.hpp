@@ -11,10 +11,7 @@
 
 class SR_VertexArray
 {
-    enum
-    {
-        SR_INVALID_BUFFER_ID = std::numeric_limits<uint32_t>::max()
-    };
+    static constexpr uint32_t SR_INVALID_BUFFER_ID = std::numeric_limits<uint32_t>::max();
 
   private:
     uint64_t mVboId;
