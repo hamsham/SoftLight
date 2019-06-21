@@ -65,13 +65,13 @@ struct alignas(sizeof(ls::math::vec4)) SR_FragmentBin
 };
 
 // Comparison operator for sorting blended fragments by depth
-inline LS_IMPERATIVE bool operator < (const SR_FragmentBin& a, const SR_FragmentBin& b)
+inline LS_INLINE bool operator < (const SR_FragmentBin& a, const SR_FragmentBin& b)
 {
     return *reinterpret_cast<const int32_t*>(a.mScreenCoords[0].v+3) < *reinterpret_cast<const int32_t*>(b.mScreenCoords[0].v+3);
 }
 
 // Comparison operator for sorting fragments by depth
-inline LS_IMPERATIVE bool operator > (const SR_FragmentBin& a, const SR_FragmentBin& b)
+inline LS_INLINE bool operator > (const SR_FragmentBin& a, const SR_FragmentBin& b)
 {
     return *reinterpret_cast<const int32_t*>(a.mScreenCoords[0].v+3) > *reinterpret_cast<const int32_t*>(b.mScreenCoords[0].v+3);
 }
