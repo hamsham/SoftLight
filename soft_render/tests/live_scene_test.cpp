@@ -50,7 +50,7 @@
 #endif
 
 #ifndef SR_BENCHMARK_SCENE
-    #define SR_BENCHMARK_SCENE 0
+    #define SR_BENCHMARK_SCENE 1
 #endif /* SR_BENCHMARK_SCENE */
 
 namespace math = ls::math;
