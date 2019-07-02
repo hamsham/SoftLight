@@ -426,9 +426,9 @@ void SR_VertexProcessor::execute() noexcept
             sr_world_to_screen_coords(vertCoords[1], widthScale, heightScale);
             sr_world_to_screen_coords(vertCoords[2], widthScale, heightScale);
 
-            if (((cullMode == SR_CULL_OFF)
-            || (cullMode == SR_CULL_BACK_FACE && backface_visible(vertCoords))
-            || (cullMode == SR_CULL_FRONT_FACE && frontface_visible(vertCoords))))
+            if ((cullMode == SR_CULL_BACK_FACE && backface_visible(vertCoords))
+            || (cullMode == SR_CULL_FRONT_FACE && frontface_visible(vertCoords))
+            || (cullMode == SR_CULL_OFF))
             {
                 push_fragments(fboW, fboH, vertCoords, pVaryings);
             }
