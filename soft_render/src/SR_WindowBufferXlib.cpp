@@ -150,7 +150,13 @@ int SR_WindowBufferXlib::init(SR_RenderWindow& win, unsigned width, unsigned hei
     // the X11-shared memory extension.
     // Hopefully this won't fail...
     pShm->shmid    = shmget(IPC_PRIVATE, width*height*sizeof(SR_ColorRGBA8), IPC_CREAT|permissions);
+
+    #ifdef LS_OS_LINUX
     pShm->shmaddr  = pImg->data = (char*)shmat(pShm->shmid, pTexData, SHM_REMAP);
+    #else
+    pShm->shmaddr  = pImg->data = (char*)shmat(pShm->shmid, pTexData, SHM_RND);
+    #endif
+
     pShm->readOnly = False;
 
     if ((long long)(pImg->data) == -1ll || XShmAttach(pWin->mDisplay, pShm) == False)
