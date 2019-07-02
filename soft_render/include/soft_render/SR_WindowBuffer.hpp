@@ -35,7 +35,7 @@ class SR_Texture;
 class SR_WindowBuffer
 {
     friend class SR_Context;
-    friend class SR_ShaderProcessor;
+    friend struct SR_ShaderProcessor;
 
   public:
     static ls::utils::Pointer<SR_WindowBuffer> create() noexcept;

@@ -1,6 +1,14 @@
 
 #include <cstddef> // ptrdiff_t
 
+#include "lightsky/setup/OS.h"
+
+// Textures on POSIX-based systems are page-aligned. On windows, they're
+// aligned to the size of a vector register (__m256 or float32x4_t).
+#ifndef LS_OS_WINDOWS
+    #include <unistd.h> // posix_memalign(), sysconf(_SC_PAGESIZE)
+#endif
+
 #include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Pointer.h" // aligned allocation
 
@@ -23,7 +31,13 @@ char* _sr_allocate_texture(size_t w, size_t h, size_t d, size_t bpt)
     const size_t wAlignment = 8 - (w%8);
     const size_t hAlignment = 8 - (h%8);
     const size_t numBytes   = (w + wAlignment) * (h + hAlignment) * d * bpt;
+
+    #ifdef LS_OS_WINDOWS
     char* const  pTexels    = (char*)ls::utils::aligned_malloc(numBytes);
+    #else
+    char* pTexels;
+    posix_memalign((void**)&pTexels, sysconf(_SC_PAGESIZE), numBytes);
+    #endif
 
     ls::utils::fast_memset(pTexels, 0, numBytes);
 
@@ -45,7 +59,13 @@ char* _sr_copy_texture(size_t w, size_t h, size_t d, size_t bpt, const char* pDa
     const uint16_t wAlignment = 8 - (w%8);
     const uint16_t hAlignment = 8 - (h%8);
     const size_t   numBytes   = (w + wAlignment) * (h + hAlignment) * d * bpt;
-    char* const    pTexels    = (char*)ls::utils::aligned_malloc(numBytes);
+
+    #ifdef LS_OS_WINDOWS
+    char* const  pTexels    = (char*)ls::utils::aligned_malloc(numBytes);
+    #else
+    char* pTexels;
+    posix_memalign((void**)&pTexels, sysconf(_SC_PAGESIZE), numBytes);
+    #endif
 
     ls::utils::fast_memcpy(pTexels, pData, numBytes);
 
@@ -333,7 +353,12 @@ void SR_Texture::terminate() noexcept
     mBytesPerTexel = 0;
     mNumChannels = 0;
 
+    #ifdef LS_OS_WINDOWS
     ls::utils::aligned_free(mTexels);
+    #else
+    free(mTexels);
+    #endif
+
     mTexels = nullptr;
 }
 

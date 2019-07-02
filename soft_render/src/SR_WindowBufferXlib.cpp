@@ -2,6 +2,9 @@
 #include <cstdint> // fixed-width types
 #include <cstdlib>
 #include <utility> // std::move()
+#include <cstdio> // perror
+
+#include <unistd.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -10,6 +13,8 @@
 #include <sys/ipc.h> // IPC_CREAT
 #include <sys/shm.h> // shmget
 #include <sys/stat.h> // SR_IRWXU
+
+#include "lightsky/utils/Log.h"
 
 #include "soft_render/SR_Color.hpp"
 #include "soft_render/SR_RenderWindowXlib.hpp"
@@ -113,27 +118,18 @@ int SR_WindowBufferXlib::init(SR_RenderWindow& win, unsigned width, unsigned hei
         return -3;
     }
 
-    // Leaving this in case I need to go back to a default X11 implementation.
-    /*
-    char* pData = (char*)malloc(width*height*sizeof(uint8_t)*4);
-    if (!pData)
-    {
-        return -4;
-    }
-    */
-
-    //XImage* pImg = XCreateImage(pWin->mDisplay, pVisual, 24, ZPixmap, 0, pData, width, height, 32, 0);
-
     if (mTexture.init(SR_COLOR_RGBA_8U, width, height, 1) != 0)
     {
-        ls::utils::aligned_free(pInfo);
         return -4;
     }
 
-    char* const      pTexData = reinterpret_cast<char*>(mTexture.data());
+    char*            pTexData = reinterpret_cast<char*>(mTexture.data());
     XShmSegmentInfo* pShm     = new XShmSegmentInfo;
     XImage*          pImg     = XShmCreateImage(pWin->mDisplay, pVisual, 24, ZPixmap, pTexData, pShm, width, height);
 
+    // Leaving this in case I need to go back to a default X11 implementation.
+    //XImage* pImg = XCreateImage(pWin->mDisplay, pVisual, 24, ZPixmap, 0, pData, width, height, 32, 0);
+    
     if (!pImg)
     {
         //free(pData);
@@ -152,11 +148,14 @@ int SR_WindowBufferXlib::init(SR_RenderWindow& win, unsigned width, unsigned hei
         | S_IWGRP
         | 0;
 
-    pShm->shmid = shmget(IPC_PRIVATE, width*height*sizeof(SR_ColorRGBA8), IPC_CREAT|permissions);
-    pShm->shmaddr = pImg->data = (char*)shmat(pShm->shmid, pTexData, 0);
+    // Textures on POSIX-based systems are page-aligned to ensure we can use
+    // the X11-shared memory extension.
+    // Hopefully this won't fail...
+    pShm->shmid    = shmget(IPC_PRIVATE, width*height*sizeof(SR_ColorRGBA8), IPC_CREAT|permissions);
+    pShm->shmaddr  = pImg->data = (char*)shmat(pShm->shmid, pTexData, SHM_REMAP);
     pShm->readOnly = False;
 
-    if (shmctl(pShm->shmid, IPC_RMID, nullptr) < 0 || XShmAttach(pWin->mDisplay, pShm) == False)
+    if ((long long)(pImg->data) == -1ll || XShmAttach(pWin->mDisplay, pShm) == False)
     {
         //free(pData);
         mTexture.terminate();

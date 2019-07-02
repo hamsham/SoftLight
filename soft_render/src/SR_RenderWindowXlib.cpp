@@ -1061,6 +1061,19 @@ void SR_RenderWindowXlib::render(SR_WindowBuffer& buffer) noexcept
         height(),
         False
     );
+
+    /*
+    XPutImage(
+        mDisplay,
+        mWindow,
+        DefaultGC(mDisplay, DefaultScreen(mDisplay)),
+        reinterpret_cast<XImage*>(buffer.native_handle()),
+        0, 0,
+        0, 0,
+        width(),
+        height()
+    );
+    */
 }
 
 
