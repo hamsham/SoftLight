@@ -158,7 +158,42 @@ class SR_Context
     /*
      *
      */
+    void blit(size_t outTextureId, size_t inTextureId) noexcept;
+
+    /*
+     *
+     */
+    void blit(
+        size_t outTextureId,
+        size_t inTextureId,
+        uint16_t srcX0,
+        uint16_t srcY0,
+        uint16_t srcX1,
+        uint16_t srcY1,
+        uint16_t dstX0,
+        uint16_t dstY0,
+        uint16_t dstX1,
+        uint16_t dstY1) noexcept;
+
+    /*
+     *
+     */
     void blit(SR_WindowBuffer& buffer, size_t textureId) noexcept;
+
+    /*
+     *
+     */
+    void blit(
+        SR_WindowBuffer& buffer,
+        size_t textureId,
+        uint16_t srcX0,
+        uint16_t srcY0,
+        uint16_t srcX1,
+        uint16_t srcY1,
+        uint16_t dstX0,
+        uint16_t dstY0,
+        uint16_t dstX1,
+        uint16_t dstY1) noexcept;
 
     /*
      *

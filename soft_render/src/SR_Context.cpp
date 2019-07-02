@@ -13,6 +13,7 @@
 #include "soft_render/SR_Texture.hpp"
 #include "soft_render/SR_VertexArray.hpp"
 #include "soft_render/SR_VertexBuffer.hpp"
+#include "soft_render/SR_WindowBuffer.hpp"
 
 
 
@@ -550,9 +551,120 @@ void SR_Context::draw(const SR_Mesh& m, size_t shaderId, size_t fboId) noexcept
 /*-------------------------------------
  * Blit to a window
 -------------------------------------*/
+void SR_Context::blit(size_t outTextureId, size_t inTextureId) noexcept
+{
+    SR_Texture*    pOut  = mTextures[outTextureId];
+    SR_Texture*    pIn   = mTextures[inTextureId];
+    const uint16_t srcX0 = 0;
+    const uint16_t srcY0 = 0;
+    const uint16_t srcX1 = pIn->width();
+    const uint16_t srcY1 = pIn->height();
+    const uint16_t dstX0 = 0;
+    const uint16_t dstY0 = 0;
+    const uint16_t dstX1 = pOut->width();
+    const uint16_t dstY1 = pOut->height();
+
+    mProcessors.run_blit_processors(
+        mTextures[inTextureId],
+        mTextures[outTextureId],
+        srcX0,
+        srcY0,
+        srcX1,
+        srcY1,
+        dstX0,
+        dstY0,
+        dstX1,
+        dstY1);
+}
+
+
+
+/*-------------------------------------
+ * Blit to a window
+-------------------------------------*/
+void SR_Context::blit(
+    size_t outTextureId,
+    size_t inTextureId,
+    uint16_t srcX0,
+    uint16_t srcY0,
+    uint16_t srcX1,
+    uint16_t srcY1,
+    uint16_t dstX0,
+    uint16_t dstY0,
+    uint16_t dstX1,
+    uint16_t dstY1) noexcept
+{
+    mProcessors.run_blit_processors(
+        mTextures[inTextureId],
+        mTextures[outTextureId],
+        srcX0,
+        srcY0,
+        srcX1,
+        srcY1,
+        dstX0,
+        dstY0,
+        dstX1,
+        dstY1);
+}
+
+
+
+/*-------------------------------------
+ * Blit to a window
+-------------------------------------*/
 void SR_Context::blit(SR_WindowBuffer& buffer, size_t textureId) noexcept
 {
-    mProcessors.run_blit_processors(mTextures[textureId], &buffer);
+    SR_Texture*    pTex  = mTextures[textureId];
+    const uint16_t srcX0 = 0;
+    const uint16_t srcY0 = 0;
+    const uint16_t srcX1 = pTex->width();
+    const uint16_t srcY1 = pTex->height();
+    const uint16_t dstX0 = 0;
+    const uint16_t dstY0 = 0;
+    const uint16_t dstX1 = buffer.width();
+    const uint16_t dstY1 = buffer.height();
+
+    mProcessors.run_blit_processors(
+        mTextures[textureId],
+        &(buffer.mTexture),
+        srcX0,
+        srcY0,
+        srcX1,
+        srcY1,
+        dstX0,
+        dstY0,
+        dstX1,
+        dstY1);
+}
+
+
+
+/*-------------------------------------
+ * Blit to a window
+-------------------------------------*/
+void SR_Context::blit(
+    SR_WindowBuffer& buffer,
+    size_t textureId,
+    uint16_t srcX0,
+    uint16_t srcY0,
+    uint16_t srcX1,
+    uint16_t srcY1,
+    uint16_t dstX0,
+    uint16_t dstY0,
+    uint16_t dstX1,
+    uint16_t dstY1) noexcept
+{
+    mProcessors.run_blit_processors(
+        mTextures[textureId],
+        &(buffer.mTexture),
+        srcX0,
+        srcY0,
+        srcX1,
+        srcY1,
+        dstX0,
+        dstY0,
+        dstX1,
+        dstY1);
 }
 
 

@@ -11,9 +11,8 @@
 
 
 
-
 /*-------------------------------------
- *
+ * Destructor
 -------------------------------------*/
 SR_WindowBuffer::~SR_WindowBuffer() noexcept
 {
@@ -22,7 +21,7 @@ SR_WindowBuffer::~SR_WindowBuffer() noexcept
 
 
 /*-------------------------------------
- *
+ * Constructor
 -------------------------------------*/
 SR_WindowBuffer::SR_WindowBuffer() noexcept
 {
@@ -31,20 +30,20 @@ SR_WindowBuffer::SR_WindowBuffer() noexcept
 
 
 /*-------------------------------------
- *
+ * Move Constructor
 -------------------------------------*/
-SR_WindowBuffer::SR_WindowBuffer(SR_WindowBuffer&&) noexcept
-{
-}
-
+SR_WindowBuffer::SR_WindowBuffer(SR_WindowBuffer&& wb) noexcept :
+    mTexture{std::move(wb.mTexture)}
+{}
 
 
 
 /*-------------------------------------
- *
+ * Move another window buffer into *this.
 -------------------------------------*/
-SR_WindowBuffer& SR_WindowBuffer::operator=(SR_WindowBuffer&&) noexcept
+SR_WindowBuffer& SR_WindowBuffer::operator=(SR_WindowBuffer&& wb) noexcept
 {
+    mTexture = std::move(wb.mTexture);
     return *this;
 }
 

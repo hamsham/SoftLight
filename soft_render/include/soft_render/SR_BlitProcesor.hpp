@@ -22,6 +22,327 @@ class SR_Texture;
 class SR_WindowBuffer;
 
 
+
+/*-----------------------------------------------------------------------------
+ * Helper functions and namespaces
+-----------------------------------------------------------------------------*/
+/*-------------------------------------
+ * Recolor to R
+-------------------------------------*/
+template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SR_ColorRType<outColor_type>)>
+struct SR_Blit_R_to_R
+{
+    inline LS_INLINE void operator()(
+        const SR_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t numTotalOutPixels,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const ptrdiff_t                   offset  = (numTotalOutPixels - outIndex) * stride;
+        const SR_ColorRType<inColor_type> inColor = pTexture->texel<SR_ColorRType<inColor_type>>(srcX, srcY);
+
+        *reinterpret_cast<SR_ColorRType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+    }
+};
+
+template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SR_ColorRType<outColor_type>)>
+struct SR_Blit_RG_to_R
+{
+    inline LS_INLINE void operator()(
+        const SR_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t numTotalOutPixels,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const ptrdiff_t                    offset  = (numTotalOutPixels - outIndex) * stride;
+        const SR_ColorRGType<inColor_type> inColor = pTexture->texel<SR_ColorRGType<inColor_type>>(srcX, srcY);
+
+        *reinterpret_cast<SR_ColorRType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor)[0];
+    }
+};
+
+template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SR_ColorRType<outColor_type>)>
+struct SR_Blit_RGB_to_R
+{
+    inline LS_INLINE void operator()(
+        const SR_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t numTotalOutPixels,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const ptrdiff_t                     offset  = (numTotalOutPixels - outIndex) * stride;
+        const SR_ColorRGBType<inColor_type> inColor = pTexture->texel<SR_ColorRGBType<inColor_type>>(srcX, srcY);
+
+        *reinterpret_cast<SR_ColorRType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor)[0];
+    }
+};
+
+template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SR_ColorRType<outColor_type>)>
+struct SR_Blit_RGBA_to_R
+{
+    inline LS_INLINE void operator()(
+        const SR_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t numTotalOutPixels,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const ptrdiff_t                      offset  = (numTotalOutPixels - outIndex) * stride;
+        const SR_ColorRGBAType<inColor_type> inColor = pTexture->texel<SR_ColorRGBAType<inColor_type>>(srcX, srcY);
+
+        *reinterpret_cast<SR_ColorRType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor)[0];
+    }
+};
+
+
+
+/*-------------------------------------
+ * Recolor to RG
+-------------------------------------*/
+template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SR_ColorRGType<outColor_type>)>
+struct SR_Blit_R_to_RG
+{
+    inline LS_INLINE void operator()(
+        const SR_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t numTotalOutPixels,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const ptrdiff_t                    offset   = (numTotalOutPixels - outIndex) * stride;
+        const SR_ColorRType<inColor_type>  inColorR = pTexture->texel<SR_ColorRType<inColor_type>>(srcX, srcY);
+        const SR_ColorRGType<inColor_type> inColor  = SR_ColorRGType<inColor_type>{inColorR[0], (inColor_type)0};
+
+        *reinterpret_cast<SR_ColorRGType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+    }
+};
+
+template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SR_ColorRGType<outColor_type>)>
+struct SR_Blit_RG_to_RG
+{
+    inline LS_INLINE void operator()(
+        const SR_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t numTotalOutPixels,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const ptrdiff_t                    offset  = (numTotalOutPixels - outIndex) * stride;
+        const SR_ColorRGType<inColor_type> inColor = pTexture->texel<SR_ColorRGType<inColor_type>>(srcX, srcY);
+
+        *reinterpret_cast<SR_ColorRGType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+    }
+};
+
+template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SR_ColorRGType<outColor_type>)>
+struct SR_Blit_RGB_to_RG
+{
+    inline LS_INLINE void operator()(
+        const SR_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t numTotalOutPixels,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const ptrdiff_t                     offset     = (numTotalOutPixels - outIndex) * stride;
+        const SR_ColorRGBType<inColor_type> inColorRGB = pTexture->texel<SR_ColorRGBType<inColor_type>>(srcX, srcY);
+        const SR_ColorRGType<inColor_type>  inColor    = ls::math::vec2_cast(inColorRGB);
+
+        *reinterpret_cast<SR_ColorRGType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+    }
+};
+
+template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SR_ColorRGType<outColor_type>)>
+struct SR_Blit_RGBA_to_RG
+{
+    inline LS_INLINE void operator()(
+        const SR_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t numTotalOutPixels,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const ptrdiff_t                      offset      = (numTotalOutPixels - outIndex) * stride;
+        const SR_ColorRGBAType<inColor_type> inColorRGBA = pTexture->texel<SR_ColorRGBAType<inColor_type>>(srcX, srcY);
+        const SR_ColorRGType<inColor_type>   inColor     = ls::math::vec2_cast(inColorRGBA);
+
+        *reinterpret_cast<SR_ColorRGType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+    }
+};
+
+
+
+/*-------------------------------------
+ * Recolor to RGB
+-------------------------------------*/
+template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SR_ColorRGBType<outColor_type>)>
+struct SR_Blit_R_to_RGB
+{
+    inline LS_INLINE void operator()(
+        const SR_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t numTotalOutPixels,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const ptrdiff_t                     offset   = (numTotalOutPixels - outIndex) * stride;
+        const SR_ColorRType<inColor_type>   inColorR = pTexture->texel<SR_ColorRType<inColor_type>>(srcX, srcY);
+        const SR_ColorRGBType<inColor_type> inColor  = SR_ColorRGBType<inColor_type>{(inColor_type)0, (inColor_type)0, inColorR[0]};
+
+        *reinterpret_cast<SR_ColorRGBType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+    }
+};
+
+template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SR_ColorRGBType<outColor_type>)>
+struct SR_Blit_RG_to_RGB
+{
+    inline LS_INLINE void operator()(
+        const SR_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t numTotalOutPixels,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const ptrdiff_t                     offset    = (numTotalOutPixels - outIndex) * stride;
+        const SR_ColorRGType<inColor_type>  inColorRG = pTexture->texel<SR_ColorRGType<inColor_type>>(srcX, srcY);
+        const SR_ColorRGBType<inColor_type> inColor   = ls::math::vec3_cast(inColorRG, (inColor_type)0);
+
+        *reinterpret_cast<SR_ColorRGBType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+    }
+};
+
+template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SR_ColorRGBType<outColor_type>)>
+struct SR_Blit_RGB_to_RGB
+{
+    inline LS_INLINE void operator()(
+        const SR_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t numTotalOutPixels,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const ptrdiff_t                     offset  = (numTotalOutPixels - outIndex) * stride;
+        const SR_ColorRGBType<inColor_type> inColor = pTexture->texel<SR_ColorRGBType<inColor_type>>(srcX, srcY);
+
+        *reinterpret_cast<SR_ColorRGBType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+    }
+};
+
+template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SR_ColorRGBType<outColor_type>)>
+struct SR_Blit_RGBA_to_RGB
+{
+    inline LS_INLINE void operator()(
+        const SR_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t numTotalOutPixels,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const ptrdiff_t                      offset      = (numTotalOutPixels - outIndex) * stride;
+        const SR_ColorRGBAType<inColor_type> inColorRGBA = pTexture->texel<SR_ColorRGBAType<inColor_type>>(srcX, srcY);
+        const SR_ColorRGBType<inColor_type>  inColor     = ls::math::vec3_cast(inColorRGBA);
+
+        *reinterpret_cast<SR_ColorRGBType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+    }
+};
+
+
+
+/*-------------------------------------
+ * Recolor to RGBA
+-------------------------------------*/
+template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SR_ColorRGBAType<outColor_type>)>
+struct SR_Blit_R_to_RGBA
+{
+    inline LS_INLINE void operator()(
+        const SR_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t numTotalOutPixels,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const ptrdiff_t                      offset   = (numTotalOutPixels - outIndex) * stride;
+        const SR_ColorRType<inColor_type>    inColorR = pTexture->texel<SR_ColorRType<inColor_type>>(srcX, srcY);
+        const SR_ColorRGBAType<inColor_type> inColor  = SR_ColorRGBAType<inColor_type>{(inColor_type)0, (inColor_type)0, inColorR[0], (inColor_type)1};
+
+        *reinterpret_cast<SR_ColorRGBAType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+    }
+};
+
+template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SR_ColorRGBAType<outColor_type>)>
+struct SR_Blit_RG_to_RGBA
+{
+    inline LS_INLINE void operator()(
+        const SR_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t numTotalOutPixels,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const ptrdiff_t                      offset    = (numTotalOutPixels - outIndex) * stride;
+        const SR_ColorRGType<inColor_type>   inColorRG = pTexture->texel<SR_ColorRGType<inColor_type>>(srcX, srcY);
+        const SR_ColorRGBAType<inColor_type> inColor   = ls::math::vec4_cast((inColor_type)0, inColorRG, (inColor_type)1);
+
+        *reinterpret_cast<SR_ColorRGBAType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+    }
+};
+
+template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SR_ColorRGBAType<outColor_type>)>
+struct SR_Blit_RGB_to_RGBA
+{
+    inline LS_INLINE void operator()(
+        const SR_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t numTotalOutPixels,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const ptrdiff_t                      offset     = (numTotalOutPixels - outIndex) * stride;
+        const SR_ColorRGBType<inColor_type>  inColorRGB = pTexture->texel<SR_ColorRGBType<inColor_type>>(srcX, srcY);
+        const SR_ColorRGBAType<inColor_type> inColor    = ls::math::vec4_cast(inColorRGB, (inColor_type)1);
+
+        *reinterpret_cast<SR_ColorRGBAType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+    }
+};
+
+template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SR_ColorRGBAType<outColor_type>)>
+struct SR_Blit_RGBA_to_RGBA
+{
+    inline LS_INLINE void operator()(
+        const SR_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t numTotalOutPixels,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const ptrdiff_t                      offset = (numTotalOutPixels - outIndex) * stride;
+        const SR_ColorRGBAType<inColor_type> inColor = pTexture->texel<SR_ColorRGBAType<inColor_type>>(srcX, srcY);
+
+        *reinterpret_cast<SR_ColorRGBAType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+    }
+};
+
+
+
 /**----------------------------------------------------------------------------
  * @brief The Blit Processor helps to perform texture blitting to the native
  * window backbuffer on another thread.
@@ -42,51 +363,43 @@ struct SR_BlitProcessor
     uint16_t mThreadId;
     uint16_t mNumThreads;
 
+    // 64-bits
+    uint16_t srcX0;
+    uint16_t srcY0;
+    uint16_t srcX1;
+    uint16_t srcY1;
+
+    // 64-bits
+    uint16_t dstX0;
+    uint16_t dstY0;
+    uint16_t dstX1;
+    uint16_t dstY1;
+
     // 64-128 bits
     const SR_Texture* mTexture;
-    SR_WindowBuffer* mBackBuffer;
+    SR_Texture* mBackBuffer;
 
-    // 160 bits total, 20 bytes
+    // 224-288 bits total, 28-36 bytes
 
     // Blit a single R channel
-    template <typename color_type>
-    void blit_nearest_r(
-        unsigned char* const pOutBuf,
-        const uint_fast32_t  inW,
-        const uint_fast32_t  inH,
-        const uint_fast32_t  outW,
-        const uint_fast32_t  outH
-    ) noexcept;
+    template<typename inColor_type>
+    void blit_src_r() noexcept;
 
     // Blit a texture with only RG color channels
-    template <typename color_type>
-    void blit_nearest_rg(
-        unsigned char* const pOutBuf,
-        const uint_fast32_t  inW,
-        const uint_fast32_t  inH,
-        const uint_fast32_t  outW,
-        const uint_fast32_t  outH
-    ) noexcept;
+    template<typename inColor_type>
+    void blit_src_rg() noexcept;
 
     // Blit an RGB texture
-    template <typename color_type>
-    void blit_nearest_rgb(
-        unsigned char* const pOutBuf,
-        const uint_fast32_t  inW,
-        const uint_fast32_t  inH,
-        const uint_fast32_t  outW,
-        const uint_fast32_t  outH
-    ) noexcept;
+    template<typename inColor_type>
+    void blit_src_rgb() noexcept;
 
     // Blit all 4 color components
-    template <typename color_type>
-    void blit_nearest_rgba(
-        SR_ColorRGBA8* const pOutBuf,
-        const uint_fast32_t  inW,
-        const uint_fast32_t  inH,
-        const uint_fast32_t  outW,
-        const uint_fast32_t  outH
-    ) noexcept;
+    template<typename inColor_type>
+    void blit_src_rgba() noexcept;
+
+    // Blit all 4 color components
+    template<class BlitOp>
+    void blit_nearest() noexcept;
 
     void execute() noexcept;
 };
@@ -97,46 +410,38 @@ struct SR_BlitProcessor
 /*-------------------------------------
  * Nearest-neighbor filtering (R Channel)
 -------------------------------------*/
-template <typename color_type>
-void SR_BlitProcessor::blit_nearest_r(
-    unsigned char* const pOutBuf,
-    const uint_fast32_t  inW,
-    const uint_fast32_t  inH,
-    const uint_fast32_t  outW,
-    const uint_fast32_t  outH) noexcept
+template<typename inColor_type>
+void SR_BlitProcessor::blit_src_r() noexcept
 {
-    // Only tile data along the y-axis of the render buffer. This will help to
-    // make use of the CPU prefetcher when iterating pixels along the x-axis
-    constexpr ptrdiff_t stride    = sizeof(SR_ColorRGBA8);
-    const uint_fast32_t dstH      = outH / mNumThreads;
-    const uint_fast32_t dstY0     = mThreadId * dstH;
-    const uint_fast32_t dstY1     = dstY0 + dstH;
-    const sr_fixed_type finW      = ls::math::fixed_cast<sr_fixed_type>(inW);
-    const sr_fixed_type finH      = ls::math::fixed_cast<sr_fixed_type>(inH);
-    const sr_fixed_type foutW     = finW / ls::math::fixed_cast<sr_fixed_type>(outW);
-    const sr_fixed_type foutH     = finH / ls::math::fixed_cast<sr_fixed_type>(outH);
-    const uint_fast32_t numPixels = (outW*outH) - 1;
-
-    for (uint_fast32_t y = dstY0; y < dstY1; ++y)
+    switch (mBackBuffer->type())
     {
-        const uint_fast32_t yOffset = y * outW;
-        const sr_fixed_type yf = ls::math::fixed_cast<sr_fixed_type>(y) * foutH;
-        uint_fast32_t srcY = ls::math::integer_cast<uint_fast32_t>(yf);
-        srcY = ls::math::min<uint_fast32_t>(srcY, inH - 1);
+        case SR_COLOR_R_8U:         blit_nearest<SR_Blit_R_to_R<inColor_type, uint8_t>>();     break;
+        case SR_COLOR_R_16U:        blit_nearest<SR_Blit_R_to_R<inColor_type, uint16_t>>();    break;
+        case SR_COLOR_R_32U:        blit_nearest<SR_Blit_R_to_R<inColor_type, uint32_t>>();    break;
+        case SR_COLOR_R_64U:        blit_nearest<SR_Blit_R_to_R<inColor_type, uint64_t>>();    break;
+        case SR_COLOR_R_FLOAT:      blit_nearest<SR_Blit_R_to_R<inColor_type, float>>();       break;
+        case SR_COLOR_R_DOUBLE:     blit_nearest<SR_Blit_R_to_R<inColor_type, double>>();      break;
 
-        for (uint_fast32_t x = 0; x < outW; ++x)
-        {
-            const sr_fixed_type xf = ls::math::fixed_cast<sr_fixed_type>(x) * foutW;
-            uint_fast32_t srcX = ls::math::integer_cast<uint_fast32_t>(xf);
-            srcX = ls::math::min<uint_fast32_t>(srcX, inW - 1);
+        case SR_COLOR_RG_8U:        blit_nearest<SR_Blit_R_to_RG<inColor_type, uint8_t>>();    break;
+        case SR_COLOR_RG_16U:       blit_nearest<SR_Blit_R_to_RG<inColor_type, uint16_t>>();   break;
+        case SR_COLOR_RG_32U:       blit_nearest<SR_Blit_R_to_RG<inColor_type, uint32_t>>();   break;
+        case SR_COLOR_RG_64U:       blit_nearest<SR_Blit_R_to_RG<inColor_type, uint64_t>>();   break;
+        case SR_COLOR_RG_FLOAT:     blit_nearest<SR_Blit_R_to_RG<inColor_type, float>>();      break;
+        case SR_COLOR_RG_DOUBLE:    blit_nearest<SR_Blit_R_to_RG<inColor_type, double>>();     break;
 
-            // Copy 4 color components at once
-            const color_type                   inR      = mTexture->texel<color_type>(srcX,   srcY);
-            const SR_ColorRGBAType<color_type> inColor  {color_type{0}, color_type{0}, inR, color_type{1}}; // BGRA
-            const uint_fast32_t                outIndex = x + yOffset;
+        case SR_COLOR_RGB_8U:       blit_nearest<SR_Blit_R_to_RGB<inColor_type, uint8_t>>();   break;
+        case SR_COLOR_RGB_16U:      blit_nearest<SR_Blit_R_to_RGB<inColor_type, uint16_t>>();  break;
+        case SR_COLOR_RGB_32U:      blit_nearest<SR_Blit_R_to_RGB<inColor_type, uint32_t>>();  break;
+        case SR_COLOR_RGB_64U:      blit_nearest<SR_Blit_R_to_RGB<inColor_type, uint64_t>>();  break;
+        case SR_COLOR_RGB_FLOAT:    blit_nearest<SR_Blit_R_to_RGB<inColor_type, float>>();     break;
+        case SR_COLOR_RGB_DOUBLE:   blit_nearest<SR_Blit_R_to_RGB<inColor_type, double>>();    break;
 
-            *reinterpret_cast<SR_ColorRGBA8*>(pOutBuf + (numPixels - outIndex) * stride) = color_cast<uint8_t, color_type>(inColor);
-        }
+        case SR_COLOR_RGBA_8U:      blit_nearest<SR_Blit_R_to_RGBA<inColor_type, uint8_t>>();  break;
+        case SR_COLOR_RGBA_16U:     blit_nearest<SR_Blit_R_to_RGBA<inColor_type, uint16_t>>(); break;
+        case SR_COLOR_RGBA_32U:     blit_nearest<SR_Blit_R_to_RGBA<inColor_type, uint32_t>>(); break;
+        case SR_COLOR_RGBA_64U:     blit_nearest<SR_Blit_R_to_RGBA<inColor_type, uint64_t>>(); break;
+        case SR_COLOR_RGBA_FLOAT:   blit_nearest<SR_Blit_R_to_RGBA<inColor_type, float>>();    break;
+        case SR_COLOR_RGBA_DOUBLE:  blit_nearest<SR_Blit_R_to_RGBA<inColor_type, double>>();   break;
     }
 }
 
@@ -145,46 +450,38 @@ void SR_BlitProcessor::blit_nearest_r(
 /*-------------------------------------
  * Nearest-neighbor filtering (R & G Channels)
 -------------------------------------*/
-template <typename color_type>
-void SR_BlitProcessor::blit_nearest_rg(
-    unsigned char* const pOutBuf,
-    const uint_fast32_t  inW,
-    const uint_fast32_t  inH,
-    const uint_fast32_t  outW,
-    const uint_fast32_t  outH) noexcept
+template<typename inColor_type>
+void SR_BlitProcessor::blit_src_rg() noexcept
 {
-    // Only tile data along the y-axis of the render buffer. This will help to
-    // make use of the CPU prefetcher when iterating pixels along the x-axis
-    constexpr ptrdiff_t stride    = sizeof(SR_ColorRGBA8);
-    const uint_fast32_t dstH      = outH / mNumThreads;
-    const uint_fast32_t dstY0     = mThreadId * dstH;
-    const uint_fast32_t dstY1     = dstY0 + dstH;
-    const sr_fixed_type finW      = ls::math::fixed_cast<sr_fixed_type>(inW);
-    const sr_fixed_type finH      = ls::math::fixed_cast<sr_fixed_type>(inH);
-    const sr_fixed_type foutW     = finW / ls::math::fixed_cast<sr_fixed_type>(outW);
-    const sr_fixed_type foutH     = finH / ls::math::fixed_cast<sr_fixed_type>(outH);
-    const uint_fast32_t numPixels = (outW*outH) - 1;
-
-    for (uint_fast32_t y = dstY0; y < dstY1; ++y)
+    switch (mBackBuffer->type())
     {
-        const uint_fast32_t yOffset = y * outW;
-        const sr_fixed_type yf = ls::math::fixed_cast<sr_fixed_type>(y) * foutH;
-        uint_fast32_t srcY = ls::math::integer_cast<uint_fast32_t>(yf);
-        srcY = ls::math::min<uint_fast32_t>(srcY, inH - 1);
+        case SR_COLOR_R_8U:         blit_nearest<SR_Blit_RG_to_R<inColor_type, uint8_t>>();     break;
+        case SR_COLOR_R_16U:        blit_nearest<SR_Blit_RG_to_R<inColor_type, uint16_t>>();    break;
+        case SR_COLOR_R_32U:        blit_nearest<SR_Blit_RG_to_R<inColor_type, uint32_t>>();    break;
+        case SR_COLOR_R_64U:        blit_nearest<SR_Blit_RG_to_R<inColor_type, uint64_t>>();    break;
+        case SR_COLOR_R_FLOAT:      blit_nearest<SR_Blit_RG_to_R<inColor_type, float>>();       break;
+        case SR_COLOR_R_DOUBLE:     blit_nearest<SR_Blit_RG_to_R<inColor_type, double>>();      break;
 
-        for (uint_fast32_t x = 0; x < outW; ++x)
-        {
-            const sr_fixed_type xf = ls::math::fixed_cast<sr_fixed_type>(x) * foutW;
-            uint_fast32_t srcX = ls::math::integer_cast<uint_fast32_t>(xf);
-            srcX = ls::math::min<uint_fast32_t>(srcX, inW - 1);
+        case SR_COLOR_RG_8U:        blit_nearest<SR_Blit_RG_to_RG<inColor_type, uint8_t>>();    break;
+        case SR_COLOR_RG_16U:       blit_nearest<SR_Blit_RG_to_RG<inColor_type, uint16_t>>();   break;
+        case SR_COLOR_RG_32U:       blit_nearest<SR_Blit_RG_to_RG<inColor_type, uint32_t>>();   break;
+        case SR_COLOR_RG_64U:       blit_nearest<SR_Blit_RG_to_RG<inColor_type, uint64_t>>();   break;
+        case SR_COLOR_RG_FLOAT:     blit_nearest<SR_Blit_RG_to_RG<inColor_type, float>>();      break;
+        case SR_COLOR_RG_DOUBLE:    blit_nearest<SR_Blit_RG_to_RG<inColor_type, double>>();     break;
 
-            // Copy 4 color components at once
-            const SR_ColorRGType<color_type>   inRG     = mTexture->texel<SR_ColorRGType<color_type>>(srcX,   srcY);
-            const SR_ColorRGBAType<color_type> inColor  {color_type{0}, inRG[1], inRG[0], color_type{1}}; // BGRA
-            const uint_fast32_t                outIndex = x + yOffset;
+        case SR_COLOR_RGB_8U:       blit_nearest<SR_Blit_RG_to_RGB<inColor_type, uint8_t>>();   break;
+        case SR_COLOR_RGB_16U:      blit_nearest<SR_Blit_RG_to_RGB<inColor_type, uint16_t>>();  break;
+        case SR_COLOR_RGB_32U:      blit_nearest<SR_Blit_RG_to_RGB<inColor_type, uint32_t>>();  break;
+        case SR_COLOR_RGB_64U:      blit_nearest<SR_Blit_RG_to_RGB<inColor_type, uint64_t>>();  break;
+        case SR_COLOR_RGB_FLOAT:    blit_nearest<SR_Blit_RG_to_RGB<inColor_type, float>>();     break;
+        case SR_COLOR_RGB_DOUBLE:   blit_nearest<SR_Blit_RG_to_RGB<inColor_type, double>>();    break;
 
-            *reinterpret_cast<SR_ColorRGBA8*>(pOutBuf + (numPixels - outIndex) * stride) = color_cast<uint8_t, color_type>(inColor);
-        }
+        case SR_COLOR_RGBA_8U:      blit_nearest<SR_Blit_RG_to_RGBA<inColor_type, uint8_t>>();  break;
+        case SR_COLOR_RGBA_16U:     blit_nearest<SR_Blit_RG_to_RGBA<inColor_type, uint16_t>>(); break;
+        case SR_COLOR_RGBA_32U:     blit_nearest<SR_Blit_RG_to_RGBA<inColor_type, uint32_t>>(); break;
+        case SR_COLOR_RGBA_64U:     blit_nearest<SR_Blit_RG_to_RGBA<inColor_type, uint64_t>>(); break;
+        case SR_COLOR_RGBA_FLOAT:   blit_nearest<SR_Blit_RG_to_RGBA<inColor_type, float>>();    break;
+        case SR_COLOR_RGBA_DOUBLE:  blit_nearest<SR_Blit_RG_to_RGBA<inColor_type, double>>();   break;
     }
 }
 
@@ -193,45 +490,38 @@ void SR_BlitProcessor::blit_nearest_rg(
 /*-------------------------------------
  * Nearest-neighbor filtering (RGB)
 -------------------------------------*/
-template <typename color_type>
-void SR_BlitProcessor::blit_nearest_rgb(
-    unsigned char* const pOutBuf,
-    const uint_fast32_t  inW,
-    const uint_fast32_t  inH,
-    const uint_fast32_t  outW,
-    const uint_fast32_t  outH) noexcept
+template<typename inColor_type>
+void SR_BlitProcessor::blit_src_rgb() noexcept
 {
-    // Only tile data along the y-axis of the render buffer. This will help to
-    // make use of the CPU prefetcher when iterating pixels along the x-axis
-    constexpr ptrdiff_t stride    = sizeof(SR_ColorRGBA8);
-    const uint_fast32_t dstH      = outH / mNumThreads;
-    const uint_fast32_t dstY0     = mThreadId * dstH;
-    const uint_fast32_t dstY1     = dstY0 + dstH;
-    const sr_fixed_type finW      = ls::math::fixed_cast<sr_fixed_type>(inW);
-    const sr_fixed_type finH      = ls::math::fixed_cast<sr_fixed_type>(inH);
-    const sr_fixed_type foutW     = finW / ls::math::fixed_cast<sr_fixed_type>(outW);
-    const sr_fixed_type foutH     = finH / ls::math::fixed_cast<sr_fixed_type>(outH);
-    const uint_fast32_t numPixels = (outW*outH) - 1;
-
-    for (uint_fast32_t y = dstY0; y < dstY1; ++y)
+    switch (mBackBuffer->type())
     {
-        const uint_fast32_t yOffset = y * outW;
-        const sr_fixed_type yf = ls::math::fixed_cast<sr_fixed_type>(y) * foutH;
-        uint_fast32_t srcY = ls::math::integer_cast<uint_fast32_t>(yf);
-        srcY = ls::math::min<uint_fast32_t>(srcY, inH - 1);
+        case SR_COLOR_R_8U:         blit_nearest<SR_Blit_RGB_to_R<inColor_type, uint8_t>>();     break;
+        case SR_COLOR_R_16U:        blit_nearest<SR_Blit_RGB_to_R<inColor_type, uint16_t>>();    break;
+        case SR_COLOR_R_32U:        blit_nearest<SR_Blit_RGB_to_R<inColor_type, uint32_t>>();    break;
+        case SR_COLOR_R_64U:        blit_nearest<SR_Blit_RGB_to_R<inColor_type, uint64_t>>();    break;
+        case SR_COLOR_R_FLOAT:      blit_nearest<SR_Blit_RGB_to_R<inColor_type, float>>();       break;
+        case SR_COLOR_R_DOUBLE:     blit_nearest<SR_Blit_RGB_to_R<inColor_type, double>>();      break;
 
-        for (uint_fast32_t x = 0; x < outW; ++x)
-        {
-            const sr_fixed_type xf = ls::math::fixed_cast<sr_fixed_type>(x) * foutW;
-            uint_fast32_t srcX = ls::math::integer_cast<uint_fast32_t>(xf);
-            srcX = ls::math::min<uint_fast32_t>(srcX, inW - 1);
+        case SR_COLOR_RG_8U:        blit_nearest<SR_Blit_RGB_to_RG<inColor_type, uint8_t>>();    break;
+        case SR_COLOR_RG_16U:       blit_nearest<SR_Blit_RGB_to_RG<inColor_type, uint16_t>>();   break;
+        case SR_COLOR_RG_32U:       blit_nearest<SR_Blit_RGB_to_RG<inColor_type, uint32_t>>();   break;
+        case SR_COLOR_RG_64U:       blit_nearest<SR_Blit_RGB_to_RG<inColor_type, uint64_t>>();   break;
+        case SR_COLOR_RG_FLOAT:     blit_nearest<SR_Blit_RGB_to_RG<inColor_type, float>>();      break;
+        case SR_COLOR_RG_DOUBLE:    blit_nearest<SR_Blit_RGB_to_RG<inColor_type, double>>();     break;
 
-            // Copy 4 color components
-            const SR_ColorRGBType<color_type> inColor  = mTexture->texel<SR_ColorRGBType<color_type>>(srcX, srcY);
-            const uint_fast32_t               outIndex = x + yOffset;
+        case SR_COLOR_RGB_8U:       blit_nearest<SR_Blit_RGB_to_RGB<inColor_type, uint8_t>>();   break;
+        case SR_COLOR_RGB_16U:      blit_nearest<SR_Blit_RGB_to_RGB<inColor_type, uint16_t>>();  break;
+        case SR_COLOR_RGB_32U:      blit_nearest<SR_Blit_RGB_to_RGB<inColor_type, uint32_t>>();  break;
+        case SR_COLOR_RGB_64U:      blit_nearest<SR_Blit_RGB_to_RGB<inColor_type, uint64_t>>();  break;
+        case SR_COLOR_RGB_FLOAT:    blit_nearest<SR_Blit_RGB_to_RGB<inColor_type, float>>();     break;
+        case SR_COLOR_RGB_DOUBLE:   blit_nearest<SR_Blit_RGB_to_RGB<inColor_type, double>>();    break;
 
-            *reinterpret_cast<SR_ColorRGB8*>(pOutBuf + (numPixels - outIndex) * stride) = color_cast<uint8_t, color_type>(inColor);
-        }
+        case SR_COLOR_RGBA_8U:      blit_nearest<SR_Blit_RGB_to_RGBA<inColor_type, uint8_t>>();  break;
+        case SR_COLOR_RGBA_16U:     blit_nearest<SR_Blit_RGB_to_RGBA<inColor_type, uint16_t>>(); break;
+        case SR_COLOR_RGBA_32U:     blit_nearest<SR_Blit_RGB_to_RGBA<inColor_type, uint32_t>>(); break;
+        case SR_COLOR_RGBA_64U:     blit_nearest<SR_Blit_RGB_to_RGBA<inColor_type, uint64_t>>(); break;
+        case SR_COLOR_RGBA_FLOAT:   blit_nearest<SR_Blit_RGB_to_RGBA<inColor_type, float>>();    break;
+        case SR_COLOR_RGBA_DOUBLE:  blit_nearest<SR_Blit_RGB_to_RGBA<inColor_type, double>>();   break;
     }
 }
 
@@ -240,80 +530,90 @@ void SR_BlitProcessor::blit_nearest_rgb(
 /*-------------------------------------
  * Nearest-neighbor filtering (RGBA)
 -------------------------------------*/
-template <typename color_type>
-void SR_BlitProcessor::blit_nearest_rgba(
-    SR_ColorRGBA8* const pOutBuf,
-    const uint_fast32_t  inW,
-    const uint_fast32_t  inH,
-    const uint_fast32_t  outW,
-    const uint_fast32_t  outH) noexcept
+template<typename inColor_type>
+void SR_BlitProcessor::blit_src_rgba() noexcept
 {
-    // Only tile data along the y-axis of the render buffer. This will help to
-    // make use of the CPU prefetcher when iterating pixels along the x-axis
-    const uint_fast32_t dstH      = outH / mNumThreads;
-    const uint_fast32_t dstY0     = mThreadId * dstH;
-    const uint_fast32_t dstY1     = dstY0 + dstH;
-    const sr_fixed_type finW      = ls::math::fixed_cast<sr_fixed_type>(inW);
-    const sr_fixed_type finH      = ls::math::fixed_cast<sr_fixed_type>(inH);
-    const sr_fixed_type foutW     = finW / ls::math::fixed_cast<sr_fixed_type>(outW);
-    const sr_fixed_type foutH     = finH / ls::math::fixed_cast<sr_fixed_type>(outH);
-    const uint_fast32_t numPixels = (outW*outH) - 1;
-
-    for (uint_fast32_t y = dstY0; y < dstY1; ++y)
+    switch (mBackBuffer->type())
     {
-        const uint_fast32_t yOffset = y * outW;
-        const sr_fixed_type yf = ls::math::fixed_cast<sr_fixed_type>(y) * foutH;
-        uint_fast32_t srcY = ls::math::integer_cast<uint_fast32_t>(yf);
-        srcY = ls::math::min<uint_fast32_t>(srcY, inH - 1);
+        case SR_COLOR_R_8U:         blit_nearest<SR_Blit_RGBA_to_R<inColor_type, uint8_t>>();     break;
+        case SR_COLOR_R_16U:        blit_nearest<SR_Blit_RGBA_to_R<inColor_type, uint16_t>>();    break;
+        case SR_COLOR_R_32U:        blit_nearest<SR_Blit_RGBA_to_R<inColor_type, uint32_t>>();    break;
+        case SR_COLOR_R_64U:        blit_nearest<SR_Blit_RGBA_to_R<inColor_type, uint64_t>>();    break;
+        case SR_COLOR_R_FLOAT:      blit_nearest<SR_Blit_RGBA_to_R<inColor_type, float>>();       break;
+        case SR_COLOR_R_DOUBLE:     blit_nearest<SR_Blit_RGBA_to_R<inColor_type, double>>();      break;
 
-        for (uint_fast32_t x = 0; x < outW; ++x)
-        {
-            const sr_fixed_type xf = ls::math::fixed_cast<sr_fixed_type>(x) * foutW;
-            uint_fast32_t srcX = ls::math::integer_cast<uint_fast32_t>(xf);
-            srcX = ls::math::min<uint_fast32_t>(srcX, inW - 1);
+        case SR_COLOR_RG_8U:        blit_nearest<SR_Blit_RGBA_to_RG<inColor_type, uint8_t>>();    break;
+        case SR_COLOR_RG_16U:       blit_nearest<SR_Blit_RGBA_to_RG<inColor_type, uint16_t>>();   break;
+        case SR_COLOR_RG_32U:       blit_nearest<SR_Blit_RGBA_to_RG<inColor_type, uint32_t>>();   break;
+        case SR_COLOR_RG_64U:       blit_nearest<SR_Blit_RGBA_to_RG<inColor_type, uint64_t>>();   break;
+        case SR_COLOR_RG_FLOAT:     blit_nearest<SR_Blit_RGBA_to_RG<inColor_type, float>>();      break;
+        case SR_COLOR_RG_DOUBLE:    blit_nearest<SR_Blit_RGBA_to_RG<inColor_type, double>>();     break;
 
-            const SR_ColorRGBAType<color_type> inColor  = mTexture->texel<SR_ColorRGBAType<color_type>>(srcX, srcY);
-            const uint_fast32_t                outIndex = x + yOffset;
+        case SR_COLOR_RGB_8U:       blit_nearest<SR_Blit_RGBA_to_RGB<inColor_type, uint8_t>>();   break;
+        case SR_COLOR_RGB_16U:      blit_nearest<SR_Blit_RGBA_to_RGB<inColor_type, uint16_t>>();  break;
+        case SR_COLOR_RGB_32U:      blit_nearest<SR_Blit_RGBA_to_RGB<inColor_type, uint32_t>>();  break;
+        case SR_COLOR_RGB_64U:      blit_nearest<SR_Blit_RGBA_to_RGB<inColor_type, uint64_t>>();  break;
+        case SR_COLOR_RGB_FLOAT:    blit_nearest<SR_Blit_RGBA_to_RGB<inColor_type, float>>();     break;
+        case SR_COLOR_RGB_DOUBLE:   blit_nearest<SR_Blit_RGBA_to_RGB<inColor_type, double>>();    break;
 
-            pOutBuf[numPixels - outIndex] = color_cast<uint8_t, color_type>(inColor);
-        }
+        case SR_COLOR_RGBA_8U:      blit_nearest<SR_Blit_RGBA_to_RGBA<inColor_type, uint8_t>>();  break;
+        case SR_COLOR_RGBA_16U:     blit_nearest<SR_Blit_RGBA_to_RGBA<inColor_type, uint16_t>>(); break;
+        case SR_COLOR_RGBA_32U:     blit_nearest<SR_Blit_RGBA_to_RGBA<inColor_type, uint32_t>>(); break;
+        case SR_COLOR_RGBA_64U:     blit_nearest<SR_Blit_RGBA_to_RGBA<inColor_type, uint64_t>>(); break;
+        case SR_COLOR_RGBA_FLOAT:   blit_nearest<SR_Blit_RGBA_to_RGBA<inColor_type, float>>();    break;
+        case SR_COLOR_RGBA_DOUBLE:  blit_nearest<SR_Blit_RGBA_to_RGBA<inColor_type, double>>();   break;
     }
 }
 
 
 
 /*-------------------------------------
- * External function declarations to keep compile times short
+ * Nearest-neighbor filtering (RGBA)
 -------------------------------------*/
-#ifndef LS_COMPILER_MSC
-    extern template void SR_BlitProcessor::blit_nearest_r<uint8_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
-    extern template void SR_BlitProcessor::blit_nearest_r<uint16_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
-    extern template void SR_BlitProcessor::blit_nearest_r<uint32_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
-    extern template void SR_BlitProcessor::blit_nearest_r<uint64_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
-    extern template void SR_BlitProcessor::blit_nearest_r<float>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
-    extern template void SR_BlitProcessor::blit_nearest_r<double>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+template<class BlipOp>
+void SR_BlitProcessor::blit_nearest() noexcept
+{
+    const BlipOp blitOp;
+    unsigned char* const pOutBuf = reinterpret_cast<unsigned char* const>(mBackBuffer->data());
 
-    extern template void SR_BlitProcessor::blit_nearest_rg<uint8_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
-    extern template void SR_BlitProcessor::blit_nearest_rg<uint16_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
-    extern template void SR_BlitProcessor::blit_nearest_rg<uint32_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
-    extern template void SR_BlitProcessor::blit_nearest_rg<uint64_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
-    extern template void SR_BlitProcessor::blit_nearest_rg<float>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
-    extern template void SR_BlitProcessor::blit_nearest_rg<double>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+    const uint_fast32_t inW  = (uint_fast32_t)srcX1 - (uint_fast32_t)srcX0;
+    const uint_fast32_t inH  = (uint_fast32_t)srcY1 - (uint_fast32_t)srcY0;
+    const uint_fast32_t outW = (uint_fast32_t)dstX1 - (uint_fast32_t)dstX0;
+    const uint_fast32_t outH = (uint_fast32_t)dstY1 - (uint_fast32_t)dstY0;
 
-    extern template void SR_BlitProcessor::blit_nearest_rgb<uint8_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
-    extern template void SR_BlitProcessor::blit_nearest_rgb<uint16_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
-    extern template void SR_BlitProcessor::blit_nearest_rgb<uint32_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
-    extern template void SR_BlitProcessor::blit_nearest_rgb<uint64_t>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
-    extern template void SR_BlitProcessor::blit_nearest_rgb<float>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
-    extern template void SR_BlitProcessor::blit_nearest_rgb<double>(unsigned char* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
+    const uint_fast32_t totalOutW = mBackBuffer->width();
+    const uint_fast32_t totalOutH = mBackBuffer->height();
 
-    extern template void SR_BlitProcessor::blit_nearest_rgba<uint8_t>(SR_ColorRGBA8* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
-    extern template void SR_BlitProcessor::blit_nearest_rgba<uint16_t>(SR_ColorRGBA8* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
-    extern template void SR_BlitProcessor::blit_nearest_rgba<uint32_t>(SR_ColorRGBA8* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
-    extern template void SR_BlitProcessor::blit_nearest_rgba<uint64_t>(SR_ColorRGBA8* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
-    extern template void SR_BlitProcessor::blit_nearest_rgba<float>(SR_ColorRGBA8* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
-    extern template void SR_BlitProcessor::blit_nearest_rgba<double>(SR_ColorRGBA8* const, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t, const uint_fast32_t);
-#endif /* LS_COMPILER_MSC */
+    // Only tile data along the y-axis of the render buffer. This will help to
+    // make use of the CPU prefetcher when iterating pixels along the x-axis
+    const uint_fast32_t x0        = ls::math::max(0u, dstX0);
+    const uint_fast32_t x1        = ls::math::min(totalOutW, x0 + outW);
+    const uint_fast32_t dstH      = outH / mNumThreads;
+    const uint_fast32_t y0        = ls::math::max(0u, dstY0 + (mThreadId * dstH));
+    const uint_fast32_t y1        = ls::math::min(totalOutH, y0 + dstH);
+
+    const sr_fixed_type finW      = ls::math::fixed_cast<sr_fixed_type>(inW);
+    const sr_fixed_type finH      = ls::math::fixed_cast<sr_fixed_type>(inH);
+    const sr_fixed_type foutW     = finW / ls::math::fixed_cast<sr_fixed_type>(totalOutW);
+    const sr_fixed_type foutH     = finH / ls::math::fixed_cast<sr_fixed_type>(totalOutH);
+
+    const uint_fast32_t numPixels = (totalOutW*totalOutH) - 1;
+
+    for (uint_fast32_t y = y0; y < y1; ++y)
+    {
+        const sr_fixed_type yf   = ls::math::fixed_cast<sr_fixed_type>(y) * foutH;
+        const uint_fast32_t srcY = srcY0 + ls::math::integer_cast<uint_fast32_t>(yf);
+
+        for (uint_fast32_t x = x0; x < x1; ++x)
+        {
+            const sr_fixed_type  xf       = ls::math::fixed_cast<sr_fixed_type>(x) * foutW;
+            const uint_fast32_t  srcX     = srcX0 + ls::math::integer_cast<uint_fast32_t>(xf);
+            const uint_fast32_t  outIndex = x + totalOutW * y;
+
+            blitOp(mTexture, srcX, srcY, pOutBuf, numPixels, outIndex);
+        }
+    }
+}
 
 
 

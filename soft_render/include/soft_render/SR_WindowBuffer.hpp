@@ -6,7 +6,7 @@
 
 #include "lightsky/utils/Pointer.h"
 
-#include "soft_render/SR_Color.hpp"
+#include "soft_render/SR_Texture.hpp"
 
 
 
@@ -34,8 +34,14 @@ class SR_Texture;
 -----------------------------------------------------------------------------*/
 class SR_WindowBuffer
 {
+    friend class SR_Context;
+    friend class SR_ShaderProcessor;
+
   public:
     static ls::utils::Pointer<SR_WindowBuffer> create() noexcept;
+
+  protected:
+    SR_Texture mTexture;
 
   public:
     virtual ~SR_WindowBuffer() noexcept = 0;
@@ -66,7 +72,9 @@ class SR_WindowBuffer
 
     virtual ls::math::vec4_t<uint8_t>* buffer() noexcept = 0;
 
-    inline SR_ColorDataType type() const;
+    inline SR_ColorDataType type() const noexcept;
+
+    inline const SR_Texture& texture() const noexcept;
 };
 
 
@@ -74,9 +82,19 @@ class SR_WindowBuffer
 /*-------------------------------------
  * Retrieve the native color type of the backbuffer.
 -------------------------------------*/
-inline SR_ColorDataType SR_WindowBuffer::type() const
+inline SR_ColorDataType SR_WindowBuffer::type() const noexcept
 {
     return SR_ColorDataType::SR_COLOR_RGBA_8U;
+}
+
+
+
+/*-------------------------------------
+ * Retrieve the texture contained within the backbuffer.
+-------------------------------------*/
+inline const SR_Texture& SR_WindowBuffer::texture() const noexcept
+{
+    return mTexture;
 }
 
 

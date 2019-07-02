@@ -113,6 +113,7 @@ int SR_WindowBufferXlib::init(SR_RenderWindow& win, unsigned width, unsigned hei
         return -3;
     }
 
+    // Leaving this in case I need to go back to a default X11 implementation.
     /*
     char* pData = (char*)malloc(width*height*sizeof(uint8_t)*4);
     if (!pData)
@@ -123,13 +124,21 @@ int SR_WindowBufferXlib::init(SR_RenderWindow& win, unsigned width, unsigned hei
 
     //XImage* pImg = XCreateImage(pWin->mDisplay, pVisual, 24, ZPixmap, 0, pData, width, height, 32, 0);
 
-    XShmSegmentInfo* pShm = new XShmSegmentInfo;
-    XImage* pImg = XShmCreateImage(pWin->mDisplay, pVisual, 24, ZPixmap, nullptr, pShm, width, height);
+    if (mTexture.init(SR_COLOR_RGBA_8U, width, height, 1) != 0)
+    {
+        ls::utils::aligned_free(pInfo);
+        return -4;
+    }
+
+    char* const      pTexData = reinterpret_cast<char*>(mTexture.data());
+    XShmSegmentInfo* pShm     = new XShmSegmentInfo;
+    XImage*          pImg     = XShmCreateImage(pWin->mDisplay, pVisual, 24, ZPixmap, pTexData, pShm, width, height);
 
     if (!pImg)
     {
         //free(pData);
-        return -4;
+        mTexture.terminate();
+        return -5;
     }
 
     // Set the shared memory permissions to "rw-rw----". This should prevent
@@ -144,14 +153,15 @@ int SR_WindowBufferXlib::init(SR_RenderWindow& win, unsigned width, unsigned hei
         | 0;
 
     pShm->shmid = shmget(IPC_PRIVATE, width*height*sizeof(SR_ColorRGBA8), IPC_CREAT|permissions);
-    pShm->shmaddr = pImg->data = (char*)shmat(pShm->shmid, nullptr, 0);
+    pShm->shmaddr = pImg->data = (char*)shmat(pShm->shmid, pTexData, 0);
     pShm->readOnly = False;
 
     if (shmctl(pShm->shmid, IPC_RMID, nullptr) < 0 || XShmAttach(pWin->mDisplay, pShm) == False)
     {
         //free(pData);
+        mTexture.terminate();
         XDestroyImage(pImg);
-        return -5;
+        return -6;
     }
 
     mWindow = &win;
@@ -183,76 +193,4 @@ int SR_WindowBufferXlib::terminate() noexcept
     }
 
     return 0;
-}
-
-
-
-/*-------------------------------------
- *
--------------------------------------*/
-unsigned SR_WindowBufferXlib::width() const noexcept
-{
-    if (mBuffer != nullptr)
-    {
-        return (unsigned)(reinterpret_cast<XImage*>(mBuffer)->width);
-    }
-
-    return 0;
-}
-
-
-
-/*-------------------------------------
- *
--------------------------------------*/
-unsigned SR_WindowBufferXlib::height() const noexcept
-{
-    if (mBuffer != nullptr)
-    {
-        return (unsigned)(reinterpret_cast<XImage*>(mBuffer)->height);
-    }
-
-    return 0;
-}
-
-
-
-/*-------------------------------------
- *
--------------------------------------*/
-const void* SR_WindowBufferXlib::native_handle() const noexcept
-{
-    return mBuffer;
-}
-
-
-
-/*-------------------------------------
- *
--------------------------------------*/
-void* SR_WindowBufferXlib::native_handle() noexcept
-{
-    return mBuffer;
-}
-
-
-
-/*-------------------------------------
- *
--------------------------------------*/
-const SR_ColorRGBA8* SR_WindowBufferXlib::buffer() const noexcept
-{
-    const XImage* const  pImg = reinterpret_cast<XImage*>(mBuffer);
-    return pImg ? reinterpret_cast<const SR_ColorRGBA8*>(pImg->data) : nullptr;
-}
-
-
-
-/*-------------------------------------
- *
--------------------------------------*/
-SR_ColorRGBA8* SR_WindowBufferXlib::buffer() noexcept
-{
-    XImage* const  pImg = reinterpret_cast<XImage*>(mBuffer);
-    return pImg ? reinterpret_cast<SR_ColorRGBA8*>(pImg->data) : nullptr;
 }

@@ -11,11 +11,11 @@
 -----------------------------------------------------------------------------*/
 namespace ls
 {
-namespace math
-{
-template <typename color_type>
-union vec4_t;
-}
+    namespace math
+    {
+        template <typename color_type>
+        union vec4_t;
+    }
 }
 
 
@@ -29,12 +29,6 @@ class SR_WindowBufferWin32 : public SR_WindowBuffer
 
   private:
     void* mBitmapInfo; // PBITMAPINFO
-
-    ls::math::vec4_t<uint8_t>* mBuffer; // SR_ColorRGBA8[]
-
-    unsigned mWidth;
-
-    unsigned mHeight;
 
   public:
     virtual ~SR_WindowBufferWin32() noexcept override;
@@ -69,21 +63,21 @@ class SR_WindowBufferWin32 : public SR_WindowBuffer
 
 
 /*-------------------------------------
- *
+ * Get the backbuffer width
 -------------------------------------*/
 inline unsigned SR_WindowBufferWin32::width() const noexcept
 {
-    return mWidth;
+    return mTexture.width();
 }
 
 
 
 /*-------------------------------------
- *
+ * Get the backbuffer height
 -------------------------------------*/
 inline unsigned SR_WindowBufferWin32::height() const noexcept
 {
-    return mHeight;
+    return mTexture.height();
 }
 
 
@@ -109,21 +103,21 @@ inline void* SR_WindowBufferWin32::native_handle() noexcept
 
 
 /*-------------------------------------
- *
+ * Retrieve the raw data within the backbuffer
 -------------------------------------*/
 inline const ls::math::vec4_t<uint8_t>* SR_WindowBufferWin32::buffer() const noexcept
 {
-    return mBuffer;
+    return reinterpret_cast<const ls::math::vec4_t<uint8_t>*>(mTexture.data());
 }
 
 
 
 /*-------------------------------------
- *
+ * Retrieve the raw data within the backbuffer
 -------------------------------------*/
 inline ls::math::vec4_t<uint8_t>* SR_WindowBufferWin32::buffer() noexcept
 {
-    return mBuffer;
+    return reinterpret_cast<ls::math::vec4_t<uint8_t>*>(mTexture.data());
 }
 
 

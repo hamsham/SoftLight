@@ -146,7 +146,18 @@ class SR_ProcessorPool
 
     void clear_fragment_bins() noexcept;
 
-    void run_blit_processors(const SR_Texture* t, SR_WindowBuffer* b) noexcept;
+    void run_blit_processors(
+        const SR_Texture* inTex,
+        SR_Texture* outTex,
+        uint16_t srcX0,
+        uint16_t srcY0,
+        uint16_t srcX1,
+        uint16_t srcY1,
+        uint16_t dstX0,
+        uint16_t dstY0,
+        uint16_t dstX1,
+        uint16_t dstY1
+    ) noexcept;
 };
 
 

@@ -1387,19 +1387,16 @@ bool SR_SceneFileLoader::import_animations(const aiScene* const pScene) noexcept
     {
         const aiAnimation* const pInAnim = pAnimations[i];
 
-        animations.emplace_back(SR_Animation{});
-        SR_Animation& anim = animations.back();
-
         // The animation as a whole needs to have its properties imported from
         // ASSIMP.
-        SR_Animation&& tempAnim = sr_setup_imported_animation(
+        animations.emplace_back(sr_setup_imported_animation(
             pInAnim->mName.C_Str(),
             pInAnim->mDuration,
             pInAnim->mTicksPerSecond,
             pInAnim->mNumChannels
-        );
+        ));
 
-        anim = std::move(tempAnim);
+        SR_Animation& anim = animations.back();
 
         for (unsigned c = 0; c < pInAnim->mNumChannels; ++c)
         {

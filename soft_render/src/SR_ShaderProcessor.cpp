@@ -473,7 +473,17 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context* c, const SR_Mesh*
 
 /*-------------------------------------
 -------------------------------------*/
-void SR_ProcessorPool::run_blit_processors(const SR_Texture* t, SR_WindowBuffer* b) noexcept
+void SR_ProcessorPool::run_blit_processors(
+    const SR_Texture* inTex,
+    SR_Texture* outTex,
+    uint16_t srcX0,
+    uint16_t srcY0,
+    uint16_t srcX1,
+    uint16_t srcY1,
+    uint16_t dstX0,
+    uint16_t dstY0,
+    uint16_t dstX1,
+    uint16_t dstY1) noexcept
 {
     SR_ShaderProcessor processor;
     processor.mType = SR_BLIT_SHADER;
@@ -481,8 +491,16 @@ void SR_ProcessorPool::run_blit_processors(const SR_Texture* t, SR_WindowBuffer*
     SR_BlitProcessor& blitter = processor.mBlitter;
     blitter.mThreadId   = 0;
     blitter.mNumThreads = (uint16_t)mNumThreads;
-    blitter.mTexture    = t;
-    blitter.mBackBuffer = b;
+    blitter.srcX0       = srcX0;
+    blitter.srcY0       = srcY0;
+    blitter.srcX1       = srcX1;
+    blitter.srcY1       = srcY1;
+    blitter.dstX0       = dstX0;
+    blitter.dstY0       = dstY0;
+    blitter.dstX1       = dstX1;
+    blitter.dstY1       = dstY1;
+    blitter.mTexture    = inTex;
+    blitter.mBackBuffer = outTex;
 
     // Process most of the rendering on other threads first.
     for (uint16_t i = 0; i < mNumThreads; ++i)

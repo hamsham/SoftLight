@@ -64,4 +64,64 @@ class SR_WindowBufferXlib : public SR_WindowBuffer
 
 
 
+/*-------------------------------------
+ * Get the backbuffer width
+-------------------------------------*/
+inline unsigned SR_WindowBufferXlib::width() const noexcept
+{
+    return mTexture.width();
+}
+
+
+
+/*-------------------------------------
+ * Get the backbuffer height
+-------------------------------------*/
+inline unsigned SR_WindowBufferXlib::height() const noexcept
+{
+    return mTexture.height();
+}
+
+
+
+/*-------------------------------------
+ * Native Handle
+-------------------------------------*/
+inline const void* SR_WindowBufferXlib::native_handle() const noexcept
+{
+    return mBuffer;
+}
+
+
+
+/*-------------------------------------
+ * Native Handle
+-------------------------------------*/
+inline void* SR_WindowBufferXlib::native_handle() noexcept
+{
+    return mBuffer;
+}
+
+
+
+/*-------------------------------------
+ * Retrieve the raw data within the backbuffer
+-------------------------------------*/
+inline const ls::math::vec4_t<uint8_t>* SR_WindowBufferXlib::buffer() const noexcept
+{
+    return reinterpret_cast<const ls::math::vec4_t<uint8_t>*>(mTexture.data());
+}
+
+
+
+/*-------------------------------------
+ * Retrieve the raw data within the backbuffer
+-------------------------------------*/
+inline ls::math::vec4_t<uint8_t>* SR_WindowBufferXlib::buffer() noexcept
+{
+    return reinterpret_cast<ls::math::vec4_t<uint8_t>*>(mTexture.data());
+}
+
+
+
 #endif /* SR_WINDOW_BUFFER_XLIB_HPP */

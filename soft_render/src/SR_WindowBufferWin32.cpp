@@ -20,10 +20,10 @@
 
 
 /*-----------------------------------------------------------------------------
- *
+ * Windows backbuffer implementation.
 -----------------------------------------------------------------------------*/
 /*-------------------------------------
- *
+ * Destructor
 -------------------------------------*/
 SR_WindowBufferWin32::~SR_WindowBufferWin32() noexcept
 {
@@ -33,57 +33,40 @@ SR_WindowBufferWin32::~SR_WindowBufferWin32() noexcept
 
 
 /*-------------------------------------
- *
+ * Constructor
 -------------------------------------*/
 SR_WindowBufferWin32::SR_WindowBufferWin32() noexcept :
     SR_WindowBuffer{},
-    mBitmapInfo{nullptr},
-    mBuffer{nullptr},
-    mWidth{0},
-    mHeight{0}
+    mBitmapInfo{nullptr}
 {}
 
 
 
 /*-------------------------------------
- *
+ * Move Constructor
 -------------------------------------*/
 SR_WindowBufferWin32::SR_WindowBufferWin32(SR_WindowBufferWin32&& wb) noexcept :
-    SR_WindowBuffer{std::move(wb)},
-    mBitmapInfo{wb.mBitmapInfo},
-    mBuffer{wb.mBuffer},
-    mWidth{wb.mWidth},
-    mHeight{wb.mHeight}
+    SR_WindowBuffer{std::move(wb)}, // This handles the internal texture
+    mBitmapInfo{wb.mBitmapInfo}
 {
     wb.mBitmapInfo = nullptr;
-    wb.mBuffer = nullptr;
-    wb.mWidth = 0;
-    wb.mHeight = 0;
 }
 
 
 
 
 /*-------------------------------------
- *
+ * Move Operator
 -------------------------------------*/
 SR_WindowBufferWin32& SR_WindowBufferWin32::operator=(SR_WindowBufferWin32&& wb) noexcept
 {
     if (this != &wb)
     {
+        // This handles the internal texture
         SR_WindowBuffer::operator=(std::move(wb));
 
         mBitmapInfo = wb.mBitmapInfo;
         wb.mBitmapInfo = nullptr;
-
-        mBuffer = wb.mBuffer;
-        wb.mBuffer = nullptr;
-
-        mWidth = wb.mWidth;
-        wb.mWidth = 0;
-
-        mHeight = wb.mHeight;
-        wb.mHeight = 0;
     }
 
     return *this;
@@ -92,11 +75,11 @@ SR_WindowBufferWin32& SR_WindowBufferWin32::operator=(SR_WindowBufferWin32&& wb)
 
 
 /*-------------------------------------
- *
+ * Initialize the backbuffer
 -------------------------------------*/
 int SR_WindowBufferWin32::init(SR_RenderWindow& win, unsigned width, unsigned height) noexcept
 {
-    if (mBuffer)
+    if (mTexture.data() != nullptr)
     {
         return -1;
     }
@@ -108,12 +91,16 @@ int SR_WindowBufferWin32::init(SR_RenderWindow& win, unsigned width, unsigned he
     }
 
     PBITMAPINFO pInfo = (PBITMAPINFO)ls::utils::aligned_malloc(sizeof(BITMAPINFO));
+    if (!pInfo)
+    {
+        return -3;
+    }
+
     ls::utils::fast_memset(pInfo, 0, sizeof(BITMAPINFO));
 
-    // invert the image's Y-axis to maintain consistency with Xlib
     pInfo->bmiHeader.biSize          = sizeof(BITMAPINFO);
     pInfo->bmiHeader.biWidth         = width;
-    pInfo->bmiHeader.biHeight        = -height;
+    pInfo->bmiHeader.biHeight        = -height; // invert the Y-axis to maintain consistency with Xlib
     pInfo->bmiHeader.biPlanes        = 1;
     pInfo->bmiHeader.biBitCount      = 32; // bpp
     pInfo->bmiHeader.biCompression   = BI_RGB;
@@ -123,12 +110,13 @@ int SR_WindowBufferWin32::init(SR_RenderWindow& win, unsigned width, unsigned he
     pInfo->bmiHeader.biClrUsed       = 0;
     pInfo->bmiHeader.biClrImportant  = 0;
 
-    SR_ColorRGBA8* pBitmap = (SR_ColorRGBA8*)ls::utils::aligned_malloc(sizeof(SR_ColorRGBA8) * width * height);
+    if (mTexture.init(SR_COLOR_RGBA_8U, width, height, 1) != 0)
+    {
+        ls::utils::aligned_free(pInfo);
+        return -4;
+    }
 
     mBitmapInfo = pInfo;
-    mBuffer     = pBitmap;
-    mWidth      = width;
-    mHeight     = height;
 
     return 0;
 }
@@ -136,20 +124,16 @@ int SR_WindowBufferWin32::init(SR_RenderWindow& win, unsigned width, unsigned he
 
 
 /*-------------------------------------
- *
+ * Clear all memory used by the backbuffer.
 -------------------------------------*/
 int SR_WindowBufferWin32::terminate() noexcept
 {
-    if (mBuffer)
+    if (mBitmapInfo)
     {
         ls::utils::aligned_free(mBitmapInfo);
         mBitmapInfo = nullptr;
 
-        ls::utils::aligned_free(mBuffer);
-        mBuffer = nullptr;
-
-        mWidth = 0;
-        mHeight = 0;
+        mTexture.terminate();
     }
 
     return 0;
