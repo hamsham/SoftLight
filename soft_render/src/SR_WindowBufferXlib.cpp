@@ -14,8 +14,6 @@
 #include <sys/shm.h> // shmget
 #include <sys/stat.h> // SR_IRWXU
 
-#include "lightsky/utils/Log.h"
-
 #include "soft_render/SR_Color.hpp"
 #include "soft_render/SR_RenderWindowXlib.hpp"
 #include "soft_render/SR_Texture.hpp"
@@ -129,7 +127,7 @@ int SR_WindowBufferXlib::init(SR_RenderWindow& win, unsigned width, unsigned hei
 
     // Leaving this in case I need to go back to a default X11 implementation.
     //XImage* pImg = XCreateImage(pWin->mDisplay, pVisual, 24, ZPixmap, 0, pData, width, height, 32, 0);
-    
+
     if (!pImg)
     {
         //free(pData);
