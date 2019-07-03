@@ -54,8 +54,9 @@ bool _xlib_get_position(_XDisplay* const pDisplay, const unsigned long window, i
     int tempX, tempY;
 
     if (True != XGetWindowAttributes(pDisplay, window, &attribs)
-        || True != XTranslateCoordinates(pDisplay, window, RootWindowOfScreen(attribs.screen), 0, 0, &tempX, &tempY, &child)
-        || True != XGetWindowAttributes(pDisplay, child, &attribs))
+    || True != XTranslateCoordinates(pDisplay, window, RootWindowOfScreen(attribs.screen), 0, 0, &tempX, &tempY, &child)
+    //|| True != XGetWindowAttributes(pDisplay, child, &attribs)
+    )
     {
         return false;
     }
@@ -1050,6 +1051,7 @@ void SR_RenderWindowXlib::render(SR_WindowBuffer& buffer) noexcept
     assert(this->valid());
     assert(buffer.native_handle() != nullptr);
 
+    #if SR_ENABLE_XSHM
     XShmPutImage(
         mDisplay,
         mWindow,
@@ -1062,7 +1064,7 @@ void SR_RenderWindowXlib::render(SR_WindowBuffer& buffer) noexcept
         False
     );
 
-    /*
+    #else
     XPutImage(
         mDisplay,
         mWindow,
@@ -1073,7 +1075,7 @@ void SR_RenderWindowXlib::render(SR_WindowBuffer& buffer) noexcept
         width(),
         height()
     );
-    */
+    #endif /* SR_ENABLE_XSHM */
 }
 
 

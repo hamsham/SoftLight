@@ -156,18 +156,24 @@ set(SR_LIB_SOURCES
     src/SR_VertexProcessor.cpp
     src/SR_WindowBuffer.cpp)
 
-if (WIN32)
+if(WIN32)
     set(SR_LIB_SOURCES
         ${SR_LIB_SOURCES}
         src/SR_KeySymWin32.cpp
         src/SR_RenderWindowWin32.cpp
         src/SR_WindowBufferWin32.cpp)
-else()
+elseif(UNIX)
+    if(NOT APPLE)
+        add_definitions(-DSR_ENABLE_XSHM=1)
+    endif()
+
     set(SR_LIB_SOURCES
         ${SR_LIB_SOURCES}
         src/SR_KeySymXlib.cpp
         src/SR_RenderWindowXlib.cpp
         src/SR_WindowBufferXlib.cpp)
+else()
+    message(FATAL_ERROR "Unknown/unsupported platform")
 endif()
 
 
