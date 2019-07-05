@@ -3,6 +3,7 @@
 
 #include "lightsky/math/scalar_utils.h" // fmod
 
+#include "soft_render/SR_Animation.hpp"
 #include "soft_render/SR_AnimationPlayer.hpp"
 #include "soft_render/SR_SceneGraph.hpp"
 

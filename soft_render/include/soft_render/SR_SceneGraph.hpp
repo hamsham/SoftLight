@@ -4,7 +4,6 @@
 
 #include <vector>
 
-#include "soft_render/SR_Animation.hpp"
 #include "soft_render/SR_Context.hpp"
 #include "soft_render/SR_SceneNode.hpp"
 
@@ -24,6 +23,8 @@ namespace ls
 
 
 
+class SR_Animation;
+struct SR_AnimationChannel;
 class SR_Camera;
 struct SR_Mesh;
 struct SR_Material;

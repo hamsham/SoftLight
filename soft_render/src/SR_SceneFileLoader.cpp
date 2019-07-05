@@ -228,7 +228,7 @@ bool SR_SceneFilePreload::load(const std::string& filename) noexcept
     Assimp::Importer& fileImporter = *mImporter;
     fileImporter.SetPropertyBool(AI_CONFIG_FAVOUR_SPEED, AI_TRUE);
     fileImporter.SetPropertyInteger(AI_CONFIG_PP_LBW_MAX_WEIGHTS, (int)SR_BONE_MAX_WEIGHTS);
-    fileImporter.SetPropertyBool(AI_CONFIG_PP_FD_REMOVE, AI_TRUE); // remove degenerate triangles
+    //fileImporter.SetPropertyBool(AI_CONFIG_PP_FD_REMOVE, AI_TRUE); // remove degenerate triangles
     fileImporter.SetPropertyInteger(AI_CONFIG_FAVOUR_SPEED, AI_TRUE);
     //fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, AI_SLM_DEFAULT_MAX_TRIANGLES);
     //fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, std::numeric_limits<uint8_t>::max());

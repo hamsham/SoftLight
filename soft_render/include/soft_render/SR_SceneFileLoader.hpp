@@ -9,7 +9,9 @@
 
 #include "lightsky/utils/Pointer.h"
 
-#include "soft_render/SR_AnimationProperty.hpp"
+#include "lightsky/math/mat4.h"
+
+#include "soft_render/SR_AnimationProperty.hpp" // SR_AnimPrecision
 #include "soft_render/SR_Geometry.hpp"
 #include "soft_render/SR_SceneGraph.hpp"
 
@@ -30,14 +32,11 @@ namespace Assimp
 
 
 /*-----------------------------------------------------------------------------
- * Forward Declarations
+ * Forward declarations
 -----------------------------------------------------------------------------*/
-enum SR_CommonVertType : unsigned; // VertexUtils.h
-
 struct SR_AnimationChannel;
-
-class SR_ImgFile;
-
+enum   SR_CommonVertType : unsigned; // VertexUtils.h
+class  SR_ImgFile;
 struct SR_Material;
 struct SR_Mesh;
 struct SR_SceneNode;
@@ -108,7 +107,7 @@ class SR_SceneFilePreload
 
     std::unordered_map<uint32_t, SR_BoneData> mBones;
 
-    std::unordered_map<std::string, ls::math::mat4> mBoneOffsets;
+    std::unordered_map<std::string, ls::math::mat4_t<float>> mBoneOffsets;
 
     const aiScene* preload_mesh_data() noexcept;
 
@@ -250,10 +249,10 @@ class SR_SceneFileLoader
      * the scene node list.
      */
     void read_node_hierarchy(
-        const aiScene* const pScene,
-        const aiNode* const  pNode,
-        const size_t         parentId,
-        ls::math::mat4&      invGlobalTransform
+        const aiScene* const     pScene,
+        const aiNode* const      pNode,
+        const size_t             parentId,
+        ls::math::mat4_t<float>& invGlobalTransform
     ) noexcept;
 
     /**
