@@ -5,6 +5,7 @@
 
 #include "lightsky/utils/Pointer.h"
 
+#include "soft_render/SR_Animation.hpp"
 #include "soft_render/SR_Context.hpp"
 #include "soft_render/SR_SceneFileLoader.hpp"
 #include "soft_render/SR_SceneGraph.hpp"
@@ -90,7 +91,30 @@ void print_scene_info(const utils::Pointer<SR_SceneGraph>& pGraph) noexcept
         }
 
         std::cout << ' ' << pGraph->mNodeNames[nodeId] << std::endl;
-        std::cout.flush();
+    }
+
+    std::cout << std::endl;
+
+    // Animations need love too
+    for (size_t animId = 0; animId < pGraph->mAnimations.size(); ++animId)
+    {
+        const SR_Animation& anim = pGraph->mAnimations[animId];
+        std::cout << "Animation " << animId << " - " << anim.name() << " - " << (anim.duration()/anim.ticks_per_sec()) << " seconds.";
+        std::cout << "\n\t";
+
+        for (size_t i = 0; i < anim.size(); ++i)
+        {
+            const size_t transformId = anim.transforms()[i];
+
+            if (i < anim.size()-1)
+            {
+                std::cout << transformId << ", ";
+            }
+            else
+            {
+                std::cout << transformId << std::endl;
+            }
+        }
     }
 
     std::cout << "-------------------------------------------------------------------------------" << std::endl;

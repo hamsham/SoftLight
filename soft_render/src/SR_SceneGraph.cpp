@@ -613,11 +613,30 @@ bool SR_SceneGraph::reparent_node(const size_t nodeIndex, const size_t newParent
     // Animations need love too
     for (SR_Animation& anim : mAnimations)
     {
-        for (size_t& oldId : anim.mTransformIds)
+        for (size_t& transformId : anim.mTransformIds)
         {
-            const size_t newId     = mNodes[oldId].nodeId;
-            const size_t nodeDelta = ls::math::max(oldId, newId) - ls::math::min(oldId, newId);
-            oldId                  = (newId >= oldId) ? (oldId + nodeDelta) : (oldId - nodeDelta);
+            if (movingUp)
+            {
+                if (transformId < nodeIndex)
+                {
+                    transformId += displacement;
+                }
+                else
+                {
+                    transformId -= amountToMove;
+                }
+            }
+            else
+            {
+                if (transformId >= nodeIndex+numChildren)
+                {
+                    transformId -= displacement;
+                }
+                else
+                {
+                    transformId += amountToMove-displacement;
+                }
+            }
         }
     }
 
