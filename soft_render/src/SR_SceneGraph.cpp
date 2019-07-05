@@ -1,10 +1,12 @@
 
 #include <algorithm> // std::rotate()
+#include <iterator> // std::iterator_traits
 
 #include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Copy.h"
 #include "lightsky/utils/Log.h"
 
+#include "soft_render/SR_Animation.hpp"
 #include "soft_render/SR_BoundingBox.hpp"
 #include "soft_render/SR_Camera.hpp"
 #include "soft_render/SR_SceneGraph.hpp"
@@ -23,34 +25,36 @@
 namespace
 {
 
-/*-------------------------------------
- * Rotate the nodes in a list
--------------------------------------*/
-template<typename list_t>
-void rotate_list(
-    list_t& vec,
-    const size_t start,
-    const size_t length,
-    const size_t dest
-)
+template <class RandomIter>
+void rotate_right(RandomIter nums, size_t size, size_t numRotations)
 {
-    typename list_t::iterator first, middle, last;
-
-    if (start < dest)
+    numRotations = numRotations % size;
+    if (!numRotations)
     {
-        first = vec.begin() + start;
-        middle = first + length;
-        last = vec.begin() + dest;
-    }
-    else
-    {
-        first = vec.begin() + dest;
-        middle = vec.begin() + start;
-        last = middle + length;
+        return;
     }
 
-    std::rotate(first, middle, last);
+    const size_t numSwaps = size*numRotations+numRotations;
+    typename std::iterator_traits<RandomIter>::value_type prev = nums[size - numRotations];
+
+    for (size_t i = 0; i < numSwaps; ++i)
+    {
+        const size_t j = (i + numRotations) % size;
+        typename std::iterator_traits<RandomIter>::value_type temp = nums[j];
+
+        nums[j] = prev;
+        prev = temp;
+    }
+
+    *nums = prev;
 }
+
+template <class RandomIter>
+void rotate_left(RandomIter nums, size_t size, size_t numRotations)
+{
+    rotate_right(nums, size, size-numRotations);
+}
+
 
 
 } // end anonymous namespace
@@ -501,6 +505,12 @@ size_t SR_SceneGraph::delete_node(const size_t nodeIndex) noexcept
 -------------------------------------*/
 bool SR_SceneGraph::reparent_node(const size_t nodeIndex, const size_t newParentId) noexcept
 {
+    if (newParentId == mCurrentTransforms[nodeIndex].mParentId)
+    {
+        // easy win
+        return true;
+    }
+
     if (nodeIndex == SR_SceneNodeProp::SCENE_NODE_ROOT_ID)
     {
         return false;
@@ -520,52 +530,84 @@ bool SR_SceneGraph::reparent_node(const size_t nodeIndex, const size_t newParent
     const size_t newNodeIndex   = 1 + newParentId + numNewSiblings;
 
     // Keep track of the range of elements which need to be updated.
-    const size_t effectStart = ls::math::min(nodeIndex, newNodeIndex);
-    const size_t effectEnd   = ls::math::max(newNodeIndex, nodeIndex + displacement);
+    const size_t effectStart = nodeIndex < newParentId ? nodeIndex : newNodeIndex;
+    const size_t effectEnd   = nodeIndex < newParentId ? newNodeIndex : (nodeIndex+displacement);
+    const size_t numAffected = effectEnd - effectStart;
 
-    // Sentinel to help determine not to modify the node at 'nodeIndex'
-    const bool movingUp = nodeIndex < newParentId;
+    // Determine if we're moving "up", closer to the root, or "down" away from
+    // the root
+    const bool movingUp = newParentId < nodeIndex && (newParentId != SCENE_NODE_ROOT_ID);
+    size_t amountToMove;
 
-    /*
-    LS_LOG_MSG(
-        "Re-parenting node ", nodeIndex, " from ", currentTransforms[nodeIndex].mParentId, " to ", newParentId,
-        ".\nRotating ", displacement, " indices from ", nodeIndex, " to ", newNodeIndex,
-        " and updating node indices between ", effectStart, '-', effectEnd
-    );
-    */
+    if (movingUp)
+    {
+        amountToMove = nodeIndex - newNodeIndex;
 
-    rotate_list(mNodes, nodeIndex, displacement, newNodeIndex);
-    rotate_list(mBaseTransforms, nodeIndex, displacement, newNodeIndex);
-    rotate_list(mCurrentTransforms, nodeIndex, displacement, newNodeIndex);
-    rotate_list(mModelMatrices, nodeIndex, displacement, newNodeIndex);
+        rotate_right(mNodes.data()             + effectStart, numAffected, displacement);
+        rotate_right(mBaseTransforms.data()    + effectStart, numAffected, displacement);
+        rotate_right(mCurrentTransforms.data() + effectStart, numAffected, displacement);
+        rotate_right(mModelMatrices.data()     + effectStart, numAffected, displacement);
+        rotate_right(mNodeNames.data()         + effectStart, numAffected, displacement);
+    }
+    else
+    {
+        amountToMove = newNodeIndex - nodeIndex;
+
+        rotate_left(mNodes.data()             + effectStart, numAffected, displacement);
+        rotate_left(mBaseTransforms.data()    + effectStart, numAffected, displacement);
+        rotate_left(mCurrentTransforms.data() + effectStart, numAffected, displacement);
+        rotate_left(mModelMatrices.data()     + effectStart, numAffected, displacement);
+        rotate_left(mNodeNames.data()         + effectStart, numAffected, displacement);
+    }
 
     for (size_t i = effectStart; i < effectEnd; ++i)
     {
         size_t& rParentId = mCurrentTransforms[i].mParentId;
-        const size_t pId  = rParentId;
-        const size_t nId  = mNodes[i].nodeId;
+        size_t  pId  = rParentId;
+        size_t  nId  = mNodes[i].nodeId;
+
         mNodes[i].nodeId  = i;
+        mCurrentTransforms[i].set_dirty();
 
         // Update the requested node's index
         if (nId == nodeIndex)
         {
-            rParentId = movingUp ? (newParentId - displacement) : newParentId;
-            mCurrentTransforms[i].set_dirty();
-            continue;
-        }
+            pId = newParentId;
 
-        // Determine if there's a node which even needs its parent ID updated.
-        if (pId == SR_SceneNodeProp::SCENE_NODE_ROOT_ID || pId < effectStart)
+        }
+        else
         {
-            continue;
+            // Determine if there's a node which even needs its parent ID updated.
+            if (pId == SR_SceneNodeProp::SCENE_NODE_ROOT_ID || pId < effectStart)
+            {
+                continue;
+            }
+
+            if (movingUp)
+            {
+                if (nId < nodeIndex)
+                {
+                    pId += displacement;
+                }
+                else
+                {
+                    pId -= amountToMove;
+                }
+            }
+            else
+            {
+                if (i <= amountToMove-numChildren)
+                {
+                    pId -= displacement;
+                }
+                else
+                {
+                    pId += amountToMove-displacement;
+                }
+            }
         }
 
-        const size_t parentDelta = nId - pId;
-
-        //LS_LOG_MSG("\t\tMoving ", i, "'s (", nId, ") parent ID by ", parentDelta, " from ", pId, " to ", i-parentDelta);
-        rParentId = i - parentDelta;
-
-        mCurrentTransforms[i].set_dirty();
+        rParentId = pId;
     }
 
     // Animations need love too
@@ -941,7 +983,7 @@ int SR_SceneGraph::import(SR_SceneGraph& inGraph) noexcept
 
     for (SR_Transform& t : inGraph.mCurrentTransforms)
     {
-        t.mParentId += baseNodeId;
+        t.mParentId += t.mParentId == SCENE_NODE_ROOT_ID ? 0 : baseNodeId;
     }
     std::move(inGraph.mCurrentTransforms.begin(), inGraph.mCurrentTransforms.end(), std::back_inserter(mCurrentTransforms));
     inGraph.mCurrentTransforms.clear();
