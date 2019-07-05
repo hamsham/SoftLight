@@ -631,7 +631,7 @@ void SR_Framebuffer::terminate() noexcept
 /*-------------------------------------
  * Place a single pixel onto a texture
 -------------------------------------*/
-bool SR_Framebuffer::put_pixel(
+void SR_Framebuffer::put_pixel(
     uint64_t targetId,
     uint16_t x,
     uint16_t y,
@@ -676,8 +676,6 @@ bool SR_Framebuffer::put_pixel(
         default:
             break;
     }
-
-    return true;
 }
 
 
@@ -685,7 +683,7 @@ bool SR_Framebuffer::put_pixel(
 /*-------------------------------------
  * Place a pixel onto a texture with alpha blending
 -------------------------------------*/
-bool SR_Framebuffer::put_alpha_pixel(
+void SR_Framebuffer::put_alpha_pixel(
     uint64_t targetId,
     uint16_t x,
     uint16_t y,
@@ -730,8 +728,6 @@ bool SR_Framebuffer::put_alpha_pixel(
         default:
             break;
     }
-
-    return true;
 }
 
 

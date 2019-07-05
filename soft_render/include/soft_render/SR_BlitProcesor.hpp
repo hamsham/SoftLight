@@ -604,6 +604,7 @@ void SR_BlitProcessor::blit_nearest() noexcept
         const sr_fixed_type yf   = ls::math::fixed_cast<sr_fixed_type>(y) * foutH;
         const uint_fast32_t srcY = srcY0 + ls::math::integer_cast<uint_fast32_t>(yf);
 
+        #if 0
         for (uint_fast32_t x = x0; x < x1; ++x)
         {
             const sr_fixed_type  xf       = ls::math::fixed_cast<sr_fixed_type>(x) * foutW;
@@ -612,6 +613,51 @@ void SR_BlitProcessor::blit_nearest() noexcept
 
             blitOp(mTexture, srcX, srcY, pOutBuf, numPixels, outIndex);
         }
+        #else
+        uint_fast32_t x;
+        for (x = x0; x+4 < x1; x += 4)
+        {
+            sr_fixed_type xf[4] = {
+                ls::math::fixed_cast<sr_fixed_type>(x+0),
+                ls::math::fixed_cast<sr_fixed_type>(x+1),
+                ls::math::fixed_cast<sr_fixed_type>(x+2),
+                ls::math::fixed_cast<sr_fixed_type>(x+3)
+            };
+
+            xf[0] *= foutW;
+            xf[1] *= foutW;
+            xf[2] *= foutW;
+            xf[3] *= foutW;
+
+            const uint_fast32_t srcX[4] = {
+                srcX0 + ls::math::integer_cast<uint_fast32_t>(xf[0]),
+                srcX0 + ls::math::integer_cast<uint_fast32_t>(xf[1]),
+                srcX0 + ls::math::integer_cast<uint_fast32_t>(xf[2]),
+                srcX0 + ls::math::integer_cast<uint_fast32_t>(xf[3])
+            };
+
+            const uint_fast32_t outIndex[4] = {
+                (x+0) + totalOutW * y,
+                (x+1) + totalOutW * y,
+                (x+2) + totalOutW * y,
+                (x+3) + totalOutW * y
+            };
+
+            blitOp(mTexture, srcX[0], srcY, pOutBuf, numPixels, outIndex[0]);
+            blitOp(mTexture, srcX[1], srcY, pOutBuf, numPixels, outIndex[1]);
+            blitOp(mTexture, srcX[2], srcY, pOutBuf, numPixels, outIndex[2]);
+            blitOp(mTexture, srcX[3], srcY, pOutBuf, numPixels, outIndex[3]);
+        }
+
+        for (; x < x1; ++x)
+        {
+            const sr_fixed_type  xf       = ls::math::fixed_cast<sr_fixed_type>(x) * foutW;
+            const uint_fast32_t  srcX     = srcX0 + ls::math::integer_cast<uint_fast32_t>(xf);
+            const uint_fast32_t  outIndex = x + totalOutW * y;
+
+            blitOp(mTexture, srcX, srcY, pOutBuf, numPixels, outIndex);
+        }
+        #endif
     }
 }
 

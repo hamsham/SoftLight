@@ -86,13 +86,13 @@ class SR_Framebuffer
 
     void terminate() noexcept;
 
-    bool put_pixel(
+    void put_pixel(
         uint64_t targetId,
         uint16_t x,
         uint16_t y,
         const ls::math::vec4_t<float>& rgba) noexcept;
 
-    bool put_alpha_pixel(
+    void put_alpha_pixel(
         uint64_t targetId,
         uint16_t x,
         uint16_t y,
@@ -162,10 +162,17 @@ void SR_Framebuffer::clear_color_buffer(const index_type i, const color_type& c)
     if (pTex->data())
     {
         LS_DEBUG_ASSERT(pTex->bpp() == sizeof(color_type)); // insurance
-
         const size_t numItems = pTex->width() * pTex->height() * pTex->depth();
 
-        ls::utils::fast_fill<color_type>(reinterpret_cast<color_type*>(pTex->data()), c, numItems);
+        if (sizeof(color_type) == sizeof(uint32_t))
+        {
+            const size_t numBytes = numItems * pTex->bpp();
+            ls::utils::fast_memset_4(reinterpret_cast<void*>(pTex->data()), *reinterpret_cast<const uint32_t*>(&c), numBytes);
+        }
+        else
+        {
+            ls::utils::fast_fill<color_type>(reinterpret_cast<color_type*>(pTex->data()), c, numItems);
+        }
     }
 }
 
@@ -186,7 +193,15 @@ void SR_Framebuffer::clear_depth_buffer(const float_type depthVal) noexcept
 
     LS_DEBUG_ASSERT(mDepth->bpp() == sizeof(float_type)); // insurance
 
-    ls::utils::fast_fill<float_type>(reinterpret_cast<float_type*>(mDepth->data()), depthVal, mDepth->width()*mDepth->height());
+    if (sizeof(float_type) == sizeof(uint32_t))
+    {
+        const size_t numBytes = mDepth->width()*mDepth->height()* sizeof(float_type);
+        ls::utils::fast_memset_4(reinterpret_cast<void*>(mDepth->data()), *reinterpret_cast<const uint32_t*>(&depthVal), numBytes);
+    }
+    else
+    {
+        ls::utils::fast_fill<float_type>(reinterpret_cast<float_type*>(mDepth->data()), depthVal, mDepth->width()*mDepth->height());
+    }
 }
 
 
