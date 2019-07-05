@@ -99,8 +99,13 @@ void print_scene_info(const utils::Pointer<SR_SceneGraph>& pGraph) noexcept
     for (size_t animId = 0; animId < pGraph->mAnimations.size(); ++animId)
     {
         const SR_Animation& anim = pGraph->mAnimations[animId];
-        std::cout << "Animation " << animId << " - " << anim.name() << " - " << (anim.duration()/anim.ticks_per_sec()) << " seconds.";
-        std::cout << "\n\t";
+        
+        std::cout
+            << "Animation "      << animId
+            << "\n\tName:       " << anim.name()
+            << "\n\tDuration:   " << (anim.duration()/anim.ticks_per_sec()) << " seconds."
+            << "\n\tMonotonic:  " << anim.have_monotonic_transforms()
+            << "\n\tTransforms: ";
 
         for (size_t i = 0; i < anim.size(); ++i)
         {

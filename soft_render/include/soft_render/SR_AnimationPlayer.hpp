@@ -190,13 +190,32 @@ class SR_AnimationPlayer
      *
      * @param millis
      * The total number of milliseconds which have passed since the last tick.
-     *
-     * @param transformOffset
-     * An offset to another transformation in the scene graph. If the offset is
-     * nonzero, the number of subsequent transformations in the scene graph
-     * must match the number of transform IDs contained within *this.
      */
-    void tick(SR_SceneGraph& graph, size_t animationIndex, int64_t millis, size_t transformOffset = 0) noexcept;
+    void tick(SR_SceneGraph& graph, size_t animationIndex, int64_t millis) noexcept;
+
+    /**
+     * @brief Animate a specific set of scene nodes using the Animation object
+     * referenced by a specific index.
+     *
+     * @note This version should only be called if the animation being used
+     * contains sequential scene nodes (i.e. animating a skeleton).
+     *
+     * @param graph
+     * A reference to a sceneGraph object which contains one or more
+     * Animation objects.
+     *
+     * @param animationIndex
+     * An array-offset to a specific Animation object contained within the
+     * input scene graph.
+     *
+     * @param millis
+     * The total number of milliseconds which have passed since the last tick.
+     *
+     * @param baseTransformId
+     * The index of the root scene node which is to be animated. All subsequent
+     * child nodes used by the animation will be animated.
+     */
+    void tick(SR_SceneGraph& graph, size_t animationIndex, int64_t millis, size_t baseTransformId) noexcept;
 
     /**
      * @brief Animate a scene graph using the using the Animation object

@@ -305,24 +305,71 @@ void SR_Animation::reserve(const size_t reserveSize) noexcept
 /*-------------------------------------
  * Animate a scene graph using all tracks.
 -------------------------------------*/
-void SR_Animation::animate(SR_SceneGraph& graph, const SR_AnimPrecision percentDone, size_t transformOffset) const noexcept
+void SR_Animation::animate(SR_SceneGraph& graph, const SR_AnimPrecision percentDone) const noexcept
 {
     LS_DEBUG_ASSERT(percentDone >= 0.0);
     LS_DEBUG_ASSERT(mTransformIds.size() == mChannelIds.size());
     LS_DEBUG_ASSERT(mTransformIds.size() == mTrackIds.size());
-    
+
     // prefetch
     const std::vector<SR_AnimationChannel>* pNodeAnims = graph.mNodeAnims.data();
     SR_Transform* const pTransforms = graph.mCurrentTransforms.data();
-    
+
     for (size_t i = mTransformIds.size(); i --> 0;)
     {
         const size_t animChannelId       = mChannelIds[i];   // maps to SR_SceneGraph.mNodeAnims[node.animId]
         const size_t nodeTrackId         = mTrackIds[i];     // maps to SR_SceneGraph.mNodeAnims[node.animId][nodeTrackId]
-        const size_t transformId         = mTransformIds[i] + transformOffset; // maps to SR_SceneGraph.mCurrentTransforms[node.nodeId]
+        const size_t transformId         = mTransformIds[i]; // maps to SR_SceneGraph.mCurrentTransforms[node.nodeId]
         const SR_AnimationChannel& track = pNodeAnims[animChannelId][nodeTrackId];
         SR_Transform& nodeTransform      = pTransforms[transformId];
-        
+
+        LS_DEBUG_ASSERT(transformId != SR_SceneNodeProp::SCENE_NODE_ROOT_ID);
+
+        if (track.has_position_frame(percentDone))
+        {
+            const math::vec3&& pos = track.position_frame(percentDone);
+            nodeTransform.set_position(pos);
+        }
+
+        if (track.has_scale_frame(percentDone))
+        {
+            const math::vec3&& scl = track.scale_frame(percentDone);
+            nodeTransform.set_scale(scl);
+        }
+
+        if (track.has_rotation_frame(percentDone))
+        {
+            math::quat&& rot = track.rotation_frame(percentDone);
+            nodeTransform.set_orientation(rot);
+        }
+    }
+}
+
+
+
+/*-------------------------------------
+ * Animate a scene graph using all tracks.
+-------------------------------------*/
+void SR_Animation::animate(SR_SceneGraph& graph, const SR_AnimPrecision percentDone, size_t baseTransformId) const noexcept
+{
+    LS_DEBUG_ASSERT(percentDone >= 0.0);
+    LS_DEBUG_ASSERT(mTransformIds.size() == mChannelIds.size());
+    LS_DEBUG_ASSERT(mTransformIds.size() == mTrackIds.size());
+
+    // prefetch
+    const std::vector<SR_AnimationChannel>* pNodeAnims = graph.mNodeAnims.data();
+    SR_Transform* const pTransforms = graph.mCurrentTransforms.data();
+
+    size_t rootIndex = !mTransformIds.empty() ? mTransformIds[0] : 0;
+
+    for (size_t i = mTransformIds.size(); i --> 0;)
+    {
+        const size_t animChannelId       = mChannelIds[i];   // maps to SR_SceneGraph.mNodeAnims[node.animId]
+        const size_t nodeTrackId         = mTrackIds[i];     // maps to SR_SceneGraph.mNodeAnims[node.animId][nodeTrackId]
+        const size_t transformId         = baseTransformId + (mTransformIds[i] - rootIndex); // maps to SR_SceneGraph.mCurrentTransforms[node.nodeId]
+        const SR_AnimationChannel& track = pNodeAnims[animChannelId][nodeTrackId];
+        SR_Transform& nodeTransform      = pTransforms[transformId];
+
         LS_DEBUG_ASSERT(transformId != SR_SceneNodeProp::SCENE_NODE_ROOT_ID);
 
         if (track.has_position_frame(percentDone))
@@ -382,4 +429,24 @@ void SR_Animation::init(SR_SceneGraph& graph, const bool atStart) const noexcept
             nodeTransform.set_orientation(atStart ? track.mOrientFrames.start_data() : track.mOrientFrames.end_data());
         }
     }
+}
+
+
+
+/*-------------------------------------
+ * Determine if we can use a baseTransformId
+-------------------------------------*/
+bool SR_Animation::have_monotonic_transforms() const noexcept
+{
+    size_t lastTransformId = mTransformIds.empty() ? 0 : mTransformIds[0];
+
+    for (size_t i = 0; i < mTransformIds.size(); ++i, ++lastTransformId)
+    {
+        if (mTransformIds[i] != lastTransformId)
+        {
+            return false;
+        }
+    }
+
+    return true;
 }

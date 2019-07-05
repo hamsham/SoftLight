@@ -127,9 +127,63 @@ SR_AnimPrecision SR_AnimationPlayer::get_current_ticks() const noexcept
 
 
 /*-------------------------------------
- * Progress an SR_Animation
+ * Progress an animation
 -------------------------------------*/
-void SR_AnimationPlayer::tick(SR_SceneGraph& graph, size_t animationIndex, int64_t millis, size_t transformOffset) noexcept
+void SR_AnimationPlayer::tick(SR_SceneGraph& graph, size_t animationIndex, int64_t millis) noexcept
+{
+    if (mCurrentState != SR_ANIM_STATE_PLAYING)
+    {
+        return;
+    }
+
+    const std::vector<SR_Animation>& animations = graph.mAnimations;
+    const SR_Animation& anim = animations[animationIndex];
+
+    if (mNumPlays == PLAY_AUTO)
+    {
+        mNumPlays = (anim.play_mode() == SR_AnimPlayMode::SR_ANIM_PLAY_REPEAT)
+                    ? PLAY_REPEAT
+                    : PLAY_ONCE;
+    }
+
+    if (!mNumPlays)
+    {
+        stop_anim();
+        return;
+    }
+
+    const SR_AnimPrecision secondsDelta  = SR_AnimPrecision{0.001} * (SR_AnimPrecision)millis;
+    const SR_AnimPrecision ticksDelta    = secondsDelta * anim.ticks_per_sec();
+    const SR_AnimPrecision percentDelta  = (ticksDelta * mDilation) / anim.duration();
+    const SR_AnimPrecision percentDone   = mCurrentPercent + percentDelta;
+    const SR_AnimPrecision nextPercent   = percentDone >= SR_AnimPrecision{0.0} ? percentDone : (SR_AnimPrecision{1}+percentDone);
+
+    anim.animate(graph, nextPercent);
+
+    // check for a looped SR_Animation even when time is going backwards.
+    if (percentDone >= SR_AnimPrecision{1}
+        || (mCurrentPercent > SR_AnimPrecision{0} && percentDone < SR_AnimPrecision{0}))
+    {
+        if (mNumPlays != PLAY_REPEAT)
+        {
+            --mNumPlays;
+        }
+    }
+
+    mCurrentPercent = ls::math::fmod(nextPercent, SR_AnimPrecision{1});
+
+    if (!mNumPlays)
+    {
+        stop_anim();
+    }
+}
+
+
+
+/*-------------------------------------
+ * Progress an animation
+-------------------------------------*/
+void SR_AnimationPlayer::tick(SR_SceneGraph& graph, size_t animationIndex, int64_t millis, size_t baseTransformId) noexcept
 {
     if (mCurrentState != SR_ANIM_STATE_PLAYING)
     {
@@ -158,7 +212,7 @@ void SR_AnimationPlayer::tick(SR_SceneGraph& graph, size_t animationIndex, int64
     const SR_AnimPrecision percentDone   = mCurrentPercent + percentDelta;
     const SR_AnimPrecision nextPercent   = percentDone >= SR_AnimPrecision{0.0} ? percentDone : (SR_AnimPrecision{1}+percentDone);
 
-    anim.animate(graph, nextPercent, transformOffset);
+    anim.animate(graph, nextPercent, baseTransformId);
 
     // check for a looped SR_Animation even when time is going backwards.
     if (percentDone >= SR_AnimPrecision{1}

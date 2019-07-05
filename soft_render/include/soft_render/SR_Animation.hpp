@@ -339,13 +339,32 @@ class SR_Animation
      * @param percentDone
      * The percent of the animation which has been played in total. An
      * assertion will be raised if this value is less than 0.0.
+     */
+    void animate(SR_SceneGraph& graph, const SR_AnimPrecision percentDone) const noexcept;
+
+    /**
+     * @brief Animate nodes in a sceneGraph.
      *
-     * @param transformOffset
-     * An offset to another transformation in the scene graph. If the offset is
+     * This function will permanently update the model matrix contained
+     * within the animated sceneNodes until otherwise specified.
+     *
+     * This version of "animate()" should only be called if the animation being
+     * used contains sequential scene nodes (i.e. animating a skeleton).
+     *
+     * @param graph
+     * A reference to a sceneGraph object who's internal nodes will be
+     * transformed according to the keyframes in *this.
+     *
+     * @param percentDone
+     * The percent of the animation which has been played in total. An
+     * assertion will be raised if this value is less than 0.0.
+     *
+     * @param baseTransformId
+     * An index of a root transformation in the scene graph. If the offset is
      * nonzero, the number of subsequent transformations in the scene graph
      * must match the number of transform IDs contained within *this.
      */
-    void animate(SR_SceneGraph& graph, const SR_AnimPrecision percentDone, size_t transformOffset = 0) const noexcept;
+    void animate(SR_SceneGraph& graph, const SR_AnimPrecision percentDone, size_t baseTransformId) const noexcept;
 
     /**
      * Initialize the animation transformations for all nodes in a scene graph.
@@ -359,6 +378,15 @@ class SR_Animation
      * first set of keyframes or the last.
      */
     void init(SR_SceneGraph& graph, const bool atStart = true) const noexcept;
+
+    /**
+     * @brief Determine if the transformations referenced by *this map to a
+     * contiguous set of transforms in a scene graph.
+     *
+     * @return TRUE if *this animation references a contiguous set of scene
+     * node transformations, FALSE if not.
+     */
+    bool have_monotonic_transforms() const noexcept;
 };
 
 
