@@ -844,9 +844,6 @@ utils::Pointer<SR_SceneGraph> create_context()
     retCode = pGraph->import(meshLoader.data());
     assert(retCode == 0);
 
-    retCode = pGraph->import(meshLoader.data());
-    assert(retCode == 0);
-
     pGraph->mCurrentTransforms[0].scale(math::vec3{20.f});
     pGraph->update();
 
