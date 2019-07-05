@@ -586,11 +586,11 @@ void SR_BlitProcessor::blit_nearest() noexcept
 
     // Only tile data along the y-axis of the render buffer. This will help to
     // make use of the CPU prefetcher when iterating pixels along the x-axis
-    const uint_fast32_t x0        = ls::math::max(0u, dstX0);
-    const uint_fast32_t x1        = ls::math::min(totalOutW, x0 + outW);
+    const uint_fast32_t x0        = ls::math::max<uint_fast32_t>(0u, dstX0);
+    const uint_fast32_t x1        = ls::math::min<uint_fast32_t>(totalOutW, x0 + outW);
     const uint_fast32_t dstH      = outH / mNumThreads;
-    const uint_fast32_t y0        = ls::math::max(0u, dstY0 + (mThreadId * dstH));
-    const uint_fast32_t y1        = ls::math::min(totalOutH, y0 + dstH);
+    const uint_fast32_t y0        = ls::math::max<uint_fast32_t>(0u, dstY0 + (mThreadId * dstH));
+    const uint_fast32_t y1        = ls::math::min<uint_fast32_t>(totalOutH, y0 + dstH);
 
     const sr_fixed_type finW      = ls::math::fixed_cast<sr_fixed_type>(inW);
     const sr_fixed_type finH      = ls::math::fixed_cast<sr_fixed_type>(inH);

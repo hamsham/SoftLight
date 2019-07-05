@@ -33,10 +33,13 @@ char* _sr_allocate_texture(size_t w, size_t h, size_t d, size_t bpt)
     const size_t numBytes   = (w + wAlignment) * (h + hAlignment) * d * bpt;
 
     #ifdef LS_OS_WINDOWS
-    char* const  pTexels    = (char*)ls::utils::aligned_malloc(numBytes);
+    char* const  pTexels = (char*)ls::utils::aligned_malloc(numBytes);
     #else
-    char* pTexels;
-    posix_memalign((void**)&pTexels, sysconf(_SC_PAGESIZE), numBytes);
+    char* pTexels = nullptr;
+    if (0 != posix_memalign((void**)&pTexels, sysconf(_SC_PAGESIZE), numBytes))
+    {
+        return nullptr;
+    }
     #endif
 
     ls::utils::fast_memset(pTexels, 0, numBytes);
@@ -63,8 +66,11 @@ char* _sr_copy_texture(size_t w, size_t h, size_t d, size_t bpt, const char* pDa
     #ifdef LS_OS_WINDOWS
     char* const  pTexels    = (char*)ls::utils::aligned_malloc(numBytes);
     #else
-    char* pTexels;
-    posix_memalign((void**)&pTexels, sysconf(_SC_PAGESIZE), numBytes);
+    char* pTexels = nullptr;
+    if (0 != posix_memalign((void**)&pTexels, sysconf(_SC_PAGESIZE), numBytes))
+    {
+        return nullptr;
+    }
     #endif
 
     ls::utils::fast_memcpy(pTexels, pData, numBytes);

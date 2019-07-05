@@ -23,6 +23,7 @@ namespace utils = ls::utils;
 utils::Pointer<SR_SceneGraph> load_scene(const std::string& fileName)
 {
     int retCode = 0;
+    (void)retCode;
 
     SR_SceneFileLoader meshLoader;
     utils::Pointer<SR_SceneGraph> pGraph{new SR_SceneGraph{}};
