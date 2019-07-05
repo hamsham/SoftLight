@@ -196,7 +196,10 @@ void SR_VertexProcessor::flush_fragments() const noexcept
 
     while (mFragProcessors->load(std::memory_order_consume) < syncPoint1)
     {
-        std::this_thread::yield();
+        #if LS_ARCH_X86
+        _mm_pause();
+        #endif
+        //std::this_thread::yield();
     }
 
     fragTask.execute();
