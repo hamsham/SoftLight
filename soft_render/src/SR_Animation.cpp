@@ -208,9 +208,19 @@ void SR_Animation::ticks_per_sec(const SR_AnimPrecision numTicks) noexcept
 
 
 /*-------------------------------------
- * Retrieve the transformations affected by *this.
+ * Retrieve the transformations affected by *this (const).
 -------------------------------------*/
 const std::vector<size_t>& SR_Animation::transforms() const noexcept
+{
+    return mTransformIds;
+}
+
+
+
+/*-------------------------------------
+ * Retrieve the transformations affected by *this.
+-------------------------------------*/
+std::vector<size_t>& SR_Animation::transforms() noexcept
 {
     return mTransformIds;
 }

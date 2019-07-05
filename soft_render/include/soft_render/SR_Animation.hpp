@@ -258,6 +258,16 @@ class SR_Animation
     const std::vector<size_t>& transforms() const noexcept;
 
     /**
+     * @brief Retrieve the list of indices which are used to reference scene
+     * nodes transformations in a scene graph
+     * (through the SceneGraph::currentTransform member).
+     *
+     * @return A reference to a constant vector of indices which reference
+     * the "currentTransform" objects in a SceneGraph.
+     */
+    std::vector<size_t>& transforms() noexcept;
+
+    /**
      * @brief Retrieve the list of indices which will be used to reference a
      * node-specific animation channel from a scene graph.
      *
