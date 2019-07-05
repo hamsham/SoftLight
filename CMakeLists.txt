@@ -34,6 +34,12 @@ option(ENABLE_PROFILING "Enable profiling (recommended for release builds with d
 # #####################################
 # Compiler Options
 # #####################################
+
+# Fix broken search paths on OS X
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    include_directories(/usr/local/include)
+endif()
+
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_definitions(-Wall)
     add_definitions(-Werror)
