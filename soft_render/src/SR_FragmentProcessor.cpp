@@ -713,7 +713,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             const math::mat4&& bc          = math::outer(xf, bcClipSpace[0]) + bcY;
             const math::vec4&& z           = depth * bc;
             const math::vec4&& depthTexels = depthTesting ? math::vec4{depthBuffer->texel4<float>(x0, y)} : math::vec4{0.f};
-            const int32_t      depthTest   = math::sign_mask(depthTesting ? (z - depthTexels) : math::vec4{0.f});
+            const int32_t      depthTest   = depthTesting ? math::sign_mask(z - depthTexels) : 0x00;
             const int32_t      end         = -(depthTest != 0x0F) & math::min<int32_t>(xMax-x0, 4);
 
             for (int32_t i = 0; i < end; ++i)

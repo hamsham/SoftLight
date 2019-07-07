@@ -34,10 +34,10 @@ struct SR_VertexProcessor
 {
     // 32 bits
     uint16_t mThreadId;
-    uint16_t mNumThreads;
+    int16_t mNumThreads;
 
     // 128 bits
-    std::atomic_uint_fast64_t* mFragProcessors;
+    std::atomic_int_fast64_t* mFragProcessors;
     std::atomic_uint_fast64_t* mBusyProcessors;
 
     // 128-256 bits

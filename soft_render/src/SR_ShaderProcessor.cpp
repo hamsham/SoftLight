@@ -437,7 +437,7 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context* c, const SR_Mesh*
 
     SR_VertexProcessor& vertTask = task.mVertProcessor;
     vertTask.mThreadId       = 0;
-    vertTask.mNumThreads     = (uint16_t)mNumThreads;
+    vertTask.mNumThreads     = (int16_t)mNumThreads;
     vertTask.mFragProcessors = &mFragSemaphore;
     vertTask.mBusyProcessors = &mShadingSemaphore;
     vertTask.mShader         = s;

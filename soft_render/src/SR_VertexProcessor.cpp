@@ -145,80 +145,80 @@ inline LS_INLINE bool face_visible(const math::vec4 clipCoords[SR_SHADER_MAX_WOR
 -------------------------------------*/
 void SR_VertexProcessor::flush_fragments() const noexcept
 {
-    // Sync Point 1 indicates that all triangles have been sorted
-    const uint_fast64_t syncPoint1 = 2u * mNumThreads;
+    // Sync Point 1 indicates that all triangles have been sorted.
+    // Since we only have two sync points for the bins to process, a negative
+    // value for mFragProcessors will indicate all threads are ready to process
+    // fragments. A zero-value for mFragProcessors indicates we can continue
+    // processing vertices.
+    const int_fast64_t   syncPoint1 = -mNumThreads-1;
+    int_fast64_t         tileId     = mFragProcessors->fetch_add(1, std::memory_order_acq_rel);
 
-    // Sync point 2 indicates that all fragments have been rasterized and the
-    // vertex processors can now take over again
-    const uint_fast64_t syncPoint2 = 3u * mNumThreads - 1;
-
-    // sync before running the fragment shaders. The fragment processor will
-    // return this number back to 0
-    uint_fast64_t tileId = mFragProcessors->fetch_add(1, std::memory_order_acq_rel);
-
-    SR_FragmentProcessor fragTask;
-    fragTask.mThreadId      = (uint16_t)tileId;
-    fragTask.mMode          = mMesh.mode;
-    fragTask.mNumProcessors = mNumThreads;
-    fragTask.mNumBins       = math::min<uint64_t>(mBinsUsed->load(std::memory_order_consume), SR_SHADER_MAX_FRAG_BINS);
-    fragTask.mShader        = mShader;
-    fragTask.mFbo           = mFbo;
-    fragTask.mBinIds        = mBinIds;
-    fragTask.mBins          = mFragBins;
-    fragTask.mQueues        = mFragQueues + tileId;
-    fragTask.mFboW          = (float)(mFboW - 1);
-    fragTask.mFboH          = (float)(mFboH - 1);
-
-    // Sort the bins based on their depth. Closer objects should be rendered
-    // first to allow for fragment rejection during the depth test.
+    // Sort the bins based on their depth.
     if (tileId == mNumThreads-1u)
     {
-        // Alpha-blended fragments get sorted from nearest to furthest for
-        // corrected coloring
+        const uint_fast64_t maxElements = math::min<uint64_t>(mBinsUsed->load(std::memory_order_consume), SR_SHADER_MAX_FRAG_BINS);
+
+        // Blended fragments get sorted back-to-front for correct coloring.
         if (mShader->fragment_shader().blend == SR_BLEND_OFF)
         {
-            //ls::utils::sort_quick<SR_FragmentBin, ls::utils::IsGreater<SR_FragmentBin>>(mFragBins, math::min<uint64_t>(mBinsUsed->load(), SR_SHADER_MAX_FRAG_BINS));
-            //std::make_heap(mFragBins, mFragBins+mBinsUsed->load(std::memory_order_relaxed), ls::utils::IsLess<SR_FragmentBin>{});
-            ls::utils::sort_quick<uint32_t>(mBinIds, mBinsUsed->load(std::memory_order_relaxed), [&](uint32_t a, uint32_t b)->bool {
+            ls::utils::sort_quick<uint32_t>(mBinIds, maxElements, [&](uint32_t a, uint32_t b)->bool {
                 return mFragBins[a] > mFragBins[b];
             });
         }
         else
         {
-            //ls::utils::sort_quick<SR_FragmentBin, ls::utils::IsLess<SR_FragmentBin>>(mFragBins, math::min<uint64_t>(mBinsUsed->load(), SR_SHADER_MAX_FRAG_BINS));
-            //std::make_heap(mFragBins, mFragBins+mBinsUsed->load(std::memory_order_relaxed), ls::utils::IsGreater<SR_FragmentBin>{});
-            ls::utils::sort_quick<uint32_t>(mBinIds, mBinsUsed->load(std::memory_order_relaxed), [&](uint32_t a, uint32_t b)->bool {
+            // Sort opaque objects from front-to-back to fortify depth testing.
+            ls::utils::sort_quick<uint32_t>(mBinIds, maxElements, [&](uint32_t a, uint32_t b)->bool {
                 return mFragBins[a] < mFragBins[b];
             });
         }
+
+        // Let all threads know they can process fragments.
         mFragProcessors->store(syncPoint1, std::memory_order_release);
     }
-
-    while (mFragProcessors->load(std::memory_order_consume) < syncPoint1)
+    else
     {
-        #if LS_ARCH_X86
-        _mm_pause();
-        #endif
-        //std::this_thread::yield();
+        while (mFragProcessors->load(std::memory_order_consume) > 0)
+        {
+            #if LS_ARCH_X86
+                _mm_pause();
+            #endif
+            //std::this_thread::yield();
+        }
     }
+
+    SR_FragmentProcessor fragTask{
+        (uint16_t)tileId,
+        mMesh.mode,
+        (uint32_t)mNumThreads,
+        (float)(mFboW - 1),
+        (float)(mFboH - 1),
+        math::min<uint64_t>(mBinsUsed->load(std::memory_order_consume), SR_SHADER_MAX_FRAG_BINS),
+        mShader,
+        mFbo,
+        mBinIds,
+        mFragBins,
+        mFragQueues + tileId
+    };
 
     fragTask.execute();
 
-    // indicate the bins are available for pushing
+    // Indicate to all threads we can now process more vertices
     tileId = mFragProcessors->fetch_add(1, std::memory_order_acq_rel);
 
     // Wait for the last thread to reset the number of available bins.
-    if (tileId == syncPoint2)
+    while (mFragProcessors->load(std::memory_order_consume) < 0)
     {
-        mBinsUsed->store(0, std::memory_order_release);
-        mFragProcessors->store(0, std::memory_order_release);
-        return;
-    }
+        if (tileId == -2)
+        {
+            mBinsUsed->store(0, std::memory_order_release);
+            mFragProcessors->store(0, std::memory_order_acq_rel);
 
-    // Sync all threads
-    while (mFragProcessors->load(std::memory_order_consume) != 0)
-    {
-        std::this_thread::yield();
+        }
+        else
+        {
+            std::this_thread::yield();
+        }
     }
 }
 
@@ -305,15 +305,12 @@ void SR_VertexProcessor::push_fragments(
         }
 
         // Check if the output bin is full
-        uint_fast64_t binId = pLocks->fetch_add(1, std::memory_order_relaxed);
+        uint_fast64_t binId;
 
-        // flush the bins if they've filled up
-        if (binId >= SR_SHADER_MAX_FRAG_BINS)
+        // Attempt to grab a bin index. Flush the bins if they've filled up.
+        while ((binId = pLocks->fetch_add(1, std::memory_order_acq_rel)) >= SR_SHADER_MAX_FRAG_BINS)
         {
             flush_fragments();
-
-            // Attempt to grab another bin index
-            binId = pLocks->fetch_add(1, std::memory_order_relaxed);
         }
 
         // place a triangle into the next available bin
@@ -321,7 +318,7 @@ void SR_VertexProcessor::push_fragments(
         pFragBins[binId] = bin;
     }
 
-    if (pLocks->load() >= SR_SHADER_MAX_FRAG_BINS)
+    while (pLocks->load(std::memory_order_consume) >= SR_SHADER_MAX_FRAG_BINS)
     {
         flush_fragments();
     }
@@ -439,15 +436,15 @@ void SR_VertexProcessor::execute() noexcept
     }
 
     mBusyProcessors->fetch_sub(1, std::memory_order_acq_rel);
-    while (mBusyProcessors->load(std::memory_order_acquire) > 0)
+    while (mBusyProcessors->load(std::memory_order_consume) > 0)
     {
-        if (mFragProcessors->load(std::memory_order_acquire))
+        if (mFragProcessors->load(std::memory_order_consume))
         {
             flush_fragments();
         }
     }
 
-    if (mBinsUsed->load(std::memory_order_acquire))
+    if (mBinsUsed->load(std::memory_order_consume))
     {
         flush_fragments();
     }

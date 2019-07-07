@@ -103,7 +103,7 @@ class SR_ProcessorPool
     typedef ls::utils::WorkerThread<SR_ShaderProcessor> ThreadedWorker;
 
   private:
-    std::atomic_uint_fast64_t mFragSemaphore;
+    std::atomic_int_fast64_t mFragSemaphore;
 
     std::atomic_uint_fast64_t mShadingSemaphore;
 
