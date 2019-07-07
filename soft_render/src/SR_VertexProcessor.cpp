@@ -161,14 +161,14 @@ void SR_VertexProcessor::flush_fragments() const noexcept
         // Blended fragments get sorted back-to-front for correct coloring.
         if (mShader->fragment_shader().blend == SR_BLEND_OFF)
         {
-            ls::utils::sort_quick<uint32_t>(mBinIds, maxElements, [&](uint32_t a, uint32_t b)->bool {
+            ls::utils::sort_quick_iterative<uint32_t>(mBinIds, maxElements, [&](uint32_t a, uint32_t b)->bool {
                 return mFragBins[a] > mFragBins[b];
             });
         }
         else
         {
             // Sort opaque objects from front-to-back to fortify depth testing.
-            ls::utils::sort_quick<uint32_t>(mBinIds, maxElements, [&](uint32_t a, uint32_t b)->bool {
+            ls::utils::sort_quick_iterative<uint32_t>(mBinIds, maxElements, [&](uint32_t a, uint32_t b)->bool {
                 return mFragBins[a] < mFragBins[b];
             });
         }
