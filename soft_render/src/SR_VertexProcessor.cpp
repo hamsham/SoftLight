@@ -212,7 +212,7 @@ void SR_VertexProcessor::flush_fragments() const noexcept
         if (tileId == -2)
         {
             mBinsUsed->store(0, std::memory_order_release);
-            mFragProcessors->store(0, std::memory_order_acq_rel);
+            mFragProcessors->store(0, std::memory_order_release);
 
         }
         else
