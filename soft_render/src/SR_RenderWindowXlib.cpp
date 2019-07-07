@@ -13,16 +13,16 @@
 // XLib should use an un-mangled interface
 extern "C"
 {
-#include <X11/Xlib.h>
-#include <X11/Xutil.h> // XVisualInfo, <X11/keysym.h>
-#include <X11/XKBlib.h> // XkbKeycodeToKeysym
+    #include <X11/Xlib.h>
+    #include <X11/Xutil.h> // XVisualInfo, <X11/keysym.h>
+    #include <X11/XKBlib.h> // XkbKeycodeToKeysym
 }
 
 #include "lightsky/utils/Copy.h"
 #include "lightsky/utils/Log.h"
 
 #include "soft_render/SR_RenderWindowXlib.hpp"
-#include "soft_render/SR_WindowBuffer.hpp"
+#include "soft_render/SR_WindowBufferXlib.hpp"
 
 
 
