@@ -28,6 +28,27 @@ struct SR_FragmentBin; // SR_ShaderProcessor.hpp
 
 
 /*-----------------------------------------------------------------------------
+ * Internal Enums
+-----------------------------------------------------------------------------*/
+enum SR_ClipStatus
+{
+    SR_TRIANGLE_NOT_VISIBLE,
+    SR_TRIANGLE_PARTIALLY_VISIBLE,
+    SR_TRIANGLE_FULLY_VISIBLE
+};
+
+enum SR_ClipPlane
+{
+    SR_CLIP_PLANE_LEFT   = 0x01,
+    SR_CLIP_PLANE_RIGHT  = 0x02,
+    SR_CLIP_PLANE_TOP    = 0x04,
+    SR_CLIP_PLANE_BOTTOM = 0x08,
+    SR_CLIP_PLANE_NEAR   = 0x10,
+    SR_CLIP_PLANE_FAR    = 0x20
+};
+
+
+/*-----------------------------------------------------------------------------
  * Encapsulation of vertex processing on another thread.
 -----------------------------------------------------------------------------*/
 struct SR_VertexProcessor
@@ -61,6 +82,10 @@ struct SR_VertexProcessor
     // 768 bits (96 bytes) max, padding not included
 
     void flush_fragments() const noexcept;
+
+    void clip_and_process_tris(
+        ls::math::vec4 vertCoords[SR_SHADER_MAX_SCREEN_COORDS],
+        ls::math::vec4 pVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS]) noexcept;
 
     void push_fragments(
         float fboW,

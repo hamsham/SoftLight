@@ -79,7 +79,8 @@ To see how to build a sample application using either SoftLight or the LightSky 
 - [ ] Additional Unit Tests.
 - [ ] Create additional examples.
 - [ ] Complete feature parity of GLSL functions.
-- [ ] Implement vertex skinning on top of the current animation framework.
+- [X] Implement vertex skinning on top of the current animation framework.
+- [ ] Create Geometry Shader API
 
 
 
