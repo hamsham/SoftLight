@@ -306,7 +306,7 @@ void SR_VertexProcessor::clip_and_process_tris(
     const float           fboH          = (float)mFboH;
     const float           widthScale    = fboW * 0.5f;
     const float           heightScale   = fboH * 0.5f;
-    constexpr int         numTempVerts  = 9;
+    constexpr int         numTempVerts  = 21;
     int                   numTotalVerts = 3;
     math::vec4            tempVerts     [numTempVerts];
     math::vec4            newVerts      [numTempVerts];
@@ -392,6 +392,24 @@ void SR_VertexProcessor::clip_and_process_tris(
     if (numTotalVerts < 3)
     {
         return;
+    }
+
+    if (numTotalVerts > 3)
+    {
+        int numNewVerts = 0;
+        for (int i = 0; i < numTotalVerts; ++i)
+        {
+            if (i && (i % 3) == 0)
+            {
+                tempVerts[numNewVerts++] = newVerts[0];
+                tempVerts[numNewVerts++] = newVerts[i-1];
+            }
+
+            tempVerts[numNewVerts++] = newVerts[i];
+        }
+
+        numTotalVerts = numNewVerts;
+        _copy_verts(numNewVerts, tempVerts, newVerts);
     }
 
     //LS_LOG_ERR('_', numTotalVerts);
