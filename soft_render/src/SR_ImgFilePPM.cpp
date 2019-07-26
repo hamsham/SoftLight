@@ -122,13 +122,13 @@ SR_ColorRGB8* sr_img_load_ppm(coord_shrt_t& w, coord_shrt_t& h, const char* cons
         return nullptr;
     }
 
-    if (width < 1 || width > std::numeric_limits<coord_shrt_t>::max())
+    if (width < 1 || width > (uint64_t)std::numeric_limits<coord_shrt_t>::max())
     {
         LS_LOG_ERR("Invalid PPM image width: ", width);
         return nullptr;
     }
 
-    if (height < 1 || height > std::numeric_limits<coord_shrt_t>::max())
+    if (height < 1 || height > (uint64_t)std::numeric_limits<coord_shrt_t>::max())
     {
         LS_LOG_ERR("Invalid PPM image height: ", height);
         return nullptr;
