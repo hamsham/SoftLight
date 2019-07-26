@@ -19,6 +19,11 @@
 #include "soft_render/SR_VertexBuffer.hpp"
 #include "soft_render/SR_VertexProcessor.hpp"
 
+#ifndef SR_VERTEX_CLIPPING_ENABLED
+    #define SR_VERTEX_CLIPPING_ENABLED 1
+#endif /* SR_VERTEX_CLIPPING_ENABLED */
+
+
 
 
 /*-----------------------------------------------------------------------------
@@ -365,7 +370,7 @@ void SR_VertexProcessor::clip_and_process_tris(
                 }
                 else
                 {
-                    const float t = math::clamp(-t0 / (t1-t0), 0.f, 1.f);
+                    const float t = math::clamp(t0 / (t0-t1), 0.f, 1.f);
                     tempVerts[numNewVerts++] = math::mix(p0, p1, t);
                 }
             }
@@ -373,7 +378,7 @@ void SR_VertexProcessor::clip_and_process_tris(
             {
                 if (visible1)
                 {
-                    const float t = math::clamp(-t0 / (t1-t0), 0.f, 1.f);
+                    const float t = math::clamp(t0 / (t0-t1), 0.f, 1.f);
                     tempVerts[numNewVerts++] = math::mix(p0, p1, t);
                     tempVerts[numNewVerts++] = p1;
                 }
@@ -618,8 +623,12 @@ void SR_VertexProcessor::execute() noexcept
                 continue;
             }
 
-            //if (visStatus == SR_TRIANGLE_FULLY_VISIBLE)
-            {
+            #if SR_VERTEX_CLIPPING_ENABLED == 0
+                if (math::min(vertCoords[0][3], vertCoords[1][3], vertCoords[2][3]) < 0.f)
+                {
+                    continue;
+                }
+
                 sr_perspective_divide(vertCoords[0]);
                 sr_perspective_divide(vertCoords[1]);
                 sr_perspective_divide(vertCoords[2]);
@@ -635,11 +644,30 @@ void SR_VertexProcessor::execute() noexcept
                 sr_world_to_screen_coords_divided(vertCoords[2], widthScale, heightScale);
 
                 push_fragments(fboW, fboH, vertCoords, pVaryings);
-            }
-            //else
-            //{
-            //    clip_and_process_tris(vertCoords, pVaryings);
-            //}
+            #else
+                if (visStatus == SR_TRIANGLE_FULLY_VISIBLE)
+                {
+                    sr_perspective_divide(vertCoords[0]);
+                    sr_perspective_divide(vertCoords[1]);
+                    sr_perspective_divide(vertCoords[2]);
+
+                    if ((cullMode == SR_CULL_BACK_FACE && !backface_visible(vertCoords))
+                    ||  (cullMode == SR_CULL_FRONT_FACE && !frontface_visible(vertCoords)))
+                    {
+                        continue;
+                    }
+
+                    sr_world_to_screen_coords_divided(vertCoords[0], widthScale, heightScale);
+                    sr_world_to_screen_coords_divided(vertCoords[1], widthScale, heightScale);
+                    sr_world_to_screen_coords_divided(vertCoords[2], widthScale, heightScale);
+
+                    push_fragments(fboW, fboH, vertCoords, pVaryings);
+                }
+                else
+                {
+                    clip_and_process_tris(vertCoords, pVaryings);
+                }
+            #endif
         }
     }
 
