@@ -20,7 +20,7 @@
 #include "soft_render/SR_VertexProcessor.hpp"
 
 #ifndef SR_VERTEX_CLIPPING_ENABLED
-    #define SR_VERTEX_CLIPPING_ENABLED 1
+    #define SR_VERTEX_CLIPPING_ENABLED 0
 #endif /* SR_VERTEX_CLIPPING_ENABLED */
 
 
@@ -162,7 +162,6 @@ inline LS_INLINE bool frontface_visible(const math::vec4 screenCoords[SR_SHADER_
 --------------------------------------*/
 inline LS_INLINE SR_ClipStatus face_visible(const math::vec4 clipCoords[SR_SHADER_MAX_WORLD_COORDS]) noexcept
 {
-    /*
     const bool v0x = -clipCoords[0][3] <= clipCoords[0][0] && clipCoords[0][3] >= clipCoords[0][0];
     const bool v0y = -clipCoords[0][3] <= clipCoords[0][1] && clipCoords[0][3] >= clipCoords[0][1];
     const bool v0z = -clipCoords[0][3] <= clipCoords[0][2] && clipCoords[0][3] >= clipCoords[0][2];
@@ -188,11 +187,13 @@ inline LS_INLINE SR_ClipStatus face_visible(const math::vec4 clipCoords[SR_SHADE
     {
         return SR_TRIANGLE_PARTIALLY_VISIBLE;
     }
-    */
+
+    /*
     if (math::min(clipCoords[0][3], clipCoords[1][3], clipCoords[2][3]) >= 0.f)
     {
         return SR_TRIANGLE_PARTIALLY_VISIBLE;
     }
+    */
 
     return SR_TRIANGLE_NOT_VISIBLE;
 }
@@ -300,13 +301,13 @@ void SR_VertexProcessor::clip_and_process_tris(
     ls::math::vec4 vertCoords[SR_SHADER_MAX_SCREEN_COORDS],
     ls::math::vec4 pVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS]) noexcept
 {
-    //const SR_VertexShader vertShader    = mShader->mVertShader;
-    //const SR_CullMode     cullMode      = vertShader.cullMode;
+    const SR_VertexShader vertShader    = mShader->mVertShader;
+    const SR_CullMode     cullMode      = vertShader.cullMode;
     const float           fboW          = (float)mFboW;
     const float           fboH          = (float)mFboH;
     const float           widthScale    = fboW * 0.5f;
     const float           heightScale   = fboH * 0.5f;
-    constexpr int         numTempVerts  = 21;
+    constexpr int         numTempVerts  = 9; // at most 9 vertices will be generated
     int                   numTotalVerts = 3;
     math::vec4            tempVerts     [numTempVerts];
     math::vec4            newVerts      [numTempVerts];
@@ -393,26 +394,19 @@ void SR_VertexProcessor::clip_and_process_tris(
     {
         return;
     }
-
-    if (numTotalVerts > 3)
+    else if (numTotalVerts % 3 != 0) // triangulate
     {
         int numNewVerts = 0;
-        for (int i = 0; i < numTotalVerts; ++i)
+        for (int i = 2; i < numTotalVerts; ++i)
         {
-            if (i && (i % 3) == 0)
-            {
-                tempVerts[numNewVerts++] = newVerts[0];
-                tempVerts[numNewVerts++] = newVerts[i-1];
-            }
-
             tempVerts[numNewVerts++] = newVerts[i];
+            tempVerts[numNewVerts++] = newVerts[0];
+            tempVerts[numNewVerts++] = newVerts[i-1];
         }
 
         numTotalVerts = numNewVerts;
         _copy_verts(numNewVerts, tempVerts, newVerts);
     }
-
-    //LS_LOG_ERR('_', numTotalVerts);
 
     for (int i = 0; i+2 < numTotalVerts; i += 3)
     {
@@ -424,13 +418,11 @@ void SR_VertexProcessor::clip_and_process_tris(
         sr_perspective_divide(v1);
         sr_perspective_divide(v2);
 
-        /*
         if ((cullMode == SR_CULL_BACK_FACE && !backface_visible(newVerts))
         ||  (cullMode == SR_CULL_FRONT_FACE && !frontface_visible(newVerts)))
         {
             continue;
         }
-        */
 
         sr_world_to_screen_coords_divided(v0, widthScale, heightScale);
         sr_world_to_screen_coords_divided(v1, widthScale, heightScale);
@@ -642,11 +634,6 @@ void SR_VertexProcessor::execute() noexcept
             }
 
             #if SR_VERTEX_CLIPPING_ENABLED == 0
-                if (math::min(vertCoords[0][3], vertCoords[1][3], vertCoords[2][3]) < 0.f)
-                {
-                    continue;
-                }
-
                 sr_perspective_divide(vertCoords[0]);
                 sr_perspective_divide(vertCoords[1]);
                 sr_perspective_divide(vertCoords[2]);
