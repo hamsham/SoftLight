@@ -1,10 +1,7 @@
 
-#include <algorithm>
-
 #include "lightsky/setup/Macros.h"
 
 #include "lightsky/utils/Assertions.h" // LS_DEBUG_ASSERT
-#include "lightsky/utils/Log.h"
 #include "lightsky/utils/Sort.hpp" // utils::sort_quick
 
 #include "lightsky/math/vec4.h"
@@ -20,7 +17,7 @@
 #include "soft_render/SR_VertexProcessor.hpp"
 
 #ifndef SR_VERTEX_CLIPPING_ENABLED
-    #define SR_VERTEX_CLIPPING_ENABLED 0
+    #define SR_VERTEX_CLIPPING_ENABLED 1
 #endif /* SR_VERTEX_CLIPPING_ENABLED */
 
 
@@ -95,7 +92,7 @@ inline size_t get_next_vertex(const SR_IndexBuffer* pIbo, size_t vId) noexcept
         case VERTEX_DATA_SHORT: return *reinterpret_cast<const unsigned short*>(pIbo->element(vId));
         case VERTEX_DATA_INT:   return *reinterpret_cast<const unsigned int*>(pIbo->element(vId));
         default:
-            assert(false);
+            LS_DEBUG_ASSERT(false);
             break;
     }
     return vId;
@@ -162,38 +159,45 @@ inline LS_INLINE bool frontface_visible(const math::vec4 screenCoords[SR_SHADER_
 --------------------------------------*/
 inline LS_INLINE SR_ClipStatus face_visible(const math::vec4 clipCoords[SR_SHADER_MAX_WORLD_COORDS]) noexcept
 {
-    const bool v0x = -clipCoords[0][3] <= clipCoords[0][0] && clipCoords[0][3] >= clipCoords[0][0];
-    const bool v0y = -clipCoords[0][3] <= clipCoords[0][1] && clipCoords[0][3] >= clipCoords[0][1];
-    const bool v0z = -clipCoords[0][3] <= clipCoords[0][2] && clipCoords[0][3] >= clipCoords[0][2];
+    #if SR_VERTEX_CLIPPING_ENABLED != 0
+        const bool v0x = -clipCoords[0][3] <= clipCoords[0][0] && clipCoords[0][3] >= clipCoords[0][0];
+        const bool v0y = -clipCoords[0][3] <= clipCoords[0][1] && clipCoords[0][3] >= clipCoords[0][1];
+        const bool v0z = -clipCoords[0][3] <= clipCoords[0][2] && clipCoords[0][3] >= clipCoords[0][2];
 
-    const bool v1x = -clipCoords[1][3] <= clipCoords[1][0] && clipCoords[1][3] >= clipCoords[1][0];
-    const bool v1y = -clipCoords[1][3] <= clipCoords[1][1] && clipCoords[1][3] >= clipCoords[1][1];
-    const bool v1z = -clipCoords[1][3] <= clipCoords[1][2] && clipCoords[1][3] >= clipCoords[1][2];
+        const bool v1x = -clipCoords[1][3] <= clipCoords[1][0] && clipCoords[1][3] >= clipCoords[1][0];
+        const bool v1y = -clipCoords[1][3] <= clipCoords[1][1] && clipCoords[1][3] >= clipCoords[1][1];
+        const bool v1z = -clipCoords[1][3] <= clipCoords[1][2] && clipCoords[1][3] >= clipCoords[1][2];
 
-    const bool v2x = -clipCoords[2][3] <= clipCoords[2][0] && clipCoords[2][3] >= clipCoords[2][0];
-    const bool v2y = -clipCoords[2][3] <= clipCoords[2][1] && clipCoords[2][3] >= clipCoords[2][1];
-    const bool v2z = -clipCoords[2][3] <= clipCoords[2][2] && clipCoords[2][3] >= clipCoords[2][2];
+        const bool v2x = -clipCoords[2][3] <= clipCoords[2][0] && clipCoords[2][3] >= clipCoords[2][0];
+        const bool v2y = -clipCoords[2][3] <= clipCoords[2][1] && clipCoords[2][3] >= clipCoords[2][1];
+        const bool v2z = -clipCoords[2][3] <= clipCoords[2][2] && clipCoords[2][3] >= clipCoords[2][2];
 
-    if((v0x && v0y && v0z)
-    && (v1x && v1y && v1z)
-    && (v2x && v2y && v2z))
-    {
-        return SR_TRIANGLE_FULLY_VISIBLE;
-    }
+        if((v0x && v0y && v0z)
+        && (v1x && v1y && v1z)
+        && (v2x && v2y && v2z))
+        {
+            return SR_TRIANGLE_FULLY_VISIBLE;
+        }
 
-    if((v0x && v0y && v0z)
-    || (v1x && v1y && v1z)
-    || (v2x && v2y && v2z))
-    {
-        return SR_TRIANGLE_PARTIALLY_VISIBLE;
-    }
-
-    /*
-    if (math::min(clipCoords[0][3], clipCoords[1][3], clipCoords[2][3]) >= 0.f)
-    {
-        return SR_TRIANGLE_PARTIALLY_VISIBLE;
-    }
-    */
+        if((v0x && v0y && v0z)
+        || (v1x && v1y && v1z)
+        || (v2x && v2y && v2z))
+        {
+            return SR_TRIANGLE_PARTIALLY_VISIBLE;
+        }
+        /*
+        if (v2x || v2y || v2z)
+        {
+            return SR_TRIANGLE_PARTIALLY_VISIBLE;
+        }
+        */
+    #else
+        if (math::min(clipCoords[0][3], clipCoords[1][3], clipCoords[2][3]) >= 0.f)
+        {
+            // something's visible, but near-plane clipping might say otherwise
+            return SR_TRIANGLE_PARTIALLY_VISIBLE;
+        }
+    #endif /* SR_VERTEX_CLIPPING_ENABLED */
 
     return SR_TRIANGLE_NOT_VISIBLE;
 }
@@ -294,8 +298,27 @@ void SR_VertexProcessor::flush_fragments() const noexcept
 
 /*-------------------------------------
  * Ensure only visible triangles get rendered. Triangles should have already
- * been tested for visibility within clip-space. Now we need to process the
- * remaining tris and generate new ones if they were clipped.
+ * been tested for visibility within clip-space. Now we need to clip the
+ * remaining tris and generate new ones.
+ *
+ * The basic clipping algorithm is as follows:
+ *
+ *  for each clipping edge do
+ *      for (i = 0; i < Polygon.length; i++)
+ *          Pi = Polygon.vertex[i];
+ *          Pi+1 = Polygon.vertex[i+1];
+ *          if (Pi is inside clipping region)
+ *              if (Pi+1 is inside clipping region)
+ *                  clippedPolygon.add(Pi+1)
+ *              else
+ *                  clippedPolygon.add(intersectionPoint(Pi, Pi+1, currentEdge)
+ *          else
+ *              if (Pi+1 is inside clipping region)
+ *                  clippedPolygon.add(intersectionPoint(Pi, Pi+1, currentEdge)
+ *                  clippedPolygon.add(Pi+1)
+ *      end for
+ *      Polygon = clippedPolygon     // keep on working with the new polygon
+ *  end for
 -------------------------------------*/
 void SR_VertexProcessor::clip_and_process_tris(
     ls::math::vec4 vertCoords[SR_SHADER_MAX_SCREEN_COORDS],
@@ -303,14 +326,25 @@ void SR_VertexProcessor::clip_and_process_tris(
 {
     const SR_VertexShader vertShader    = mShader->mVertShader;
     const SR_CullMode     cullMode      = vertShader.cullMode;
+    const int             numVarys      = (int)vertShader.numVaryings;
     const float           fboW          = (float)mFboW;
     const float           fboH          = (float)mFboH;
     const float           widthScale    = fboW * 0.5f;
     const float           heightScale   = fboH * 0.5f;
-    constexpr int         numTempVerts  = 9; // at most 9 vertices will be generated
+    constexpr int         numTempVerts  = 18; // at most 9 vertices should be generated
     int                   numTotalVerts = 3;
     math::vec4            tempVerts     [numTempVerts];
     math::vec4            newVerts      [numTempVerts];
+    math::vec4            tempVarys     [numTempVerts * SR_SHADER_MAX_VARYING_VECTORS];
+    math::vec4            newVarys      [numTempVerts * SR_SHADER_MAX_VARYING_VECTORS];
+    const math::vec4      clipEdges[6]  = {
+        {-1.f,  0.f,  0.f, 1.f},
+        { 1.f,  0.f,  0.f, 1.f},
+        { 0.f, -1.f,  0.f, 1.f},
+        { 0.f,  1.f,  0.f, 1.f},
+        { 0.f,  0.f, -1.f, 1.f},
+        { 0.f,  0.f,  1.f, 1.f}
+    };
 
     const auto _copy_verts = [](int maxVerts, const math::vec4* inVerts, math::vec4* outVerts) noexcept->void
     {
@@ -320,74 +354,73 @@ void SR_VertexProcessor::clip_and_process_tris(
         }
     };
 
-    /*
-    for each clipping edge do
-        for (i = 0; i < Polygon.length -1; i++)
-            Pi = Polygon.vertex[i];
-            Pi+1 = Polygon.vertex[i+1];
-            if (Pi is inside clipping region)
-                if (Pi+1 is inside clipping region)
-                    clippedPolygon.add(Pi+1)
-                else
-                    clippedPolygon.add(intersectionPoint(Pi, Pi+1, currentEdge)
-            else
-                if (Pi+1 is inside clipping region)
-                    clippedPolygon.add(intersectionPoint(Pi, Pi+1, currentEdge)
-                    clippedPolygon.add(Pi+1)
-        end for
-        Polygon = clippedPolygon     // keep on working with the new polygon
-    end for
-    */
+    const auto _interpolate_varyings = [&numVarys](const math::vec4* inVarys, math::vec4* outVarys, int fromIndex, int toIndex, float amt)->void
+    {
+        const int offset0 = fromIndex * SR_SHADER_MAX_VARYING_VECTORS;
+        const int offset1 = toIndex   * SR_SHADER_MAX_VARYING_VECTORS;
 
-    _copy_verts(3, vertCoords, newVerts);
-
-    const math::vec4 clipEdges[6] = {
-        {-1.f,  0.f,  0.f, 1.f},
-        { 1.f,  0.f,  0.f, 1.f},
-        { 0.f, -1.f,  0.f, 1.f},
-        { 0.f,  1.f,  0.f, 1.f},
-        { 0.f,  0.f, -1.f, 1.f},
-        { 0.f,  0.f,  1.f, 1.f},
+        for (int i = 0; i < numVarys; ++i)
+        {
+            const math::vec4& v0 = inVarys[offset0+i];
+            const math::vec4& v1 = inVarys[offset1+i];
+            outVarys[i] = math::mix(v0, v1, amt);
+        }
     };
 
+    _copy_verts(3, vertCoords, newVerts);
+    _copy_verts(SR_SHADER_MAX_VARYING_VECTORS*3, pVaryings, newVarys);
+
+    //for (int i = 4; i < 6; ++i)
     for (const math::vec4& edge : clipEdges)
     {
+        //const math::vec4& edge = clipEdges[i];
         int numNewVerts = 0;
 
         for (int j = 0; j < numTotalVerts; ++j)
         {
-            math::vec4 p0 = newVerts[j];
-            math::vec4 p1 = newVerts[(j+1) % numTotalVerts];
-            const float t0 = math::dot(p0, edge);
-            const float t1 = math::dot(p1, edge);
-            bool visible0 = t0 >= 0.f;
-            bool visible1 = t1 >= 0.f;
+            const int   k        = (j+1) % numTotalVerts;
+            math::vec4& p0       = newVerts[j];
+            math::vec4& p1       = newVerts[k];
+            const float t0       = math::dot(p0, edge);
+            const float t1       = math::dot(p1, edge);
+            const bool  visible0 = t0 >= 0.f;
+            const bool  visible1 = t1 >= 0.f;
 
             if (visible0)
             {
                 if (visible1)
                 {
-                    tempVerts[numNewVerts++] = p1;
+                    tempVerts[numNewVerts] = p1;
+                    _copy_verts(numVarys, newVarys+(k*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS));
                 }
                 else
                 {
                     const float t = math::clamp(t0 / (t0-t1), 0.f, 1.f);
-                    tempVerts[numNewVerts++] = math::mix(p0, p1, t);
+                    tempVerts[numNewVerts] = math::mix(p0, p1, t);
+                    _interpolate_varyings(newVarys, tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS), j, k, t);
                 }
+
+                numNewVerts++;
             }
             else
             {
                 if (visible1)
                 {
                     const float t = math::clamp(t0 / (t0-t1), 0.f, 1.f);
-                    tempVerts[numNewVerts++] = math::mix(p0, p1, t);
-                    tempVerts[numNewVerts++] = p1;
+                    tempVerts[numNewVerts] = math::mix(p0, p1, t);
+                    _interpolate_varyings(newVarys, tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS), j, k, t);
+                    ++numNewVerts;
+
+                    tempVerts[numNewVerts] = p1;
+                    _copy_verts(numVarys, newVarys+(k*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS));
+                    ++numNewVerts;
                 }
             }
         }
 
         numTotalVerts = numNewVerts;
         _copy_verts(numNewVerts, tempVerts, newVerts);
+        _copy_verts(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS, tempVarys, newVarys);
     }
 
     if (numTotalVerts < 3)
@@ -399,16 +432,27 @@ void SR_VertexProcessor::clip_and_process_tris(
         int numNewVerts = 0;
         for (int i = 2; i < numTotalVerts; ++i)
         {
-            tempVerts[numNewVerts++] = newVerts[i];
-            tempVerts[numNewVerts++] = newVerts[0];
-            tempVerts[numNewVerts++] = newVerts[i-1];
+            tempVerts[numNewVerts] = newVerts[i];
+            _copy_verts(numVarys, newVarys+(i*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS));
+            ++numNewVerts;
+
+            tempVerts[numNewVerts] = newVerts[0];
+            _copy_verts(numVarys, newVarys, tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS));
+            ++numNewVerts;
+
+            tempVerts[numNewVerts] = newVerts[i-1];
+            _copy_verts(numVarys, newVarys+((i-1)*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS));
+            ++numNewVerts;
         }
 
         numTotalVerts = numNewVerts;
         _copy_verts(numNewVerts, tempVerts, newVerts);
+        _copy_verts(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS, tempVarys, newVarys);
     }
 
-    for (int i = 0; i+2 < numTotalVerts; i += 3)
+    LS_DEBUG_ASSERT(numTotalVerts <= numTempVerts);
+
+    for (int i = 0; i < numTotalVerts; i += 3)
     {
         math::vec4& v0 = newVerts[i + 0];
         math::vec4& v1 = newVerts[i + 1];
@@ -428,7 +472,8 @@ void SR_VertexProcessor::clip_and_process_tris(
         sr_world_to_screen_coords_divided(v1, widthScale, heightScale);
         sr_world_to_screen_coords_divided(v2, widthScale, heightScale);
 
-        push_fragments(fboW, fboH, newVerts+i, pVaryings);
+        //push_fragments(fboW, fboH, newVerts+i, pVaryings);
+        push_fragments(fboW, fboH, newVerts+i, newVarys+(i*SR_SHADER_MAX_VARYING_VECTORS));
     }
 }
 
@@ -482,8 +527,6 @@ void SR_VertexProcessor::push_fragments(
         bboxMaxX = math::max(p0[0], p1[0], p2[0]);
         bboxMaxY = math::max(p0[1], p1[1], p2[1]);
     }
-
-    //LS_LOG_MSG(bboxMinX, ' ', bboxMinY, " x ", bboxMaxX, ' ', bboxMaxY);
 
     const int isFragVisible = (bboxMaxX >= 0.f && fboW >= bboxMinX && bboxMaxY >= 0.f && fboH >= bboxMinY);
 
