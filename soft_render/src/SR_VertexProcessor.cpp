@@ -2,6 +2,7 @@
 #include "lightsky/setup/Macros.h"
 
 #include "lightsky/utils/Assertions.h" // LS_DEBUG_ASSERT
+#include "lightsky/utils/Log.h" // utils::LS_LOG...()
 #include "lightsky/utils/Sort.hpp" // utils::sort_quick
 
 #include "lightsky/math/vec4.h"
@@ -179,18 +180,19 @@ inline LS_INLINE SR_ClipStatus face_visible(const math::vec4 clipCoords[SR_SHADE
             return SR_TRIANGLE_FULLY_VISIBLE;
         }
 
-        if((v0x && v0y && v0z)
-        || (v1x && v1y && v1z)
-        || (v2x && v2y && v2z))
-        {
-            return SR_TRIANGLE_PARTIALLY_VISIBLE;
-        }
-        /*
-        if (v2x || v2y || v2z)
-        {
-            return SR_TRIANGLE_PARTIALLY_VISIBLE;
-        }
-        */
+        #if 0
+            if((v0x && v0y && v0z)
+            || (v1x && v1y && v1z)
+            || (v2x && v2y && v2z))
+            {
+                return SR_TRIANGLE_PARTIALLY_VISIBLE;
+            }
+        #else
+            if (v2x || v2y || v2z)
+            {
+                return SR_TRIANGLE_PARTIALLY_VISIBLE;
+            }
+        #endif
     #else
         if (math::min(clipCoords[0][3], clipCoords[1][3], clipCoords[2][3]) >= 0.f)
         {
@@ -337,7 +339,7 @@ void SR_VertexProcessor::clip_and_process_tris(
     math::vec4            newVerts      [numTempVerts];
     math::vec4            tempVarys     [numTempVerts * SR_SHADER_MAX_VARYING_VECTORS];
     math::vec4            newVarys      [numTempVerts * SR_SHADER_MAX_VARYING_VECTORS];
-    const math::vec4      clipEdges[6]  = {
+    const math::vec4      clipEdges[]  = {
         {-1.f,  0.f,  0.f, 1.f},
         { 1.f,  0.f,  0.f, 1.f},
         { 0.f, -1.f,  0.f, 1.f},
@@ -370,52 +372,44 @@ void SR_VertexProcessor::clip_and_process_tris(
     _copy_verts(3, vertCoords, newVerts);
     _copy_verts(SR_SHADER_MAX_VARYING_VECTORS*3, pVaryings, newVarys);
 
-    //for (int i = 4; i < 6; ++i)
+    //for (int i = 0; i < 6; ++i)
     for (const math::vec4& edge : clipEdges)
     {
         //const math::vec4& edge = clipEdges[i];
-        int numNewVerts = 0;
 
-        for (int j = 0; j < numTotalVerts; ++j)
+        // caching
+        int        numNewVerts = 0;
+        int        j           = numTotalVerts-1;
+        math::vec4 p0          = newVerts[numTotalVerts-1];
+        float      t0          = math::dot(p0, edge);
+        int        visible0    = t0 >= 0.f;
+
+        for (int k = 0; k < numTotalVerts; ++k)
         {
-            const int   k        = (j+1) % numTotalVerts;
-            math::vec4& p0       = newVerts[j];
-            math::vec4& p1       = newVerts[k];
-            const float t0       = math::dot(p0, edge);
+            const math::vec4& p1 = newVerts[k];
             const float t1       = math::dot(p1, edge);
-            const bool  visible0 = t0 >= 0.f;
-            const bool  visible1 = t1 >= 0.f;
+            const int   visible1 = t1 >= 0.f;
 
-            if (visible0)
+            if (visible0 ^ visible1)
             {
-                if (visible1)
-                {
-                    tempVerts[numNewVerts] = p1;
-                    _copy_verts(numVarys, newVarys+(k*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS));
-                }
-                else
-                {
-                    const float t = math::clamp(t0 / (t0-t1), 0.f, 1.f);
-                    tempVerts[numNewVerts] = math::mix(p0, p1, t);
-                    _interpolate_varyings(newVarys, tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS), j, k, t);
-                }
+                const float t = math::clamp(t0 / (t0-t1), 0.f, 1.f);
+                tempVerts[numNewVerts] = math::mix(p0, p1, t);
+                _interpolate_varyings(newVarys, tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS), j, k, t);
 
                 numNewVerts++;
             }
-            else
-            {
-                if (visible1)
-                {
-                    const float t = math::clamp(t0 / (t0-t1), 0.f, 1.f);
-                    tempVerts[numNewVerts] = math::mix(p0, p1, t);
-                    _interpolate_varyings(newVarys, tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS), j, k, t);
-                    ++numNewVerts;
 
-                    tempVerts[numNewVerts] = p1;
-                    _copy_verts(numVarys, newVarys+(k*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS));
-                    ++numNewVerts;
-                }
+            if (visible1)
+            {
+                tempVerts[numNewVerts] = p1;
+                _copy_verts(numVarys, newVarys+(k*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS));
+                ++numNewVerts;
             }
+
+            j           = k;
+            p0          = p1;
+            t0          = t1;
+            visible0    = visible1;
         }
 
         numTotalVerts = numNewVerts;
@@ -427,7 +421,7 @@ void SR_VertexProcessor::clip_and_process_tris(
     {
         return;
     }
-    else if (numTotalVerts % 3 != 0) // triangulate
+    else if (numTotalVerts > 3 && numTotalVerts % 3 != 0) // triangulate
     {
         int numNewVerts = 0;
         for (int i = 2; i < numTotalVerts; ++i)
@@ -450,7 +444,7 @@ void SR_VertexProcessor::clip_and_process_tris(
         _copy_verts(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS, tempVarys, newVarys);
     }
 
-    LS_DEBUG_ASSERT(numTotalVerts <= numTempVerts);
+    LS_ASSERT(numTotalVerts <= numTempVerts);
 
     for (int i = 0; i < numTotalVerts; i += 3)
     {
