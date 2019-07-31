@@ -1,14 +1,9 @@
 
 #include <cassert> // assert
-#include <climits> // CHAR_BIT
 #include <cstdlib> // std::getenv
 #include <limits> // numeric_limits<>
 #include <memory> // std::move
 #include <new> // std::nothrow
-
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/extensions/XShm.h>
 
 // XLib should use an un-mangled interface
 extern "C"
@@ -16,8 +11,13 @@ extern "C"
     #include <X11/Xlib.h>
     #include <X11/Xutil.h> // XVisualInfo, <X11/keysym.h>
     #include <X11/XKBlib.h> // XkbKeycodeToKeysym
+
+    #if SR_ENABLE_XSHM != 0
+        #include <X11/extensions/XShm.h>
+    #endif
 }
 
+#include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Copy.h"
 #include "lightsky/utils/Log.h"
 
@@ -106,7 +106,9 @@ SR_RenderWindowXlib::SR_RenderWindowXlib() noexcept :
     mMouseY{0},
     mKeysRepeat{true},
     mCaptureMouse{false}
-{}
+{
+    ls::utils::runtime_assert(XInitThreads() != False, ls::utils::LS_WARNING, "Unable to initialize Xlib for threading.");
+}
 
 
 
@@ -1051,30 +1053,29 @@ void SR_RenderWindowXlib::render(SR_WindowBuffer& buffer) noexcept
     assert(this->valid());
     assert(buffer.native_handle() != nullptr);
 
-    #if SR_ENABLE_XSHM
-    XShmPutImage(
-        mDisplay,
-        mWindow,
-        DefaultGC(mDisplay, DefaultScreen(mDisplay)),
-        reinterpret_cast<XImage*>(buffer.native_handle()),
-        0, 0,
-        0, 0,
-        width(),
-        height(),
-        False
-    );
-
+    #if SR_ENABLE_XSHM != 0
+        XShmPutImage(
+            mDisplay,
+            mWindow,
+            DefaultGC(mDisplay, DefaultScreen(mDisplay)),
+            reinterpret_cast<XImage*>(buffer.native_handle()),
+            0, 0,
+            0, 0,
+            width(),
+            height(),
+            False
+        );
     #else
-    XPutImage(
-        mDisplay,
-        mWindow,
-        DefaultGC(mDisplay, DefaultScreen(mDisplay)),
-        reinterpret_cast<XImage*>(buffer.native_handle()),
-        0, 0,
-        0, 0,
-        width(),
-        height()
-    );
+        XPutImage(
+            mDisplay,
+            mWindow,
+            DefaultGC(mDisplay, DefaultScreen(mDisplay)),
+            reinterpret_cast<XImage*>(buffer.native_handle()),
+            0, 0,
+            0, 0,
+            width(),
+            height()
+        );
     #endif /* SR_ENABLE_XSHM */
 }
 

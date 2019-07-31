@@ -20,11 +20,11 @@
 -----------------------------------------------------------------------------*/
 namespace ls
 {
-namespace math
-{
-template <typename color_type>
-union vec4_t;
-}
+    namespace math
+    {
+        template <typename color_type>
+        union vec4_t;
+    }
 }
 
 
@@ -39,7 +39,7 @@ class SR_WindowBufferXlib : public SR_WindowBuffer
 
     void* mBuffer;
 
-    #if SR_ENABLE_XSHM
+    #if SR_ENABLE_XSHM != 0
     void* mShmInfo;
     #endif
 

@@ -2,24 +2,28 @@
 #include <cstdint> // fixed-width types
 #include <cstdlib>
 #include <utility> // std::move()
-#include <cstdio> // perror
 
 #include <unistd.h>
 #include <string.h> // strerror()
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/extensions/XShm.h>
+extern "C"
+{
+    #include <X11/Xlib.h>
+    #include <X11/Xutil.h>
 
-#include <sys/ipc.h> // IPC_CREAT
-#include <sys/shm.h> // shmget
-#include <sys/stat.h> // SR_IRWXU
+    #if SR_ENABLE_XSHM != 0
+        #include <X11/extensions/XShm.h>
+
+        #include <sys/ipc.h> // IPC_CREAT
+        #include <sys/shm.h> // shmget
+        #include <sys/stat.h> // SR_IRWXU
+    #endif /* SR_ENABLE_XSHM */
+}
 
 #include "lightsky/utils/Log.h"
 
 #include "soft_render/SR_Color.hpp"
 #include "soft_render/SR_RenderWindowXlib.hpp"
-#include "soft_render/SR_Texture.hpp"
 #include "soft_render/SR_WindowBufferXlib.hpp"
 
 
@@ -27,7 +31,7 @@
 /*-----------------------------------------------------------------------------
  *
 -----------------------------------------------------------------------------*/
-#if SR_ENABLE_XSHM
+#if SR_ENABLE_XSHM != 0
 /*-------------------------------------
  *
 -------------------------------------*/
@@ -308,7 +312,6 @@ int SR_WindowBufferXlib::init(SR_RenderWindow& win, unsigned width, unsigned hei
     {
         return -3;
     }
-
 
     Visual* pVisual = DefaultVisual(pWin->mDisplay, DefaultScreen(pWin->mDisplay));
     if (!pVisual)
