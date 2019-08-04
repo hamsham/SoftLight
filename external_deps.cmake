@@ -11,8 +11,10 @@ set(CMAKE_CXX_STANDARD 11)
 include(ExternalProject)
 
 # Sub-directories within the build folder (not installation folder).
-set(EXTERNAL_PROJECT_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/external" CACHE STRING "Build prefix for 3rd-party libraries.")
-mark_as_advanced(EXTERNAL_PROJECT_PREFIX)
+if (NOT EXTERNAL_PROJECT_PREFIX)
+    set(EXTERNAL_PROJECT_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/external" CACHE STRING "Build prefix for 3rd-party libraries.")
+    mark_as_advanced(EXTERNAL_PROJECT_PREFIX)
+endif()
 
 # Include directory for 3rd-party libraries
 include_directories(BEFORE SYSTEM ${EXTERNAL_PROJECT_PREFIX}/include)
