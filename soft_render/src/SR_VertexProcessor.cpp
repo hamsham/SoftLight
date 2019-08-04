@@ -18,7 +18,7 @@
 #include "soft_render/SR_VertexProcessor.hpp"
 
 #ifndef SR_VERTEX_CLIPPING_ENABLED
-    #define SR_VERTEX_CLIPPING_ENABLED 1
+    #define SR_VERTEX_CLIPPING_ENABLED 0
 #endif /* SR_VERTEX_CLIPPING_ENABLED */
 
 
@@ -180,6 +180,10 @@ inline LS_INLINE SR_ClipStatus face_visible(const math::vec4 clipCoords[SR_SHADE
             return SR_TRIANGLE_FULLY_VISIBLE;
         }
 
+        if (v2x || v2y || v2z)
+        {
+            return SR_TRIANGLE_PARTIALLY_VISIBLE;
+        }
         #if 0
             if((v0x && v0y && v0z)
             || (v1x && v1y && v1z)
@@ -396,7 +400,7 @@ void SR_VertexProcessor::clip_and_process_tris(
                 tempVerts[numNewVerts] = math::mix(p0, p1, t);
                 _interpolate_varyings(newVarys, tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS), j, k, t);
 
-                numNewVerts++;
+                ++numNewVerts;
             }
 
             if (visible1)
@@ -426,16 +430,20 @@ void SR_VertexProcessor::clip_and_process_tris(
         int numNewVerts = 0;
         for (int i = 2; i < numTotalVerts; ++i)
         {
-            tempVerts[numNewVerts] = newVerts[i];
-            _copy_verts(numVarys, newVarys+(i*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS));
+            const int i0 = i;
+            const int i1 = 0;
+            const int i2 = i-1;
+
+            tempVerts[numNewVerts] = newVerts[i0];
+            _copy_verts(numVarys, newVarys+(i0*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS));
             ++numNewVerts;
 
-            tempVerts[numNewVerts] = newVerts[0];
-            _copy_verts(numVarys, newVarys, tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS));
+            tempVerts[numNewVerts] = newVerts[i1];
+            _copy_verts(numVarys, newVarys+(i1*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS));
             ++numNewVerts;
 
-            tempVerts[numNewVerts] = newVerts[i-1];
-            _copy_verts(numVarys, newVarys+((i-1)*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS));
+            tempVerts[numNewVerts] = newVerts[i2];
+            _copy_verts(numVarys, newVarys+(i2*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS));
             ++numNewVerts;
         }
 
@@ -444,7 +452,8 @@ void SR_VertexProcessor::clip_and_process_tris(
         _copy_verts(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS, tempVarys, newVarys);
     }
 
-    LS_ASSERT(numTotalVerts <= numTempVerts);
+    LS_DEBUG_ASSERT(numTotalVerts % 3 == 0);
+    LS_DEBUG_ASSERT(numTotalVerts <= numTempVerts);
 
     for (int i = 0; i < numTotalVerts; i += 3)
     {
