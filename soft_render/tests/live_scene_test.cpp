@@ -946,11 +946,6 @@ int main()
         {
             pWindow->pop_event(&evt);
 
-            if (evt.type == SR_WinEventType::WIN_EVENT_MOVED)
-            {
-                std::cout << "Window moved: " << evt.window.x << 'x' << evt.window.y << std::endl;
-            }
-
             if (evt.type == SR_WinEventType::WIN_EVENT_RESIZED)
             {
                 std::cout<< "Window resized: " << evt.window.width << 'x' << evt.window.height << std::endl;
