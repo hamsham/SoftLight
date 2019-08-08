@@ -391,8 +391,8 @@ void SR_VertexProcessor::clip_and_process_tris(
     for (const math::vec4& edge : clipEdges)
     {
         // caching
-        unsigned        numNewVerts = 0;
-        unsigned        j           = numTotalVerts-1;
+        unsigned   numNewVerts = 0;
+        unsigned   j           = numTotalVerts-1;
         math::vec4 p0          = newVerts[numTotalVerts-1];
         float      t0          = math::dot(p0, edge);
         int        visible0    = t0 >= 0.f;
@@ -519,7 +519,7 @@ void SR_VertexProcessor::push_fragments(
     }
 
     int isFragVisible = (bboxMaxX >= 0.f && fboW >= bboxMinX && bboxMaxY >= 0.f && fboH >= bboxMinY);
-    isFragVisible = isFragVisible && (bboxMaxX-bboxMinX >= 1.f);
+    isFragVisible = isFragVisible && (bboxMaxX-bboxMinX >= 1.f) && (bboxMaxY-bboxMinY >= 1.f);
 
     if (isFragVisible)
     {
