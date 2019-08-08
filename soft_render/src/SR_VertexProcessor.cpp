@@ -5,6 +5,7 @@
 #include "lightsky/utils/Log.h" // utils::LS_LOG...()
 #include "lightsky/utils/Sort.hpp" // utils::sort_quick
 
+#include "lightsky/math/mat_utils.h"
 #include "lightsky/math/vec4.h"
 #include "lightsky/math/vec_utils.h"
 
@@ -18,7 +19,7 @@
 #include "soft_render/SR_VertexProcessor.hpp"
 
 #ifndef SR_VERTEX_CLIPPING_ENABLED
-    #define SR_VERTEX_CLIPPING_ENABLED 0
+    #define SR_VERTEX_CLIPPING_ENABLED 1
 #endif /* SR_VERTEX_CLIPPING_ENABLED */
 
 
@@ -140,7 +141,13 @@ inline math::vec3_t<size_t> get_next_vertex3(const SR_IndexBuffer* pIbo, size_t 
 --------------------------------------*/
 inline LS_INLINE bool backface_visible(const math::vec4 screenCoords[SR_SHADER_MAX_SCREEN_COORDS]) noexcept
 {
-    return (0.f <= math::dot(math::vec4{0.f, 0.f, 1.f, 1.f}, math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0])));
+    //return (0.f <= math::dot(math::vec4{0.f, 0.f, 1.f, 1.f}, math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0])));
+    const math::mat3 det{
+        math::vec3{screenCoords[0][0], screenCoords[0][1], screenCoords[0][3]},
+        math::vec3{screenCoords[1][0], screenCoords[1][1], screenCoords[1][3]},
+        math::vec3{screenCoords[2][0], screenCoords[2][1], screenCoords[2][3]}
+    };
+    return (0.f < math::determinant(det));
 }
 
 
@@ -150,7 +157,13 @@ inline LS_INLINE bool backface_visible(const math::vec4 screenCoords[SR_SHADER_M
 --------------------------------------*/
 inline LS_INLINE bool frontface_visible(const math::vec4 screenCoords[SR_SHADER_MAX_SCREEN_COORDS]) noexcept
 {
-    return (0.f >= math::dot(math::vec4{0.f, 0.f, 1.f, 1.f}, math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0])));
+    //return (0.f >= math::dot(math::vec4{0.f, 0.f, 1.f, 1.f}, math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0])));
+    const math::mat3 det{
+        math::vec3{screenCoords[0][0], screenCoords[0][1], screenCoords[0][3]},
+        math::vec3{screenCoords[1][0], screenCoords[1][1], screenCoords[1][3]},
+        math::vec3{screenCoords[2][0], screenCoords[2][1], screenCoords[2][3]}
+    };
+    return (0.f > math::determinant(det));
 }
 
 
@@ -331,22 +344,21 @@ void SR_VertexProcessor::clip_and_process_tris(
     ls::math::vec4 pVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS]) noexcept
 {
     const SR_VertexShader vertShader    = mShader->mVertShader;
-    const SR_CullMode     cullMode      = vertShader.cullMode;
-    const int             numVarys      = (int)vertShader.numVaryings;
+    const unsigned        numVarys      = (unsigned)vertShader.numVaryings;
     const float           fboW          = (float)mFboW;
     const float           fboH          = (float)mFboH;
     const float           widthScale    = fboW * 0.5f;
     const float           heightScale   = fboH * 0.5f;
-    constexpr int         numTempVerts  = 18; // at most 9 vertices should be generated
-    int                   numTotalVerts = 3;
+    constexpr unsigned    numTempVerts  = 9; // at most 9 vertices should be generated
+    unsigned              numTotalVerts = 3;
     math::vec4            tempVerts     [numTempVerts];
     math::vec4            newVerts      [numTempVerts];
     math::vec4            tempVarys     [numTempVerts * SR_SHADER_MAX_VARYING_VECTORS];
     math::vec4            newVarys      [numTempVerts * SR_SHADER_MAX_VARYING_VECTORS];
     const math::vec4      clipEdges[]  = {
         {-1.f,  0.f,  0.f, 1.f},
-        { 1.f,  0.f,  0.f, 1.f},
         { 0.f, -1.f,  0.f, 1.f},
+        { 1.f,  0.f,  0.f, 1.f},
         { 0.f,  1.f,  0.f, 1.f},
         { 0.f,  0.f, -1.f, 1.f},
         { 0.f,  0.f,  1.f, 1.f}
@@ -354,7 +366,7 @@ void SR_VertexProcessor::clip_and_process_tris(
 
     const auto _copy_verts = [](int maxVerts, const math::vec4* inVerts, math::vec4* outVerts) noexcept->void
     {
-        for (int i = 0; i < maxVerts; ++i)
+        for (unsigned i = maxVerts; i--;)
         {
             outVerts[i] = inVerts[i];
         }
@@ -362,10 +374,10 @@ void SR_VertexProcessor::clip_and_process_tris(
 
     const auto _interpolate_varyings = [&numVarys](const math::vec4* inVarys, math::vec4* outVarys, int fromIndex, int toIndex, float amt)->void
     {
-        const int offset0 = fromIndex * SR_SHADER_MAX_VARYING_VECTORS;
-        const int offset1 = toIndex   * SR_SHADER_MAX_VARYING_VECTORS;
+        const unsigned offset0 = fromIndex * SR_SHADER_MAX_VARYING_VECTORS;
+        const unsigned offset1 = toIndex   * SR_SHADER_MAX_VARYING_VECTORS;
 
-        for (int i = 0; i < numVarys; ++i)
+        for (unsigned i = numVarys; i--;)
         {
             const math::vec4& v0 = inVarys[offset0+i];
             const math::vec4& v1 = inVarys[offset1+i];
@@ -376,19 +388,16 @@ void SR_VertexProcessor::clip_and_process_tris(
     _copy_verts(3, vertCoords, newVerts);
     _copy_verts(SR_SHADER_MAX_VARYING_VECTORS*3, pVaryings, newVarys);
 
-    //for (int i = 0; i < 6; ++i)
     for (const math::vec4& edge : clipEdges)
     {
-        //const math::vec4& edge = clipEdges[i];
-
         // caching
-        int        numNewVerts = 0;
-        int        j           = numTotalVerts-1;
+        unsigned        numNewVerts = 0;
+        unsigned        j           = numTotalVerts-1;
         math::vec4 p0          = newVerts[numTotalVerts-1];
         float      t0          = math::dot(p0, edge);
         int        visible0    = t0 >= 0.f;
 
-        for (int k = 0; k < numTotalVerts; ++k)
+        for (unsigned k = 0; k < numTotalVerts; ++k)
         {
             const math::vec4& p1 = newVerts[k];
             const float t1       = math::dot(p1, edge);
@@ -396,7 +405,7 @@ void SR_VertexProcessor::clip_and_process_tris(
 
             if (visible0 ^ visible1)
             {
-                const float t = math::clamp(t0 / (t0-t1), 0.f, 1.f);
+                const float t = t0 / (t0-t1);//math::clamp(t0 / (t0-t1), 0.f, 1.f);
                 tempVerts[numNewVerts] = math::mix(p0, p1, t);
                 _interpolate_varyings(newVarys, tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS), j, k, t);
 
@@ -425,58 +434,36 @@ void SR_VertexProcessor::clip_and_process_tris(
     {
         return;
     }
-    else if (numTotalVerts > 3 && numTotalVerts % 3 != 0) // triangulate
-    {
-        int numNewVerts = 0;
-        for (int i = 2; i < numTotalVerts; ++i)
-        {
-            const int i0 = i;
-            const int i1 = 0;
-            const int i2 = i-1;
 
-            tempVerts[numNewVerts] = newVerts[i0];
-            _copy_verts(numVarys, newVarys+(i0*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS));
-            ++numNewVerts;
-
-            tempVerts[numNewVerts] = newVerts[i1];
-            _copy_verts(numVarys, newVarys+(i1*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS));
-            ++numNewVerts;
-
-            tempVerts[numNewVerts] = newVerts[i2];
-            _copy_verts(numVarys, newVarys+(i2*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS));
-            ++numNewVerts;
-        }
-
-        numTotalVerts = numNewVerts;
-        _copy_verts(numNewVerts, tempVerts, newVerts);
-        _copy_verts(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS, tempVarys, newVarys);
-    }
-
-    LS_DEBUG_ASSERT(numTotalVerts % 3 == 0);
     LS_DEBUG_ASSERT(numTotalVerts <= numTempVerts);
 
-    for (int i = 0; i < numTotalVerts; i += 3)
-    {
-        math::vec4& v0 = newVerts[i + 0];
-        math::vec4& v1 = newVerts[i + 1];
-        math::vec4& v2 = newVerts[i + 2];
+    tempVerts[0] = newVerts[0];
+    _copy_verts(numVarys, newVarys, tempVarys);
+    sr_perspective_divide(tempVerts[0]);
+    sr_world_to_screen_coords_divided(tempVerts[0], widthScale, heightScale);
 
-        sr_perspective_divide(v0);
+    for (unsigned i = numTotalVerts-2; i--;)
+    {
+        unsigned j = i+1;
+        unsigned k = i+2;
+
+        tempVerts[1] = newVerts[j];
+        _copy_verts(numVarys, newVarys+(j*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(1*SR_SHADER_MAX_VARYING_VECTORS));
+
+        tempVerts[2] = newVerts[k];
+        _copy_verts(numVarys, newVarys+(k*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(2*SR_SHADER_MAX_VARYING_VECTORS));
+
+        math::vec4& v1 = tempVerts[1];
+        math::vec4& v2 = tempVerts[2];
+
         sr_perspective_divide(v1);
         sr_perspective_divide(v2);
 
-        if ((cullMode == SR_CULL_BACK_FACE && !backface_visible(newVerts))
-        ||  (cullMode == SR_CULL_FRONT_FACE && !frontface_visible(newVerts)))
-        {
-            continue;
-        }
-
-        sr_world_to_screen_coords_divided(v0, widthScale, heightScale);
         sr_world_to_screen_coords_divided(v1, widthScale, heightScale);
         sr_world_to_screen_coords_divided(v2, widthScale, heightScale);
 
         //push_fragments(fboW, fboH, newVerts+i, pVaryings);
-        push_fragments(fboW, fboH, newVerts+i, newVarys+(i*SR_SHADER_MAX_VARYING_VECTORS));
+        push_fragments(fboW, fboH, tempVerts, tempVarys);
     }
 }
 
@@ -531,7 +518,8 @@ void SR_VertexProcessor::push_fragments(
         bboxMaxY = math::max(p0[1], p1[1], p2[1]);
     }
 
-    const int isFragVisible = (bboxMaxX >= 0.f && fboW >= bboxMinX && bboxMaxY >= 0.f && fboH >= bboxMinY);
+    int isFragVisible = (bboxMaxX >= 0.f && fboW >= bboxMinX && bboxMaxY >= 0.f && fboH >= bboxMinY);
+    isFragVisible = isFragVisible && (bboxMaxX-bboxMinX >= 1.f);
 
     if (isFragVisible)
     {
@@ -672,6 +660,11 @@ void SR_VertexProcessor::execute() noexcept
             vertCoords[1] = shader(vertId[1], vao, vbo, pUniforms, pVaryings + SR_SHADER_MAX_VARYING_VECTORS);
             vertCoords[2] = shader(vertId[2], vao, vbo, pUniforms, pVaryings + (SR_SHADER_MAX_VARYING_VECTORS * 2));
 
+            if ((cullMode == SR_CULL_BACK_FACE && !backface_visible(vertCoords))
+            ||  (cullMode == SR_CULL_FRONT_FACE && !frontface_visible(vertCoords)))
+            {
+                continue;
+            }
             // Clip-space culling
             const SR_ClipStatus visStatus = face_visible(vertCoords);
             if (visStatus == SR_TRIANGLE_NOT_VISIBLE)
@@ -684,12 +677,6 @@ void SR_VertexProcessor::execute() noexcept
                 sr_perspective_divide(vertCoords[1]);
                 sr_perspective_divide(vertCoords[2]);
 
-                if ((cullMode == SR_CULL_BACK_FACE && !backface_visible(vertCoords))
-                ||  (cullMode == SR_CULL_FRONT_FACE && !frontface_visible(vertCoords)))
-                {
-                    continue;
-                }
-
                 sr_world_to_screen_coords_divided(vertCoords[0], widthScale, heightScale);
                 sr_world_to_screen_coords_divided(vertCoords[1], widthScale, heightScale);
                 sr_world_to_screen_coords_divided(vertCoords[2], widthScale, heightScale);
@@ -701,12 +688,6 @@ void SR_VertexProcessor::execute() noexcept
                     sr_perspective_divide(vertCoords[0]);
                     sr_perspective_divide(vertCoords[1]);
                     sr_perspective_divide(vertCoords[2]);
-
-                    if ((cullMode == SR_CULL_BACK_FACE && !backface_visible(vertCoords))
-                    ||  (cullMode == SR_CULL_FRONT_FACE && !frontface_visible(vertCoords)))
-                    {
-                        continue;
-                    }
 
                     sr_world_to_screen_coords_divided(vertCoords[0], widthScale, heightScale);
                     sr_world_to_screen_coords_divided(vertCoords[1], widthScale, heightScale);
