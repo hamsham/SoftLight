@@ -28,11 +28,11 @@ bool sr_is_visible(const math::vec4& point, const math::mat4& mvpMatrix, const f
     // Debug multipliers to reduce the frustum planes
     temp[0] *= fovDivisor;
     temp[1] *= fovDivisor;
+    const bool x = temp[0] >= -temp[3] && temp[0] <= temp[3];
+    const bool y = temp[1] >= -temp[3] && temp[1] <= temp[3];
+    const bool z = temp[2] >= -temp[3] && temp[2] <= temp[3];
 
-    return
-        temp[0] > -temp[3] && temp[0] < temp[3] &&
-        temp[1] > -temp[3] && temp[1] < temp[3] &&
-        temp[2] > -temp[3] && temp[2] < temp[3];
+    return (x && y && z) || (temp[3] >= 1.f && x && y);
 }
 
 
@@ -42,8 +42,8 @@ bool sr_is_visible(const math::vec4& point, const math::mat4& mvpMatrix, const f
 -------------------------------------*/
 bool sr_is_visible(const SR_BoundingBox& bb, const math::mat4& mvpMatrix, const float fovDivisor) noexcept
 {
-    const math::vec4& trr = mvpMatrix * bb.get_top_rear_right();
-    const math::vec4& bfl = mvpMatrix * bb.get_bot_front_left();
+    const math::vec4& trr = bb.get_top_rear_right();
+    const math::vec4& bfl = bb.get_bot_front_left();
 
     const math::vec4 points[] = {
         {trr[0], bfl[1], bfl[2], 1.f},
@@ -52,7 +52,6 @@ bool sr_is_visible(const SR_BoundingBox& bb, const math::mat4& mvpMatrix, const 
         {bfl[0], trr[1], trr[2], 1.f},
         {bfl[0], bfl[1], trr[2], 1.f},
         {bfl[0], bfl[1], bfl[2], 1.f},
-
         {trr[0], bfl[1], trr[2], 1.f},
         {bfl[0], trr[1], bfl[2], 1.f},
     };
@@ -60,16 +59,61 @@ bool sr_is_visible(const SR_BoundingBox& bb, const math::mat4& mvpMatrix, const 
     // Debug multipliers to reduce the frustum planes
     const math::vec4 fd = {fovDivisor, fovDivisor, 1.f, 1.f};
 
-    for (unsigned i = 0; i < LS_ARRAY_SIZE(points); ++i)
-    {
-        math::vec4&& temp = points[i] * fd;
+    unsigned haveLeft = 0;
+    unsigned haveRight = 0;
+    unsigned havebotom = 0;
+    unsigned havetop = 0;
 
-        if (temp[0] > -temp[3] && temp[0] < temp[3] &&
-            temp[1] > -temp[3] && temp[1] < temp[3] &&
-            temp[2] > -temp[3] && temp[2] < temp[3])
+    unsigned numInFront = LS_ARRAY_SIZE(points);
+
+    for (unsigned i = LS_ARRAY_SIZE(points); i--;)
+    {
+        math::vec4&& temp = mvpMatrix * points[i] * fd;
+        if (temp[3] < 0.f)
+        {
+            --numInFront;
+            continue;
+        }
+
+        const unsigned xMin = temp[0] >= -temp[3];
+        const unsigned yMin = temp[1] >= -temp[3];
+        const unsigned xMax = temp[0] <= temp[3];
+        const unsigned yMax = temp[1] <= temp[3];
+
+        if (xMin && xMax && yMin && yMax)
         {
             return true;
         }
+
+        haveLeft  = haveLeft  || !xMin;
+        haveRight = haveRight || !xMax;
+        havebotom = havebotom || !yMin;
+        havetop   = havetop   || !yMax;
+    }
+
+    if (!numInFront)
+    {
+        return false;
+    }
+
+    const unsigned opCode = (haveLeft << 0) | (haveRight << 1) | (havebotom << 2) | (havetop << 3);
+
+    switch (opCode)
+    {
+        case 0x3:
+        case 0x5:
+        case 0x6:
+        case 0x7:
+        case 0x9:
+        case 0xA:
+        case 0xB:
+        case 0xC:
+        case 0xD:
+        case 0xE:
+        case 0xF:
+            return true;
+        default:
+            break;
     }
 
     return false;
@@ -113,12 +157,12 @@ bool sr_is_visible(
 
     float objX, objY, objZ, xAspect, yAspect;
 
-    for (unsigned i = 0; i < LS_ARRAY_SIZE(points); ++i)
+    for (unsigned i = LS_ARRAY_SIZE(points); i--;)
     {
         points[i] = modelMat * points[i];
     }
 
-    for (unsigned i = 0; i < LS_ARRAY_SIZE(points); ++i)
+    for (unsigned i = LS_ARRAY_SIZE(points); i--;)
     {
         const math::vec3& p = math::vec3_cast(points[i]);
 

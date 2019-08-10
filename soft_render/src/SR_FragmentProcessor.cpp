@@ -455,10 +455,10 @@ void SR_FragmentProcessor::render_wireframe(const uint_fast64_t binId, const SR_
     math::vec2        p2           = math::vec2_cast(screenCoords[2]);
     const math::vec4* bcClipSpace  = mBins[binId].mBarycentricCoords;
     const int32_t     depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON;
-    const int32_t     bboxMinX     = (int32_t)math::min(mFboW, math::max(0.f,   math::min(p0[0], p1[0], p2[0])));
-    const int32_t     bboxMinY     = (int32_t)math::min(mFboH, math::max(0.f,   math::min(p0[1], p1[1], p2[1]))+0.5f);
-    const int32_t     bboxMaxX     = (int32_t)math::max(0.f,   math::min(mFboW, math::max(p0[0], p1[0], p2[0]))+0.5f);
-    const int32_t     bboxMaxY     = (int32_t)math::max(0.f,   math::min(mFboH, math::max(p0[1], p1[1], p2[1])));
+    const int32_t     bboxMinX     = (int32_t)math::min(p0[0], p1[0], p2[0]);
+    const int32_t     bboxMinY     = (int32_t)math::ceil(math::min(p0[1], p1[1], p2[1]));
+    const int32_t     bboxMaxX     = (int32_t)math::max(p0[0], p1[0], p2[0]);
+    const int32_t     bboxMaxY     = (int32_t)math::max(p0[1], p1[1], p2[1]);
     SR_FragCoord*     outCoords    = mQueues;
 
     if (p0[1] < p1[1]) std::swap(p0, p1);
@@ -582,10 +582,10 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     math::vec2        p2           = math::vec2_cast(screenCoords[2]);
     const math::vec4* bcClipSpace  = mBins[binId].mBarycentricCoords;
     const int32_t     depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON;
-    const int32_t     bboxMinX     = (int32_t)math::min(mFboW, math::max(0.f,   math::min(p0[0], p1[0], p2[0])));
-    const int32_t     bboxMinY     = (int32_t)math::min(mFboH, math::max(0.f,   math::min(p0[1], p1[1], p2[1]))+0.5f);
-    const int32_t     bboxMaxX     = (int32_t)math::max(0.f,   math::min(mFboW, math::max(p0[0], p1[0], p2[0]))+0.5f);
-    const int32_t     bboxMaxY     = (int32_t)math::max(0.f,   math::min(mFboH, math::max(p0[1], p1[1], p2[1])));
+    const int32_t     bboxMinX     = (int32_t)math::min(p0[0], p1[0], p2[0]);
+    const int32_t     bboxMinY     = (int32_t)math::ceil(math::min(p0[1], p1[1], p2[1]));
+    const int32_t     bboxMaxX     = (int32_t)math::max(p0[0], p1[0], p2[0]);
+    const int32_t     bboxMaxY     = (int32_t)math::max(p0[1], p1[1], p2[1]);
     SR_FragCoord*     outCoords    = mQueues;
 
     if (p0[1] < p1[1]) std::swap(p0, p1);
@@ -699,10 +699,10 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     math::vec2        p2           = math::vec2_cast(screenCoords[2]);
     const math::vec4* bcClipSpace  = mBins[binId].mBarycentricCoords;
     const int32_t     depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON);
-    const int32_t     bboxMinX     = (int32_t)math::min(mFboW, math::max(0.f,   math::min(p0[0], p1[0], p2[0])));
-    const int32_t     bboxMinY     = (int32_t)math::min(mFboH, math::max(0.f,   math::ceil(math::min(p0[1], p1[1], p2[1]))));
-    const int32_t     bboxMaxX     = (int32_t)math::max(0.f,   math::min(mFboW, math::max(p0[0], p1[0], p2[0])));
-    const int32_t     bboxMaxY     = (int32_t)math::max(0.f,   math::min(mFboH, math::max(p0[1], p1[1], p2[1])));
+    const int32_t     bboxMinX     = (int32_t)math::min(p0[0], p1[0], p2[0]);
+    const int32_t     bboxMinY     = (int32_t)math::ceil(math::min(p0[1], p1[1], p2[1]));
+    const int32_t     bboxMaxX     = (int32_t)math::max(p0[0], p1[0], p2[0]);
+    const int32_t     bboxMaxY     = (int32_t)math::max(p0[1], p1[1], p2[1]);
     SR_FragCoord*     outCoords    = mQueues;
 
     if (p0[1] < p1[1]) std::swap(p0, p1);

@@ -193,23 +193,10 @@ inline LS_INLINE SR_ClipStatus face_visible(const math::vec4 clipCoords[SR_SHADE
             return SR_TRIANGLE_FULLY_VISIBLE;
         }
 
-        if (v2x || v2y || v2z)
+        if (clipCoords[0][3] >= 1.f || clipCoords[1][3] >= 1.f || clipCoords[2][3] >= 1.f)
         {
             return SR_TRIANGLE_PARTIALLY_VISIBLE;
         }
-        #if 0
-            if((v0x && v0y && v0z)
-            || (v1x && v1y && v1z)
-            || (v2x && v2y && v2z))
-            {
-                return SR_TRIANGLE_PARTIALLY_VISIBLE;
-            }
-        #else
-            if (v2x || v2y || v2z)
-            {
-                return SR_TRIANGLE_PARTIALLY_VISIBLE;
-            }
-        #endif
     #else
         if (math::min(clipCoords[0][3], clipCoords[1][3], clipCoords[2][3]) >= 0.f)
         {
@@ -356,12 +343,12 @@ void SR_VertexProcessor::clip_and_process_tris(
     math::vec4            tempVarys     [numTempVerts * SR_SHADER_MAX_VARYING_VECTORS];
     math::vec4            newVarys      [numTempVerts * SR_SHADER_MAX_VARYING_VECTORS];
     const math::vec4      clipEdges[]  = {
-        {-1.f,  0.f,  0.f, 1.f},
-        { 0.f, -1.f,  0.f, 1.f},
-        { 1.f,  0.f,  0.f, 1.f},
-        { 0.f,  1.f,  0.f, 1.f},
         { 0.f,  0.f, -1.f, 1.f},
-        { 0.f,  0.f,  1.f, 1.f}
+        { 0.f, -1.f,  0.f, 1.f},
+        {-1.f,  0.f,  0.f, 1.f},
+        { 0.f,  0.f,  1.f, 1.f},
+        { 0.f,  1.f,  0.f, 1.f},
+        { 1.f,  0.f,  0.f, 1.f}
     };
 
     const auto _copy_verts = [](int maxVerts, const math::vec4* inVerts, math::vec4* outVerts) noexcept->void
@@ -451,7 +438,7 @@ void SR_VertexProcessor::clip_and_process_tris(
         sr_world_to_screen_coords_divided(v1, widthScale, heightScale);
         sr_world_to_screen_coords_divided(v2, widthScale, heightScale);
 
-        //push_fragments(fboW, fboH, newVerts+i, pVaryings);
+        //push_fragments(fboW, fboH, newVerts, pVaryings);
         push_fragments(fboW, fboH, newVerts, newVarys);
         return;
     }

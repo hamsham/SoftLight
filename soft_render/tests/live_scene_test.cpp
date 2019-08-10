@@ -7,6 +7,7 @@
 #include "lightsky/math/mat_utils.h"
 #include "lightsky/math/quat_utils.h"
 
+#include "lightsky/utils/Log.h"
 #include "lightsky/utils/Pointer.h"
 #include "lightsky/utils/Time.hpp"
 #include "lightsky/utils/Tuple.h"
@@ -50,7 +51,7 @@
 #endif
 
 #ifndef SR_BENCHMARK_SCENE
-    #define SR_BENCHMARK_SCENE 1
+    #define SR_BENCHMARK_SCENE 0
 #endif /* SR_BENCHMARK_SCENE */
 
 namespace math = ls::math;
@@ -632,6 +633,7 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
             ++numTotal;
 
             if (!sr_is_visible(aspect, fov, camTrans, modelMat, box))
+            //if (!sr_is_visible(box, vpMatrix*modelMat))
             {
                 ++numHidden;
                 continue;
@@ -675,11 +677,7 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
     }
 #endif
 
-    /*
-    std::cout
-        << "Meshes Hidden: " << numHidden << '/' << numTotal << " (" << 100.f*((float)numHidden/(float)numTotal) << "%)."
-        << std::endl;
-    */
+    LS_LOG_MSG("Meshes Hidden: ", numHidden, '/', numTotal, " (", 100.f*((float)numHidden/(float)numTotal), "%).");
 }
 
 
@@ -725,14 +723,14 @@ int scene_load_cube(SR_SceneGraph& graph)
     }
 
     constexpr math::vec3 verts[numVerts] = {
-        {-1.f, -1.f,  1.f},
-        { 1.f, -1.f,  1.f},
-        { 1.f,  1.f,  1.f},
-        {-1.f,  1.f,  1.f},
-        {-1.f, -1.f, -1.f},
-        { 1.f, -1.f, -1.f},
-        { 1.f,  1.f, -1.f},
-        {-1.f,  1.f, -1.f}
+        {-1.f, -1.f,  1.f}, // 0
+        { 1.f, -1.f,  1.f}, // 1
+        { 1.f,  1.f,  1.f}, // 2
+        {-1.f,  1.f,  1.f}, // 3
+        {-1.f, -1.f, -1.f}, // 4
+        { 1.f, -1.f, -1.f}, // 5
+        { 1.f,  1.f, -1.f}, // 6
+        {-1.f,  1.f, -1.f}  // 7
     };
 
     constexpr uint8_t indices[numIndices] = {
@@ -917,7 +915,7 @@ int main()
     camTrans.set_type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
     //camTrans.extract_transforms(math::look_at(math::vec3{75.f}, math::vec3{0.f, 10.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
     camTrans.extract_transforms(math::look_at(math::vec3{0.f}, math::vec3{3.f, -5.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
-    //math::mat4 projMatrix = math::perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 10.f, 1000.f);
+    //math::mat4 projMatrix = math::perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 10.f, 100.f);
     math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
 
     if (shouldQuit)
@@ -953,7 +951,7 @@ int main()
             {
                 std::cout<< "Window resized: " << evt.window.width << 'x' << evt.window.height << std::endl;
                 pRenderBuf->terminate();
-                //projMatrix = math::perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 10.f, 1000.f);                pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
+                //projMatrix = math::perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 10.f, 100.f);                pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
                 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
             }
 
