@@ -412,6 +412,11 @@ void SR_VertexProcessor::clip_and_process_tris(
             visible0    = visible1;
         }
 
+        if (!numNewVerts)
+        {
+            break;
+        }
+
         numTotalVerts = numNewVerts;
         _copy_verts(numNewVerts, tempVerts, newVerts);
         _copy_verts(numNewVerts*SR_SHADER_MAX_VARYING_VECTORS, tempVarys, newVarys);
