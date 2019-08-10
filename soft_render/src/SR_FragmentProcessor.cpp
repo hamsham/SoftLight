@@ -14,6 +14,12 @@
 
 
 
+#ifndef SR_REVERSED_Z_BUFFER
+    #define SR_REVERSED_Z_BUFFER 1
+#endif
+
+
+
 /*-----------------------------------------------------------------------------
  * Namespace setup
 -----------------------------------------------------------------------------*/
@@ -149,6 +155,7 @@ void SR_FragmentProcessor::render_point(
     const SR_FragmentShader fragShader  = mShader->mFragShader;
     const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
     const uint32_t          numOutputs  = fragShader.numOutputs;
+    const bool              depthTest   = fragShader.depthTest == SR_DEPTH_TEST_ON;
     const bool              depthMask   = fragShader.depthMask == SR_DEPTH_MASK_ON;
     const auto              pShader     = fragShader.shader;
     const SR_BlendMode      blendMode   = fragShader.blend;
@@ -156,6 +163,7 @@ void SR_FragmentProcessor::render_point(
     const math::vec4        screenCoord = mBins[binId].mScreenCoords[0];
     const math::vec4        fragCoord   {screenCoord[0], screenCoord[1], screenCoord[2], 1.f};
     const math::vec4*       varyings    = mBins[binId].mVaryings;
+    const SR_Texture*       pDepthBuf   = fbo->get_depth_buffer();
 
     math::vec4 pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
 
@@ -165,41 +173,50 @@ void SR_FragmentProcessor::render_point(
         const uint16_t y0    = (uint16_t)fragCoord[1];
         const float    depth = fragCoord[2];
 
-        if (fragShader.depthTest == SR_DEPTH_TEST_OFF || (fragShader.depthTest == SR_DEPTH_TEST_ON && fbo->test_depth_pixel(x0, y0, depth)))
+        if (depthTest == SR_DEPTH_TEST_ON)
         {
-            const uint16_t z = (uint16_t)depth;
-            const uint_fast32_t haveOutputs = pShader(fragCoord, pUniforms, varyings, pOutputs);
-
-            if (blend)
+#if SR_REVERSED_Z_BUFFER
+            if (depth < pDepthBuf->texel<float>((uint16_t)x0, (uint16_t)y0))
+#else
+            if (depth > pDepthBuf->texel<float>((uint16_t)x0, (uint16_t)y0))
+#endif
             {
-                // branchless select
-                switch (-haveOutputs & numOutputs)
-                {
-                    case 4: fbo->put_alpha_pixel(3, x0, y0, pOutputs[3], blendMode);
-                    case 3: fbo->put_alpha_pixel(2, x0, y0, pOutputs[2], blendMode);
-                    case 2: fbo->put_alpha_pixel(1, x0, y0, pOutputs[1], blendMode);
-                    case 1: fbo->put_alpha_pixel(0, x0, y0, pOutputs[0], blendMode);
-                        //case 1: fbo->put_pixel(0, xi, yi, zi, math::vec4{1.f, 0, 1.f, 1.f});
-                }
-
+                return;
             }
-            else
+        }
+
+        const uint16_t z = (uint16_t)depth;
+        const uint_fast32_t haveOutputs = pShader(fragCoord, pUniforms, varyings, pOutputs);
+
+        if (blend)
+        {
+            // branchless select
+            switch (-haveOutputs & numOutputs)
             {
-                // branchless select
-                switch (-haveOutputs & numOutputs)
-                {
-                    case 4: fbo->put_pixel(3, x0, y0, pOutputs[3]);
-                    case 3: fbo->put_pixel(2, x0, y0, pOutputs[2]);
-                    case 2: fbo->put_pixel(1, x0, y0, pOutputs[1]);
-                    case 1: fbo->put_pixel(0, x0, y0, pOutputs[0]);
-                        //case 1: fbo->put_pixel(0, xi, yi, zi, math::vec4{1.f, 0, 1.f, 1.f});
-                }
+                case 4: fbo->put_alpha_pixel(3, x0, y0, pOutputs[3], blendMode);
+                case 3: fbo->put_alpha_pixel(2, x0, y0, pOutputs[2], blendMode);
+                case 2: fbo->put_alpha_pixel(1, x0, y0, pOutputs[1], blendMode);
+                case 1: fbo->put_alpha_pixel(0, x0, y0, pOutputs[0], blendMode);
+                    //case 1: fbo->put_pixel(0, xi, yi, zi, math::vec4{1.f, 0, 1.f, 1.f});
             }
 
-            if (depthMask)
+        }
+        else
+        {
+            // branchless select
+            switch (-haveOutputs & numOutputs)
             {
-                fbo->put_depth_pixel<float>(x0, y0, z);
+                case 4: fbo->put_pixel(3, x0, y0, pOutputs[3]);
+                case 3: fbo->put_pixel(2, x0, y0, pOutputs[2]);
+                case 2: fbo->put_pixel(1, x0, y0, pOutputs[1]);
+                case 1: fbo->put_pixel(0, x0, y0, pOutputs[0]);
+                    //case 1: fbo->put_pixel(0, xi, yi, zi, math::vec4{1.f, 0, 1.f, 1.f});
             }
+        }
+
+        if (depthMask)
+        {
+            fbo->put_depth_pixel<float>(x0, y0, z);
         }
     }
 }
@@ -372,7 +389,11 @@ void SR_FragmentProcessor::render_line(
         const float      interp  = (currLen*dist);
         const float      z       = math::mix(z0, z1, interp);
 
-        if (noDepthTest || depthBuf->texel<float>((uint16_t)xi, (uint16_t)yi) < z)
+#if SR_REVERSED_Z_BUFFER
+        if (noDepthTest || depthBuf->texel<float>((uint16_t)xi, (uint16_t)yi) <= z)
+#else
+        if (noDepthTest || depthBuf->texel<float>((uint16_t)xi, (uint16_t)yi) >= z)
+#endif
         {
             interpolate_line_varyings(interp, numVaryings, inVaryings, outVaryings);
 
@@ -503,10 +524,17 @@ void SR_FragmentProcessor::render_wireframe(const uint_fast64_t binId, const SR_
             // This normally involves checking if the coordinate is negative,
             // but due to roundoff errors, we need to know if it's close enough
             // to a triangle edge to be rendered.
-            if (depthTesting && (z < oldDepth))
-            {
-                continue;
-            }
+            #if SR_REVERSED_Z_BUFFER
+                if (depthTesting && (z < oldDepth))
+                {
+                    continue;
+                }
+            #else
+                if (depthTesting && (z > oldDepth))
+                {
+                    continue;
+                }
+            #endif
 
             // perspective correction
             float persp = math::dot(homogenous, bc);
@@ -539,7 +567,7 @@ void SR_FragmentProcessor::render_wireframe(const uint_fast64_t binId, const SR_
 /*--------------------------------------
  * Triangle Rasterization
 --------------------------------------*/
-#if 0
+#if 1
 
 void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_Texture* depthBuffer) const noexcept
 {
@@ -619,10 +647,17 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             // This normally involves checking if the coordinate is negative,
             // but due to roundoff errors, we need to know if it's close enough
             // to a triangle edge to be rendered.
-            if (depthTesting && (z < oldDepth))
-            {
-                continue;
-            }
+            #if SR_REVERSED_Z_BUFFER
+                if (depthTesting && (z < oldDepth))
+                {
+                    continue;
+                }
+            #else
+                if (depthTesting && (z > oldDepth))
+                {
+                    continue;
+                }
+            #endif
 
             // perspective correction
             float persp = 1.f / math::dot(homogenous, bc);
@@ -713,7 +748,11 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             const math::mat4&& bc          = math::outer(xf, bcClipSpace[0]) + bcY;
             const math::vec4&& z           = depth * bc;
             const math::vec4&& depthTexels = depthTesting ? math::vec4{depthBuffer->texel4<float>(x0, y)} : math::vec4{0.f};
-            const int32_t      depthTest   = depthTesting ? math::sign_mask(z - depthTexels) : 0x00;
+    #if SR_REVERSED_Z_BUFFER
+            const int32_t      depthTest   = depthTesting ? math::sign_mask(z-depthTexels) : 0x00;
+    #else
+            const int32_t      depthTest   = depthTesting ? math::sign_mask(depthTexels-z) : 0x00;
+    #endif
             const int32_t      end         = -(depthTest != 0x0F) & math::min<int32_t>(xMax-x0, 4);
 
             for (int32_t i = 0; i < end; ++i)

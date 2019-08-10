@@ -665,7 +665,7 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
             const SR_BoundingBox& box = pGraph->mMeshBounds[nodeMeshId];
             pUniforms->aabb = &box;
 
-            if (!is_visible(aspect, fov, camTrans, modelMat, box))
+            if (!sr_is_visible(aspect, fov, camTrans, modelMat, box))
             {
                 continue;
             }
@@ -839,12 +839,14 @@ utils::Pointer<SR_SceneGraph> create_context()
 #endif
 
     retCode = meshLoader.load("testdata/sibenik/sibenik.obj");
+    //retCode = meshLoader.load("testdata/sponza/sponza.obj");
     assert(retCode != 0);
 
     retCode = pGraph->import(meshLoader.data());
     assert(retCode == 0);
 
-    pGraph->mCurrentTransforms[0].scale(math::vec3{20.f});
+    pGraph->mCurrentTransforms[0].scale( math::vec3{20.f});
+    //pGraph->mCurrentTransforms[0].scale(math::vec3{0.125f});
     pGraph->update();
 
     const SR_VertexShader&&   normVertShader = normal_vert_shader();
@@ -915,6 +917,7 @@ int main()
     camTrans.set_type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
     //camTrans.extract_transforms(math::look_at(math::vec3{75.f}, math::vec3{0.f, 10.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
     camTrans.extract_transforms(math::look_at(math::vec3{0.f}, math::vec3{3.f, -5.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
+    //math::mat4 projMatrix = math::perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 10.f, 1000.f);
     math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
 
     if (shouldQuit)
@@ -950,7 +953,7 @@ int main()
             {
                 std::cout<< "Window resized: " << evt.window.width << 'x' << evt.window.height << std::endl;
                 pRenderBuf->terminate();
-                pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
+                //projMatrix = math::perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 10.f, 1000.f);                pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
                 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
             }
 
@@ -1072,6 +1075,7 @@ int main()
             pGraph->update();
 
             context.framebuffer(0).clear_color_buffers();
+            //context.framebuffer(0).clear_depth_buffer(1.f);
             context.framebuffer(0).clear_depth_buffer();
 
             render_scene(pGraph.get(), vpMatrix, ((float)pRenderBuf->width() / (float)pWindow->height()), LS_DEG2RAD(60.f), camTrans);

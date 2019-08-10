@@ -99,11 +99,6 @@ class SR_Framebuffer
         const ls::math::vec4_t<float>& rgba,
         const SR_BlendMode blendMode) noexcept;
 
-    bool test_depth_pixel(
-        uint16_t x,
-        uint16_t y,
-        float depth) noexcept;
-
     template <typename data_t>
     void put_depth_pixel(
         uint16_t x,
@@ -236,20 +231,6 @@ inline const SR_Texture* SR_Framebuffer::get_depth_buffer() const noexcept
 inline SR_Texture* SR_Framebuffer::get_depth_buffer() noexcept
 {
     return mDepth;
-}
-
-
-
-/*-------------------------------------
- * Perform a depth test
--------------------------------------*/
-inline bool SR_Framebuffer::test_depth_pixel(
-    uint16_t x,
-    uint16_t y,
-    float depth) noexcept
-{
-    return ((mDepth->type() == SR_COLOR_R_FLOAT) && depth >= mDepth->texel<float>(x, y))
-    || ((mDepth->type() == SR_COLOR_R_DOUBLE) && depth >= mDepth->texel<double>(x, y));
 }
 
 
