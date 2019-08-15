@@ -414,7 +414,7 @@ void SR_VertexProcessor::clip_and_process_tris(
 
         if (!numNewVerts)
         {
-            break;
+            return;
         }
 
         numTotalVerts = numNewVerts;
