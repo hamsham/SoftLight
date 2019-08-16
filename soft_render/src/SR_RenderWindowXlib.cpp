@@ -379,10 +379,12 @@ int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
 
         colorMap = XCreateColormap(pDisplay, RootWindow(pDisplay, visualInfo.screen), pVisualInfo->visual, AllocNone);
 
-        windowAttribs.colormap = colorMap;
         windowAttribs.background_pixel = 0x0; // black
         windowAttribs.border_pixel = 0;
+        windowAttribs.save_under = True;
         windowAttribs.event_mask = XLIB_EVENT_MASK;
+        windowAttribs.override_redirect = True;
+        windowAttribs.colormap = colorMap;
 
         windowId = XCreateWindow(
             pDisplay,
@@ -644,7 +646,7 @@ void SR_RenderWindowXlib::update() noexcept
                     nev.xkey.keycode == mLastEvent->xkey.keycode)
                 {
                     /* Key wasn’t actually released */
-                    return;
+                    break;
                 }
             }
 
