@@ -37,7 +37,7 @@ option(ENABLE_PROFILING "Enable profiling (recommended for release builds with d
 
 # Fix broken search paths on OS X
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    include_directories(/usr/local/include)
+    include_directories(SYSTEM /usr/local/include)
 endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")

@@ -635,7 +635,7 @@ void SR_RenderWindowXlib::update() noexcept
 
         case WindowStateInfo::WINDOW_PAUSED:
             // Make sure keys don't repeat when requested.
-            if (!mKeysRepeat && mLastEvent->type == KeyRelease && XEventsQueued(mDisplay, QueuedAfterReading))
+            if (!mKeysRepeat && mLastEvent->type == KeyRelease && XEventsQueued(mDisplay, QueuedAlready))
             {
                 XEvent nev;
                 XPeekEvent(mDisplay, &nev);
