@@ -146,11 +146,12 @@ math::vec4 calc_normal(const SR_Texture* tex, const math::vec4& p)
 
 
 
-bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* uniforms, const math::vec4*, math::vec4* outputs)
+bool _volume_frag_shader(SR_FragmentParam& fragParam)
 {
     constexpr float       step      = 1.f / 256.f;
-    const VolumeUniforms* pUniforms = static_cast<const VolumeUniforms*>(uniforms);
-    const math::vec2&&    winDimens = math::vec2{fragCoords[0], fragCoords[1]} * math::rcp(pUniforms->windowSize);
+    const math::vec4      fragCoord = fragParam.fragCoord;
+    const VolumeUniforms* pUniforms = static_cast<const VolumeUniforms*>(fragParam.pUniforms);
+    const math::vec2&&    winDimens = math::vec2{fragCoord[0], fragCoord[1]} * math::rcp(pUniforms->windowSize);
     const float           focalLen  = math::rcp<float>(math::tan(pUniforms->viewAngle*0.5f));
     const SR_Texture*     volumeTex = pUniforms->pCubeMap;
     const SR_Texture*     alphaTex  = pUniforms->pOpacityMap;
@@ -210,7 +211,7 @@ bool _volume_frag_shader(const math::vec4& fragCoords, const SR_UniformBuffer* u
     dstTexel = math::min(dstTexel, math::vec4_t<float>{1.f});
 
     // output composition
-    outputs[0] = math::min(dstTexel, math::vec4{1.f});
+    fragParam.pOutputs[0] = math::min(dstTexel, math::vec4{1.f});
 
     return dstTexel[3] > 0;
 }

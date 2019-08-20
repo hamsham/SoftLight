@@ -128,11 +128,11 @@ SR_VertexShader normal_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-bool _normal_frag_shader_impl(const math::vec4&, const SR_UniformBuffer* uniforms, const math::vec4* varyings, math::vec4* outputs)
+bool _normal_frag_shader_impl(SR_FragmentParam& fragParam)
 {
-    const AnimUniforms* pUniforms     = static_cast<const AnimUniforms*>(uniforms);
-    const math::vec4    pos           = varyings[0];
-    const math::vec4    norm          = math::normalize(varyings[1]);
+    const AnimUniforms* pUniforms     = static_cast<const AnimUniforms*>(fragParam.pUniforms);
+    const math::vec4    pos           = fragParam.pVaryings[0];
+    const math::vec4    norm          = math::normalize(fragParam.pVaryings[1]);
 
     const math::vec4 ambient = {0.1f, 0.1f, 0.1f, 1.f};
 
@@ -141,7 +141,7 @@ bool _normal_frag_shader_impl(const math::vec4&, const SR_UniformBuffer* uniform
     const float         lightAngle = 0.5f * math::dot(-lightDir, norm) + 0.5f;
     const math::vec4&&  diffuse    = math::vec4{1.f} * lightAngle;
 
-    outputs[0] = math::min(ambient+diffuse, math::vec4{1.f});
+    fragParam.pOutputs[0] = math::min(ambient+diffuse, math::vec4{1.f});
 
     return true;
 }
@@ -211,12 +211,12 @@ SR_VertexShader texture_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-bool _texture_frag_shader(const math::vec4&, const SR_UniformBuffer* uniforms, const math::vec4* varyings, math::vec4* outputs)
+bool _texture_frag_shader(SR_FragmentParam& fragParam)
 {
-    const AnimUniforms*  pUniforms = static_cast<const AnimUniforms*>(uniforms);
-    const math::vec4     pos       = varyings[0];
-    const math::vec4     uv        = varyings[1];
-    const math::vec4     norm      = varyings[2];
+    const AnimUniforms*  pUniforms = static_cast<const AnimUniforms*>(fragParam.pUniforms);
+    const math::vec4     pos       = fragParam.pVaryings[0];
+    const math::vec4     uv        = fragParam.pVaryings[1];
+    const math::vec4     norm      = fragParam.pVaryings[2];
     const SR_Texture*    pTexture  = pUniforms->pTexture;
     const math::vec4     ambient   = {0.1f, 0.1f, 0.1f, 1.f};
     math::vec4           albedo;
@@ -240,7 +240,7 @@ bool _texture_frag_shader(const math::vec4&, const SR_UniformBuffer* uniforms, c
     const math::vec4&&  diffuse    = math::vec4{1.f} * lightAngle;
 
     const math::vec4 rgba = albedo * (ambient+diffuse);
-    outputs[0] = math::min(rgba, math::vec4{1.f});
+    fragParam.pOutputs[0] = math::min(rgba, math::vec4{1.f});
 
     return true;
 }

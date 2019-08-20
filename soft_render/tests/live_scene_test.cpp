@@ -160,9 +160,9 @@ SR_VertexShader box_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-bool _box_frag_shader_impl(const math::vec4&, const SR_UniformBuffer*, const math::vec4* varyings, math::vec4* outputs)
+bool _box_frag_shader_impl(SR_FragmentParam& fragParams)
 {
-    outputs[0] = varyings[0];
+    fragParams.pOutputs[0] = fragParams.pVaryings[0];
     //outputs[0] = SR_ColorRGBAf{1.f, 0.f, 1.f, 1.f};
     return true;
 }
@@ -223,12 +223,12 @@ SR_VertexShader normal_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-bool _normal_frag_shader_impl(const math::vec4&, const SR_UniformBuffer* uniforms, const math::vec4* varyings, math::vec4* outputs)
+bool _normal_frag_shader_impl(SR_FragmentParam& fragParams)
 {
-    const MeshUniforms* pUniforms     = static_cast<const MeshUniforms*>(uniforms);
-    const math::vec4    pos           = varyings[0];
-    const math::vec4    norm          = math::normalize(varyings[1]);
-    math::vec4&         output        = outputs[0];
+    const MeshUniforms* pUniforms     = static_cast<const MeshUniforms*>(fragParams.pUniforms);
+    const math::vec4    pos           = fragParams.pVaryings[0];
+    const math::vec4    norm          = math::normalize(fragParams.pVaryings[1]);
+    math::vec4&         output        = fragParams.pOutputs[0];
 
 
     // Light direction calculation
@@ -314,12 +314,12 @@ SR_VertexShader texture_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* uniforms, const math::vec4* varyings, math::vec4* outputs)
+bool _texture_frag_shader_spot(SR_FragmentParam& fragParams)
 {
-    const math::vec4     pos       = varyings[0];
-    const math::vec4     uv        = varyings[1];
-    const math::vec4     norm      = varyings[2];
-    const MeshUniforms*  pUniforms = static_cast<const MeshUniforms*>(uniforms);
+    const MeshUniforms*  pUniforms = static_cast<const MeshUniforms*>(fragParams.pUniforms);
+    const math::vec4     pos       = fragParams.pVaryings[0];
+    const math::vec4     uv        = fragParams.pVaryings[1];
+    const math::vec4     norm      = fragParams.pVaryings[2];
     const SR_Texture*    albedo    = pUniforms->pTexture;
     float                attenuation;
     math::vec4           pixel;
@@ -385,7 +385,7 @@ bool _texture_frag_shader_spot(const math::vec4&, const SR_UniformBuffer* unifor
     // output composition
     {
         const math::vec4 accumulation = math::min(diffuse+spot+specular, math::vec4{1.f});
-        outputs[0] = pixel * accumulation;
+        fragParams.pOutputs[0] = pixel * accumulation;
     }
 
     return true;
@@ -441,13 +441,13 @@ inline float geometry_smith(const vec_type& norm, const vec_type& viewDir, const
 
 
 
-bool _texture_frag_shader_pbr(const math::vec4&, const SR_UniformBuffer* uniforms, const math::vec4* varyings, math::vec4* outputs)
+bool _texture_frag_shader_pbr(SR_FragmentParam& fragParams)
 {
-    const MeshUniforms*  pUniforms = static_cast<const MeshUniforms*>(uniforms);
-    const math::vec4     pos       = varyings[0];
-    const math::vec4     uv        = varyings[1];
-    const math::vec4     norm      = math::normalize(varyings[2]);
-    math::vec4&          output    = outputs[0];
+    const MeshUniforms*  pUniforms = static_cast<const MeshUniforms*>(fragParams.pUniforms);
+    const math::vec4     pos       = fragParams.pVaryings[0];
+    const math::vec4     uv        = fragParams.pVaryings[1];
+    const math::vec4     norm      = math::normalize(fragParams.pVaryings[2]);
+    math::vec4&          output    = fragParams.pOutputs[0];
     const SR_Texture*    pTexture  = pUniforms->pTexture;
     math::vec4           pixel;
 

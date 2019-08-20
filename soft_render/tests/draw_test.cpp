@@ -49,9 +49,9 @@ SR_VertexShader line_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-bool _line_frag_shader_impl(const math::vec4&, const SR_UniformBuffer*, const math::vec4*, ls::math::vec4* pFragColors)
+bool _line_frag_shader_impl(SR_FragmentParam& fragParam)
 {
-    pFragColors[0] = ls::math::vec4{0.f, 1.f, 0.f, 1.f}; // green
+    fragParam.pOutputs[0] = ls::math::vec4{0.f, 1.f, 0.f, 1.f}; // green
     return true;
 }
 

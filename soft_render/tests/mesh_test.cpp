@@ -83,12 +83,12 @@ SR_VertexShader mesh_test_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-bool _mesh_test_frag_shader(const math::vec4&, const SR_UniformBuffer* uniforms, const math::vec4* varyings, math::vec4* outputs)
+bool _mesh_test_frag_shader(SR_FragmentParam& fragParams)
 {
-    const math::vec4        pos       = varyings[0];
-    const math::vec4        uv        = varyings[1];
-    const math::vec4        norm      = math::normalize(varyings[2]);
-    const MeshTestUniforms* pUniforms = static_cast<const MeshTestUniforms*>(uniforms);
+    const MeshTestUniforms* pUniforms = static_cast<const MeshTestUniforms*>(fragParams.pUniforms);
+    const math::vec4        pos       = fragParams.pVaryings[0];
+    const math::vec4        uv        = fragParams.pVaryings[1];
+    const math::vec4        norm      = math::normalize(fragParams.pVaryings[2]);
     const SR_Texture*       albedo    = pUniforms->pTexture;
     math::vec4              pixel;
 
@@ -105,7 +105,7 @@ bool _mesh_test_frag_shader(const math::vec4&, const SR_UniformBuffer* uniforms,
 
     // output composition
     pixel = pixel * pUniforms->lightCol * lightAngle;
-    outputs[0] = math::min(pixel, math::vec4{1.f});
+    fragParams.pOutputs[0] = math::min(pixel, math::vec4{1.f});
 
     return true;
 }

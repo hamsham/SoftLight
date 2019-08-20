@@ -69,15 +69,26 @@ bool sr_is_visible(const SR_BoundingBox& bb, const math::mat4& mvpMatrix, const 
     for (unsigned i = LS_ARRAY_SIZE(points); i--;)
     {
         math::vec4&& temp = mvpMatrix * points[i] * fd;
-        if (temp[3] < 0.f)
+
+        /*
+        const float wInv = 1.f / temp[3];
+        temp[0] *= wInv;
+        temp[1] *= wInv;
+        temp[2] *= wInv;
+        temp[3] = wInv;
+        */
+
+        //const unsigned outOfZBounds = temp[2] > temp[3] || temp[2] < -temp[3];
+        const unsigned outOfZBounds = temp[3] < 1.f;
+        if (outOfZBounds)
         {
             --numInFront;
             continue;
         }
 
         const unsigned xMin = temp[0] >= -temp[3];
-        const unsigned yMin = temp[1] >= -temp[3];
         const unsigned xMax = temp[0] <= temp[3];
+        const unsigned yMin = temp[1] >= -temp[3];
         const unsigned yMax = temp[1] <= temp[3];
 
         if (xMin && xMax && yMin && yMax)
@@ -91,32 +102,9 @@ bool sr_is_visible(const SR_BoundingBox& bb, const math::mat4& mvpMatrix, const 
         havetop   = havetop   || !yMax;
     }
 
-    if (!numInFront)
-    {
-        return false;
-    }
-
-    const unsigned opCode = (haveLeft << 0) | (haveRight << 1) | (havebotom << 2) | (havetop << 3);
-
-    switch (opCode)
-    {
-        case 0x3:
-        case 0x5:
-        case 0x6:
-        case 0x7:
-        case 0x9:
-        case 0xA:
-        case 0xB:
-        case 0xC:
-        case 0xD:
-        case 0xE:
-        case 0xF:
-            return true;
-        default:
-            break;
-    }
-
-    return false;
+    // A bounding box is visible if it's partially (or fully) front of the
+    // near plane and within the bounds of the view frustum.
+    return numInFront && (1 < (haveLeft + haveRight + havebotom + havetop));
 }
 
 

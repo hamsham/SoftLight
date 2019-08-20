@@ -4,6 +4,8 @@
 
 #include <memory> // std::shared_ptr
 
+#include "soft_render/SR_ShaderProcessor.hpp" // SR_SHADER_MAX_FRAG_OUTPUTS, SR_SHADER_MAX_VARYING_VECTORS
+
 
 
 /*-----------------------------------------------------------------------------
@@ -104,6 +106,26 @@ struct SR_VertexShader
 /*-----------------------------------------------------------------------------
  *
 -----------------------------------------------------------------------------*/
+struct SR_FragmentParam
+{
+    ls::math::vec4 fragCoord;
+
+    uint16_t x;
+    uint16_t y;
+    uint32_t z;
+    float depth;
+
+    const SR_UniformBuffer* pUniforms;
+
+    alignas(sizeof(ls::math::vec4)) ls::math::vec4 pVaryings[SR_SHADER_MAX_VARYING_VECTORS];
+    alignas(sizeof(ls::math::vec4)) ls::math::vec4 pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
+};
+
+
+
+/*-----------------------------------------------------------------------------
+ *
+-----------------------------------------------------------------------------*/
 struct SR_FragmentShader
 {
     uint8_t      numVaryings;
@@ -112,12 +134,7 @@ struct SR_FragmentShader
     SR_DepthTest depthTest;
     SR_DepthMask depthMask;
 
-    bool (*shader)(
-        const ls::math::vec4_t<float>& fragCoord,
-        const SR_UniformBuffer*        uniforms,
-        const ls::math::vec4_t<float>* varyings,
-        ls::math::vec4_t<float>*       outputs
-    );
+    bool (*shader)(SR_FragmentParam& perFragParams);
 };
 
 

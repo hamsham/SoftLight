@@ -150,7 +150,7 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
 void SR_FragmentProcessor::render_point(
     const uint_fast64_t binId,
     SR_Framebuffer* const fbo,
-    const math::vec4_t<int32_t> dimens) noexcept
+    const ls::math::vec4_t<int32_t> dimens) noexcept
 {
     const SR_FragmentShader fragShader  = mShader->mFragShader;
     const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
@@ -162,62 +162,67 @@ void SR_FragmentProcessor::render_point(
     const bool              blend       = blendMode != SR_BLEND_OFF;
     const math::vec4        screenCoord = mBins[binId].mScreenCoords[0];
     const math::vec4        fragCoord   {screenCoord[0], screenCoord[1], screenCoord[2], 1.f};
-    const math::vec4*       varyings    = mBins[binId].mVaryings;
     const SR_Texture*       pDepthBuf   = fbo->get_depth_buffer();
+    SR_FragmentParam        fragParams;
 
-    math::vec4 pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
-
-    if (fragCoord.v[0] >= dimens[0] && fragCoord.v[0] <= dimens[1] && fragCoord.v[1] >= dimens[2] && fragCoord.v[1] <= dimens[3])
+    if (fragCoord.v[0] < dimens[0] || fragCoord.v[0] > dimens[1] || fragCoord.v[1] < dimens[2] || fragCoord.v[1] > dimens[3])
     {
-        const uint16_t x0    = (uint16_t)fragCoord[0];
-        const uint16_t y0    = (uint16_t)fragCoord[1];
-        const float    depth = fragCoord[2];
+        return;
+    }
 
-        if (depthTest == SR_DEPTH_TEST_ON)
-        {
+    fragParams.x = (uint16_t)fragCoord[0];
+    fragParams.y = (uint16_t)fragCoord[1];
+    fragParams.depth = fragCoord[2];
+    fragParams.pUniforms = pUniforms;
+
+    for (unsigned i = SR_SHADER_MAX_VARYING_VECTORS; i--;)
+    {
+        fragParams.pVaryings[i] = mBins[binId].mVaryings[i];
+    }
+
+    if (depthTest == SR_DEPTH_TEST_ON)
+    {
 #if SR_REVERSED_Z_BUFFER
-            if (depth < pDepthBuf->texel<float>((uint16_t)x0, (uint16_t)y0))
+        if (fragParams.depth < pDepthBuf->texel<float>(fragParams.x, fragParams.y))
 #else
-            if (depth > pDepthBuf->texel<float>((uint16_t)x0, (uint16_t)y0))
+        if (fragParams.depth > pDepthBuf->texel<float>(fragParams.x, fragParams.y)))
 #endif
-            {
-                return;
-            }
-        }
-
-        const uint16_t z = (uint16_t)depth;
-        const uint_fast32_t haveOutputs = pShader(fragCoord, pUniforms, varyings, pOutputs);
-
-        if (blend)
         {
-            // branchless select
-            switch (-haveOutputs & numOutputs)
-            {
-                case 4: fbo->put_alpha_pixel(3, x0, y0, pOutputs[3], blendMode);
-                case 3: fbo->put_alpha_pixel(2, x0, y0, pOutputs[2], blendMode);
-                case 2: fbo->put_alpha_pixel(1, x0, y0, pOutputs[1], blendMode);
-                case 1: fbo->put_alpha_pixel(0, x0, y0, pOutputs[0], blendMode);
-                    //case 1: fbo->put_pixel(0, xi, yi, zi, math::vec4{1.f, 0, 1.f, 1.f});
-            }
-
+            return;
         }
-        else
+    }
+
+    const uint_fast32_t haveOutputs = pShader(fragParams);
+
+    if (blend)
+    {
+        // branchless select
+        switch (-haveOutputs & numOutputs)
         {
-            // branchless select
-            switch (-haveOutputs & numOutputs)
-            {
-                case 4: fbo->put_pixel(3, x0, y0, pOutputs[3]);
-                case 3: fbo->put_pixel(2, x0, y0, pOutputs[2]);
-                case 2: fbo->put_pixel(1, x0, y0, pOutputs[1]);
-                case 1: fbo->put_pixel(0, x0, y0, pOutputs[0]);
-                    //case 1: fbo->put_pixel(0, xi, yi, zi, math::vec4{1.f, 0, 1.f, 1.f});
-            }
+            case 4: fbo->put_alpha_pixel(3, fragParams.x, fragParams.y, fragParams.pOutputs[3], blendMode);
+            case 3: fbo->put_alpha_pixel(2, fragParams.x, fragParams.y, fragParams.pOutputs[2], blendMode);
+            case 2: fbo->put_alpha_pixel(1, fragParams.x, fragParams.y, fragParams.pOutputs[1], blendMode);
+            case 1: fbo->put_alpha_pixel(0, fragParams.x, fragParams.y, fragParams.pOutputs[0], blendMode);
+                //case 1: fbo->put_pixel(0, x0, y0, math::vec4{1.f, 0, 1.f, 1.f});
         }
 
-        if (depthMask)
+    }
+    else
+    {
+        // branchless select
+        switch (-haveOutputs & numOutputs)
         {
-            fbo->put_depth_pixel<float>(x0, y0, z);
+            case 4: fbo->put_pixel(3, fragParams.x, fragParams.y, fragParams.pOutputs[3]);
+            case 3: fbo->put_pixel(2, fragParams.x, fragParams.y, fragParams.pOutputs[2]);
+            case 2: fbo->put_pixel(1, fragParams.x, fragParams.y, fragParams.pOutputs[1]);
+            case 1: fbo->put_pixel(0, fragParams.x, fragParams.y, fragParams.pOutputs[0]);
+                //case 1: fbo->put_pixel(0, x0, y0, math::vec4{1.f, 0, 1.f, 1.f});
         }
+    }
+
+    if (depthMask)
+    {
+        fbo->put_depth_pixel<float>(fragParams.x, fragParams.y, fragParams.depth);
     }
 }
 
@@ -335,7 +340,6 @@ void SR_FragmentProcessor::render_line(
     typedef math::long_medp_t fixed_type;
     constexpr fixed_type ZERO = fixed_type{0};
 
-    math::vec4              pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
     const SR_FragmentShader fragShader  = mShader->mFragShader;
     const SR_BlendMode      blendMode   = fragShader.blend;
     const bool              blend       = blendMode != SR_BLEND_OFF;
@@ -351,7 +355,6 @@ void SR_FragmentProcessor::render_line(
     float             z0            = screenCoord0[2];
     float             z1            = screenCoord1[2];
     math::vec4* const inVaryings    = mBins[binId].mVaryings;
-    math::vec4        outVaryings   [SR_SHADER_MAX_VARYING_VECTORS];
     math::vec2        clipCoords[2] = {math::vec2_cast(screenCoord0), math::vec2_cast(screenCoord1)};
 
     if (!sr_clip_liang_barsky(clipCoords, dimens))
@@ -378,6 +381,9 @@ void SR_FragmentProcessor::render_line(
     const float       dist     = 1.f / math::length(math::vec2_cast(screenCoord1)-math::vec2_cast(screenCoord0));
     const SR_Texture* depthBuf = fbo->get_depth_buffer();
 
+    SR_FragmentParam fragParams;
+    fragParams.pUniforms = pUniforms;
+
     for (int32_t i = 0; i <= istep; ++i)
     {
         const float      xf      = math::float_cast<float, fixed_type>(x);
@@ -395,21 +401,24 @@ void SR_FragmentProcessor::render_line(
         if (noDepthTest || depthBuf->texel<float>((uint16_t)xi, (uint16_t)yi) >= z)
 #endif
         {
-            interpolate_line_varyings(interp, numVaryings, inVaryings, outVaryings);
+            interpolate_line_varyings(interp, numVaryings, inVaryings, fragParams.pVaryings);
 
-            const math::vec4    fragCoord   {xf, yf, z, 1.f};
-            const uint_fast32_t haveOutputs = shader(fragCoord, pUniforms, outVaryings, pOutputs);
+            fragParams.fragCoord = {xf, yf, z, 1.f};
+            fragParams.x = (uint16_t)xi;
+            fragParams.y = (uint16_t)yi;
+            fragParams.z = z;
+            const uint_fast32_t haveOutputs = shader(fragParams);
 
             if (blend)
             {
                 // branchless select
                 switch (-haveOutputs & numOutputs)
                 {
-                    case 4: fbo->put_alpha_pixel(3, xi, yi, pOutputs[3], blendMode);
-                    case 3: fbo->put_alpha_pixel(2, xi, yi, pOutputs[2], blendMode);
-                    case 2: fbo->put_alpha_pixel(1, xi, yi, pOutputs[1], blendMode);
-                    case 1: fbo->put_alpha_pixel(0, xi, yi, pOutputs[0], blendMode);
-                        //case 1: fbo->put_pixel(0, xi, yi, zi, math::vec4{1.f, 0, 1.f, 1.f});
+                    case 4: fbo->put_alpha_pixel(3, fragParams.x, fragParams.y, fragParams.pOutputs[3], blendMode);
+                    case 3: fbo->put_alpha_pixel(2, fragParams.x, fragParams.y, fragParams.pOutputs[2], blendMode);
+                    case 2: fbo->put_alpha_pixel(1, fragParams.x, fragParams.y, fragParams.pOutputs[1], blendMode);
+                    case 1: fbo->put_alpha_pixel(0, fragParams.x, fragParams.y, fragParams.pOutputs[0], blendMode);
+                        //case 1: fbo->put_pixel(0, fragParams.x, fragParams.y, math::vec4{1.f, 0, 1.f, 1.f});
                 }
 
             }
@@ -418,11 +427,11 @@ void SR_FragmentProcessor::render_line(
                 // branchless select
                 switch (-haveOutputs & numOutputs)
                 {
-                    case 4: fbo->put_pixel(3, xi, yi, pOutputs[3]);
-                    case 3: fbo->put_pixel(2, xi, yi, pOutputs[2]);
-                    case 2: fbo->put_pixel(1, xi, yi, pOutputs[1]);
-                    case 1: fbo->put_pixel(0, xi, yi, pOutputs[0]);
-                        //case 1: fbo->put_pixel(0, xi, yi, zi, math::vec4{1.f, 0, 1.f, 1.f});
+                    case 4: fbo->put_pixel(3, fragParams.x, fragParams.y, fragParams.pOutputs[3]);
+                    case 3: fbo->put_pixel(2, fragParams.x, fragParams.y, fragParams.pOutputs[2]);
+                    case 2: fbo->put_pixel(1, fragParams.x, fragParams.y, fragParams.pOutputs[1]);
+                    case 1: fbo->put_pixel(0, fragParams.x, fragParams.y, fragParams.pOutputs[0]);
+                        //case 1: fbo->put_pixel(0,fragParams.x, fragParams.y, math::vec4{1.f, 0, 1.f, 1.f});
                 }
             }
 
@@ -567,7 +576,7 @@ void SR_FragmentProcessor::render_wireframe(const uint_fast64_t binId, const SR_
 /*--------------------------------------
  * Triangle Rasterization
 --------------------------------------*/
-#if 1
+#if 0
 
 void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_Texture* depthBuffer) const noexcept
 {
@@ -814,8 +823,8 @@ void SR_FragmentProcessor::flush_fragments(
     SR_Framebuffer*         fbo         = mFbo;
     math::vec4* const       inVaryings  = mBins[binId].mVaryings;
 
-    alignas(sizeof(math::vec4)) math::vec4 pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
-    alignas(sizeof(math::vec4)) math::vec4 outVaryings[SR_SHADER_MAX_VARYING_VECTORS];
+    SR_FragmentParam fragParams;
+    fragParams.pUniforms = pUniforms;
 
     if (blendMode != SR_BLEND_OFF)
     {
@@ -823,31 +832,30 @@ void SR_FragmentProcessor::flush_fragments(
         {
             // Interpolate varying variables using the barycentric coordinates
             const math::vec4 bc = outCoords->bc[numQueuedFrags];
-            interpolate_tri_varyings(bc.v, numVaryings, inVaryings, outVaryings);
+            interpolate_tri_varyings(bc.v, numVaryings, inVaryings, fragParams.pVaryings);
 
-            const math::vec4 fc = outCoords->xyzw[numQueuedFrags];
-            const uint32_t   xy = outCoords->xy[numQueuedFrags];
-            const uint16_t   x  = 0xFFFFu & xy;
-            const uint16_t   y  = xy >> 16u;
+            fragParams.fragCoord = outCoords->xyzw[numQueuedFrags];
+            const uint32_t   xy  = outCoords->xy[numQueuedFrags];
+            fragParams.x         = 0xFFFFu & xy;
+            fragParams.y         = xy >> 16u;
+            fragParams.depth     = fragParams.fragCoord[2];
 
-            uint_fast32_t haveOutputs = pShader(fc, pUniforms, outVaryings, pOutputs);
+            uint_fast32_t haveOutputs = pShader(fragParams);
 
             // branchless select
             switch (-haveOutputs & numOutputs)
             {
-                case 4: fbo->put_alpha_pixel(3, x, y, pOutputs[3], blendMode);
-                case 3: fbo->put_alpha_pixel(2, x, y, pOutputs[2], blendMode);
-                case 2: fbo->put_alpha_pixel(1, x, y, pOutputs[1], blendMode);
-                case 1: fbo->put_alpha_pixel(0, x, y, pOutputs[0], blendMode);
+                case 4: fbo->put_alpha_pixel(3, fragParams.x, fragParams.y, fragParams.pOutputs[3], blendMode);
+                case 3: fbo->put_alpha_pixel(2, fragParams.x, fragParams.y, fragParams.pOutputs[2], blendMode);
+                case 2: fbo->put_alpha_pixel(1, fragParams.x, fragParams.y, fragParams.pOutputs[1], blendMode);
+                case 1: fbo->put_alpha_pixel(0, fragParams.x, fragParams.y, fragParams.pOutputs[0], blendMode);
             }
 
             if (depthMask)
             {
-                const float zf = fc[2];
-                fbo->put_depth_pixel<float>(x, y, zf);
+                fbo->put_depth_pixel<float>(fragParams.x, fragParams.y, fragParams.depth);
             }
         }
-        return;
     }
     else
     {
@@ -855,28 +863,28 @@ void SR_FragmentProcessor::flush_fragments(
         {
             // Interpolate varying variables using the barycentric coordinates
             const math::vec4 bc = outCoords->bc[numQueuedFrags];
-            interpolate_tri_varyings(bc.v, numVaryings, inVaryings, outVaryings);
+            interpolate_tri_varyings(bc.v, numVaryings, inVaryings, fragParams.pVaryings);
 
-            const math::vec4 fc = outCoords->xyzw[numQueuedFrags];
-            const uint32_t   xy = outCoords->xy[numQueuedFrags];
-            const uint16_t   x  = 0xFFFFu & xy;
-            const uint16_t   y  = xy >> 16u;
+            fragParams.fragCoord = outCoords->xyzw[numQueuedFrags];
+            const uint32_t   xy  = outCoords->xy[numQueuedFrags];
+            fragParams.x         = 0xFFFFu & xy;
+            fragParams.y         = xy >> 16u;
+            fragParams.depth     = fragParams.fragCoord[2];
 
-            uint_fast32_t haveOutputs = pShader(fc, pUniforms, outVaryings, pOutputs);
+            uint_fast32_t haveOutputs = pShader(fragParams);
 
             // branchless select
             switch (-haveOutputs & numOutputs)
             {
-                case 4: fbo->put_pixel(3, x, y, pOutputs[3]);
-                case 3: fbo->put_pixel(2, x, y, pOutputs[2]);
-                case 2: fbo->put_pixel(1, x, y, pOutputs[1]);
-                case 1: fbo->put_pixel(0, x, y, pOutputs[0]);
+                case 4: fbo->put_pixel(3, fragParams.x, fragParams.y, fragParams.pOutputs[3]);
+                case 3: fbo->put_pixel(2, fragParams.x, fragParams.y, fragParams.pOutputs[2]);
+                case 2: fbo->put_pixel(1, fragParams.x, fragParams.y, fragParams.pOutputs[1]);
+                case 1: fbo->put_pixel(0, fragParams.x, fragParams.y, fragParams.pOutputs[0]);
             }
 
             if (depthMask)
             {
-                const float zf = fc[2];
-                fbo->put_depth_pixel<float>(x, y, zf);
+                fbo->put_depth_pixel<float>(fragParams.x, fragParams.y, fragParams.depth);
             }
         }
     }
