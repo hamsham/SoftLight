@@ -951,7 +951,8 @@ int main()
             {
                 std::cout<< "Window resized: " << evt.window.width << 'x' << evt.window.height << std::endl;
                 pRenderBuf->terminate();
-                //projMatrix = math::perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 10.f, 100.f);                pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
+                pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
+                //projMatrix = math::perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 10.f, 100.f);
                 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
             }
 
