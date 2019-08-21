@@ -313,24 +313,21 @@ int SR_WindowBufferXlib::init(SR_RenderWindow& win, unsigned width, unsigned hei
         return -3;
     }
 
-    Visual* pVisual = DefaultVisual(pWin->mDisplay, DefaultScreen(pWin->mDisplay));
-    if (!pVisual)
+    XWindowAttributes attribs;
+    XGetWindowAttributes(pWin->mDisplay, pWin->mWindow, &attribs);
+
+    if (mTexture.init(SR_COLOR_RGBA_8U, width, height, 1) != 0)
     {
         return -4;
     }
 
-    if (mTexture.init(SR_COLOR_RGBA_8U, width, height, 1) != 0)
-    {
-        return -5;
-    }
-
     char*   pTexData = reinterpret_cast<char*>(mTexture.data());
-    XImage* pImg     = XCreateImage(pWin->mDisplay, pVisual, 24, ZPixmap, 0, pTexData, width, height, 32, 0);
+    XImage* pImg     = XCreateImage(pWin->mDisplay, attribs.visual, attribs.depth, ZPixmap, 0, pTexData, width, height, 32, 0);
 
     if (!pImg)
     {
         mTexture.terminate();
-        return -6;
+        return -5;
     }
 
     mWindow = &win;

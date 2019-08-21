@@ -273,24 +273,32 @@ int SR_RenderWindowXlib::set_title(const char* const pName) noexcept
 -------------------------------------*/
 int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
 {
-    const char* const pDisplayName = std::getenv("DISPLAY");
-    int errCode = 0;
-    Display* pDisplay = nullptr;
-    Window windowId = None;
-    Atom atomDelete = None;
     #ifdef LS_ARCH_X86
-        alignas(sizeof(__m256)) XVisualInfo visualInfo;
+        alignas(sizeof(__m256)) XVisualInfo visualTemplate;
         alignas(sizeof(__m256)) XSetWindowAttributes windowAttribs;
     #else
-        XVisualInfo visualInfo;
+        XVisualInfo visualTemplate;
         XSetWindowAttributes windowAttribs;
     #endif
-    XVisualInfo* pVisualInfo = nullptr;
-    Colormap colorMap;
-    XEvent* pEvent = nullptr;
-    int x, y;
-    unsigned w, h;
+
+    const char* const  pDisplayName       = std::getenv("DISPLAY");
+    int                errCode            = 0;
+    Display*           pDisplay           = nullptr;
+    constexpr long     visualMatchMask    = VisualScreenMask|VisualClassMask|VisualRedMaskMask|VisualGreenMaskMask|VisualBlueMaskMask|VisualBitsPerRGBMask;
+    XVisualInfo*       pVisualInfo        = nullptr;
+    Window             windowId           = None;
+    Atom               atomDelete         = None;
     static const char* WIN_MGR_DELETE_MSG = {"WM_DELETE_WINDOW"};
+    XEvent*            pEvent             = nullptr;
+    Colormap           colorMap;
+    int                x;
+    int                y;
+    unsigned           w;
+    unsigned           h;
+    unsigned           borderWidth;
+    unsigned           depth;
+    Window             root;
+
     const auto windowError = [&](const char* errMsg) -> int
     {
         LS_LOG_ERR(errMsg);
@@ -338,7 +346,7 @@ int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
 
     assert(!this->valid());
 
-    utils::fast_memset(&visualInfo, 0, sizeof(XVisualInfo));
+    utils::fast_memset(&visualTemplate, 0, sizeof(XVisualInfo));
     utils::fast_memset(&windowAttribs, 0, sizeof(XSetWindowAttributes));
 
     LS_LOG_MSG("SR_RenderWindowXlib ", this, " initializing");
@@ -355,9 +363,15 @@ int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
     {
     LS_LOG_MSG("Querying X server for display configuration.");
         int numVisuals;
-        visualInfo.screen = DefaultScreen(pDisplay);
+        visualTemplate.screen       = DefaultScreen(pDisplay);
+        visualTemplate.depth        = 32;
+        visualTemplate.c_class      = TrueColor;
+        visualTemplate.red_mask     = 0xFF0000;
+        visualTemplate.green_mask   = 0xFF00;
+        visualTemplate.blue_mask    = 0xFF;
+        visualTemplate.bits_per_rgb = 8;
 
-        pVisualInfo = XGetVisualInfo(pDisplay, VisualScreenMask, &visualInfo, &numVisuals);
+        pVisualInfo = XGetVisualInfo(pDisplay, visualMatchMask, &visualTemplate, &numVisuals);
         if (!pVisualInfo)
         {
             errCode = -2;
@@ -368,35 +382,35 @@ int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
             "\n\t\tConfig ID:      ", pVisualInfo->visualid,
             "\n\t\tScreen ID:      ", pVisualInfo->screen,
             "\n\t\tBit Depth:      ", pVisualInfo->depth,
-            "\n\t\tRed Bits:       ", (pVisualInfo->red_mask & VisualRedMaskMask),
-            "\n\t\tGreen Bits:     ", (pVisualInfo->green_mask & VisualGreenMaskMask),
-            "\n\t\tBlue bits:      ", (pVisualInfo->blue_mask & VisualBlueMaskMask),
+            "\n\t\tRed Bits:       ", pVisualInfo->red_mask,
+            "\n\t\tGreen Bits:     ", pVisualInfo->green_mask,
+            "\n\t\tBlue bits:      ", pVisualInfo->blue_mask,
             "\n\t\tColorMap Size:  ", pVisualInfo->colormap_size,
             "\n\t\tBits per Pixel: ", pVisualInfo->bits_per_rgb);
     }
     {
         LS_LOG_MSG("Configuring X window attributes.");
 
-        colorMap = XCreateColormap(pDisplay, RootWindow(pDisplay, visualInfo.screen), pVisualInfo->visual, AllocNone);
+        colorMap = XCreateColormap(pDisplay, RootWindow(pDisplay, visualTemplate.screen), pVisualInfo->visual, AllocNone);
 
-        windowAttribs.background_pixel = 0x0; // black
-        windowAttribs.border_pixel = 0;
-        windowAttribs.save_under = True;
-        windowAttribs.event_mask = XLIB_EVENT_MASK;
+        windowAttribs.background_pixel  = 0x0; // black
+        windowAttribs.border_pixel      = 0;
+        windowAttribs.save_under        = False;
+        windowAttribs.event_mask        = XLIB_EVENT_MASK;
         windowAttribs.override_redirect = True;
-        windowAttribs.colormap = colorMap;
+        windowAttribs.colormap          = colorMap;
 
         windowId = XCreateWindow(
             pDisplay,
-            RootWindow(pDisplay, visualInfo.screen),
+            RootWindow(pDisplay, pVisualInfo->screen),
             0, // x
             0, // y
             width,
             height,
             0, // border_width
-            visualInfo.depth,
+            pVisualInfo->depth,
             InputOutput,
-            visualInfo.visual,
+            pVisualInfo->visual,
             CWBackPixel | CWBorderPixel | CWEventMask | CWColormap,
             &windowAttribs
         );
@@ -436,8 +450,6 @@ int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
 
     {
         LS_LOG_MSG("Inspecting window for dimensions.");
-        unsigned borderWidth, depth;
-        Window root;
         if (XGetGeometry(pDisplay, windowId, &root, &x, &y, &w, &h, &borderWidth, &depth) != True)
         {
             errCode = -6;
@@ -448,17 +460,17 @@ int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
     }
 
     mCurrentState = WindowStateInfo::WINDOW_STARTED;
-    mDisplay = pDisplay;
-    mWindow = windowId;
-    mCloseAtom = atomDelete;
-    mLastEvent = pEvent;
-    mKeysRepeat = (XkbSetDetectableAutoRepeat(mDisplay, False, nullptr) == False);
-    mWidth = w;
-    mHeight = h;
-    mX = x;
-    mY = y;
-    mMouseX = 0;
-    mMouseY = 0;
+    mDisplay      = pDisplay;
+    mWindow       = windowId;
+    mCloseAtom    = atomDelete;
+    mLastEvent    = pEvent;
+    mKeysRepeat   = (XkbSetDetectableAutoRepeat(mDisplay, False, nullptr) == False);
+    mWidth        = w;
+    mHeight       = h;
+    mX            = x;
+    mY            = y;
+    mMouseX       = 0;
+    mMouseY       = 0;
 
     LS_LOG_MSG(
         "Done. Successfully initialized SR_RenderWindowXlib ", this, '.',
