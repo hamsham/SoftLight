@@ -284,7 +284,7 @@ int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
     const char* const  pDisplayName       = std::getenv("DISPLAY");
     int                errCode            = 0;
     Display*           pDisplay           = nullptr;
-    constexpr long     visualMatchMask    = VisualScreenMask|VisualClassMask|VisualRedMaskMask|VisualGreenMaskMask|VisualBlueMaskMask|VisualBitsPerRGBMask;
+    constexpr long     visualMatchMask    = VisualScreenMask|VisualClassMask|VisualRedMaskMask|VisualGreenMaskMask|VisualBlueMaskMask;//|VisualBitsPerRGBMask;
     XVisualInfo*       pVisualInfo        = nullptr;
     Window             windowId           = None;
     Atom               atomDelete         = None;
@@ -364,11 +364,11 @@ int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
     LS_LOG_MSG("Querying X server for display configuration.");
         int numVisuals;
         visualTemplate.screen       = DefaultScreen(pDisplay);
-        visualTemplate.depth        = 32;
+        visualTemplate.depth        = 24;
         visualTemplate.c_class      = TrueColor;
-        visualTemplate.red_mask     = 0xFF0000;
-        visualTemplate.green_mask   = 0xFF00;
-        visualTemplate.blue_mask    = 0xFF;
+        visualTemplate.red_mask     = 0x00FF0000;
+        visualTemplate.green_mask   = 0x0000FF00;
+        visualTemplate.blue_mask    = 0x000000FF;
         visualTemplate.bits_per_rgb = 8;
 
         pVisualInfo = XGetVisualInfo(pDisplay, visualMatchMask, &visualTemplate, &numVisuals);

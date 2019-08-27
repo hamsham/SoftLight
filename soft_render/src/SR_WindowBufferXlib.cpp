@@ -117,27 +117,23 @@ int SR_WindowBufferXlib::init(SR_RenderWindow& win, unsigned width, unsigned hei
         return -2;
     }
 
-
-    Visual* pVisual = DefaultVisual(pWin->mDisplay, DefaultScreen(pWin->mDisplay));
-    if (!pVisual)
+    if (mTexture.init(SR_COLOR_RGBA_8U, width, height, 1) != 0)
     {
         return -3;
     }
 
-    if (mTexture.init(SR_COLOR_RGBA_8U, width, height, 1) != 0)
-    {
-        return -4;
-    }
+    XWindowAttributes attribs;
+    XGetWindowAttributes(pWin->mDisplay, pWin->mWindow, &attribs);
 
     char*            pTexData = reinterpret_cast<char*>(mTexture.data());
     XShmSegmentInfo* pShm     = new XShmSegmentInfo;
-    XImage*          pImg     = XShmCreateImage(pWin->mDisplay, pVisual, 24, ZPixmap, pTexData, pShm, width, height);
+    XImage*          pImg     = XShmCreateImage(pWin->mDisplay, attribs.visual, attribs.depth, ZPixmap, pTexData, pShm, width, height);
 
     if (!pShm || !pImg)
     {
         delete pShm;
         mTexture.terminate();
-        return -5;
+        return -4;
     }
 
     // Some POSIX systems require that the user, group, and "other" can all
@@ -163,7 +159,7 @@ int SR_WindowBufferXlib::init(SR_RenderWindow& win, unsigned width, unsigned hei
         delete pShm;
         mTexture.terminate();
         XDestroyImage(pImg);
-        return -6;
+        return -5;
     }
 
     // Ensure we're using the texture's address
@@ -177,7 +173,7 @@ int SR_WindowBufferXlib::init(SR_RenderWindow& win, unsigned width, unsigned hei
         mTexture.terminate();
         pImg->data = nullptr;
         XDestroyImage(pImg);
-        return -7;
+        return -6;
     }
 
     if (XShmAttach(pWin->mDisplay, pShm) == False)
@@ -187,7 +183,7 @@ int SR_WindowBufferXlib::init(SR_RenderWindow& win, unsigned width, unsigned hei
         mTexture.terminate();
         pImg->data = nullptr;
         XDestroyImage(pImg);
-        return -8;
+        return -7;
     }
 
     mWindow = &win;
