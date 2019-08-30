@@ -67,6 +67,13 @@ if (NOT WIN32 AND NOT MINGW)
 
         find_library(XCB_LIBRARY xcb)
         find_library(X11_XCB_LIBRARY X11-xcb)
+
+        if (not XCB_XCB_HEADER OR XCB_PROTO_HEADER OR NOT XCB_LIBRARY OR NOT X11_XCB_LIBRARY)
+            message(FATAL_ERROR "Unable to build on OS X without X11-XCB support.")
+        else()
+            message("-- Found XCB: ${XCB_LIBRARY}")
+            message("-- Found X11-XCB: ${X11_XCB_LIBRARY}")
+        endif()
     endif()
 else()
   add_definitions(-DWIN32_LEAN_AND_MEAN)
