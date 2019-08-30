@@ -674,7 +674,7 @@ void SR_Framebuffer::put_pixel(
         case SR_COLOR_RGBA_DOUBLE: assign_pixel<SR_ColorRGBAd>(x, y, rgba, pTexture); break;
 
         default:
-            break;
+            LS_UNREACHABLE();
     }
 }
 
@@ -726,7 +726,7 @@ void SR_Framebuffer::put_alpha_pixel(
         case SR_COLOR_RGBA_DOUBLE: assign_alpha_pixel<SR_ColorRGBAd>(x, y, colors, pTexture, blendMode); break;
 
         default:
-            break;
+            LS_UNREACHABLE();
     }
 }
 
