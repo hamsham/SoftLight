@@ -6,6 +6,15 @@
 
 
 
+// Should be defined by the build system
+// OSX with XQuartz runs out of memory when attaching textures to shared
+// memory segments.
+#ifndef SR_ENABLE_XSHM
+    #define SR_ENABLE_XSHM 0
+#endif /* SR_ENABLE_XSHM */
+
+
+
 /*-----------------------------------------------------------------------------
  * Forward Declarations
 -----------------------------------------------------------------------------*/
@@ -25,8 +34,14 @@ namespace ls
 -----------------------------------------------------------------------------*/
 class SR_WindowBufferXCB : public SR_WindowBuffer
 {
+  friend class SR_RenderWindowXCB;
+
   private:
     SR_RenderWindow* mWindow;
+
+    #if SR_ENABLE_XSHM != 0
+    void* mShmInfo;
+    #endif
 
   public:
     virtual ~SR_WindowBufferXCB() noexcept override;

@@ -16,7 +16,8 @@ extern "C"
     #include <X11/XKBlib.h> // XkbKeycodeToKeysym
 
     #if SR_ENABLE_XSHM != 0
-        //#include <X11/extensions/XShm.h>
+        #include <xcb/shm.h>
+        #include <xcb/xcb_image.h>
     #endif
 }
 
@@ -24,7 +25,7 @@ extern "C"
 #include "lightsky/utils/Log.h"
 
 #include "soft_render/SR_RenderWindowXCB.hpp"
-#include "soft_render/SR_WindowBufferXlib.hpp"
+#include "soft_render/SR_WindowBufferXCB.hpp"
 
 
 
@@ -1043,18 +1044,42 @@ void SR_RenderWindowXCB::render(SR_WindowBuffer& buffer) noexcept
 
     const uint32_t w = (uint32_t)width();
     const uint32_t h = (uint32_t)height();
-    xcb_put_image(
-        mConnection,
-        XCB_IMAGE_FORMAT_Z_PIXMAP,
-        mWindow,
-        mContext,
-        (uint16_t)w,
-        (uint16_t)h,
-        0, 0,
-        0, 24,
-        sizeof(SR_ColorRGBA8)*w*h,
-        reinterpret_cast<const uint8_t*>(buffer.buffer())
-    );
+
+    #if SR_ENABLE_XSHM != 0
+        xcb_shm_segment_info_t* pShmInfo = (xcb_shm_segment_info_t*)((SR_WindowBufferXCB*)&buffer)->mShmInfo;
+
+        xcb_shm_put_image(
+            mConnection,
+            mWindow,
+            mContext,
+            (uint16_t)w,
+            (uint16_t)h,
+            0, 0,
+            (uint16_t)w,
+            (uint16_t)h,
+            0, 0,
+            24,
+            XCB_IMAGE_FORMAT_Z_PIXMAP,
+            0,
+            pShmInfo->shmseg,
+            0
+        );
+
+        xcb_flush(mConnection);
+    #else
+        xcb_put_image(
+            mConnection,
+            XCB_IMAGE_FORMAT_Z_PIXMAP,
+            mWindow,
+            mContext,
+            (uint16_t)w,
+            (uint16_t)h,
+            0, 0,
+            0, 24,
+            sizeof(SR_ColorRGBA8)*w*h,
+            reinterpret_cast<const uint8_t*>(buffer.buffer())
+        );
+    #endif
 }
 
 

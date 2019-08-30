@@ -138,4 +138,24 @@ inline bool SR_RenderWindowWin32::keys_repeat() const noexcept
 
 
 
+/*-------------------------------------
+ * Get the native window handle
+-------------------------------------*/
+inline void*SR_RenderWindowWin32::native_handle() noexcept
+{
+    return mHwnd;
+}
+
+
+
+/*-------------------------------------
+ * Get the native window handle
+-------------------------------------*/
+inline const void* SR_RenderWindowWin32::native_handle() const noexcept
+{
+    return mHwnd;
+}
+
+
+
 #endif /* SR_RENDERWINDOWWIN32_HPP */

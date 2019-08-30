@@ -24,12 +24,6 @@ endif()
 # OS Setup
 # -------------------------------------
 if (NOT WIN32 AND NOT MINGW)
-    #if (XCB_XCB_HEADER AND XCB_PROTO_HEADER AND XCB_LIBRARY)
-    #    message("-- Found XCB: ${XCB_LIBRARY}")
-    #    set(X11_LIBRARIES ${XCB_LIBRARY})
-    #else()
-
-    message("-- XCB Not found. Falling back to X11")
     find_package(X11 REQUIRED)
 
     if (NOT X11_FOUND)
@@ -53,27 +47,49 @@ if (NOT WIN32 AND NOT MINGW)
         include_directories(BEFORE SYSTEM ${X11_XShm_INCLUDE_PATH})
     endif()
 
-    # OSX uses XCB because regular X11 blocks the main loop
-    if (APPLE)
-        find_file(XCB_XCB_HEADER
-            xcb/xcb.h
-            PATHS
+    find_file(XCB_XCB_HEADER
+        xcb/xcb.h
+        PATHS
             ${CMAKE_INCLUDE_PATH})
 
-        find_file(XCB_PROTO_HEADER
-            xcb/xproto.h
-            PATHS
+    find_file(XCB_PROTO_HEADER
+        xcb/xproto.h
+        PATHS
             ${CMAKE_INCLUDE_PATH})
 
-        find_library(XCB_LIBRARY xcb)
-        find_library(X11_XCB_LIBRARY X11-xcb)
+    find_file(XCB_IMAGE_HEADER
+        xcb/xcb_image.h
+        PATHS
+            ${CMAKE_INCLUDE_PATH})
 
-        if (NOT XCB_XCB_HEADER OR NOT XCB_PROTO_HEADER OR NOT XCB_LIBRARY OR NOT X11_XCB_LIBRARY)
-            message(FATAL_ERROR "Unable to build on OS X without X11-XCB support.")
+    find_file(XCB_SHM_HEADER
+        xcb/shm.h
+        PATHS
+            ${CMAKE_INCLUDE_PATH})
+
+    find_library(XCB_LIBRARY xcb)
+    find_library(X11_XCB_LIBRARY X11-xcb)
+    find_library(XCB_SHM_LIBRARY xcb-shm)
+
+    if (NOT XCB_XCB_HEADER OR NOT XCB_PROTO_HEADER OR NOT XCB_LIBRARY OR NOT X11_XCB_LIBRARY)
+        message("-- XCB Not found. Falling back to X11")
+        set(PREFER_XCB FALSE CACHE BOOL "Set preference to use the X11-XCB window backend.")
+    else()
+        message("-- Found XCB: ${XCB_LIBRARY}")
+        message("-- Found X11-XCB: ${X11_XCB_LIBRARY}")
+
+        if (APPLE)
+            set(PREFER_XCB TRUE CACHE BOOL "Set preference to use the X11-XCB window backend.")
         else()
-            message("-- Found XCB: ${XCB_LIBRARY}")
-            message("-- Found X11-XCB: ${X11_XCB_LIBRARY}")
+            set(PREFER_XCB FALSE CACHE BOOL "Set preference to use the X11-XCB window backend.")
         endif()
+    endif()
+
+    if (XCB_IMAGE_HEADER AND XCB_SHM_HEADER AND XCB_SHM_LIBRARY)
+        message("-- Found XCB-SHM: ${XCB_SHM_LIBRARY}")
+        set(ENABLE_XCB_SHM TRUE CACHE BOOL "XCB Shared memory extension enabled.")
+    else()
+        set(ENABLE_XCB_SHM TRUE CACHE BOOL "XCB Shared memory extension disabled.")
     endif()
 else()
   add_definitions(-DWIN32_LEAN_AND_MEAN)
@@ -194,8 +210,21 @@ if(WIN32)
         src/SR_RenderWindowWin32.cpp
         src/SR_WindowBufferWin32.cpp)
 elseif(UNIX)
+    # X11-shm extensions can not be used on OSX due to shared memory
+    # allocation limits
     if(NOT APPLE)
         add_definitions(-DSR_ENABLE_XSHM=1)
+        message("-- X11 Shared memory extensions enabled for X11 windows.")
+    else()
+        message("-- X11 Shared memory extensions disabled.")
+    endif()
+
+    if (PREFER_XCB)
+        add_definitions(-DSR_PREFER_XCB)
+        message("-- X11-XCB window backend enabled.")
+    else()
+        add_definitions(-USR_PREFER_XCB)
+        message("-- X11 window backend enabled.")
     endif()
 
     set(SR_LIB_SOURCES
@@ -234,6 +263,7 @@ if (NOT MSVC)
         ${ASSIMP_LIBRARIES}
         ${FREEIMAGE_LIBRARIES}
         ${XCB_LIBRARY}
+        ${XCB_SHM_LIBRARY}
         ${X11_XCB_LIBRARY}
         ${X11_LIBRARIES}
         pthread

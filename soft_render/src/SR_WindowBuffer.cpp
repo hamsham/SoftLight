@@ -57,11 +57,13 @@ ls::utils::Pointer<SR_WindowBuffer> SR_WindowBuffer::create() noexcept
 {
     #ifdef LS_OS_WINDOWS
         return ls::utils::Pointer<SR_WindowBuffer>{new SR_WindowBufferWin32{}};
-    #elif defined(LS_OS_OSX)
-        return ls::utils::Pointer<SR_WindowBuffer>{new SR_WindowBufferXCB{}};
-    #elif defined(LS_OS_LINUX)
-        return ls::utils::Pointer<SR_WindowBuffer>{new SR_WindowBufferXlib{}};
+    #elif defined(LS_OS_LINUX) || defined(LS_OS_OSX)
+        #if defined(SR_PREFER_XCB)
+            return ls::utils::Pointer<SR_WindowBuffer>{new SR_WindowBufferXCB{}};
+        #else
+            return ls::utils::Pointer<SR_WindowBuffer>{new SR_WindowBufferXlib{}};
+        #endif
     #else
-        return ls::utils::Pointer<SR_WindowBuffer>{nullptr};
+        #error "Window buffer backend not implemented for this platform."
     #endif
 }

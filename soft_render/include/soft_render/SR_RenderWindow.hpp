@@ -110,6 +110,10 @@ class SR_RenderWindow
     virtual void set_mouse_capture(bool isCaptured) noexcept = 0;
 
     virtual bool is_mouse_captured() const noexcept = 0;
+
+    virtual void* native_handle() noexcept = 0;
+
+    virtual const void* native_handle() const noexcept = 0;
 };
 
 

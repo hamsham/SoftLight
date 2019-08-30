@@ -80,11 +80,13 @@ ls::utils::Pointer<SR_RenderWindow> SR_RenderWindow::create() noexcept
 {
     #ifdef LS_OS_WINDOWS
         return ls::utils::Pointer<SR_RenderWindow>{new SR_RenderWindowWin32{}};
-    #elif defined(LS_OS_OSX)
-        return ls::utils::Pointer<SR_RenderWindow>{new SR_RenderWindowXCB{}};
-    #elif defined(LS_OS_LINUX)
-        return ls::utils::Pointer<SR_RenderWindow>{new SR_RenderWindowXlib{}};
+    #elif defined(LS_OS_LINUX) || defined(LS_OS_OSX)
+        #if defined(SR_PREFER_XCB)
+            return ls::utils::Pointer<SR_RenderWindow>{new SR_RenderWindowXCB{}};
+        #else
+            return ls::utils::Pointer<SR_RenderWindow>{new SR_RenderWindowXlib{}};
+        #endif
     #else
-        return ls::utils::Pointer<SR_RenderWindow>{nullptr};
+        #error "Window buffer backend not implemented for this platform."
     #endif
 }

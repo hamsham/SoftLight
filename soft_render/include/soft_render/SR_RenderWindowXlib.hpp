@@ -105,6 +105,10 @@ class SR_RenderWindowXlib final : public SR_RenderWindow
     virtual void set_mouse_capture(bool isCaptured) noexcept override;
 
     virtual bool is_mouse_captured() const noexcept override;
+
+    virtual void* native_handle() noexcept override;
+
+    virtual const void* native_handle() const noexcept override;
 };
 
 
@@ -199,6 +203,26 @@ inline bool SR_RenderWindowXlib::keys_repeat() const noexcept
 inline bool SR_RenderWindowXlib::is_mouse_captured() const noexcept
 {
     return mCaptureMouse;
+}
+
+
+
+/*-------------------------------------
+ * Get the native window handle
+-------------------------------------*/
+inline void* SR_RenderWindowXlib::native_handle() noexcept
+{
+    return &mWindow;
+}
+
+
+
+/*-------------------------------------
+ * Get the native window handle
+-------------------------------------*/
+inline const void* SR_RenderWindowXlib::native_handle() const noexcept
+{
+    return &mWindow;
 }
 
 

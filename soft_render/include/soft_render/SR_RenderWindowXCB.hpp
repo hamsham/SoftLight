@@ -111,6 +111,10 @@ class SR_RenderWindowXCB final : public SR_RenderWindow
     virtual void set_mouse_capture(bool isCaptured) noexcept override;
 
     virtual bool is_mouse_captured() const noexcept override;
+
+    virtual void* native_handle() noexcept override;
+
+    virtual const void* native_handle() const noexcept override;
 };
 
 
@@ -205,6 +209,26 @@ inline bool SR_RenderWindowXCB::keys_repeat() const noexcept
 inline bool SR_RenderWindowXCB::is_mouse_captured() const noexcept
 {
     return mCaptureMouse;
+}
+
+
+
+/*-------------------------------------
+ * Get the native window handle
+-------------------------------------*/
+inline void* SR_RenderWindowXCB::native_handle() noexcept
+{
+    return mConnection;
+}
+
+
+
+/*-------------------------------------
+ * Get the native window handle
+-------------------------------------*/
+inline const void* SR_RenderWindowXCB::native_handle() const noexcept
+{
+    return mConnection;
 }
 
 
