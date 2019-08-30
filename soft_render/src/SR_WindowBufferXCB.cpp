@@ -151,7 +151,7 @@ int SR_WindowBufferXCB::init(SR_RenderWindow& win, unsigned width, unsigned heig
     // Hopefully this won't fail...
     pInfo->shmid = shmget(IPC_PRIVATE, width*height*sizeof(SR_ColorRGBA8), IPC_CREAT|permissions);
 
-    if (pInfo->shmid < 0)
+    if (!pInfo->shmid)
     {
         LS_LOG_ERR("Unable to allocate a shared memory segment: (", errno, ") ", strerror(errno));
         delete pInfo;
