@@ -106,6 +106,10 @@ class SR_RenderWindowWin32 final : public SR_RenderWindow
     void set_mouse_capture(bool isCaptured) noexcept override;
 
     bool is_mouse_captured() const noexcept override;
+
+    void* native_handle() noexcept override;
+
+    const void* native_handle() const noexcept override;
 };
 
 
