@@ -279,6 +279,7 @@ int SR_RenderWindowXCB::init(unsigned width, unsigned height) noexcept
         | XCB_EVENT_MASK_KEY_PRESS
         | XCB_EVENT_MASK_KEY_RELEASE
         //| XCB_EVENT_MASK_KEYMAP_STATE
+        | XCB_EVENT_MASK_RESIZE_REDIRECT
         | XCB_EVENT_MASK_STRUCTURE_NOTIFY
         | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
         | XCB_EVENT_MASK_EXPOSURE
@@ -515,9 +516,6 @@ bool SR_RenderWindowXCB::set_size(unsigned width, unsigned height) noexcept
 
     const uint32_t dimens[] = {(uint32_t)width, (uint32_t)height};
     xcb_configure_window(mConnection, mWindow, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, dimens);
-
-    mWidth = width;
-    mHeight = height;
 
     return true;
 }
@@ -759,6 +757,7 @@ bool SR_RenderWindowXCB::peek_event(SR_WindowEvent* const pEvent) noexcept
     xcb_motion_notify_event_t* pMotion;
     xcb_destroy_notify_event_t* pDestroy;
     xcb_client_message_event_t* pMessage;
+    xcb_resize_request_event_t* pResize;
     xcb_enter_notify_event_t* pEnter;
     xcb_leave_notify_event_t* pLeave;
     xcb_configure_notify_event_t* pConfig;
@@ -928,6 +927,18 @@ bool SR_RenderWindowXCB::peek_event(SR_WindowEvent* const pEvent) noexcept
             }
             break;
 
+        case XCB_RESIZE_REQUEST:
+            pResize = reinterpret_cast<xcb_resize_request_event_t*>(mLastEvent);
+            if (mWidth != (unsigned)pResize->width || mHeight != (unsigned)pResize->height)
+            {
+                pEvent->type = SR_WinEventType::WIN_EVENT_RESIZED;
+                mWidth = (unsigned)pResize->width;
+                mHeight = (unsigned)pResize->height;
+                pEvent->window.width = (uint16_t)pResize->width;
+                pEvent->window.height = (uint16_t)pResize->height;
+            }
+            break;
+
         case XCB_ENTER_NOTIFY:
             pEnter = reinterpret_cast<xcb_enter_notify_event_t*>(mLastEvent);
             pEvent->pNativeWindow = pEnter->event;
@@ -946,10 +957,8 @@ bool SR_RenderWindowXCB::peek_event(SR_WindowEvent* const pEvent) noexcept
 
         case XCB_CLIENT_MESSAGE:
             pMessage = reinterpret_cast<xcb_client_message_event_t*>(mLastEvent);
-            LS_LOG_MSG("Closing?");
             if ((unsigned long)(pMessage->data.data32[0]) == mCloseAtom)
             {
-                LS_LOG_MSG("Closing!");
                 mCurrentState = WindowStateInfo::WINDOW_CLOSING;
                 pEvent->pNativeWindow = pMessage->window;
             }
