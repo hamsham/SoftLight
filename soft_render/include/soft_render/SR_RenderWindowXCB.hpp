@@ -1,31 +1,37 @@
 
-#ifndef SR_RENDERWINDOW_XLIB_HPP
-#define SR_RENDERWINDOW_XLIB_HPP
+#ifndef SR_RENDERWINDOW_XCB_HPP
+#define SR_RENDERWINDOW_XCB_HPP
+
+#include <cstdint> // uint32_t
 
 #include "soft_render/SR_RenderWindow.hpp"
 
 
-
 struct _XDisplay; // Display typedef
-union _XEvent; // XEvent typedef
-
+struct xcb_connection_t;
 
 
 /*-----------------------------------------------------------------------------
  *
 -----------------------------------------------------------------------------*/
-class SR_RenderWindowXlib final : public SR_RenderWindow
+class SR_RenderWindowXCB final : public SR_RenderWindow
 {
     friend class SR_WindowBufferXlib;
 
   private:
     _XDisplay* mDisplay;
 
-    unsigned long mWindow;
+    xcb_connection_t* mConnection;
+
+    uint32_t mWindow;
+
+    uint32_t mContext;
 
     unsigned long mCloseAtom;
 
-    _XEvent* mLastEvent;
+    void* mLastEvent;
+
+    void* mPeekedEvent;
 
     unsigned mWidth;
 
@@ -44,17 +50,17 @@ class SR_RenderWindowXlib final : public SR_RenderWindow
     bool mCaptureMouse;
 
   public:
-    virtual ~SR_RenderWindowXlib()  noexcept override;
+    virtual ~SR_RenderWindowXCB()  noexcept override;
 
-    SR_RenderWindowXlib() noexcept;
+    SR_RenderWindowXCB() noexcept;
 
-    SR_RenderWindowXlib(const SR_RenderWindowXlib&) noexcept;
+    SR_RenderWindowXCB(const SR_RenderWindowXCB&) noexcept;
 
-    SR_RenderWindowXlib(SR_RenderWindowXlib&&) noexcept;
+    SR_RenderWindowXCB(SR_RenderWindowXCB&&) noexcept;
 
-    SR_RenderWindowXlib& operator=(const SR_RenderWindowXlib&) noexcept;
+    SR_RenderWindowXCB& operator=(const SR_RenderWindowXCB&) noexcept;
 
-    SR_RenderWindowXlib& operator=(SR_RenderWindowXlib&&) noexcept;
+    SR_RenderWindowXCB& operator=(SR_RenderWindowXCB&&) noexcept;
 
     virtual int set_title(const char* const pName) noexcept override;
 
@@ -112,7 +118,7 @@ class SR_RenderWindowXlib final : public SR_RenderWindow
 /*-------------------------------------
  * Retrieve the window width
 -------------------------------------*/
-inline unsigned SR_RenderWindowXlib::width() const noexcept
+inline unsigned SR_RenderWindowXCB::width() const noexcept
 {
     return mWidth;
 }
@@ -122,7 +128,7 @@ inline unsigned SR_RenderWindowXlib::width() const noexcept
 /*-------------------------------------
  * Retrieve the window height
 -------------------------------------*/
-inline unsigned SR_RenderWindowXlib::height() const noexcept
+inline unsigned SR_RenderWindowXCB::height() const noexcept
 {
     return mHeight;
 }
@@ -132,7 +138,7 @@ inline unsigned SR_RenderWindowXlib::height() const noexcept
 /*-------------------------------------
  * Retrieve the window get_size
 -------------------------------------*/
-inline void SR_RenderWindowXlib::get_size(unsigned& w, unsigned& h) const noexcept
+inline void SR_RenderWindowXCB::get_size(unsigned& w, unsigned& h) const noexcept
 {
     w = width();
     h = height();
@@ -143,7 +149,7 @@ inline void SR_RenderWindowXlib::get_size(unsigned& w, unsigned& h) const noexce
 /*-------------------------------------
  * Get the window position (X)
 -------------------------------------*/
-inline int SR_RenderWindowXlib::x_position() const noexcept
+inline int SR_RenderWindowXCB::x_position() const noexcept
 {
     return mX;
 }
@@ -153,7 +159,7 @@ inline int SR_RenderWindowXlib::x_position() const noexcept
 /*-------------------------------------
  * Get the window position (Y)
 -------------------------------------*/
-inline int SR_RenderWindowXlib::y_position() const noexcept
+inline int SR_RenderWindowXCB::y_position() const noexcept
 {
     return mY;
 }
@@ -163,7 +169,7 @@ inline int SR_RenderWindowXlib::y_position() const noexcept
 /*-------------------------------------
  * Get the window position
 -------------------------------------*/
-inline bool SR_RenderWindowXlib::get_position(int& x, int& y) const noexcept
+inline bool SR_RenderWindowXCB::get_position(int& x, int& y) const noexcept
 {
     x = x_position();
     y = y_position();
@@ -176,7 +182,7 @@ inline bool SR_RenderWindowXlib::get_position(int& x, int& y) const noexcept
 /*-------------------------------------
  * Determine the windo state
 -------------------------------------*/
-inline WindowStateInfo SR_RenderWindowXlib::state() const noexcept
+inline WindowStateInfo SR_RenderWindowXCB::state() const noexcept
 {
     return mCurrentState;
 }
@@ -186,7 +192,7 @@ inline WindowStateInfo SR_RenderWindowXlib::state() const noexcept
 /*-------------------------------------
  * Check if keyboard keys repeat.
 -------------------------------------*/
-inline bool SR_RenderWindowXlib::keys_repeat() const noexcept
+inline bool SR_RenderWindowXCB::keys_repeat() const noexcept
 {
     return mKeysRepeat;
 }
@@ -196,11 +202,11 @@ inline bool SR_RenderWindowXlib::keys_repeat() const noexcept
 /*-------------------------------------
  * Check if the mouse is captured
 -------------------------------------*/
-inline bool SR_RenderWindowXlib::is_mouse_captured() const noexcept
+inline bool SR_RenderWindowXCB::is_mouse_captured() const noexcept
 {
     return mCaptureMouse;
 }
 
 
 
-#endif /* SR_RENDERWINDOW_XLIB_HPP */
+#endif /* SR_RENDERWINDOW_XCB_HPP */

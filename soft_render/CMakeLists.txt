@@ -24,29 +24,50 @@ endif()
 # OS Setup
 # -------------------------------------
 if (NOT WIN32 AND NOT MINGW)
-    # X11 is needed for *Nix systems
-	find_package(X11 REQUIRED)
-	
-	if (NOT X11_FOUND)
-		message(FATAL_ERROR "Unable to locate the X11 library.")
+    #if (XCB_XCB_HEADER AND XCB_PROTO_HEADER AND XCB_LIBRARY)
+    #    message("-- Found XCB: ${XCB_LIBRARY}")
+    #    set(X11_LIBRARIES ${XCB_LIBRARY})
+    #else()
+
+    message("-- XCB Not found. Falling back to X11")
+    find_package(X11 REQUIRED)
+
+    if (NOT X11_FOUND)
+        message(FATAL_ERROR "Unable to locate the X11 library.")
     else()
         message("-- Found X11: ${X11_X11_LIB}")
         include_directories(BEFORE SYSTEM ${X11_INCLUDE_DIR})
         include_directories(BEFORE SYSTEM ${X11_X11_INCLUDE_PATH})
-	endif()
-		
-	if (NOT X11_Xkb_FOUND)
-		message(FATAL_ERROR "Unable to locate the X11 Xkb extension.")
+    endif()
+
+    if (NOT X11_Xkb_FOUND)
+        message(FATAL_ERROR "Unable to locate the X11 Xkb extension.")
     else()
         message("-- Found X11 Xkb: ${X11_Xkbfile_LIB}")
-	endif()
-		
-	if (NOT X11_XShm_FOUND)
-		message(FATAL_ERROR "Unable to locate the X11 Shared Memory extension.")
+    endif()
+
+    if (NOT X11_XShm_FOUND)
+        message(FATAL_ERROR "Unable to locate the X11 Shared Memory extension.")
     else()
         message("-- Found X11 XShm: ${X11_Xext_LIB}")
         include_directories(BEFORE SYSTEM ${X11_XShm_INCLUDE_PATH})
-	endif()
+    endif()
+
+    # OSX uses XCB because regular X11 blocks the main loop
+    if (APPLE)
+        find_file(XCB_XCB_HEADER
+            xcb/xcb.h
+            PATHS
+            ${CMAKE_INCLUDE_PATH})
+
+        find_file(XCB_PROTO_HEADER
+            xcb/xproto.h
+            PATHS
+            ${CMAKE_INCLUDE_PATH})
+
+        find_library(XCB_LIBRARY xcb)
+        find_library(X11_XCB_LIBRARY X11-xcb)
+    endif()
 else()
   add_definitions(-DWIN32_LEAN_AND_MEAN)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
@@ -118,6 +139,8 @@ else()
     set(SR_LIB_HEADERS
         ${SR_LIB_HEADERS}
         include/soft_render/SR_KeySymXlib.hpp
+        include/soft_render/SR_RenderWindowXCB.hpp
+        include/soft_render/SR_WindowBufferXCB.hpp
         include/soft_render/SR_RenderWindowXlib.hpp
         include/soft_render/SR_WindowBufferXlib.hpp)
 endif()
@@ -171,7 +194,9 @@ elseif(UNIX)
     set(SR_LIB_SOURCES
         ${SR_LIB_SOURCES}
         src/SR_KeySymXlib.cpp
+        src/SR_RenderWindowXCB.cpp
         src/SR_RenderWindowXlib.cpp
+        src/SR_WindowBufferXCB.cpp
         src/SR_WindowBufferXlib.cpp)
 else()
     message(FATAL_ERROR "Unknown/unsupported platform")
@@ -201,6 +226,8 @@ if (NOT MSVC)
         lssetup
         ${ASSIMP_LIBRARIES}
         ${FREEIMAGE_LIBRARIES}
+        ${XCB_LIBRARY}
+        ${X11_XCB_LIBRARY}
         ${X11_LIBRARIES}
         pthread
     )

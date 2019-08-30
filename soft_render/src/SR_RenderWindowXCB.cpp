@@ -1,27 +1,29 @@
 
 #include <cassert> // assert
 #include <cstdlib> // std::getenv
+#include <cstring> // std::strlen
 #include <limits> // numeric_limits<>
 #include <memory> // std::move
 #include <new> // std::nothrow
+#include <X11/XKBlib.h>
 
 // XLib should use an un-mangled interface
 extern "C"
 {
-    #include <X11/Xlib.h>
-    #include <X11/Xutil.h> // XVisualInfo, <X11/keysym.h>
+    #include <xcb/xcb.h>
+    #include <xcb/xproto.h>
+    #include <X11/Xlib-xcb.h>
     #include <X11/XKBlib.h> // XkbKeycodeToKeysym
 
     #if SR_ENABLE_XSHM != 0
-        #include <X11/extensions/XShm.h>
+        //#include <X11/extensions/XShm.h>
     #endif
 }
 
 #include "lightsky/utils/Assertions.h"
-#include "lightsky/utils/Copy.h"
 #include "lightsky/utils/Log.h"
 
-#include "soft_render/SR_RenderWindowXlib.hpp"
+#include "soft_render/SR_RenderWindowXCB.hpp"
 #include "soft_render/SR_WindowBufferXlib.hpp"
 
 
@@ -31,55 +33,27 @@ extern "C"
 -----------------------------------------------------------------------------*/
 namespace utils = ls::utils;
 
+
+
 namespace
 {
 
-
-
-/*-------------------------------------
- * Window Positioning
--------------------------------------*/
-bool _xlib_get_position(_XDisplay* const pDisplay, const unsigned long window, int& x, int& y) noexcept
+inline LS_INLINE int _get_xcb_event(const void* pEvent) noexcept
 {
-    Window child;
-
-    #ifdef LS_ARCH_X86
-        alignas(sizeof(__m256)) XWindowAttributes attribs;
-    #else
-        XWindowAttributes attribs;
-    #endif
-
-    utils::fast_memset(&attribs, 0, sizeof(XWindowAttributes));
-
-    int tempX, tempY;
-
-    if (True != XGetWindowAttributes(pDisplay, window, &attribs)
-    || True != XTranslateCoordinates(pDisplay, window, RootWindowOfScreen(attribs.screen), 0, 0, &tempX, &tempY, &child)
-    //|| True != XGetWindowAttributes(pDisplay, child, &attribs)
-    )
-    {
-        return false;
-    }
-
-    x = attribs.x;
-    y = attribs.y;
-
-    return true;
+    return pEvent ? (~0x80 & reinterpret_cast<const xcb_generic_event_t*>(pEvent)->response_type) : XCB_NONE;
 }
-
-
 
 } // end anonymous namespace
 
 
 
 /*-----------------------------------------------------------------------------
- * SR_RenderWindowXlib
+ * SR_RenderWindowXCB
 -----------------------------------------------------------------------------*/
 /*-------------------------------------
  * Destructor
 -------------------------------------*/
-SR_RenderWindowXlib::~SR_RenderWindowXlib() noexcept
+SR_RenderWindowXCB::~SR_RenderWindowXCB() noexcept
 {
     if (this->valid() && destroy() != 0)
     {
@@ -92,12 +66,15 @@ SR_RenderWindowXlib::~SR_RenderWindowXlib() noexcept
 /*-------------------------------------
  * Constructor
 -------------------------------------*/
-SR_RenderWindowXlib::SR_RenderWindowXlib() noexcept :
+SR_RenderWindowXCB::SR_RenderWindowXCB() noexcept :
     SR_RenderWindow{},
     mDisplay{nullptr},
-    mWindow{None},
-    mCloseAtom{None},
+    mConnection{nullptr},
+    mWindow{0},
+    mContext{0},
+    mCloseAtom{0},
     mLastEvent{nullptr},
+    mPeekedEvent{nullptr},
     mWidth{0},
     mHeight{0},
     mX{0},
@@ -106,17 +83,15 @@ SR_RenderWindowXlib::SR_RenderWindowXlib() noexcept :
     mMouseY{0},
     mKeysRepeat{true},
     mCaptureMouse{false}
-{
-    ls::utils::runtime_assert(XInitThreads() != False, ls::utils::LS_WARNING, "Unable to initialize Xlib for threading.");
-}
+{}
 
 
 
 /*-------------------------------------
  * Copy Constructor
 -------------------------------------*/
-SR_RenderWindowXlib::SR_RenderWindowXlib(const SR_RenderWindowXlib& rw) noexcept :
-    SR_RenderWindowXlib{} // delegate
+SR_RenderWindowXCB::SR_RenderWindowXCB(const SR_RenderWindowXCB& rw) noexcept :
+    SR_RenderWindowXCB{} // delegate
 {
     // delegate some more
     *this = rw;
@@ -126,12 +101,15 @@ SR_RenderWindowXlib::SR_RenderWindowXlib(const SR_RenderWindowXlib& rw) noexcept
 /*-------------------------------------
  * Move Constructor
 -------------------------------------*/
-SR_RenderWindowXlib::SR_RenderWindowXlib(SR_RenderWindowXlib&& rw) noexcept :
+SR_RenderWindowXCB::SR_RenderWindowXCB(SR_RenderWindowXCB&& rw) noexcept :
     SR_RenderWindow{std::move(rw)},
     mDisplay{rw.mDisplay},
+    mConnection{rw.mConnection},
     mWindow{rw.mWindow},
+    mContext{rw.mContext},
     mCloseAtom{rw.mCloseAtom},
     mLastEvent{rw.mLastEvent},
+    mPeekedEvent{rw.mPeekedEvent},
     mWidth{rw.mWidth},
     mHeight{rw.mHeight},
     mX{rw.mX},
@@ -142,9 +120,12 @@ SR_RenderWindowXlib::SR_RenderWindowXlib(SR_RenderWindowXlib&& rw) noexcept :
     mCaptureMouse{rw.mCaptureMouse}
 {
     rw.mDisplay = nullptr;
-    rw.mWindow = None;
-    rw.mCloseAtom = None;
+    rw.mConnection = nullptr;
+    rw.mWindow = 0;
+    rw.mContext = 0;
+    rw.mCloseAtom = 0;
     rw.mLastEvent = nullptr;
+    rw.mPeekedEvent = nullptr;
     rw.mWidth = 0;
     rw.mHeight = 0;
     rw.mX = 0;
@@ -160,7 +141,7 @@ SR_RenderWindowXlib::SR_RenderWindowXlib(SR_RenderWindowXlib&& rw) noexcept :
 /*-------------------------------------
  * Copy Operator
 -------------------------------------*/
-SR_RenderWindowXlib& SR_RenderWindowXlib::operator=(const SR_RenderWindowXlib& rw) noexcept
+SR_RenderWindowXCB& SR_RenderWindowXCB::operator=(const SR_RenderWindowXCB& rw) noexcept
 {
     if (this == &rw)
     {
@@ -169,7 +150,7 @@ SR_RenderWindowXlib& SR_RenderWindowXlib::operator=(const SR_RenderWindowXlib& r
 
     this->destroy();
 
-    SR_RenderWindowXlib* const pWindow = static_cast<SR_RenderWindowXlib*>(rw.clone());
+    SR_RenderWindowXCB* const pWindow = static_cast<SR_RenderWindowXCB*>(rw.clone());
 
     if (pWindow && pWindow->valid())
     {
@@ -186,7 +167,7 @@ SR_RenderWindowXlib& SR_RenderWindowXlib::operator=(const SR_RenderWindowXlib& r
 /*-------------------------------------
  * Move Operator
 -------------------------------------*/
-SR_RenderWindowXlib& SR_RenderWindowXlib::operator=(SR_RenderWindowXlib&& rw) noexcept
+SR_RenderWindowXCB& SR_RenderWindowXCB::operator=(SR_RenderWindowXCB&& rw) noexcept
 {
     if (this == &rw)
     {
@@ -201,17 +182,26 @@ SR_RenderWindowXlib& SR_RenderWindowXlib::operator=(SR_RenderWindowXlib&& rw) no
     // handle the base class
     SR_RenderWindow::operator=(std::move(rw));
 
-    this->mDisplay = rw.mDisplay;
+    mDisplay = rw.mDisplay;
     rw.mDisplay = nullptr;
 
+    this->mConnection = rw.mConnection;
+    rw.mConnection = nullptr;
+
     this->mWindow = rw.mWindow;
-    rw.mWindow = None;
+    rw.mWindow = 0;
+
+    this->mContext = rw.mContext;
+    rw.mContext = 0;
 
     this->mCloseAtom = rw.mCloseAtom;
-    rw.mCloseAtom = None;
+    rw.mCloseAtom = 0;
 
     this->mLastEvent = rw.mLastEvent;
     rw.mLastEvent = nullptr;
+
+    this->mPeekedEvent = rw.mPeekedEvent;
+    rw.mPeekedEvent = nullptr;
 
     this->mWidth = rw.mWidth;
     rw.mWidth = 0;
@@ -245,23 +235,19 @@ SR_RenderWindowXlib& SR_RenderWindowXlib::operator=(SR_RenderWindowXlib&& rw) no
 /*-------------------------------------
  * Window Initialization
 -------------------------------------*/
-int SR_RenderWindowXlib::set_title(const char* const pName) noexcept
+int SR_RenderWindowXCB::set_title(const char* const pName) noexcept
 {
     if (!valid())
     {
         return -1;
     }
 
-    XTextProperty textData;
-    const Status retCode = XStringListToTextProperty(const_cast<char**>(&pName), 1, &textData);
+    xcb_void_cookie_t result = xcb_change_property(mConnection, XCB_PROP_MODE_REPLACE, mWindow, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, strlen(pName), pName);
 
-    if (retCode != True)
+    if (xcb_request_check(mConnection, result))
     {
         return -2;
     }
-
-    XSetWMName(mDisplay, mWindow, &textData);
-    XFree(textData.value);
 
     return 0;
 }
@@ -271,33 +257,41 @@ int SR_RenderWindowXlib::set_title(const char* const pName) noexcept
 /*-------------------------------------
  * Window Initialization
 -------------------------------------*/
-int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
+int SR_RenderWindowXCB::init(unsigned width, unsigned height) noexcept
 {
-    #ifdef LS_ARCH_X86
-        alignas(sizeof(__m256)) XVisualInfo visualTemplate;
-        alignas(sizeof(__m256)) XSetWindowAttributes windowAttribs;
-    #else
-        XVisualInfo visualTemplate;
-        XSetWindowAttributes windowAttribs;
-    #endif
+    const char* const         pDisplayName         = std::getenv("DISPLAY");
+    int                       errCode              = 0;
+    Display*                  pDisplay             = nullptr;
+    xcb_connection_t*         pConnection          = nullptr;
+    const xcb_setup_t*        pSetup               = nullptr;
+    xcb_screen_iterator_t     screenIter;
+    xcb_screen_t*             pScreen;
+    xcb_window_t              windowId             = 0;
+    xcb_gcontext_t            context              = 0;
+    Atom                      atomDelete           = None;
+    static const char*        WIN_MGR_DELETE_MSG   = {"WM_DELETE_WINDOW"};
+    xcb_generic_event_t*      pEvent               = nullptr;
+    xcb_get_geometry_cookie_t geomCookie;
+    xcb_get_geometry_reply_t* pGeom                = nullptr;
 
-    const char* const  pDisplayName       = std::getenv("DISPLAY");
-    int                errCode            = 0;
-    Display*           pDisplay           = nullptr;
-    constexpr long     visualMatchMask    = VisualScreenMask|VisualClassMask|VisualRedMaskMask|VisualGreenMaskMask|VisualBlueMaskMask;//|VisualBitsPerRGBMask;
-    XVisualInfo*       pVisualInfo        = nullptr;
-    Window             windowId           = None;
-    Atom               atomDelete         = None;
-    static const char* WIN_MGR_DELETE_MSG = {"WM_DELETE_WINDOW"};
-    XEvent*            pEvent             = nullptr;
-    Colormap           colorMap;
-    int                x;
-    int                y;
-    unsigned           w;
-    unsigned           h;
-    unsigned           borderWidth;
-    unsigned           depth;
-    Window             root;
+    static constexpr uint32_t eventMask =
+        0
+        | XCB_EVENT_MASK_KEY_PRESS
+        | XCB_EVENT_MASK_KEY_RELEASE
+        //| XCB_EVENT_MASK_KEYMAP_STATE
+        | XCB_EVENT_MASK_STRUCTURE_NOTIFY
+        | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
+        | XCB_EVENT_MASK_EXPOSURE
+        | XCB_EVENT_MASK_POINTER_MOTION
+        | XCB_EVENT_MASK_BUTTON_PRESS
+        | XCB_EVENT_MASK_BUTTON_RELEASE
+        | XCB_EVENT_MASK_BUTTON_MOTION
+        | XCB_EVENT_MASK_ENTER_WINDOW
+        | XCB_EVENT_MASK_LEAVE_WINDOW
+        | XCB_EVENT_MASK_VISIBILITY_CHANGE
+        | XCB_EVENT_MASK_FOCUS_CHANGE
+        | XCB_EVENT_MASK_OWNER_GRAB_BUTTON
+        | 0;
 
     const auto windowError = [&](const char* errMsg) -> int
     {
@@ -309,12 +303,12 @@ int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
 
         if (windowId)
         {
-            XDestroyWindow(pDisplay, windowId);
+            xcb_destroy_window(pConnection, windowId);
         }
 
-        if (pVisualInfo)
+        if (pConnection)
         {
-            XFree(pVisualInfo);
+            xcb_disconnect(pConnection);
         }
 
         if (pDisplay)
@@ -325,155 +319,120 @@ int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
         return errCode;
     };
 
-    static constexpr int XLIB_EVENT_MASK =
-        0
-        | KeyPressMask
-        | KeyReleaseMask
-        | KeymapStateMask
-        | StructureNotifyMask
-        | SubstructureNotifyMask
-        | ExposureMask
-        | PointerMotionMask
-        | ButtonPressMask
-        | ButtonReleaseMask
-        | ButtonMotionMask
-        | EnterWindowMask
-        | LeaveWindowMask
-        | VisibilityChangeMask
-        | FocusChangeMask
-        | OwnerGrabButtonMask
-        | 0;
-
     assert(!this->valid());
 
-    utils::fast_memset(&visualTemplate, 0, sizeof(XVisualInfo));
-    utils::fast_memset(&windowAttribs, 0, sizeof(XSetWindowAttributes));
-
-    LS_LOG_MSG("SR_RenderWindowXlib ", this, " initializing");
+    LS_LOG_MSG("SR_RenderWindowXCB ", this, " initializing");
     {
-        LS_LOG_MSG("Connecting to X display \"", pDisplayName, "\".");
+        LS_LOG_MSG("Creating XCB connection to \"", pDisplayName, "\".");
         pDisplay = XOpenDisplay(pDisplayName);
         if (!pDisplay)
         {
             errCode = -1;
             return windowError("\tUnable to connect to the X server.");
         }
+
+        pConnection = XGetXCBConnection(pDisplay);
+        if (!pConnection)
+        {
+            errCode = -1;
+            return windowError("\tUnable to create an XCB connection.");
+        }
         LS_LOG_MSG("\tDone.");
     }
     {
-    LS_LOG_MSG("Querying X server for display configuration.");
-        int numVisuals;
-        visualTemplate.screen       = DefaultScreen(pDisplay);
-        visualTemplate.depth        = 24;
-        visualTemplate.c_class      = TrueColor;
-        visualTemplate.red_mask     = 0x00FF0000;
-        visualTemplate.green_mask   = 0x0000FF00;
-        visualTemplate.blue_mask    = 0x000000FF;
-        visualTemplate.bits_per_rgb = 8;
+        LS_LOG_MSG("Configuring XCB screen.");
 
-        pVisualInfo = XGetVisualInfo(pDisplay, visualMatchMask, &visualTemplate, &numVisuals);
-        if (!pVisualInfo)
+        pSetup = xcb_get_setup(pConnection);
+        if (!pSetup)
         {
             errCode = -2;
-            return windowError("\tFailed to get display information from the X server.");
+            return windowError("\tUnable to setup the XCB screen.");
         }
-        LS_LOG_MSG(
-            "\tDone. Retrieved ", numVisuals, " configurations Using the default:"
-            "\n\t\tConfig ID:      ", pVisualInfo->visualid,
-            "\n\t\tScreen ID:      ", pVisualInfo->screen,
-            "\n\t\tBit Depth:      ", pVisualInfo->depth,
-            "\n\t\tRed Bits:       ", pVisualInfo->red_mask,
-            "\n\t\tGreen Bits:     ", pVisualInfo->green_mask,
-            "\n\t\tBlue bits:      ", pVisualInfo->blue_mask,
-            "\n\t\tColorMap Size:  ", pVisualInfo->colormap_size,
-            "\n\t\tBits per Pixel: ", pVisualInfo->bits_per_rgb);
+
+        screenIter = xcb_setup_roots_iterator(pSetup);
+        pScreen = screenIter.data;
+
+        if (!pScreen)
+        {
+            errCode = -3;
+            return windowError("\tFailed to locate a screen for opening a window.");
+        }
+        LS_LOG_MSG("\tDone.");
     }
     {
         LS_LOG_MSG("Configuring X window attributes.");
-
-        colorMap = XCreateColormap(pDisplay, RootWindow(pDisplay, visualTemplate.screen), pVisualInfo->visual, AllocNone);
-
-        windowAttribs.background_pixel  = 0x0; // black
-        windowAttribs.border_pixel      = 0;
-        windowAttribs.save_under        = False;
-        windowAttribs.event_mask        = XLIB_EVENT_MASK;
-        windowAttribs.override_redirect = True;
-        windowAttribs.colormap          = colorMap;
-
-        windowId = XCreateWindow(
-            pDisplay,
-            RootWindow(pDisplay, pVisualInfo->screen),
-            0, // x
-            0, // y
-            width,
-            height,
-            0, // border_width
-            pVisualInfo->depth,
-            InputOutput,
-            pVisualInfo->visual,
-            CWBackPixel | CWBorderPixel | CWEventMask | CWColormap,
-            &windowAttribs
-        );
+        windowId = xcb_generate_id(pConnection);
 
         if (!windowId)
         {
-            errCode = -3;
-            return windowError("\tFailed to create X window from display.");
-        }
-
-        LS_LOG_MSG("\tCreated window ", windowId, '.');
-
-        XSelectInput(pDisplay, windowId, XLIB_EVENT_MASK);
-        atomDelete = XInternAtom(pDisplay, WIN_MGR_DELETE_MSG, False);
-        XSetWMProtocols(pDisplay, windowId, &atomDelete, 1);
-        XMapWindow(pDisplay, windowId);
-
-        if (atomDelete == None)
-        {
             errCode = -4;
-            return windowError("\tUnable to request client-side window deletion from X server.");
+            return windowError("\tFailed to generate an XCB window ID.");
         }
+        LS_LOG_MSG("\tCreated window ID ", windowId, '.');
 
-        pEvent = new(std::nothrow) XEvent;
-        if (!pEvent)
-        {
-            errCode = -5;
-            return windowError("\tUnable to allocate memory for event-handling.");
-        }
-        pEvent->type = None;
-
+        xcb_create_window(pConnection, XCB_COPY_FROM_PARENT, windowId, pScreen->root, 0, 0, (uint16_t)width, (uint16_t)height, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, pScreen->root_visual, XCB_CW_EVENT_MASK, &eventMask);
         LS_LOG_MSG("\tDone.");
     }
-
-    XFlush(pDisplay);
-    XFree(pVisualInfo);
+    xcb_map_window(pConnection, windowId);
+    xcb_flush(pConnection);
 
     {
+        LS_LOG_MSG("Generating a graphics context.");
+        context = xcb_generate_id(pConnection);
+        if (!context)
+        {
+            errCode = -5;
+            return windowError("\tFailed to create a graphics context.");
+        }
+        xcb_create_gc(pConnection, context, windowId, XCB_GC_FOREGROUND, &pScreen->black_pixel);
+        LS_LOG_MSG("\tDone.");
+    }
+    {
         LS_LOG_MSG("Inspecting window for dimensions.");
-        if (XGetGeometry(pDisplay, windowId, &root, &x, &y, &w, &h, &borderWidth, &depth) != True)
+        geomCookie = xcb_get_geometry(pConnection, windowId);
+        pGeom = xcb_get_geometry_reply(pConnection, geomCookie, nullptr);
+        if (!pGeom)
         {
             errCode = -6;
             return windowError("Unable to retrieve dimensions of a new window.");
         }
-        _xlib_get_position(pDisplay, windowId, x, y);
-        LS_LOG_MSG("\tSuccessfully created a window through X11.");
+
+        LS_LOG_MSG("\tDone.");
     }
+    {
+        LS_LOG_MSG("Setting up window-close detection.");
+
+        atomDelete = XInternAtom(pDisplay, WIN_MGR_DELETE_MSG, False);
+        XSetWMProtocols(pDisplay, windowId, &atomDelete, 1);
+
+        if (!atomDelete)
+        {
+            errCode = -7;
+            return windowError("\tUnable to request client-side window deletion from X server.");
+        }
+        LS_LOG_MSG("\tDone.");
+    }
+
+    xcb_flush(pConnection);
 
     mCurrentState = WindowStateInfo::WINDOW_STARTED;
     mDisplay      = pDisplay;
+    mConnection   = pConnection;
     mWindow       = windowId;
+    mContext      = context;
     mCloseAtom    = atomDelete;
-    mLastEvent    = pEvent;
-    mKeysRepeat   = (XkbSetDetectableAutoRepeat(mDisplay, False, nullptr) == False);
-    mWidth        = w;
-    mHeight       = h;
-    mX            = x;
-    mY            = y;
+    mLastEvent    = nullptr;
+    mPeekedEvent  = nullptr;
+    mKeysRepeat   = false;
+    mWidth        = pGeom->width;
+    mHeight       = pGeom->height;
+    mX            = pGeom->x;
+    mY            = pGeom->y;
     mMouseX       = 0;
     mMouseY       = 0;
 
     LS_LOG_MSG(
-        "Done. Successfully initialized SR_RenderWindowXlib ", this, '.',
+        "Done. Successfully initialized SR_RenderWindowXCB ", this, '.',
         "\n\tDisplay:    ", pDisplayName,
         "\n\tWindow ID:  ", mWindow,
         "\n\tResolution: ", mWidth, 'x', mHeight,
@@ -486,16 +445,36 @@ int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
 /*-------------------------------------
  * Window Destructon/Close
 -------------------------------------*/
-int SR_RenderWindowXlib::destroy() noexcept
+int SR_RenderWindowXCB::destroy() noexcept
 {
-    if (mWindow != None)
+    if (mWindow)
     {
-        XDestroyWindow(mDisplay, mWindow);
-        mWindow = None;
-        mCloseAtom = None;
+        xcb_destroy_window(mConnection, mWindow);
+        mWindow = 0;
 
-        delete mLastEvent;
+        //free(mCloseAtom);
+        //mCloseAtom = nullptr;
+        mCloseAtom = 0;
+
+        mContext = 0;
+
+        if (mConnection)
+        {
+            //xcb_disconnect(mConnection);
+            mConnection = nullptr;
+        }
+
+        if (mDisplay)
+        {
+            XCloseDisplay(mDisplay);
+            mDisplay = nullptr;
+        }
+
+        free(mLastEvent);
         mLastEvent = nullptr;
+
+        free(mPeekedEvent);
+        mPeekedEvent = nullptr;
 
         mWidth = 0;
         mHeight = 0;
@@ -508,12 +487,6 @@ int SR_RenderWindowXlib::destroy() noexcept
         mCaptureMouse = false;
     }
 
-    if (mDisplay)
-    {
-        XCloseDisplay(mDisplay);
-        mDisplay = nullptr;
-    }
-
     mCurrentState = WindowStateInfo::WINDOW_CLOSED;
 
     return 0;
@@ -524,10 +497,10 @@ int SR_RenderWindowXlib::destroy() noexcept
 /*-------------------------------------
  * Set the window size
 -------------------------------------*/
-bool SR_RenderWindowXlib::set_size(unsigned width, unsigned height) noexcept
+bool SR_RenderWindowXCB::set_size(unsigned width, unsigned height) noexcept
 {
-    assert(width <= std::numeric_limits<int>::max());
-    assert(height <= std::numeric_limits<int>::max());
+    assert(width <= std::numeric_limits<uint16_t>::max());
+    assert(height <= std::numeric_limits<uint16_t>::max());
 
     if (!valid() || !width || !height)
     {
@@ -540,14 +513,13 @@ bool SR_RenderWindowXlib::set_size(unsigned width, unsigned height) noexcept
         return true;
     }
 
-    if (Success == XResizeWindow(mDisplay, mWindow, width, height))
-    {
-        mWidth = width;
-        mHeight = height;
-        return true;
-    }
+    const uint32_t dimens[] = {(uint32_t)width, (uint32_t)height};
+    xcb_configure_window(mConnection, mWindow, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, dimens);
 
-    return false;
+    mWidth = width;
+    mHeight = height;
+
+    return true;
 }
 
 
@@ -555,7 +527,7 @@ bool SR_RenderWindowXlib::set_size(unsigned width, unsigned height) noexcept
 /*-------------------------------------
  * Set the window position
 -------------------------------------*/
-bool SR_RenderWindowXlib::set_position(int x, int y) noexcept
+bool SR_RenderWindowXCB::set_position(int x, int y) noexcept
 {
     if (!valid())
     {
@@ -568,10 +540,8 @@ bool SR_RenderWindowXlib::set_position(int x, int y) noexcept
         return true;
     }
 
-    if (Success != XMoveWindow(mDisplay, mWindow, x, y))
-    {
-        return false;
-    }
+    const uint32_t pos[] = {(uint32_t)x, (uint32_t)y};
+    xcb_configure_window(mConnection, mWindow, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, pos);
 
     mX = x;
     mY = y;
@@ -584,11 +554,11 @@ bool SR_RenderWindowXlib::set_position(int x, int y) noexcept
 /*-------------------------------------
  * Clone/Duplicate a window
 -------------------------------------*/
-SR_RenderWindow* SR_RenderWindowXlib::clone() const noexcept
+SR_RenderWindow* SR_RenderWindowXCB::clone() const noexcept
 {
-    const SR_RenderWindowXlib& self = *this; // nullptr check
+    const SR_RenderWindowXCB& self = *this; // nullptr check
 
-    SR_RenderWindowXlib* pWindow = new(std::nothrow) SR_RenderWindowXlib(self);
+    SR_RenderWindowXCB* pWindow = new(std::nothrow) SR_RenderWindowXCB(self);
 
     return pWindow;
 }
@@ -598,9 +568,9 @@ SR_RenderWindow* SR_RenderWindowXlib::clone() const noexcept
 /*-------------------------------------
  * Check if the window is open
 -------------------------------------*/
-bool SR_RenderWindowXlib::valid() const noexcept
+bool SR_RenderWindowXCB::valid() const noexcept
 {
-    return mWindow != None;
+    return mWindow != 0;
 }
 
 
@@ -608,7 +578,7 @@ bool SR_RenderWindowXlib::valid() const noexcept
 /*-------------------------------------
  * Run the window's event queue
 -------------------------------------*/
-void SR_RenderWindowXlib::update() noexcept
+void SR_RenderWindowXCB::update() noexcept
 {
     // sanity check
     if (!valid())
@@ -616,84 +586,77 @@ void SR_RenderWindowXlib::update() noexcept
         return;
     }
 
-    // error check
-    int evtStatus = Success;
-
-    switch (mCurrentState)
+    if (mLastEvent)
     {
-        // The window was starting to close in the last frame. Destroy it now
-        case WindowStateInfo::WINDOW_CLOSING:
-            destroy();
-            break;
-
-        case WindowStateInfo::WINDOW_STARTED:
-            // fall-through
-            run();
-
-        case WindowStateInfo::WINDOW_RUNNING:
-            // Perform a non-blocking poll if we're not paused
-            if (XPending(mDisplay) == 0)
-            {
-                mLastEvent->type = None;
-
-                // warp the mouse only if there are no other pending events.
-                // Otherwise, performance falls to the point where the event
-                // loop can't even run.
-                if (mCaptureMouse)
-                {
-                    XWarpPointer(mDisplay, None, mWindow, 0, 0, mWidth, mHeight, mWidth / 2, mHeight / 2);
-                }
-                break;
-            }
-            // fall-through
-
-        case WindowStateInfo::WINDOW_PAUSED:
-            // Make sure keys don't repeat when requested.
-            if (!mKeysRepeat && mLastEvent->type == KeyRelease && XEventsQueued(mDisplay, QueuedAlready))
-            {
-                XEvent nev;
-                XPeekEvent(mDisplay, &nev);
-
-                if (nev.type == KeyPress && nev.xkey.time == mLastEvent->xkey.time &&
-                    nev.xkey.keycode == mLastEvent->xkey.keycode)
-                {
-                    /* Key wasn’t actually released */
-                    break;
-                }
-            }
-
-            // Perform a blocking event check while the window is paused.
-            evtStatus = XNextEvent(mDisplay, mLastEvent);
-
-            // Ignore when the mouse goes to the center of the window when
-            // mouse capturing is enabled. The center of the window is where
-            // the mouse is supposed to rest but resetting the mouse position
-            // causes the event queue to fill up with MotionNotify events.
-            if (mLastEvent->type == MotionNotify && mCaptureMouse)
-            {
-                const XMotionEvent& motion = mLastEvent->xmotion;
-                if (motion.x == (int)mWidth/2 && motion.y == (int)mHeight/2)
-                {
-                    mLastEvent->type = None;
-                }
-            }
-
-            break;
-
-        default:
-            // We should not be in a "starting" or "closed" state
-            LS_LOG_ERR("Encountered unexpected window state ", mCurrentState, '.');
-            assert(false); // assertions are disabled on release builds
-            mCurrentState = WindowStateInfo::WINDOW_CLOSING;
-            break;
+        free(mLastEvent);
+        mLastEvent = nullptr;
     }
 
-    if (evtStatus != Success)
+    // The window was starting to close in the last frame. Destroy it now
+    if (mCurrentState == WindowStateInfo::WINDOW_CLOSING)
     {
-        LS_LOG_ERR("X server connection error. Shutting down X connection.");
-        mCurrentState = WindowStateInfo::WINDOW_CLOSING;
         destroy();
+        return;
     }
+
+    if (mCurrentState == WindowStateInfo::WINDOW_STARTED)
+    {
+        run();
+    }
+
+    if (mCurrentState == WindowStateInfo::WINDOW_RUNNING)
+    {
+        mLastEvent = mPeekedEvent ? mPeekedEvent : xcb_poll_for_event(mConnection);
+    }
+    else if (mCurrentState == WindowStateInfo::WINDOW_PAUSED)
+    {
+        mLastEvent = mPeekedEvent ? mPeekedEvent : xcb_wait_for_event(mConnection);
+    }
+
+    mPeekedEvent = nullptr;
+
+    // Warp the mouse only if there are no other pending events.
+    // Otherwise, performance falls to the point where the event
+    // loop can't even run.
+    if (!mLastEvent && mCaptureMouse)
+    {
+        xcb_warp_pointer(mConnection, 0, mWindow, 0, 0, mWidth, mHeight, mWidth / 2, mHeight / 2);
+    }
+
+    // Make sure keys don't repeat when requested.
+    if (!mKeysRepeat && _get_xcb_event(mLastEvent) == XCB_KEY_PRESS)
+    {
+        mPeekedEvent = xcb_poll_for_event(mConnection);
+        if (!mPeekedEvent)
+        {
+            return;
+        }
+
+        if (_get_xcb_event(mPeekedEvent) == XCB_KEY_PRESS
+        && ((xcb_key_press_event_t*)mPeekedEvent)->detail == ((xcb_key_press_event_t*)mLastEvent)->detail
+        && ((xcb_key_press_event_t*)mPeekedEvent)->time == ((xcb_key_press_event_t*)mLastEvent)->time)
+        {
+            /* Key wasn’t actually released */
+            free(mPeekedEvent);
+            mPeekedEvent = nullptr;
+            return;
+        }
+    }
+
+    // Ignore when the mouse goes to the center of the window when
+    // mouse capturing is enabled. The center of the window is where
+    // the mouse is supposed to rest but resetting the mouse position
+    // causes the event queue to fill up with MotionNotify events.
+    if (_get_xcb_event(mLastEvent) == XCB_MOTION_NOTIFY && mCaptureMouse)
+    {
+        const xcb_motion_notify_event_t* motion = reinterpret_cast<xcb_motion_notify_event_t*>(mLastEvent);
+        if (motion->event_x == (int)mWidth/2 && motion->event_y == (int)mHeight/2)
+        {
+            free(mLastEvent);
+            mLastEvent = nullptr;
+        }
+    }
+
 }
 
 
@@ -701,7 +664,7 @@ void SR_RenderWindowXlib::update() noexcept
 /*-------------------------------------
  * Pause the window (run in interrupt mode)
 -------------------------------------*/
-bool SR_RenderWindowXlib::pause() noexcept
+bool SR_RenderWindowXCB::pause() noexcept
 {
     // state should only be changed for running windows
     // Otherwise, the window is either starting or stopping
@@ -716,7 +679,7 @@ bool SR_RenderWindowXlib::pause() noexcept
     {
         // Only these cases can be used to go into a paused state
         case WindowStateInfo::WINDOW_STARTED:
-            XFlush(mDisplay);
+            xcb_flush(mConnection);
         case WindowStateInfo::WINDOW_RUNNING:
         case WindowStateInfo::WINDOW_PAUSED:
         case WindowStateInfo::WINDOW_CLOSING:
@@ -738,7 +701,7 @@ bool SR_RenderWindowXlib::pause() noexcept
 /*-------------------------------------
  * Run the window (set to polling mode)
 -------------------------------------*/
-bool SR_RenderWindowXlib::run() noexcept
+bool SR_RenderWindowXCB::run() noexcept
 {
     // state should only be changed for running windows
     // Otherwise, the window is either starting or stopping
@@ -753,7 +716,7 @@ bool SR_RenderWindowXlib::run() noexcept
     {
         // Only these cases can be used to go into a paused state
         case WindowStateInfo::WINDOW_STARTED:
-            XFlush(mDisplay);
+            xcb_flush(mConnection);
         case WindowStateInfo::WINDOW_CLOSING:
         case WindowStateInfo::WINDOW_RUNNING:
         case WindowStateInfo::WINDOW_PAUSED:
@@ -775,9 +738,9 @@ bool SR_RenderWindowXlib::run() noexcept
 /*-------------------------------------
  * Check if there's an event available
 -------------------------------------*/
-bool SR_RenderWindowXlib::has_event() const noexcept
+bool SR_RenderWindowXCB::has_event() const noexcept
 {
-    return mLastEvent && mLastEvent->type != None;
+    return mLastEvent && (~0x80 & reinterpret_cast<xcb_generic_event_t*>(mLastEvent)->response_type) != XCB_NONE;
 }
 
 
@@ -785,33 +748,32 @@ bool SR_RenderWindowXlib::has_event() const noexcept
 /*-------------------------------------
  * Check the next event within the event queue
 -------------------------------------*/
-bool SR_RenderWindowXlib::peek_event(SR_WindowEvent* const pEvent) noexcept
+bool SR_RenderWindowXCB::peek_event(SR_WindowEvent* const pEvent) noexcept
 {
-    if (!has_event())
-    {
-        return false;
-    }
-
-    XKeyEvent* pKey;
-    XButtonEvent* pButton;
-    XMotionEvent* pMotion;
-    XExposeEvent* pExpose;
-    XDestroyWindowEvent* pDestroy;
-    XClientMessageEvent* pMessage;
-    XCrossingEvent* pCross;
-    XConfigureEvent* pConfig;
+    xcb_expose_event_t* pExpose;
+    //xcb_keymap_notify_event_t* pKeyMap;
+    xcb_key_press_event_t* pKeyPress;
+    xcb_key_release_event_t* pKeyRelease;
+    xcb_button_press_event_t* pButtonPress;
+    xcb_button_release_event_t* pButtonRelease;
+    xcb_motion_notify_event_t* pMotion;
+    xcb_destroy_notify_event_t* pDestroy;
+    xcb_client_message_event_t* pMessage;
+    xcb_enter_notify_event_t* pEnter;
+    xcb_leave_notify_event_t* pLeave;
+    xcb_configure_notify_event_t* pConfig;
 
     unsigned keyMods = 0;
-    KeySym keySym;
+    unsigned long keySym;
 
-    switch (mLastEvent->type)
+    switch (_get_xcb_event(mLastEvent))
     {
-        case None: // sentinel
+        case XCB_NONE: // sentinel
             pEvent->type = SR_WinEventType::WIN_EVENT_NONE;
             break;
 
-        case Expose:
-            pExpose = &mLastEvent->xexpose;
+        case XCB_EXPOSE:
+            pExpose = reinterpret_cast<xcb_expose_event_t*>(mLastEvent);
             if (pExpose->count == 0)
             {
                 pEvent->type = WIN_EVENT_EXPOSED;
@@ -823,142 +785,142 @@ bool SR_RenderWindowXlib::peek_event(SR_WindowEvent* const pEvent) noexcept
             }
             break;
 
-        case KeymapNotify:
-            XRefreshKeyboardMapping(&mLastEvent->xmapping);
-            pEvent->pNativeWindow = mLastEvent->xmapping.window;
-            pEvent->type = SR_WinEventType::WIN_EVENT_NONE;
+        case XCB_KEYMAP_NOTIFY:
             break;
 
-        case KeyPress:
-            pKey = &mLastEvent->xkey;
+        case XCB_KEY_PRESS:
+            pKeyPress = reinterpret_cast<xcb_key_press_event_t*>(mLastEvent);
 
             // Additional key processing is only performed in text-mode
-            XkbLookupKeySym(mDisplay, pKey->keycode, pKey->state, &keyMods, &keySym);
+            XkbLookupKeySym(mDisplay, pKeyPress->detail, pKeyPress->state, &keyMods, &keySym);
             pEvent->type = WIN_EVENT_KEY_DOWN;
-            pEvent->pNativeWindow = pKey->window;
+            pEvent->pNativeWindow = pKeyPress->event;
             pEvent->keyboard.keysym = (SR_KeySymbol)keySym;
-            pEvent->keyboard.key = mKeysRepeat ? 0 : (uint8_t)pKey->keycode; // only get key names in text mode
-            pEvent->keyboard.capsLock = (uint8_t)((pKey->state & LockMask) > 0);
-            pEvent->keyboard.numLock = (uint8_t)((pKey->state & Mod2Mask) > 0);
-            pEvent->keyboard.scrollLock = (uint8_t)((pKey->state & Mod3Mask) > 0);
+            pEvent->keyboard.key = mKeysRepeat ? 0 : (uint8_t)pKeyPress->detail; // only get key names in text mode
+            pEvent->keyboard.capsLock = (uint8_t)((pKeyPress->state & LockMask) > 0);
+            pEvent->keyboard.numLock = (uint8_t)((pKeyPress->state & Mod2Mask) > 0);
+            pEvent->keyboard.scrollLock = (uint8_t)((pKeyPress->state & Mod3Mask) > 0);
             break;
 
-        case KeyRelease:
-            pKey = &mLastEvent->xkey;
+        case XCB_KEY_RELEASE:
+            pKeyRelease = reinterpret_cast<xcb_key_press_event_t*>(mLastEvent);
 
             // Additional key processing is only performed in text-mode
-            XkbLookupKeySym(mDisplay, pKey->keycode, pKey->state, &keyMods, &keySym);
+            XkbLookupKeySym(mDisplay, pKeyRelease->detail, pKeyRelease->state, &keyMods, &keySym);
             pEvent->type = WIN_EVENT_KEY_UP;
-            pEvent->pNativeWindow = pKey->window;
+            pEvent->pNativeWindow = pKeyRelease->event;
             pEvent->keyboard.keysym = (SR_KeySymbol)keySym;
-            pEvent->keyboard.key = mKeysRepeat ? 0 : (uint8_t)pKey->keycode; // only get key names in text mode
-            pEvent->keyboard.capsLock = (uint8_t)((pKey->state & LockMask) > 0);
-            pEvent->keyboard.numLock = (uint8_t)((pKey->state & Mod2Mask) > 0);
-            pEvent->keyboard.scrollLock = (uint8_t)((pKey->state & Mod3Mask) > 0);
+            pEvent->keyboard.key = mKeysRepeat ? 0 : (uint8_t)pKeyRelease->detail; // only get key names in text mode
+            pEvent->keyboard.capsLock = (uint8_t)((pKeyRelease->state & LockMask) > 0);
+            pEvent->keyboard.numLock = (uint8_t)((pKeyRelease->state & Mod2Mask) > 0);
+            pEvent->keyboard.scrollLock = (uint8_t)((pKeyRelease->state & Mod3Mask) > 0);
             break;
 
-        case ButtonPress:
-            pButton = &mLastEvent->xbutton;
+        case XCB_BUTTON_PRESS:
+            pButtonPress = reinterpret_cast<xcb_button_press_event_t*>(mLastEvent);
             pEvent->type = WIN_EVENT_MOUSE_BUTTON_DOWN;
-            pEvent->pNativeWindow = pButton->window;
+            pEvent->pNativeWindow = pButtonPress->event;
 
-            switch (pButton->button)
+            switch (pButtonPress->detail)
             {
-                case Button1:
+                case XCB_BUTTON_INDEX_1:
                     pEvent->mouseButton.mouseButton1 = 1;
-                    pEvent->mouseButton.x = (int16_t)pButton->x;
-                    pEvent->mouseButton.y = (int16_t)pButton->y;
+                    pEvent->mouseButton.x = (int16_t)pButtonPress->event_x;
+                    pEvent->mouseButton.y = (int16_t)pButtonPress->event_y;
                     break;
 
-                case Button2:
+                case XCB_BUTTON_INDEX_2:
                     pEvent->mouseButton.mouseButton2 = 1;
-                    pEvent->mouseButton.x = (int16_t)pButton->x;
-                    pEvent->mouseButton.y = (int16_t)pButton->y;
+                    pEvent->mouseButton.x = (int16_t)pButtonPress->event_x;
+                    pEvent->mouseButton.y = (int16_t)pButtonPress->event_y;
                     break;
 
-                case Button3:
+                case XCB_BUTTON_INDEX_3:
                     pEvent->mouseButton.mouseButton3 = 1;
-                    pEvent->mouseButton.x = (int16_t)pButton->x;
-                    pEvent->mouseButton.y = (int16_t)pButton->y;
+                    pEvent->mouseButton.x = (int16_t)pButtonPress->event_x;
+                    pEvent->mouseButton.y = (int16_t)pButtonPress->event_y;
                     break;
 
-                case Button4:
-                case Button5:
+                case XCB_BUTTON_INDEX_4:
+                case XCB_BUTTON_INDEX_5:
                     pEvent->type = SR_WinEventType::WIN_EVENT_MOUSE_WHEEL_MOVED;
-                    pEvent->wheel.x = (int16_t)pButton->x;
-                    pEvent->wheel.y = (int16_t)pButton->y;
-                    pEvent->wheel.up = (pButton->button == Button4);
-                    pEvent->wheel.down = (pButton->button == Button5);
+                    pEvent->wheel.x = (int16_t)pButtonPress->event_x;
+                    pEvent->wheel.y = (int16_t)pButtonPress->event_y;
+                    pEvent->wheel.up = (pButtonPress->detail == XCB_BUTTON_INDEX_4);
+                    pEvent->wheel.down = (pButtonPress->detail == XCB_BUTTON_INDEX_5);
                     break;
 
                 default:
-                    pEvent->mouseButton.mouseButtonN = (uint8_t)pButton->button;
-                    pEvent->mouseButton.x = (int16_t)pButton->x;
-                    pEvent->mouseButton.y = (int16_t)pButton->y;
+                    pEvent->mouseButton.mouseButtonN = (uint8_t)pButtonPress->detail;
+                    pEvent->mouseButton.x = (int16_t)pButtonPress->event_x;
+                    pEvent->mouseButton.y = (int16_t)pButtonPress->event_y;
                     break;
             }
             break;
 
-        case ButtonRelease:
-            pButton = &mLastEvent->xbutton;
+        case XCB_BUTTON_RELEASE:
+            pButtonRelease = reinterpret_cast<xcb_button_release_event_t*>(mLastEvent);
             pEvent->type = WIN_EVENT_MOUSE_BUTTON_UP;
-            pEvent->pNativeWindow = pButton->window;
+            pEvent->pNativeWindow = pButtonRelease->event;
 
-            switch (pButton->button)
+            switch (pButtonRelease->detail)
             {
-                case Button1:
+                case XCB_BUTTON_INDEX_1:
                     pEvent->mouseButton.mouseButton1 = 1;
-                    pEvent->mouseButton.x = (int16_t)pButton->x;
-                    pEvent->mouseButton.y = (int16_t)pButton->y;
+                    pEvent->mouseButton.x = (int16_t)pButtonRelease->event_x;
+                    pEvent->mouseButton.y = (int16_t)pButtonRelease->event_y;
                     break;
 
-                case Button2:
+                case XCB_BUTTON_INDEX_2:
                     pEvent->mouseButton.mouseButton2 = 1;
-                    pEvent->mouseButton.x = (int16_t)pButton->x;
-                    pEvent->mouseButton.y = (int16_t)pButton->y;
+                    pEvent->mouseButton.x = (int16_t)pButtonRelease->event_x;
+                    pEvent->mouseButton.y = (int16_t)pButtonRelease->event_y;
                     break;
 
-                case Button3:
+                case XCB_BUTTON_INDEX_3:
                     pEvent->mouseButton.mouseButton3 = 1;
-                    pEvent->mouseButton.x = (int16_t)pButton->x;
-                    pEvent->mouseButton.y = (int16_t)pButton->y;
+                    pEvent->mouseButton.x = (int16_t)pButtonRelease->event_x;
+                    pEvent->mouseButton.y = (int16_t)pButtonRelease->event_y;
                     break;
 
-                case Button4:
-                case Button5:
-                    // Buttons 4 & 5 correspond to the mouse wheel. We only update those
-                    // then "pressed" or the mouse wheel has scrolled.
+                case XCB_BUTTON_INDEX_4:
+                case XCB_BUTTON_INDEX_5:
+                    pEvent->type = SR_WinEventType::WIN_EVENT_MOUSE_WHEEL_MOVED;
+                    pEvent->wheel.x = (int16_t)pButtonRelease->event_x;
+                    pEvent->wheel.y = (int16_t)pButtonRelease->event_y;
+                    pEvent->wheel.up = (pButtonRelease->detail == XCB_BUTTON_INDEX_4);
+                    pEvent->wheel.down = (pButtonRelease->detail == XCB_BUTTON_INDEX_5);
                     break;
 
                 default:
-                    pEvent->mouseButton.mouseButtonN = (uint8_t)pButton->button;
-                    pEvent->mouseButton.x = (int16_t)pButton->x;
-                    pEvent->mouseButton.y = (int16_t)pButton->y;
+                    pEvent->mouseButton.mouseButtonN = (uint8_t)pButtonRelease->detail;
+                    pEvent->mouseButton.x = (int16_t)pButtonRelease->event_x;
+                    pEvent->mouseButton.y = (int16_t)pButtonRelease->event_y;
                     break;
             }
             break;
 
-        case MotionNotify:
-            pMotion = &mLastEvent->xmotion;
+        case XCB_MOTION_NOTIFY:
+            pMotion = reinterpret_cast<xcb_motion_notify_event_t*>(mLastEvent);
             pEvent->type = WIN_EVENT_MOUSE_MOVED;
-            pEvent->pNativeWindow = pMotion->window;
-            pEvent->mousePos.x = (int16_t)pMotion->x;
-            pEvent->mousePos.y = (int16_t)pMotion->y;
+            pEvent->pNativeWindow = pMotion->event;
+            pEvent->mousePos.x = (int16_t)pMotion->event_x;
+            pEvent->mousePos.y = (int16_t)pMotion->event_y;
 
             if (!mCaptureMouse)
             {
-                pEvent->mousePos.dx = (int16_t)(mMouseX - pMotion->x);
-                pEvent->mousePos.dy = (int16_t)(mMouseY - pMotion->y);
-                mMouseX = pMotion->x;
-                mMouseY = pMotion->y;
+                pEvent->mousePos.dx = (int16_t)(mMouseX - pMotion->event_x);
+                pEvent->mousePos.dy = (int16_t)(mMouseY - pMotion->event_y);
+                mMouseX = pMotion->event_x;
+                mMouseY = pMotion->event_y;
 
             }
             else
             {
                 const int w2 = mWidth / 2;
                 const int h2 = mHeight / 2;
-                const int dx = pMotion->x;
-                const int dy = pMotion->y;
+                const int dx = pMotion->event_x;
+                const int dy = pMotion->event_y;
                 pEvent->mousePos.dx = (int16_t)(w2 - dx);
                 pEvent->mousePos.dy = (int16_t)(h2 - dy);
                 mMouseX = dx;
@@ -966,40 +928,42 @@ bool SR_RenderWindowXlib::peek_event(SR_WindowEvent* const pEvent) noexcept
             }
             break;
 
-        case EnterNotify:
-            pCross = &mLastEvent->xcrossing;
-            pEvent->pNativeWindow = pCross->window;
+        case XCB_ENTER_NOTIFY:
+            pEnter = reinterpret_cast<xcb_enter_notify_event_t*>(mLastEvent);
+            pEvent->pNativeWindow = pEnter->event;
             pEvent->type = SR_WinEventType::WIN_EVENT_MOUSE_ENTER;
-            pEvent->mousePos.x = (int16_t)pCross->x;
-            pEvent->mousePos.y = (int16_t)pCross->y;
+            pEvent->mousePos.x = (int16_t)pEnter->event_x;
+            pEvent->mousePos.y = (int16_t)pEnter->event_y;
             break;
 
-        case LeaveNotify:
-            pCross = &mLastEvent->xcrossing;
-            pEvent->pNativeWindow = pCross->window;
+        case XCB_LEAVE_NOTIFY:
+            pLeave = reinterpret_cast<xcb_leave_notify_event_t*>(mLastEvent);
+            pEvent->pNativeWindow = pLeave->event;
             pEvent->type = SR_WinEventType::WIN_EVENT_MOUSE_LEAVE;
-            pEvent->mousePos.x = (int16_t)pCross->x;
-            pEvent->mousePos.y = (int16_t)pCross->y;
+            pEvent->mousePos.x = (int16_t)pLeave->event_x;
+            pEvent->mousePos.y = (int16_t)pLeave->event_y;
             break;
 
-        case ClientMessage:
-            pMessage = &mLastEvent->xclient;
-            if ((Atom)pMessage->data.l[0] == (Atom)mCloseAtom)
+        case XCB_CLIENT_MESSAGE:
+            pMessage = reinterpret_cast<xcb_client_message_event_t*>(mLastEvent);
+            LS_LOG_MSG("Closing?");
+            if ((unsigned long)(pMessage->data.data32[0]) == mCloseAtom)
             {
+                LS_LOG_MSG("Closing!");
                 mCurrentState = WindowStateInfo::WINDOW_CLOSING;
                 pEvent->pNativeWindow = pMessage->window;
             }
             break;
 
-        case DestroyNotify:
-            pDestroy = &mLastEvent->xdestroywindow;
+        case XCB_DESTROY_NOTIFY:
+            pDestroy = reinterpret_cast<xcb_destroy_notify_event_t*>(mLastEvent);
             mCurrentState = WindowStateInfo::WINDOW_CLOSING;
             pEvent->type = SR_WinEventType::WIN_EVENT_CLOSING;
             pEvent->pNativeWindow = pDestroy->window;
             break;
 
-        case ConfigureNotify:
-            pConfig = &mLastEvent->xconfigure;
+        case XCB_CONFIGURE_NOTIFY:
+            pConfig = reinterpret_cast<xcb_configure_notify_event_t*>(mLastEvent);
             pEvent->pNativeWindow = pConfig->window;
 
             if (mX != pConfig->x || mY != pConfig->y)
@@ -1034,12 +998,13 @@ bool SR_RenderWindowXlib::peek_event(SR_WindowEvent* const pEvent) noexcept
 /*-------------------------------------
  * Remove an event from the event queue
 -------------------------------------*/
-bool SR_RenderWindowXlib::pop_event(SR_WindowEvent* const pEvent) noexcept
+bool SR_RenderWindowXCB::pop_event(SR_WindowEvent* const pEvent) noexcept
 {
     const bool ret = peek_event(pEvent);
     if (mLastEvent)
     {
-        mLastEvent->type = None;
+        free(mLastEvent);
+        mLastEvent = nullptr;
     }
 
     return ret;
@@ -1050,7 +1015,7 @@ bool SR_RenderWindowXlib::pop_event(SR_WindowEvent* const pEvent) noexcept
 /*-------------------------------------
  * Enable or disable repeating keys
 -------------------------------------*/
-bool SR_RenderWindowXlib::set_keys_repeat(bool doKeysRepeat) noexcept
+bool SR_RenderWindowXCB::set_keys_repeat(bool doKeysRepeat) noexcept
 {
     mKeysRepeat = XkbSetDetectableAutoRepeat(mDisplay, !doKeysRepeat, nullptr) == False;
 
@@ -1062,35 +1027,25 @@ bool SR_RenderWindowXlib::set_keys_repeat(bool doKeysRepeat) noexcept
 /*-------------------------------------
  * Render a framebuffer to the current window
 -------------------------------------*/
-void SR_RenderWindowXlib::render(SR_WindowBuffer& buffer) noexcept
+void SR_RenderWindowXCB::render(SR_WindowBuffer& buffer) noexcept
 {
     assert(this->valid());
     assert(buffer.native_handle() != nullptr);
 
-    #if SR_ENABLE_XSHM != 0
-        XShmPutImage(
-            mDisplay,
-            mWindow,
-            DefaultGC(mDisplay, DefaultScreen(mDisplay)),
-            reinterpret_cast<XImage*>(buffer.native_handle()),
-            0, 0,
-            0, 0,
-            width(),
-            height(),
-            False
-        );
-    #else
-        XPutImage(
-            mDisplay,
-            mWindow,
-            DefaultGC(mDisplay, DefaultScreen(mDisplay)),
-            reinterpret_cast<XImage*>(buffer.native_handle()),
-            0, 0,
-            0, 0,
-            width(),
-            height()
-        );
-    #endif /* SR_ENABLE_XSHM */
+    const uint32_t w = (uint32_t)width();
+    const uint32_t h = (uint32_t)height();
+    xcb_put_image(
+        mConnection,
+        XCB_IMAGE_FORMAT_Z_PIXMAP,
+        mWindow,
+        mContext,
+        (uint16_t)w,
+        (uint16_t)h,
+        0, 0,
+        0, 24,
+        sizeof(SR_ColorRGBA8)*w*h,
+        reinterpret_cast<const uint8_t*>(buffer.buffer())
+    );
 }
 
 
@@ -1099,7 +1054,7 @@ void SR_RenderWindowXlib::render(SR_WindowBuffer& buffer) noexcept
 /*-------------------------------------
  * Mouse Grabbing
 -------------------------------------*/
-void SR_RenderWindowXlib::set_mouse_capture(bool isCaptured) noexcept
+void SR_RenderWindowXCB::set_mouse_capture(bool isCaptured) noexcept
 {
     if (valid())
     {
@@ -1114,16 +1069,15 @@ void SR_RenderWindowXlib::set_mouse_capture(bool isCaptured) noexcept
     {
         constexpr unsigned captureFlags =
         0
-        | ButtonPressMask
-        | ButtonReleaseMask
-        | PointerMotionMask
-        | FocusChangeMask
+        | XCB_EVENT_MASK_BUTTON_PRESS
+        | XCB_EVENT_MASK_BUTTON_RELEASE
+        | XCB_EVENT_MASK_POINTER_MOTION
         | 0;
 
-        XGrabPointer(mDisplay, mWindow, False, captureFlags, GrabModeAsync, GrabModeAsync, mWindow, None, CurrentTime);
+        xcb_grab_pointer(mConnection, 1, mWindow, captureFlags, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, mWindow, XCB_NONE, XCB_CURRENT_TIME);
     }
     else
     {
-        XUngrabPointer(mDisplay, CurrentTime);
+        xcb_ungrab_pointer(mConnection, XCB_CURRENT_TIME);
     }
 }

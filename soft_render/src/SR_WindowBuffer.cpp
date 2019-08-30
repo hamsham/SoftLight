@@ -4,6 +4,7 @@
 #ifdef LS_OS_WINDOWS
     #include "soft_render/SR_WindowBufferWin32.hpp"
 #else
+    #include "soft_render/SR_WindowBufferXCB.hpp"
     #include "soft_render/SR_WindowBufferXlib.hpp"
 #endif
 
@@ -56,7 +57,11 @@ ls::utils::Pointer<SR_WindowBuffer> SR_WindowBuffer::create() noexcept
 {
     #ifdef LS_OS_WINDOWS
         return ls::utils::Pointer<SR_WindowBuffer>{new SR_WindowBufferWin32{}};
-    #else
+    #elif defined(LS_OS_OSX)
+        return ls::utils::Pointer<SR_WindowBuffer>{new SR_WindowBufferXCB{}};
+    #elif defined(LS_OS_LINUX)
         return ls::utils::Pointer<SR_WindowBuffer>{new SR_WindowBufferXlib{}};
+    #else
+        return ls::utils::Pointer<SR_WindowBuffer>{nullptr};
     #endif
 }

@@ -1,17 +1,8 @@
 
-#ifndef SR_WINDOW_BUFFER_XLIB_HPP
-#define SR_WINDOW_BUFFER_XLIB_HPP
+#ifndef SR_WINDOW_BUFFER_XCB_HPP
+#define SR_WINDOW_BUFFER_XCB_HPP
 
 #include "soft_render/SR_WindowBuffer.hpp"
-
-
-
-// Should be defined by the build system
-// OSX with XQuartz runs out of memory when attaching textures to shared
-// memory segments.
-#ifndef SR_ENABLE_XSHM
-    #define SR_ENABLE_XSHM 0
-#endif /* SR_ENABLE_XSHM */
 
 
 
@@ -32,29 +23,23 @@ namespace ls
 /*-----------------------------------------------------------------------------
  * Xlib Render Window
 -----------------------------------------------------------------------------*/
-class SR_WindowBufferXlib : public SR_WindowBuffer
+class SR_WindowBufferXCB : public SR_WindowBuffer
 {
   private:
     SR_RenderWindow* mWindow;
 
-    void* mBuffer;
-
-    #if SR_ENABLE_XSHM != 0
-    void* mShmInfo;
-    #endif
-
   public:
-    virtual ~SR_WindowBufferXlib() noexcept override;
+    virtual ~SR_WindowBufferXCB() noexcept override;
 
-    SR_WindowBufferXlib() noexcept;
+    SR_WindowBufferXCB() noexcept;
 
-    SR_WindowBufferXlib(const SR_WindowBufferXlib&) = delete;
+    SR_WindowBufferXCB(const SR_WindowBufferXCB&) = delete;
 
-    SR_WindowBufferXlib(SR_WindowBufferXlib&&) noexcept;
+    SR_WindowBufferXCB(SR_WindowBufferXCB&&) noexcept;
 
-    SR_WindowBufferXlib& operator=(const SR_WindowBufferXlib&) = delete;
+    SR_WindowBufferXCB& operator=(const SR_WindowBufferXCB&) = delete;
 
-    SR_WindowBufferXlib& operator=(SR_WindowBufferXlib&&) noexcept;
+    SR_WindowBufferXCB& operator=(SR_WindowBufferXCB&&) noexcept;
 
     virtual int init(SR_RenderWindow& win, unsigned width, unsigned height) noexcept override;
 
@@ -78,7 +63,7 @@ class SR_WindowBufferXlib : public SR_WindowBuffer
 /*-------------------------------------
  * Get the backbuffer width
 -------------------------------------*/
-inline unsigned SR_WindowBufferXlib::width() const noexcept
+inline unsigned SR_WindowBufferXCB::width() const noexcept
 {
     return mTexture.width();
 }
@@ -88,7 +73,7 @@ inline unsigned SR_WindowBufferXlib::width() const noexcept
 /*-------------------------------------
  * Get the backbuffer height
 -------------------------------------*/
-inline unsigned SR_WindowBufferXlib::height() const noexcept
+inline unsigned SR_WindowBufferXCB::height() const noexcept
 {
     return mTexture.height();
 }
@@ -98,9 +83,9 @@ inline unsigned SR_WindowBufferXlib::height() const noexcept
 /*-------------------------------------
  * Native Handle
 -------------------------------------*/
-inline const void* SR_WindowBufferXlib::native_handle() const noexcept
+inline const void* SR_WindowBufferXCB::native_handle() const noexcept
 {
-    return mBuffer;
+    return &mTexture;
 }
 
 
@@ -108,9 +93,9 @@ inline const void* SR_WindowBufferXlib::native_handle() const noexcept
 /*-------------------------------------
  * Native Handle
 -------------------------------------*/
-inline void* SR_WindowBufferXlib::native_handle() noexcept
+inline void* SR_WindowBufferXCB::native_handle() noexcept
 {
-    return mBuffer;
+    return &mTexture;
 }
 
 
@@ -118,7 +103,7 @@ inline void* SR_WindowBufferXlib::native_handle() noexcept
 /*-------------------------------------
  * Retrieve the raw data within the backbuffer
 -------------------------------------*/
-inline const ls::math::vec4_t<uint8_t>* SR_WindowBufferXlib::buffer() const noexcept
+inline const ls::math::vec4_t<uint8_t>* SR_WindowBufferXCB::buffer() const noexcept
 {
     return reinterpret_cast<const ls::math::vec4_t<uint8_t>*>(mTexture.data());
 }
@@ -128,11 +113,11 @@ inline const ls::math::vec4_t<uint8_t>* SR_WindowBufferXlib::buffer() const noex
 /*-------------------------------------
  * Retrieve the raw data within the backbuffer
 -------------------------------------*/
-inline ls::math::vec4_t<uint8_t>* SR_WindowBufferXlib::buffer() noexcept
+inline ls::math::vec4_t<uint8_t>* SR_WindowBufferXCB::buffer() noexcept
 {
     return reinterpret_cast<ls::math::vec4_t<uint8_t>*>(mTexture.data());
 }
 
 
 
-#endif /* SR_WINDOW_BUFFER_XLIB_HPP */
+#endif /* SR_WINDOW_BUFFER_XCB_HPP */

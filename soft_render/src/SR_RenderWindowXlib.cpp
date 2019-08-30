@@ -526,8 +526,8 @@ int SR_RenderWindowXlib::destroy() noexcept
 -------------------------------------*/
 bool SR_RenderWindowXlib::set_size(unsigned width, unsigned height) noexcept
 {
-    assert(width <= std::numeric_limits<int>::max());
-    assert(height <= std::numeric_limits<int>::max());
+    assert(width <= std::numeric_limits<uint16_t>::max());
+    assert(height <= std::numeric_limits<uint16_t>::max());
 
     if (!valid() || !width || !height)
     {
