@@ -110,6 +110,8 @@ class SR_RenderWindowWin32 final : public SR_RenderWindow
     void* native_handle() noexcept override;
 
     const void* native_handle() const noexcept override;
+
+    unsigned dpi() const noexcept override;
 };
 
 

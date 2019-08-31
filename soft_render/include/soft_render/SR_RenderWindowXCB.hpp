@@ -115,6 +115,8 @@ class SR_RenderWindowXCB final : public SR_RenderWindow
     virtual void* native_handle() noexcept override;
 
     virtual const void* native_handle() const noexcept override;
+
+    virtual unsigned dpi() const noexcept override;
 };
 
 

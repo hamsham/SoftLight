@@ -114,6 +114,8 @@ class SR_RenderWindow
     virtual void* native_handle() noexcept = 0;
 
     virtual const void* native_handle() const noexcept = 0;
+
+    virtual unsigned dpi() const noexcept = 0;
 };
 
 

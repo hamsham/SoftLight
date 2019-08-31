@@ -39,11 +39,11 @@
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SR_TEST_MAX_THREADS
-    #define SR_TEST_MAX_THREADS 4
+    #define SR_TEST_MAX_THREADS 9
 #endif /* SR_TEST_MAX_THREADS */
 
 #ifndef SR_TEST_USE_PBR
-    #define SR_TEST_USE_PBR 0
+    #define SR_TEST_USE_PBR 1
 #endif /* SR_TEST_USE_PBR */
 
 #ifndef SR_TEST_DEBUG_AABBS
@@ -51,7 +51,7 @@
 #endif
 
 #ifndef SR_BENCHMARK_SCENE
-    #define SR_BENCHMARK_SCENE 1
+    #define SR_BENCHMARK_SCENE 0
 #endif /* SR_BENCHMARK_SCENE */
 
 namespace math = ls::math;
@@ -1025,8 +1025,8 @@ int main()
                 if (pWindow->is_mouse_captured())
                 {
                     SR_MousePosEvent& mouse = evt.mousePos;
-                    dx = ((float)mouse.dx / (float)pWindow->width()) * 0.05f;
-                    dy = ((float)mouse.dy / (float)pWindow->height()) * -0.05f;
+                    dx = (float)mouse.dx / (float)pWindow->dpi() * 0.05f;
+                    dy = (float)mouse.dy / -(float)pWindow->dpi() * 0.05f;
                     camTrans.rotate(math::vec3{dx, dy, 0.f});
                 }
             }

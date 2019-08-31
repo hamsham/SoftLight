@@ -365,6 +365,7 @@ int SR_RenderWindowWin32::init(unsigned width, unsigned height) noexcept
         "\n\tDisplay:    ", wc.lpszClassName,
         "\n\tWindow ID:  ", mHwnd,
         "\n\tResolution: ", clientArea.right, 'x', clientArea.bottom,
+        "\n\tDPI/Scale:  ", this->dpi(),
         "\n\tPosition:   ", clientArea.left,  'x', clientArea.top);
 
     return 0;
@@ -873,11 +874,6 @@ bool SR_RenderWindowWin32::peek_event(SR_WindowEvent* const pEvent) noexcept
         }
         else
         {
-            #ifndef LS_COMPILER_MINGW
-                const unsigned dpi = GetDpiForWindow(mHwnd) >> 1;
-            #else
-                constexpr unsigned dpi = 72;
-            #endif
             unsigned w = 0;
             unsigned h = 0;
             get_size(w, h);
@@ -885,8 +881,8 @@ bool SR_RenderWindowWin32::peek_event(SR_WindowEvent* const pEvent) noexcept
             const int h2 = h >> 1;
             const int dx = pEvent->mousePos.x;
             const int dy = pEvent->mousePos.y;
-            pEvent->mousePos.dx = (int16_t)(w2 - dx) * dpi;
-            pEvent->mousePos.dy = (int16_t)(h2 - dy) * dpi;
+            pEvent->mousePos.dx = (int16_t)(w2 - dx);
+            pEvent->mousePos.dy = (int16_t)(h2 - dy);
             mMouseX = dx;
             mMouseY = dy;
         }
@@ -1029,4 +1025,24 @@ void SR_RenderWindowWin32::set_mouse_capture(bool isCaptured) noexcept
 bool SR_RenderWindowWin32::is_mouse_captured() const noexcept
 {
     return mCaptureMouse;
+}
+
+
+/*-------------------------------------
+ * Check if the mouse is captured
+-------------------------------------*/
+unsigned SR_RenderWindowWin32::dpi() const noexcept
+{
+    if (!valid())
+    {
+        return 0;
+    }
+
+    HDC winDc = GetDC(mHwnd);
+    //return (unsigned)GetDeviceCaps(winDc, LOGPIXELSY);
+
+    const float displayInches = (float)GetDeviceCaps(winDc, HORZRES) * 25.4;
+    const float widthMM = (float)GetDeviceCaps(winDc, HORZSIZE);
+
+    return (unsigned)(displayInches / widthMM + 0.5f); // round before truncate
 }

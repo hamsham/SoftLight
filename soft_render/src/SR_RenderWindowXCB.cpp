@@ -438,6 +438,7 @@ int SR_RenderWindowXCB::init(unsigned width, unsigned height) noexcept
         "\n\tDisplay:    ", pDisplayName,
         "\n\tWindow ID:  ", mWindow,
         "\n\tResolution: ", mWidth, 'x', mHeight,
+        "\n\tDPI/Scale:  ", this->dpi(),
         "\n\tPosition:   ", mX, 'x', mY);
     return 0;
 }
@@ -1114,4 +1115,18 @@ void SR_RenderWindowXCB::set_mouse_capture(bool isCaptured) noexcept
     {
         xcb_ungrab_pointer(mConnection, XCB_CURRENT_TIME);
     }
+}
+
+
+
+/*-------------------------------------
+ * Get the current scaling factor for the display
+-------------------------------------*/
+unsigned SR_RenderWindowXCB::dpi() const noexcept
+{
+    int screenId = DefaultScreen(mDisplay);
+    const float displayInches = (float)DisplayWidth(mDisplay, screenId) * 25.4f;
+    const float widthMM = (float)DisplayWidthMM(mDisplay, screenId);
+
+    return (unsigned)(displayInches / widthMM + 0.5f); // round before truncate
 }
