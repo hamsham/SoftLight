@@ -10,16 +10,13 @@
 
 /**
  * @brief Bounding Box Class
- *
- * The orientation for a bounding box follows OpenGL coordinates, where the
- * positive XYZ coordinates point towards the top, right, front of the viewport.
  */
 class SR_BoundingBox
 {
   private:
-    ls::math::vec4 mTopRearRight;
+    ls::math::vec4 mMaxPoint;
 
-    ls::math::vec4 mBotFrontLeft;
+    ls::math::vec4 mMinPoint;
 
   public:
     /**
@@ -105,52 +102,50 @@ class SR_BoundingBox
     bool is_in_box(const SR_BoundingBox&) const noexcept;
 
     /**
-     * Set the top-rear-right point of this bounding box.
+     * Set the maximum extent of this bounding box.
      *
-     * @param A constant reference to a point that will be used as the top,
-     * rear, right point of this bounding box.
+     * @param A constant reference to a point that will be used as the maximum
+     * ponit of this bounding box.
      */
-    void set_top_rear_right(const ls::math::vec3&) noexcept;
+    void max_point(const ls::math::vec3& v) noexcept;
 
     /**
-     * Set the top-rear-right point of this bounding box.
+     * Set the tmaximum extent of this bounding box.
      *
-     * @param A constant reference to a point that will be used as the top,
-     * rear, right point of this bounding box.
+     * @param A constant reference to a point that will be used as the maximum
+     * point of this bounding box.
      */
-    void set_top_rear_right(const ls::math::vec4&) noexcept;
+    void max_point(const ls::math::vec4& v) noexcept;
 
     /**
-     * Get the top-rear-right point of this bounding box.
+     * Get the maximum extent of this bounding box.
      *
-     * @return A constant reference to the top, rear, right point of this
-     * bounding box.
+     * @return A constant reference to the maximum point of this bounding box.
      */
-    const ls::math::vec4& get_top_rear_right() const noexcept;
+    const ls::math::vec4& max_point() const noexcept;
 
     /**
-     * Set the bottom, front, left point of this bounding box.
+     * Set the minimum extent of this bounding box.
      *
-     * @param A constant reference to a point that will be used as the
-     * bottom, front, left point of this bounding box.
+     * @param A constant reference to a point that will be used as the min
+     * point of this bounding box.
      */
-    void set_bot_front_left(const ls::math::vec3&) noexcept;
+    void min_point(const ls::math::vec3& v) noexcept;
 
     /**
-     * Set the bottom, front, left point of this bounding box.
+     * Set the minimum extent of this bounding box.
      *
-     * @param A constant reference to a point that will be used as the
-     * bottom, front, left point of this bounding box.
+     * @param A constant reference to a point that will be used as the min
+     * point of this bounding box.
      */
-    void set_bot_front_left(const ls::math::vec4&) noexcept;
+    void min_point(const ls::math::vec4& v) noexcept;
 
     /**
-     * Get the bottom, front, left point of this bounding box.
+     * Get the minimum extent of this bounding box.
      *
-     * @return A constant reference to the bottom, front, left point of this
-     * bounding box.
+     * @return A constant reference to the min point of this bounding box.
      */
-    const ls::math::vec4& get_bot_front_left() const noexcept;
+    const ls::math::vec4& min_point() const noexcept;
 
     /**
      * Reset the bounds of this bounding box to their default values.
@@ -186,8 +181,8 @@ class SR_BoundingBox
     Constructor
 -------------------------------------*/
 inline SR_BoundingBox::SR_BoundingBox() noexcept :
-    mTopRearRight{1.f, 1.f, 1.f, 1.f},
-    mBotFrontLeft{-1.f, -1.f, -1.f, 1.f}
+    mMaxPoint{1.f, 1.f, 1.f, 1.f},
+    mMinPoint{-1.f, -1.f, -1.f, 1.f}
 {}
 
 
@@ -196,8 +191,8 @@ inline SR_BoundingBox::SR_BoundingBox() noexcept :
     Copy Constructor
 -------------------------------------*/
 inline SR_BoundingBox::SR_BoundingBox(const SR_BoundingBox& bb) noexcept :
-    mTopRearRight{bb.mTopRearRight},
-    mBotFrontLeft{bb.mBotFrontLeft}
+    mMaxPoint{bb.mMaxPoint},
+    mMinPoint{bb.mMinPoint}
 {}
 
 
@@ -206,8 +201,8 @@ inline SR_BoundingBox::SR_BoundingBox(const SR_BoundingBox& bb) noexcept :
     Move Constructor
 -------------------------------------*/
 inline SR_BoundingBox::SR_BoundingBox(SR_BoundingBox&& bb) noexcept :
-    mTopRearRight{std::move(bb.mTopRearRight)},
-    mBotFrontLeft{std::move(bb.mBotFrontLeft)}
+    mMaxPoint{std::move(bb.mMaxPoint)},
+    mMinPoint{std::move(bb.mMinPoint)}
 {
     bb.reset_size();
 }
@@ -219,8 +214,8 @@ inline SR_BoundingBox::SR_BoundingBox(SR_BoundingBox&& bb) noexcept :
 -------------------------------------*/
 inline SR_BoundingBox& SR_BoundingBox::operator=(const SR_BoundingBox& bb) noexcept
 {
-    mTopRearRight = bb.mTopRearRight;
-    mBotFrontLeft = bb.mBotFrontLeft;
+    mMaxPoint = bb.mMaxPoint;
+    mMinPoint = bb.mMinPoint;
 
     return *this;
 }
@@ -232,8 +227,8 @@ inline SR_BoundingBox& SR_BoundingBox::operator=(const SR_BoundingBox& bb) noexc
 -------------------------------------*/
 inline SR_BoundingBox& SR_BoundingBox::operator=(SR_BoundingBox&& bb) noexcept
 {
-    mTopRearRight = std::move(bb.mTopRearRight);
-    mBotFrontLeft = std::move(bb.mBotFrontLeft);
+    mMaxPoint = std::move(bb.mMaxPoint);
+    mMinPoint = std::move(bb.mMinPoint);
 
     bb.reset_size();
 
@@ -248,9 +243,9 @@ inline SR_BoundingBox& SR_BoundingBox::operator=(SR_BoundingBox&& bb) noexcept
 inline bool SR_BoundingBox::is_in_box(const ls::math::vec3& v) const noexcept
 {
     return
-        v[0] < mTopRearRight[0] && v[1] < mTopRearRight[1] && v[2] < mTopRearRight[2]
+        v[0] < mMaxPoint[0] && v[1] < mMaxPoint[1] && v[2] < mMaxPoint[2]
         &&
-        v[0] >= mBotFrontLeft[0] && v[1] >= mBotFrontLeft[1] && v[2] >= mBotFrontLeft[2];
+        v[0] >= mMinPoint[0] && v[1] >= mMinPoint[1] && v[2] >= mMinPoint[2];
 }
 
 
@@ -260,7 +255,7 @@ inline bool SR_BoundingBox::is_in_box(const ls::math::vec3& v) const noexcept
 -------------------------------------*/
 inline bool SR_BoundingBox::is_in_box(const ls::math::vec4& v) const noexcept
 {
-    return v < mTopRearRight && v >= mBotFrontLeft;
+    return v < mMaxPoint && v >= mMinPoint;
 }
 
 
@@ -270,67 +265,67 @@ inline bool SR_BoundingBox::is_in_box(const ls::math::vec4& v) const noexcept
 -------------------------------------*/
 inline bool SR_BoundingBox::is_in_box(const SR_BoundingBox& bb) const noexcept
 {
-    return is_in_box(bb.mTopRearRight) || is_in_box(bb.mBotFrontLeft);
+    return is_in_box(bb.mMaxPoint) || is_in_box(bb.mMinPoint);
 }
 
 
 
 /*-------------------------------------
-    Set the top-rear-right point of this bounding box.
+    Set the max point of this bounding box.
 -------------------------------------*/
-inline void SR_BoundingBox::set_top_rear_right(const ls::math::vec3& v) noexcept
+inline void SR_BoundingBox::max_point(const ls::math::vec3& v) noexcept
 {
-    mTopRearRight = ls::math::vec4{v[0], v[1], v[2], 1.f};
+    mMaxPoint = ls::math::vec4{v[0], v[1], v[2], 1.f};
 }
 
 
 
 /*-------------------------------------
-    Set the top-rear-right point of this bounding box.
+    Set the max point of this bounding box.
 -------------------------------------*/
-inline void SR_BoundingBox::set_top_rear_right(const ls::math::vec4& v) noexcept
+inline void SR_BoundingBox::max_point(const ls::math::vec4& v) noexcept
 {
-    mTopRearRight = v;
+    mMaxPoint = v;
 }
 
 
 
 /*-------------------------------------
-    Get the top-rear-right point of this bounding box.
+    Get the max point of this bounding box.
 -------------------------------------*/
-inline const ls::math::vec4& SR_BoundingBox::get_top_rear_right() const noexcept
+inline const ls::math::vec4& SR_BoundingBox::max_point() const noexcept
 {
-    return mTopRearRight;
+    return mMaxPoint;
 }
 
 
 
 /*-------------------------------------
-    Set the bottom, front, left point of this bounding box.
+    Set the min point of this bounding box.
 -------------------------------------*/
-inline void SR_BoundingBox::set_bot_front_left(const ls::math::vec3& v) noexcept
+inline void SR_BoundingBox::min_point(const ls::math::vec3& v) noexcept
 {
-    mBotFrontLeft = ls::math::vec4{v[0], v[1], v[2], 1.f};
+    mMinPoint = ls::math::vec4{v[0], v[1], v[2], 1.f};
 }
 
 
 
 /*-------------------------------------
-    Set the bottom, front, left point of this bounding box.
+    Set the min point of this bounding box.
 -------------------------------------*/
-inline void SR_BoundingBox::set_bot_front_left(const ls::math::vec4& v) noexcept
+inline void SR_BoundingBox::min_point(const ls::math::vec4& v) noexcept
 {
-    mBotFrontLeft = v;
+    mMinPoint = v;
 }
 
 
 
 /*-------------------------------------
-    Get the bottom, front, left point of this bounding box.
+    Get the min point of this bounding box.
 -------------------------------------*/
-inline const ls::math::vec4& SR_BoundingBox::get_bot_front_left() const noexcept
+inline const ls::math::vec4& SR_BoundingBox::min_point() const noexcept
 {
-    return mBotFrontLeft;
+    return mMinPoint;
 }
 
 
@@ -340,8 +335,8 @@ inline const ls::math::vec4& SR_BoundingBox::get_bot_front_left() const noexcept
 -------------------------------------*/
 inline void SR_BoundingBox::reset_size() noexcept
 {
-    set_top_rear_right(ls::math::vec4{1.f, 1.f, 1.f, 1.f});
-    set_bot_front_left(ls::math::vec4{-1.f, -1.f, -1.f, 1.f});
+    max_point(ls::math::vec4{1.f, 1.f, 1.f, 1.f});
+    min_point(ls::math::vec4{-1.f, -1.f, -1.f, 1.f});
 }
 
 
@@ -361,8 +356,8 @@ inline void SR_BoundingBox::compare_and_update(const ls::math::vec3& point) noex
 -------------------------------------*/
 inline void SR_BoundingBox::compare_and_update(const ls::math::vec4& point) noexcept
 {
-    mTopRearRight = ls::math::max(mTopRearRight, point);
-    mBotFrontLeft = ls::math::min(mBotFrontLeft, point);
+    mMaxPoint = ls::math::max(mMaxPoint, point);
+    mMinPoint = ls::math::min(mMinPoint, point);
 }
 
 

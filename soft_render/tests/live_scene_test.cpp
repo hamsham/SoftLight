@@ -19,6 +19,7 @@
 #include "soft_render/SR_Framebuffer.hpp"
 #include "soft_render/SR_KeySym.hpp"
 #include "soft_render/SR_Material.hpp"
+#include "soft_render/SR_Plane.hpp"
 #include "soft_render/SR_RenderWindow.hpp"
 #include "soft_render/SR_SceneFileLoader.hpp"
 #include "soft_render/SR_SceneGraph.hpp"
@@ -39,11 +40,11 @@
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SR_TEST_MAX_THREADS
-    #define SR_TEST_MAX_THREADS 9
+    #define SR_TEST_MAX_THREADS 4 //(ls::math::max(std::thread::hardware_concurrency()/2, 1))
 #endif /* SR_TEST_MAX_THREADS */
 
 #ifndef SR_TEST_USE_PBR
-    #define SR_TEST_USE_PBR 1
+    #define SR_TEST_USE_PBR 0
 #endif /* SR_TEST_USE_PBR */
 
 #ifndef SR_TEST_DEBUG_AABBS
@@ -51,7 +52,7 @@
 #endif
 
 #ifndef SR_BENCHMARK_SCENE
-    #define SR_BENCHMARK_SCENE 0
+    #define SR_BENCHMARK_SCENE 1
 #endif /* SR_BENCHMARK_SCENE */
 
 namespace math = ls::math;
@@ -120,8 +121,8 @@ struct MeshUniforms : SR_UniformBuffer
 math::vec4 _box_vert_shader_impl(const size_t vertId, const SR_VertexArray&, const SR_VertexBuffer&, const SR_UniformBuffer* uniforms, math::vec4* varyings)
 {
     const MeshUniforms* pUniforms = static_cast<const MeshUniforms*>(uniforms);
-    const math::vec4&   trr       = pUniforms->aabb->get_top_rear_right();
-    const math::vec4&   bfl       = pUniforms->aabb->get_bot_front_left();
+    const math::vec4&   trr       = pUniforms->aabb->max_point();
+    const math::vec4&   bfl       = pUniforms->aabb->min_point();
     const math::vec4    points[]  = {
         {bfl[0], bfl[1], trr[2], 1.f},
         {trr[0], bfl[1], trr[2], 1.f},
@@ -599,6 +600,12 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
     MeshUniforms*  pUniforms = static_cast<MeshUniforms*>(context.shader(0).uniforms().get());
     unsigned       numHidden = 0;
     unsigned       numTotal  = 0;
+    SR_Plane       planes[6];
+
+    const math::mat4 projection = math::perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 1.f, 10.f);
+    const math::mat4 vp2 = projection * camTrans.get_transform();
+
+    sr_extract_frustum_planes(projection, planes);
 
     (void)aspect;
     (void)fov;
@@ -632,8 +639,9 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
 
             ++numTotal;
 
-            if (!sr_is_visible(aspect, fov, camTrans, modelMat, box))
+            //if (!sr_is_visible(box, camTrans, modelMat, aspect, fov))
             //if (!sr_is_visible(box, vpMatrix*modelMat))
+            if (!sr_is_visible(box, vp2*modelMat, planes))
             {
                 ++numHidden;
                 continue;
@@ -677,7 +685,7 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
     }
 #endif
 
-    //LS_LOG_MSG("Meshes Hidden: ", numHidden, '/', numTotal, " (", 100.f*((float)numHidden/(float)numTotal), "%).");
+    LS_LOG_MSG("Meshes Hidden: ", numHidden, '/', numTotal, " (", 100.f*((float)numHidden/(float)numTotal), "%).");
 }
 
 

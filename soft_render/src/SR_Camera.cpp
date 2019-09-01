@@ -7,6 +7,7 @@
 
 #include "soft_render/SR_BoundingBox.hpp"
 #include "soft_render/SR_Camera.hpp"
+#include "soft_render/SR_Plane.hpp"
 #include "soft_render/SR_Transform.hpp"
 
 
@@ -18,6 +19,70 @@ namespace math = ls::math;
 /*-----------------------------------------------------------------------------
  * Camera Functions
 -----------------------------------------------------------------------------*/
+/*-------------------------------------
+ * Extract Frustum Planes
+-------------------------------------*/
+void sr_extract_frustum_planes(const ls::math::mat4& vpMatrix, ls::math::vec4 planes[6]) noexcept
+{
+    planes[SR_FRUSTUM_PLANE_LEFT]   = vpMatrix[3] + vpMatrix[0];
+    planes[SR_FRUSTUM_PLANE_RIGHT]  = vpMatrix[3] - vpMatrix[0];
+    planes[SR_FRUSTUM_PLANE_TOP]    = vpMatrix[3] - vpMatrix[1];
+    planes[SR_FRUSTUM_PLANE_BOTTOM] = vpMatrix[3] + vpMatrix[1];
+    planes[SR_FRUSTUM_PLANE_NEAR]   = vpMatrix[3] + vpMatrix[2];
+    planes[SR_FRUSTUM_PLANE_FAR]    = vpMatrix[3] - vpMatrix[2];
+
+    for (unsigned i = 6; i--;)
+    {
+        const math::vec3&& norm = math::vec3_cast(planes[i]);
+        const float len = math::length(norm);
+        planes[i] = -planes[i] / len;
+    }
+}
+
+
+bool sr_is_visible(const ls::math::vec4& p, const ls::math::vec4 planes[6]) noexcept
+{
+    for (unsigned i = 6; i--;)
+    {
+        float dist = math::dot(planes[i], p);
+        if (dist < 0.f) return false;
+    }
+
+    return true;
+}
+
+
+
+bool sr_is_visible(const SR_BoundingBox& bb, const ls::math::mat4& mvpMatrix, const ls::math::vec4 planes[6]) noexcept
+{
+    const math::vec4& boxMax = bb.max_point();
+    const math::vec4& boxMin = bb.min_point();
+
+    const math::vec4 points[] = {
+        {boxMax[0], boxMin[1], boxMin[2], 1.f},
+        {boxMax[0], boxMax[1], boxMin[2], 1.f},
+        {boxMax[0], boxMax[1], boxMax[2], 1.f},
+        {boxMin[0], boxMax[1], boxMax[2], 1.f},
+        {boxMin[0], boxMin[1], boxMax[2], 1.f},
+        {boxMin[0], boxMin[1], boxMin[2], 1.f},
+        {boxMax[0], boxMin[1], boxMax[2], 1.f},
+        {boxMin[0], boxMax[1], boxMin[2], 1.f},
+    };
+
+    for (const math::vec4& point : points)
+    {
+        if (sr_is_visible(mvpMatrix * point, planes))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
+
+
 /*-------------------------------------
  * Test the visibility of a point
 -------------------------------------*/
@@ -42,18 +107,18 @@ bool sr_is_visible(const math::vec4& point, const math::mat4& mvpMatrix, const f
 -------------------------------------*/
 bool sr_is_visible(const SR_BoundingBox& bb, const math::mat4& mvpMatrix, const float fovDivisor) noexcept
 {
-    const math::vec4& trr = bb.get_top_rear_right();
-    const math::vec4& bfl = bb.get_bot_front_left();
+    const math::vec4& boxMax = bb.max_point();
+    const math::vec4& boxMin = bb.min_point();
 
     const math::vec4 points[] = {
-        {trr[0], bfl[1], bfl[2], 1.f},
-        {trr[0], trr[1], bfl[2], 1.f},
-        {trr[0], trr[1], trr[2], 1.f},
-        {bfl[0], trr[1], trr[2], 1.f},
-        {bfl[0], bfl[1], trr[2], 1.f},
-        {bfl[0], bfl[1], bfl[2], 1.f},
-        {trr[0], bfl[1], trr[2], 1.f},
-        {bfl[0], trr[1], bfl[2], 1.f},
+        {boxMax[0], boxMin[1], boxMin[2], 1.f},
+        {boxMax[0], boxMax[1], boxMin[2], 1.f},
+        {boxMax[0], boxMax[1], boxMax[2], 1.f},
+        {boxMin[0], boxMax[1], boxMax[2], 1.f},
+        {boxMin[0], boxMin[1], boxMax[2], 1.f},
+        {boxMin[0], boxMin[1], boxMin[2], 1.f},
+        {boxMax[0], boxMin[1], boxMax[2], 1.f},
+        {boxMin[0], boxMax[1], boxMin[2], 1.f},
     };
 
     // Debug multipliers to reduce the frustum planes
@@ -116,11 +181,11 @@ bool sr_is_visible(const SR_BoundingBox& bb, const math::mat4& mvpMatrix, const 
  * https://pdfs.semanticscholar.org/4fae/54e3f9e79ba09ead5702648664b9932a1d3f.pdf
 -------------------------------------*/
 bool sr_is_visible(
-    float aspect,
-    float fov,
+    const SR_BoundingBox& bounds,
     const SR_Transform& camTrans,
     const math::mat4& modelMat,
-    const SR_BoundingBox& bounds) noexcept
+    float aspect,
+    float fov) noexcept
 {
     const float      viewAngle = math::tan(fov*0.5f);
     const math::vec3 c         = camTrans.get_abs_position();
@@ -128,19 +193,19 @@ bool sr_is_visible(
     const math::vec3 cx        = t[0];
     const math::vec3 cy        = t[1];
     const math::vec3 cz        = -t[2];
-    const math::vec4 trr       = bounds.get_top_rear_right();
-    const math::vec4 bfl       = bounds.get_bot_front_left();
+    const math::vec4 boxMax    = bounds.max_point();
+    const math::vec4 boxMin    = bounds.min_point();
     const float      delta     = 0.f;
 
     math::vec4 points[]  = {
-        {bfl[0], bfl[1], trr[2], 1.f},
-        {trr[0], bfl[1], trr[2], 1.f},
-        {trr[0], trr[1], trr[2], 1.f},
-        {bfl[0], trr[1], trr[2], 1.f},
-        {bfl[0], bfl[1], bfl[2], 1.f},
-        {trr[0], bfl[1], bfl[2], 1.f},
-        {trr[0], trr[1], bfl[2], 1.f},
-        {bfl[0], trr[1], bfl[2], 1.f}
+        {boxMin[0], boxMin[1], boxMax[2], 1.f},
+        {boxMax[0], boxMin[1], boxMax[2], 1.f},
+        {boxMax[0], boxMax[1], boxMax[2], 1.f},
+        {boxMin[0], boxMax[1], boxMax[2], 1.f},
+        {boxMin[0], boxMin[1], boxMin[2], 1.f},
+        {boxMax[0], boxMin[1], boxMin[2], 1.f},
+        {boxMax[0], boxMax[1], boxMin[2], 1.f},
+        {boxMin[0], boxMax[1], boxMin[2], 1.f}
     };
 
     float objX, objY, objZ, xAspect, yAspect;
@@ -185,8 +250,8 @@ bool sr_is_visible(
         return true;
     }
 
-    const math::vec3 bboxMin = math::vec3_cast(modelMat * bfl);
-    const math::vec3 bboxMax = math::vec3_cast(modelMat * trr);
+    const math::vec3 bboxMin = math::vec3_cast(modelMat * boxMin);
+    const math::vec3 bboxMax = math::vec3_cast(modelMat * boxMax);
 
     return c > bboxMin && c < bboxMax;
 }

@@ -20,8 +20,39 @@ class SR_Transform;
 
 
 /*-----------------------------------------------------------------------------
+ Enums
+-----------------------------------------------------------------------------*/
+enum SR_FrustumPlane
+{
+    SR_FRUSTUM_PLANE_LEFT,
+    SR_FRUSTUM_PLANE_RIGHT,
+    SR_FRUSTUM_PLANE_TOP,
+    SR_FRUSTUM_PLANE_BOTTOM,
+    SR_FRUSTUM_PLANE_NEAR,
+    SR_FRUSTUM_PLANE_FAR,
+};
+
+
+
+/*-----------------------------------------------------------------------------
  Utility Functions
 -----------------------------------------------------------------------------*/
+/**
+ * @brief Extract the planes from a projection matrix and store them in an
+ * array.
+ *
+ * @param projMat
+ *
+ * @param planes
+ */
+void sr_extract_frustum_planes(const ls::math::mat4& projMat, ls::math::vec4 planes[6]) noexcept;
+
+bool sr_is_visible(const ls::math::vec4& worldSpacePoint, const ls::math::vec4 planes[6]) noexcept;
+
+bool sr_is_visible(const SR_BoundingBox& bb, const ls::math::mat4& mvMatrix, const ls::math::vec4 planes[6]) noexcept;
+
+
+
 /**
  * Determine if a point is contained within a frustum.
  * 
@@ -76,11 +107,11 @@ bool sr_is_visible(const SR_BoundingBox& bb, const ls::math::mat4& mvpMatrix, co
  * https://pdfs.semanticscholar.org/4fae/54e3f9e79ba09ead5702648664b9932a1d3f.pdf
 -------------------------------------*/
 bool sr_is_visible(
-    float aspect,
-    float fov,
+    const SR_BoundingBox& bounds,
     const SR_Transform& camTrans,
     const ls::math::mat4& modelMat,
-    const SR_BoundingBox& bounds) noexcept;
+    float aspect,
+    float fov) noexcept;
 
 
 
