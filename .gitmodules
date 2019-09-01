@@ -10,3 +10,7 @@
 	path = light_math
 	url = https://github.com/hamsham/LightMath.git
 	branch = master
+[submodule "light_game"]
+	path = light_game
+	url = https://github.com/hamsham/LightGame.git
+	branch = master
