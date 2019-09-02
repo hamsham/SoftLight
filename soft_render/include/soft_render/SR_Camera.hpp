@@ -26,8 +26,8 @@ enum SR_FrustumPlane
 {
     SR_FRUSTUM_PLANE_LEFT,
     SR_FRUSTUM_PLANE_RIGHT,
-    SR_FRUSTUM_PLANE_TOP,
     SR_FRUSTUM_PLANE_BOTTOM,
+    SR_FRUSTUM_PLANE_TOP,
     SR_FRUSTUM_PLANE_NEAR,
     SR_FRUSTUM_PLANE_FAR,
 };
@@ -41,11 +41,11 @@ enum SR_FrustumPlane
  * @brief Extract the planes from a projection matrix and store them in an
  * array.
  *
- * @param projMat
+ * @param projection
  *
  * @param planes
  */
-void sr_extract_frustum_planes(const ls::math::mat4& projMat, ls::math::vec4 planes[6]) noexcept;
+void sr_extract_frustum_planes(const ls::math::mat4& projection, ls::math::vec4 planes[6]) noexcept;
 
 bool sr_is_visible(const ls::math::vec4& worldSpacePoint, const ls::math::vec4 planes[6]) noexcept;
 

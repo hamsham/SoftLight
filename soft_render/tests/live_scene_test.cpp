@@ -40,7 +40,7 @@
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SR_TEST_MAX_THREADS
-    #define SR_TEST_MAX_THREADS 4 //(ls::math::max(std::thread::hardware_concurrency()/2, 1))
+    #define SR_TEST_MAX_THREADS (ls::math::max(std::thread::hardware_concurrency()/2, 1))
 #endif /* SR_TEST_MAX_THREADS */
 
 #ifndef SR_TEST_USE_PBR
@@ -639,9 +639,7 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
 
             ++numTotal;
 
-            //if (!sr_is_visible(box, camTrans, modelMat, aspect, fov))
-            //if (!sr_is_visible(box, vpMatrix*modelMat))
-            if (!sr_is_visible(box, vp2*modelMat, planes))
+            if (!sr_is_visible(box, vp2 * modelMat, planes))
             {
                 ++numHidden;
                 continue;
@@ -675,7 +673,7 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
             const SR_BoundingBox& box = pGraph->mMeshBounds[nodeMeshId];
             pUniforms->aabb = &box;
 
-            if (!sr_is_visible(aspect, fov, camTrans, modelMat, box))
+            if (!sr_is_visible(box, vp2*modelMat, planes))
             {
                 continue;
             }
@@ -803,7 +801,6 @@ utils::Pointer<SR_SceneGraph> create_context()
     _mm_setcsr(_mm_getcsr() | 0x8040); // denormals-are-zero
     #endif
 
-
     SR_SceneFileLoader meshLoader;
     utils::Pointer<SR_SceneGraph> pGraph{new SR_SceneGraph{}};
     SR_Context& context = pGraph->mContext;
@@ -851,8 +848,13 @@ utils::Pointer<SR_SceneGraph> create_context()
     retCode = pGraph->import(meshLoader.data());
     assert(retCode == 0);
 
+#if SR_TEST_DEBUG_AABBS
+    pGraph->mCurrentTransforms[1].scale( math::vec3{20.f});
+    //pGraph->mCurrentTransforms[1].scale(math::vec3{0.125f});
+#else
     pGraph->mCurrentTransforms[0].scale( math::vec3{20.f});
     //pGraph->mCurrentTransforms[0].scale(math::vec3{0.125f});
+#endif
     pGraph->update();
 
     const SR_VertexShader&&   normVertShader = normal_vert_shader();

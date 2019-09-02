@@ -22,20 +22,20 @@ namespace math = ls::math;
 /*-------------------------------------
  * Extract Frustum Planes
 -------------------------------------*/
-void sr_extract_frustum_planes(const ls::math::mat4& vpMatrix, ls::math::vec4 planes[6]) noexcept
+void sr_extract_frustum_planes(const ls::math::mat4& projection, ls::math::vec4 planes[6]) noexcept
 {
-    planes[SR_FRUSTUM_PLANE_LEFT]   = vpMatrix[3] + vpMatrix[0];
-    planes[SR_FRUSTUM_PLANE_RIGHT]  = vpMatrix[3] - vpMatrix[0];
-    planes[SR_FRUSTUM_PLANE_TOP]    = vpMatrix[3] - vpMatrix[1];
-    planes[SR_FRUSTUM_PLANE_BOTTOM] = vpMatrix[3] + vpMatrix[1];
-    planes[SR_FRUSTUM_PLANE_NEAR]   = vpMatrix[3] + vpMatrix[2];
-    planes[SR_FRUSTUM_PLANE_FAR]    = vpMatrix[3] - vpMatrix[2];
+    planes[SR_FRUSTUM_PLANE_LEFT]   = projection[3] + projection[0];
+    planes[SR_FRUSTUM_PLANE_RIGHT]  = projection[3] - projection[0];
+    planes[SR_FRUSTUM_PLANE_BOTTOM] = projection[3] + projection[1];
+    planes[SR_FRUSTUM_PLANE_TOP]    = projection[3] - projection[1];
+    planes[SR_FRUSTUM_PLANE_NEAR]   = projection[3] + projection[2];
+    planes[SR_FRUSTUM_PLANE_FAR]    = projection[3] - projection[2];
 
     for (unsigned i = 6; i--;)
     {
         const math::vec3&& norm = math::vec3_cast(planes[i]);
-        const float len = math::length(norm);
-        planes[i] = -planes[i] / len;
+        const float lenInv = 1.f / math::length(norm);
+        planes[i] = -planes[i] * lenInv;
     }
 }
 
@@ -59,25 +59,38 @@ bool sr_is_visible(const SR_BoundingBox& bb, const ls::math::mat4& mvpMatrix, co
     const math::vec4& boxMin = bb.min_point();
 
     const math::vec4 points[] = {
-        {boxMax[0], boxMin[1], boxMin[2], 1.f},
-        {boxMax[0], boxMax[1], boxMin[2], 1.f},
-        {boxMax[0], boxMax[1], boxMax[2], 1.f},
-        {boxMin[0], boxMax[1], boxMax[2], 1.f},
-        {boxMin[0], boxMin[1], boxMax[2], 1.f},
-        {boxMin[0], boxMin[1], boxMin[2], 1.f},
-        {boxMax[0], boxMin[1], boxMax[2], 1.f},
-        {boxMin[0], boxMax[1], boxMin[2], 1.f},
+        mvpMatrix * math::vec4{boxMax[0], boxMin[1], boxMin[2], 1.f},
+        mvpMatrix * math::vec4{boxMax[0], boxMax[1], boxMin[2], 1.f},
+        mvpMatrix * math::vec4{boxMax[0], boxMax[1], boxMax[2], 1.f},
+        mvpMatrix * math::vec4{boxMin[0], boxMax[1], boxMax[2], 1.f},
+        mvpMatrix * math::vec4{boxMin[0], boxMin[1], boxMax[2], 1.f},
+        mvpMatrix * math::vec4{boxMin[0], boxMin[1], boxMin[2], 1.f},
+        mvpMatrix * math::vec4{boxMax[0], boxMin[1], boxMax[2], 1.f},
+        mvpMatrix * math::vec4{boxMin[0], boxMax[1], boxMin[2], 1.f},
     };
 
-    for (const math::vec4& point : points)
+    for (unsigned i = 0; i < 6; ++i)
     {
-        if (sr_is_visible(mvpMatrix * point, planes))
+        const SR_Plane& plane = planes[i];
+        const math::vec3 plane3 = math::vec3_cast(plane);
+        bool inside = false;
+
+        for (const math::vec4& point : points)
         {
-            return true;
+            if (math::dot(math::vec3_cast(point), plane3)-plane[3] >= 0.f)
+            {
+                inside = true;
+                break;
+            }
+        }
+
+        if (!inside)
+        {
+            return false;
         }
     }
 
-    return false;
+    return true;
 }
 
 
