@@ -849,7 +849,7 @@ utils::Pointer<SR_SceneGraph> create_context()
     assert(retCode == 0);
 
 #if SR_TEST_DEBUG_AABBS
-    pGraph->mCurrentTransforms[1].scale( math::vec3{20.f});
+    pGraph->mCurrentTransforms[1].scale(math::vec3{20.f});
     //pGraph->mCurrentTransforms[1].scale(math::vec3{0.125f});
 #else
     pGraph->mCurrentTransforms[0].scale( math::vec3{20.f});

@@ -279,7 +279,7 @@ class SR_Camera
      * The desired horizontal angle, in radians, which the field of view
      * should be set to.
      */
-    void set_fov(unsigned viewAngle);
+    void set_fov(float viewAngle);
 
     /**
      * @brief Retrieve the horizontal field of view of the camera.
@@ -397,7 +397,7 @@ inline const ls::math::mat4& SR_Camera::get_proj_matrix() const
 /*-------------------------------------
  * Set the FOV
 -------------------------------------*/
-inline void SR_Camera::set_fov(unsigned viewAngle)
+inline void SR_Camera::set_fov(float viewAngle)
 {
     mIsDirty = true;
     mFov = viewAngle;
