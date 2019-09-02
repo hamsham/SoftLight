@@ -185,7 +185,7 @@ void SR_FragmentProcessor::render_point(
 #if SR_REVERSED_Z_BUFFER
         if (fragParams.depth < pDepthBuf->texel<float>(fragParams.x, fragParams.y))
 #else
-        if (fragParams.depth > pDepthBuf->texel<float>(fragParams.x, fragParams.y)))
+        if (fragParams.depth > pDepthBuf->texel<float>(fragParams.x, fragParams.y))
 #endif
         {
             return;
