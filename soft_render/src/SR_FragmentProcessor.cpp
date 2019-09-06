@@ -48,7 +48,7 @@ inline void LS_IMPERATIVE interpolate_line_varyings(
 {
     const uint32_t i2 = numVaryings;
 
-    for (uint32_t i = numVaryings; i --> 0;)
+    for (uint32_t i = numVaryings; i--;)
     {
         const math::vec4& v0 = inVaryings[i];
         const math::vec4& v1 = inVaryings[i+i2];
@@ -67,18 +67,16 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
     const math::vec4*   inVaryings0,
     math::vec4*         outVaryings) noexcept
 {
-    (void)numVaryings;
-
     #if defined(LS_ARCH_X86)
         const math::vec4* inVaryings1  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
         const math::vec4* inVaryings2  = inVaryings1 + SR_SHADER_MAX_VARYING_VECTORS;
 
         const __m128 bc  = _mm_load_ps(baryCoords);
-        const __m128 bc0 = _mm_shuffle_ps(bc, bc, 0x00);
-        const __m128 bc1 = _mm_shuffle_ps(bc, bc, 0x55);
-        const __m128 bc2 = _mm_shuffle_ps(bc, bc, 0xAA);
+        const __m128 bc0 = _mm_permute_ps(bc, 0x00);
+        const __m128 bc1 = _mm_permute_ps(bc, 0x55);
+        const __m128 bc2 = _mm_permute_ps(bc, 0xAA);
 
-        for (unsigned i = SR_SHADER_MAX_VARYING_VECTORS; i --> 0;)
+        for (uint_fast32_t i = numVaryings; i--;)
         {
             const __m128 v0 = _mm_mul_ps(_mm_load_ps(reinterpret_cast<const float*>(inVaryings0++)), bc0);
             const __m128 v1 = _mm_fmadd_ps(_mm_load_ps(reinterpret_cast<const float*>(inVaryings1++)), bc1, v0);
@@ -94,7 +92,7 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
         const float32x4_t bc1 = vdupq_lane_f32(vget_low_f32(bc),  1);
         const float32x4_t bc2 = vdupq_lane_f32(vget_high_f32(bc), 0);
 
-        for (unsigned i = numVaryings; i --> 0;)
+        for (uint_fast32_t i = numVaryings; i--;)
         {
             const float32x4_t v0 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings0++)), bc0);
             const float32x4_t v1 = vfmaq_f32(v0, vld1q_f32(reinterpret_cast<const float*>(inVaryings1++)), bc1);
@@ -110,7 +108,7 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
         const float32x4_t bc1 = vdupq_lane_f32(vget_low_f32(bc),  1);
         const float32x4_t bc2 = vdupq_lane_f32(vget_high_f32(bc), 0);
 
-        for (unsigned i = numVaryings; i --> 0;)
+        for (uint_fast32_t i = numVaryings; i--;)
         {
             const float32x4_t v0 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings0++)), bc0);
             const float32x4_t v1 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings1++)), bc1);
@@ -121,11 +119,11 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
         const math::vec4* inVaryings1 = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
         const math::vec4* inVaryings2 = inVaryings1 + SR_SHADER_MAX_VARYING_VECTORS;
 
-        const float bc0 = baryCoords.v[0];
-        const float bc1 = baryCoords.v[1];
-        const float bc2 = baryCoords.v[2];
+        const float bc0 = baryCoords[0];
+        const float bc1 = baryCoords[1];
+        const float bc2 = baryCoords[2];
 
-        for (unsigned i = numVaryings; i --> 0;)
+        for (uint_fast32_t i = numVaryings; i--;)
         {
             const math::vec4&& v0 = (*inVaryings0++) * bc0;
             const math::vec4&& v1 = (*inVaryings1++) * bc1;
@@ -451,18 +449,18 @@ void SR_FragmentProcessor::render_line(
 /*--------------------------------------
  * Wireframe Rasterization
 --------------------------------------*/
-void SR_FragmentProcessor::render_wireframe(const uint_fast64_t binId, const SR_Texture* depthBuffer) const noexcept
+void SR_FragmentProcessor::render_wireframe(const SR_FragmentBin* pBins, const SR_Texture* depthBuffer) const noexcept
 {
     uint32_t          numQueuedFrags = 0;
     const int32_t     yOffset      = (uint32_t)mThreadId;
     const int32_t     increment    = (int32_t)mNumProcessors;
-    const math::vec4* screenCoords = mBins[binId].mScreenCoords;
+    const math::vec4* screenCoords = pBins->mScreenCoords;
     const math::vec4  depth        {screenCoords[0][2], screenCoords[1][2], screenCoords[2][2], 0.f};
     const math::vec4  homogenous   {screenCoords[0][3], screenCoords[1][3], screenCoords[2][3], 0.f};
     math::vec2        p0           = math::vec2_cast(screenCoords[0]);
     math::vec2        p1           = math::vec2_cast(screenCoords[1]);
     math::vec2        p2           = math::vec2_cast(screenCoords[2]);
-    const math::vec4* bcClipSpace  = mBins[binId].mBarycentricCoords;
+    const math::vec4* bcClipSpace  = pBins->mBarycentricCoords;
     const int32_t     depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON;
     const int32_t     bboxMinX     = (int32_t)math::min(p0[0], p1[0], p2[0]);
     const int32_t     bboxMinY     = (int32_t)math::ceil(math::min(p0[1], p1[1], p2[1]));
@@ -559,7 +557,7 @@ void SR_FragmentProcessor::render_wireframe(const uint_fast64_t binId, const SR_
             if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
             {
                 numQueuedFrags = 0;
-                flush_fragments(binId, SR_SHADER_MAX_FRAG_QUEUES, outCoords);
+                flush_fragments(pBins, SR_SHADER_MAX_FRAG_QUEUES, outCoords);
             }
         }
     }
@@ -567,7 +565,7 @@ void SR_FragmentProcessor::render_wireframe(const uint_fast64_t binId, const SR_
     // cleanup remaining fragments
     if (numQueuedFrags > 0)
     {
-        flush_fragments(binId, numQueuedFrags, outCoords);
+        flush_fragments(pBins, numQueuedFrags, outCoords);
     }
 }
 
@@ -578,18 +576,18 @@ void SR_FragmentProcessor::render_wireframe(const uint_fast64_t binId, const SR_
 --------------------------------------*/
 #if 0
 
-void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_Texture* depthBuffer) const noexcept
+void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_Texture* depthBuffer) const noexcept
 {
     uint32_t  numQueuedFrags = 0;
     const int32_t     yOffset      = (uint32_t)mThreadId;
     const int32_t     increment    = (int32_t)mNumProcessors;
-    const math::vec4* screenCoords = mBins[binId].mScreenCoords;
+    const math::vec4* screenCoords = pBin->mScreenCoords;
     const math::vec4  depth        {screenCoords[0][2], screenCoords[1][2], screenCoords[2][2], 0.f};
     const math::vec4  homogenous   {screenCoords[0][3], screenCoords[1][3], screenCoords[2][3], 0.f};
     math::vec2        p0           = math::vec2_cast(screenCoords[0]);
     math::vec2        p1           = math::vec2_cast(screenCoords[1]);
     math::vec2        p2           = math::vec2_cast(screenCoords[2]);
-    const math::vec4* bcClipSpace  = mBins[binId].mBarycentricCoords;
+    const math::vec4* bcClipSpace  = pBin->mBarycentricCoords;
     const int32_t     depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON;
     const int32_t     bboxMinX     = (int32_t)math::min(p0[0], p1[0], p2[0]);
     const int32_t     bboxMinY     = (int32_t)math::ceil(math::min(p0[1], p1[1], p2[1]));
@@ -682,7 +680,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
             if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
             {
                 numQueuedFrags = 0;
-                flush_fragments(binId, SR_SHADER_MAX_FRAG_QUEUES, outCoords);
+                flush_fragments(pBin, SR_SHADER_MAX_FRAG_QUEUES, outCoords);
             }
         }
     }
@@ -690,23 +688,23 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
     // cleanup remaining fragments
     if (numQueuedFrags > 0)
     {
-        flush_fragments(binId, numQueuedFrags, outCoords);
+        flush_fragments(pBin, numQueuedFrags, outCoords);
     }
 }
 
 #else
 
-void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_Texture* depthBuffer) const noexcept
+void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_Texture* depthBuffer) const noexcept
 {
     const uint32_t    yOffset      = (uint32_t)mThreadId;
     const uint32_t    increment    = (uint32_t)mNumProcessors;
-    const math::vec4* screenCoords = mBins[binId].mScreenCoords;
+    const math::vec4* screenCoords = pBin->mScreenCoords;
     const math::vec4  depth        {screenCoords[0][2], screenCoords[1][2], screenCoords[2][2], 0.f};
     const math::vec4  homogenous   {screenCoords[0][3], screenCoords[1][3], screenCoords[2][3], 0.f};
     math::vec2        p0           = math::vec2_cast(screenCoords[0]);
     math::vec2        p1           = math::vec2_cast(screenCoords[1]);
     math::vec2        p2           = math::vec2_cast(screenCoords[2]);
-    const math::vec4* bcClipSpace  = mBins[binId].mBarycentricCoords;
+    const math::vec4* bcClipSpace  = pBin->mBarycentricCoords;
     const int32_t     depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON);
     const int32_t     bboxMinX     = (int32_t)math::min(p0[0], p1[0], p2[0]);
     const int32_t     bboxMinY     = (int32_t)math::ceil(math::min(p0[1], p1[1], p2[1]));
@@ -786,7 +784,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
                 if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
                 {
                     numQueuedFrags = 0;
-                    flush_fragments(binId, SR_SHADER_MAX_FRAG_QUEUES, outCoords);
+                    flush_fragments(pBin, SR_SHADER_MAX_FRAG_QUEUES, outCoords);
                 }
             }
 
@@ -797,7 +795,7 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
 
     if (numQueuedFrags)
     {
-        flush_fragments(binId, numQueuedFrags, outCoords);
+        flush_fragments(pBin, numQueuedFrags, outCoords);
     }
 }
 
@@ -809,9 +807,9 @@ void SR_FragmentProcessor::render_triangle(const uint_fast64_t binId, const SR_T
  * Triangle Fragment Bin-Rasterization
 --------------------------------------*/
 void SR_FragmentProcessor::flush_fragments(
-    const uint_fast64_t binId,
-    uint32_t            numQueuedFrags,
-    const SR_FragCoord* outCoords) const noexcept
+    const SR_FragmentBin* pBin,
+    uint_fast32_t         numQueuedFrags,
+    const SR_FragCoord*   outCoords) const noexcept
 {
     const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
     const SR_FragmentShader fragShader  = mShader->mFragShader;
@@ -821,14 +819,14 @@ void SR_FragmentProcessor::flush_fragments(
     const bool              depthMask   = fragShader.depthMask == SR_DEPTH_MASK_ON;
     const auto              pShader     = fragShader.shader;
     SR_Framebuffer*         fbo         = mFbo;
-    math::vec4* const       inVaryings  = mBins[binId].mVaryings;
+    const math::vec4* const inVaryings  = pBin->mVaryings;
 
     SR_FragmentParam fragParams;
     fragParams.pUniforms = pUniforms;
 
     if (blendMode != SR_BLEND_OFF)
     {
-        while (numQueuedFrags --> 0)
+        while (numQueuedFrags--)
         {
             // Interpolate varying variables using the barycentric coordinates
             const math::vec4 bc = outCoords->bc[numQueuedFrags];
@@ -859,7 +857,7 @@ void SR_FragmentProcessor::flush_fragments(
     }
     else
     {
-        while (numQueuedFrags --> 0)
+        while (numQueuedFrags--)
         {
             // Interpolate varying variables using the barycentric coordinates
             const math::vec4 bc = outCoords->bc[numQueuedFrags];
@@ -935,7 +933,7 @@ void SR_FragmentProcessor::execute() noexcept
         {
             for (uint64_t numBinsProcessed = 0; numBinsProcessed < mNumBins; ++numBinsProcessed)
             {
-                render_wireframe(mBinIds[numBinsProcessed], mFbo->get_depth_buffer());
+                render_wireframe(mBins+mBinIds[numBinsProcessed], mFbo->get_depth_buffer());
             }
             break;
         }
@@ -946,7 +944,8 @@ void SR_FragmentProcessor::execute() noexcept
             // There's No need to subdivide the output framebuffer
             for (uint64_t numBinsProcessed = 0; numBinsProcessed < mNumBins; ++numBinsProcessed)
             {
-                render_triangle(mBinIds[numBinsProcessed], mFbo->get_depth_buffer());
+                const SR_FragmentBin* pBin = mBins+mBinIds[numBinsProcessed];
+                render_triangle(pBin, mFbo->get_depth_buffer());
             }
             break;
     }

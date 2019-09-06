@@ -50,7 +50,8 @@ enum : unsigned int
         | aiProcess_TransformUVCoords
         | aiProcess_GenUVCoords
         | aiProcess_RemoveRedundantMaterials
-        //| aiProcess_GenSmoothNormals
+        | aiProcess_GenSmoothNormals
+        //| aiProcess_GenNormals
         | aiProcess_Triangulate // the renderer can only handle triangles
         | 0
 };

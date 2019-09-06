@@ -294,7 +294,10 @@ void SR_VertexProcessor::flush_fragments() const noexcept
         }
         else
         {
-            std::this_thread::yield();
+            #if LS_ARCH_X86
+                //_mm_pause();
+            #endif
+            //std::this_thread::yield();
         }
     }
 }
