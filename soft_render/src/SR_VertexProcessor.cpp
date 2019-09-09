@@ -275,6 +275,7 @@ void SR_VertexProcessor::flush_fragments() const noexcept
         mFbo,
         mBinIds,
         mFragBins,
+        mVaryings + (tileId*SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_FRAG_BINS),
         mFragQueues + tileId
     };
 

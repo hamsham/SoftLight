@@ -116,8 +116,7 @@ struct SR_FragmentParam
     float depth;
 
     const SR_UniformBuffer* pUniforms;
-
-    alignas(sizeof(ls::math::vec4)) ls::math::vec4 pVaryings[SR_SHADER_MAX_VARYING_VECTORS];
+    const ls::math::vec4* pVaryings;
     alignas(sizeof(ls::math::vec4)) ls::math::vec4 pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
 };
 

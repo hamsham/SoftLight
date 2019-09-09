@@ -1,6 +1,9 @@
 
+#include <iostream>
+
 #include "lightsky/setup/Api.h" // LS_IMPERATIVE
 
+#include "lightsky/math/bits.h"
 #include "lightsky/math/fixed.h"
 #include "lightsky/math/mat4.h"
 #include "lightsky/math/mat_utils.h"
@@ -17,6 +20,12 @@
 #ifndef SR_REVERSED_Z_BUFFER
     #define SR_REVERSED_Z_BUFFER 1
 #endif
+
+
+
+#ifndef SR_VERTEX_CLIPPING_ENABLED
+    #define SR_VERTEX_CLIPPING_ENABLED 1
+#endif /* SR_VERTEX_CLIPPING_ENABLED */
 
 
 
@@ -69,7 +78,7 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
 {
     #if defined(LS_ARCH_X86)
         const math::vec4* inVaryings1  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
-        const math::vec4* inVaryings2  = inVaryings1 + SR_SHADER_MAX_VARYING_VECTORS;
+        const math::vec4* inVaryings2  = inVaryings0 + (SR_SHADER_MAX_VARYING_VECTORS * 2);
 
         const __m128 bc  = _mm_load_ps(baryCoords);
         const __m128 bc0 = _mm_permute_ps(bc, 0x00);
@@ -85,7 +94,7 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
         }
     #elif defined(LS_ARCH_AARCH64)
         const math::vec4* inVaryings1  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
-        const math::vec4* inVaryings2  = inVaryings1 + SR_SHADER_MAX_VARYING_VECTORS;
+        const math::vec4* inVaryings2  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS * 2;
 
         const float32x4_t bc  = vld1q_f32(baryCoords);
         const float32x4_t bc0 = vdupq_lane_f32(vget_low_f32(bc),  0);
@@ -94,14 +103,14 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
 
         for (uint_fast32_t i = numVaryings; i--;)
         {
-            const float32x4_t v0 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings0++)), bc0);
+            const float32x4_t v0 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings0++)),     bc0);
             const float32x4_t v1 = vfmaq_f32(v0, vld1q_f32(reinterpret_cast<const float*>(inVaryings1++)), bc1);
             const float32x4_t v2 = vfmaq_f32(v1, vld1q_f32(reinterpret_cast<const float*>(inVaryings2++)), bc2);
             vst1q_f32(reinterpret_cast<float*>(outVaryings++), v2);
         }
     #elif defined(LS_ARCH_ARM)
         const math::vec4* inVaryings1  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
-        const math::vec4* inVaryings2  = inVaryings1 + SR_SHADER_MAX_VARYING_VECTORS;
+        const math::vec4* inVaryings2  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS * 2;
 
         const float32x4_t bc  = vld1q_f32(baryCoords);
         const float32x4_t bc0 = vdupq_lane_f32(vget_low_f32(bc),  0);
@@ -117,7 +126,7 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
         }
     #else
         const math::vec4* inVaryings1 = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
-        const math::vec4* inVaryings2 = inVaryings1 + SR_SHADER_MAX_VARYING_VECTORS;
+        const math::vec4* inVaryings2 = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS * 2;
 
         const float bc0 = baryCoords[0];
         const float bc1 = baryCoords[1];
@@ -175,7 +184,7 @@ void SR_FragmentProcessor::render_point(
 
     for (unsigned i = SR_SHADER_MAX_VARYING_VECTORS; i--;)
     {
-        fragParams.pVaryings[i] = mBins[binId].mVaryings[i];
+        mVaryings[i] = mBins[binId].mVaryings[i];
     }
 
     if (depthTest == SR_DEPTH_TEST_ON)
@@ -190,6 +199,7 @@ void SR_FragmentProcessor::render_point(
         }
     }
 
+    fragParams.pVaryings = mVaryings;
     const uint_fast32_t haveOutputs = pShader(fragParams);
 
     if (blend)
@@ -399,12 +409,13 @@ void SR_FragmentProcessor::render_line(
         if (noDepthTest || depthBuf->texel<float>((uint16_t)xi, (uint16_t)yi) >= z)
 #endif
         {
-            interpolate_line_varyings(interp, numVaryings, inVaryings, fragParams.pVaryings);
+            interpolate_line_varyings(interp, numVaryings, inVaryings, mVaryings);
 
             fragParams.fragCoord = {xf, yf, z, 1.f};
             fragParams.x = (uint16_t)xi;
             fragParams.y = (uint16_t)yi;
             fragParams.z = z;
+            fragParams.pVaryings = mVaryings;
             const uint_fast32_t haveOutputs = shader(fragParams);
 
             if (blend)
@@ -589,10 +600,17 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
     math::vec2        p2           = math::vec2_cast(screenCoords[2]);
     const math::vec4* bcClipSpace  = pBin->mBarycentricCoords;
     const int32_t     depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON;
-    const int32_t     bboxMinX     = (int32_t)math::min(p0[0], p1[0], p2[0]);
-    const int32_t     bboxMinY     = (int32_t)math::ceil(math::min(p0[1], p1[1], p2[1]));
-    const int32_t     bboxMaxX     = (int32_t)math::max(p0[0], p1[0], p2[0]);
-    const int32_t     bboxMaxY     = (int32_t)math::max(p0[1], p1[1], p2[1]);
+    #if SR_VERTEX_CLIPPING_ENABLED == 0
+        const int32_t     bboxMinX     = (int32_t)math::min(mFboW, math::max(0.f,   math::min(p0[0], p1[0], p2[0])));
+        const int32_t     bboxMinY     = (int32_t)math::min(mFboH, math::max(0.f,   math::min(p0[1], p1[1], p2[1]))+0.5f);
+        const int32_t     bboxMaxX     = (int32_t)math::max(0.f,   math::min(mFboW, math::max(p0[0], p1[0], p2[0]))+0.5f);
+        const int32_t     bboxMaxY     = (int32_t)math::max(0.f,   math::min(mFboH, math::max(p0[1], p1[1], p2[1])));
+    #else
+        const int32_t     bboxMinX     = (int32_t)math::min(p0[0], p1[0], p2[0]);
+        const int32_t     bboxMinY     = (int32_t)math::ceil(math::min(p0[1], p1[1], p2[1]));
+        const int32_t     bboxMaxX     = (int32_t)math::max(p0[0], p1[0], p2[0]);
+        const int32_t     bboxMaxY     = (int32_t)math::max(p0[1], p1[1], p2[1]);
+    #endif
     SR_FragCoord*     outCoords    = mQueues;
 
     if (p0[1] < p1[1]) std::swap(p0, p1);
@@ -706,10 +724,17 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
     math::vec2        p2           = math::vec2_cast(screenCoords[2]);
     const math::vec4* bcClipSpace  = pBin->mBarycentricCoords;
     const int32_t     depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON);
-    const int32_t     bboxMinX     = (int32_t)math::min(p0[0], p1[0], p2[0]);
-    const int32_t     bboxMinY     = (int32_t)math::ceil(math::min(p0[1], p1[1], p2[1]));
-    const int32_t     bboxMaxX     = (int32_t)math::max(p0[0], p1[0], p2[0]);
-    const int32_t     bboxMaxY     = (int32_t)math::max(p0[1], p1[1], p2[1]);
+    #if SR_VERTEX_CLIPPING_ENABLED == 0
+        const int32_t     bboxMinX     = (int32_t)math::min(mFboW, math::max(0.f,   math::min(p0[0], p1[0], p2[0])));
+        const int32_t     bboxMinY     = (int32_t)math::min(mFboH, math::max(0.f,   math::min(p0[1], p1[1], p2[1]))+0.5f);
+        const int32_t     bboxMaxX     = (int32_t)math::max(0.f,   math::min(mFboW, math::max(p0[0], p1[0], p2[0]))+0.5f);
+        const int32_t     bboxMaxY     = (int32_t)math::max(0.f,   math::min(mFboH, math::max(p0[1], p1[1], p2[1])));
+    #else
+        const int32_t     bboxMinX     = (int32_t)math::min(p0[0], p1[0], p2[0]);
+        const int32_t     bboxMinY     = (int32_t)math::ceil(math::min(p0[1], p1[1], p2[1]));
+        const int32_t     bboxMaxX     = (int32_t)math::max(p0[0], p1[0], p2[0]);
+        const int32_t     bboxMaxY     = (int32_t)math::max(p0[1], p1[1], p2[1]);
+    #endif
     SR_FragCoord*     outCoords    = mQueues;
 
     if (p0[1] < p1[1]) std::swap(p0, p1);
@@ -748,7 +773,8 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
         math::vec4i x  = math::vec4i{0, 1, 2, 3} + xMin;
         math::vec4  xf = math::vec4{0.f, 1.f, 2.f, 3.f} + (float)xMin;
 
-        for (int32_t y16 = y << 16; x[0] <= xMax;)
+        //for (uint16_t y16 = (uint16_t)y; x[0] <= xMax;)
+        for (uint32_t y16 = (uint32_t)(y << 16); x[0] <= xMax;)
         {
             // calculate barycentric coordinates and perform a depth test
             const int32_t      x0          = x[0];
@@ -756,11 +782,11 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
             const math::vec4&& z           = depth * bc;
             const math::vec4&& depthTexels = depthTesting ? math::vec4{depthBuffer->texel4<float>(x0, y)} : math::vec4{0.f};
     #if SR_REVERSED_Z_BUFFER
-            const int32_t      depthTest   = depthTesting ? math::sign_mask(z-depthTexels) : 0x00;
+            const int_fast32_t      depthTest   = depthTesting ? math::sign_mask(z-depthTexels) : 0x00;
     #else
-            const int32_t      depthTest   = depthTesting ? math::sign_mask(depthTexels-z) : 0x00;
+            const int_fast32_t      depthTest   = depthTesting ? math::sign_mask(depthTexels-z) : 0x00;
     #endif
-            const int32_t      end         = -(depthTest != 0x0F) & math::min<int32_t>(xMax-x0, 4);
+            const int_fast32_t      end         = -(depthTest != 0x0F) & math::min<int_fast32_t>(xMax-x0, 4);
 
             for (int32_t i = 0; i < end; ++i)
             {
@@ -776,8 +802,10 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
                 const math::vec4 outXYZ{xf[i], yf, z[i], persp};
                 outCoords->xyzw[numQueuedFrags] = outXYZ;
 
-                const uint32_t outXY = (uint32_t)((0xFFFF & x[i]) | y16);
+                const uint32_t outXY = (uint32_t)(((uint16_t)x[i]) | y16);
                 outCoords->xy[numQueuedFrags] = outXY;
+                //outCoords->coord[numQueuedFrags].x = (uint16_t)x[i];
+                //outCoords->coord[numQueuedFrags].y = y16;
 
                 ++numQueuedFrags;
 
@@ -824,19 +852,24 @@ void SR_FragmentProcessor::flush_fragments(
     SR_FragmentParam fragParams;
     fragParams.pUniforms = pUniforms;
 
+    // Interpolate varying variables using the barycentric coordinates. I'm
+    // interpolating here to maintain cache coherence.
+    for (uint_fast32_t i = numQueuedFrags; i--;)
+    {
+        const math::vec4 bc = outCoords->bc[i];
+        interpolate_tri_varyings(bc.v, numVaryings, inVaryings, mVaryings+(i*SR_SHADER_MAX_VARYING_VECTORS));
+    }
+
     if (blendMode != SR_BLEND_OFF)
     {
         while (numQueuedFrags--)
         {
-            // Interpolate varying variables using the barycentric coordinates
-            const math::vec4 bc = outCoords->bc[numQueuedFrags];
-            interpolate_tri_varyings(bc.v, numVaryings, inVaryings, fragParams.pVaryings);
-
             fragParams.fragCoord = outCoords->xyzw[numQueuedFrags];
-            const uint32_t   xy  = outCoords->xy[numQueuedFrags];
-            fragParams.x         = 0xFFFFu & xy;
-            fragParams.y         = xy >> 16u;
+            fragParams.x         = outCoords->coord[numQueuedFrags].x;
+            fragParams.y         = outCoords->coord[numQueuedFrags].y;
+            fragParams.z         = fragParams.fragCoord[2];
             fragParams.depth     = fragParams.fragCoord[2];
+            fragParams.pVaryings = mVaryings + numQueuedFrags * SR_SHADER_MAX_VARYING_VECTORS;
 
             uint_fast32_t haveOutputs = pShader(fragParams);
 
@@ -859,15 +892,12 @@ void SR_FragmentProcessor::flush_fragments(
     {
         while (numQueuedFrags--)
         {
-            // Interpolate varying variables using the barycentric coordinates
-            const math::vec4 bc = outCoords->bc[numQueuedFrags];
-            interpolate_tri_varyings(bc.v, numVaryings, inVaryings, fragParams.pVaryings);
-
             fragParams.fragCoord = outCoords->xyzw[numQueuedFrags];
-            const uint32_t   xy  = outCoords->xy[numQueuedFrags];
-            fragParams.x         = 0xFFFFu & xy;
-            fragParams.y         = xy >> 16u;
+            fragParams.x         = outCoords->coord[numQueuedFrags].x;
+            fragParams.y         = outCoords->coord[numQueuedFrags].y;
+            fragParams.z         = fragParams.fragCoord[2];
             fragParams.depth     = fragParams.fragCoord[2];
+            fragParams.pVaryings = mVaryings + numQueuedFrags * SR_SHADER_MAX_VARYING_VECTORS;
 
             uint_fast32_t haveOutputs = pShader(fragParams);
 

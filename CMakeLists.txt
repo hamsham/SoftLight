@@ -107,6 +107,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         add_definitions(-mavx)
         add_definitions(-mavx2)
         add_definitions(-mf16c)
+        add_definitions(-mlzcnt)
 
         if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
             add_definitions(-mfpmath=both)

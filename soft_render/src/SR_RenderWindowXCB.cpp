@@ -298,6 +298,11 @@ int SR_RenderWindowXCB::init(unsigned width, unsigned height) noexcept
     const auto windowError = [&](const char* errMsg) -> int
     {
         LS_LOG_ERR(errMsg);
+        if (pGeom)
+        {
+            free(pGeom);
+        }
+
         if (pEvent)
         {
             delete pEvent;
@@ -432,6 +437,9 @@ int SR_RenderWindowXCB::init(unsigned width, unsigned height) noexcept
     mY            = pGeom->y;
     mMouseX       = 0;
     mMouseY       = 0;
+
+    // Thanks Valgrind!
+    free(pGeom);
 
     LS_LOG_MSG(
         "Done. Successfully initialized SR_RenderWindowXCB ", this, '.',

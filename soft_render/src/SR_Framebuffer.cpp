@@ -61,7 +61,7 @@ inline void assign_pixel(
 /*-------------------------------------
  * Place a single pixel onto a texture
 -------------------------------------*/
-#ifdef LS_ARCH_X86
+#if defined(LS_ARCH_X86)
 template <>
 inline void assign_pixel<SR_ColorRGBA8>(
     uint16_t x,

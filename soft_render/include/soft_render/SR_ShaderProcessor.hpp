@@ -81,12 +81,22 @@ inline LS_INLINE bool operator > (const SR_FragmentBin& a, const SR_FragmentBin&
 /*-----------------------------------------------------------------------------
  * Helper structure to put a pixel on the screen
 -----------------------------------------------------------------------------*/
+struct alignas(sizeof(uint32_t)) SR_FragCoordXY
+{
+    uint16_t x;
+    uint16_t y;
+};
+
 struct SR_FragCoord
 {
     ls::math::vec4 bc[SR_SHADER_MAX_FRAG_QUEUES]; // 32*4
     ls::math::vec4 xyzw[SR_SHADER_MAX_FRAG_QUEUES]; // 32*4
-    uint32_t       xy[SR_SHADER_MAX_FRAG_QUEUES]; // 32-bit bitmask of x & y
 
+    union
+    {
+        SR_FragCoordXY coord[SR_SHADER_MAX_FRAG_QUEUES];
+        uint32_t       xy[SR_SHADER_MAX_FRAG_QUEUES]; // 32-bit bitmask of x & y
+    };
     // 256 bits / 32 bytes
 };
 
@@ -112,6 +122,8 @@ class SR_ProcessorPool
     ls::utils::Pointer<uint32_t[], ls::utils::AlignedDeleter> mBinIds;
 
     ls::utils::Pointer<SR_FragmentBin[], ls::utils::AlignedDeleter> mFragBins;
+
+    ls::utils::Pointer<ls::math::vec4[], ls::utils::AlignedDeleter> mVaryings;
 
     ls::utils::Pointer<SR_FragCoord[], ls::utils::AlignedDeleter> mFragQueues;
 

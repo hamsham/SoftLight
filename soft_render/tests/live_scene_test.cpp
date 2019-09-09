@@ -92,6 +92,7 @@ struct SpotLight
     float outerCutoff;
     float innerCutoff;
     float epsilon;
+    float padding;
 };
 
 
@@ -683,7 +684,7 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
     }
 #endif
 
-    LS_LOG_MSG("Meshes Hidden: ", numHidden, '/', numTotal, " (", 100.f*((float)numHidden/(float)numTotal), "%).");
+    //LS_LOG_MSG("Meshes Hidden: ", numHidden, '/', numTotal, " (", 100.f*((float)numHidden/(float)numTotal), "%).");
 }
 
 

@@ -123,6 +123,7 @@ struct SR_FragmentProcessor
     SR_Framebuffer* mFbo;
     uint32_t* mBinIds;
     SR_FragmentBin* mBins;
+    ls::math::vec4* mVaryings;
     SR_FragCoord* mQueues;
 
     // 432 bits = 54 bytes
