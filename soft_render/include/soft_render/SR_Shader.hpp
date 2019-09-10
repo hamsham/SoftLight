@@ -108,15 +108,16 @@ struct SR_VertexShader
 -----------------------------------------------------------------------------*/
 struct SR_FragmentParam
 {
-    ls::math::vec4 fragCoord;
+    alignas(sizeof(ls::math::vec4)) ls::math::vec4 fragCoord;
 
-    uint16_t x;
-    uint16_t y;
-    uint32_t z;
-    float depth;
+    alignas(sizeof(float)) float depth;
+    alignas(sizeof(uint16_t)) uint16_t x;
+    alignas(sizeof(uint16_t)) uint16_t y;
+    alignas(sizeof(uint32_t)) uint32_t z;
 
     const SR_UniformBuffer* pUniforms;
-    const ls::math::vec4* pVaryings;
+    ls::math::vec4* pVaryings;
+
     alignas(sizeof(ls::math::vec4)) ls::math::vec4 pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
 };
 

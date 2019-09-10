@@ -851,25 +851,27 @@ void SR_FragmentProcessor::flush_fragments(
 
     SR_FragmentParam fragParams;
     fragParams.pUniforms = pUniforms;
+    fragParams.pVaryings = mVaryings;
 
     // Interpolate varying variables using the barycentric coordinates. I'm
     // interpolating here to maintain cache coherence.
+    math::vec4* pVaryings = mVaryings+(numQueuedFrags*SR_SHADER_MAX_VARYING_VECTORS);
     for (uint_fast32_t i = numQueuedFrags; i--;)
     {
         const math::vec4 bc = outCoords->bc[i];
-        interpolate_tri_varyings(bc.v, numVaryings, inVaryings, mVaryings+(i*SR_SHADER_MAX_VARYING_VECTORS));
+        pVaryings -= SR_SHADER_MAX_VARYING_VECTORS;
+        interpolate_tri_varyings(bc.v, numVaryings, inVaryings, pVaryings);
     }
 
     if (blendMode != SR_BLEND_OFF)
     {
-        while (numQueuedFrags--)
+        for (uint_fast32_t i = 0; i < numQueuedFrags; ++i)
         {
-            fragParams.fragCoord = outCoords->xyzw[numQueuedFrags];
-            fragParams.x         = outCoords->coord[numQueuedFrags].x;
-            fragParams.y         = outCoords->coord[numQueuedFrags].y;
-            fragParams.z         = fragParams.fragCoord[2];
-            fragParams.depth     = fragParams.fragCoord[2];
-            fragParams.pVaryings = mVaryings + numQueuedFrags * SR_SHADER_MAX_VARYING_VECTORS;
+            fragParams.fragCoord = outCoords->xyzw[i];
+            fragParams.depth     = outCoords->xyzw[i][2];
+            fragParams.x         = outCoords->coord[i].x;
+            fragParams.y         = outCoords->coord[i].y;
+            fragParams.z         = 0;
 
             uint_fast32_t haveOutputs = pShader(fragParams);
 
@@ -886,18 +888,19 @@ void SR_FragmentProcessor::flush_fragments(
             {
                 fbo->put_depth_pixel<float>(fragParams.x, fragParams.y, fragParams.depth);
             }
+
+            fragParams.pVaryings += SR_SHADER_MAX_VARYING_VECTORS;
         }
     }
     else
     {
-        while (numQueuedFrags--)
+        for (uint_fast32_t i = 0; i < numQueuedFrags; ++i)
         {
-            fragParams.fragCoord = outCoords->xyzw[numQueuedFrags];
-            fragParams.x         = outCoords->coord[numQueuedFrags].x;
-            fragParams.y         = outCoords->coord[numQueuedFrags].y;
-            fragParams.z         = fragParams.fragCoord[2];
-            fragParams.depth     = fragParams.fragCoord[2];
-            fragParams.pVaryings = mVaryings + numQueuedFrags * SR_SHADER_MAX_VARYING_VECTORS;
+            fragParams.fragCoord = outCoords->xyzw[i];
+            fragParams.depth     = outCoords->xyzw[i][2];
+            fragParams.x         = outCoords->coord[i].x;
+            fragParams.y         = outCoords->coord[i].y;
+            fragParams.z         = 0;
 
             uint_fast32_t haveOutputs = pShader(fragParams);
 
@@ -914,6 +917,8 @@ void SR_FragmentProcessor::flush_fragments(
             {
                 fbo->put_depth_pixel<float>(fragParams.x, fragParams.y, fragParams.depth);
             }
+
+            fragParams.pVaryings += SR_SHADER_MAX_VARYING_VECTORS;
         }
     }
 }

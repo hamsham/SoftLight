@@ -365,14 +365,12 @@ void SR_VertexProcessor::clip_and_process_tris(
 
     const auto _interpolate_varyings = [&numVarys](const math::vec4* inVarys, math::vec4* outVarys, int fromIndex, int toIndex, float amt)->void
     {
-        const unsigned offset0 = fromIndex * SR_SHADER_MAX_VARYING_VECTORS;
-        const unsigned offset1 = toIndex   * SR_SHADER_MAX_VARYING_VECTORS;
+        const math::vec4* pV0 = inVarys + fromIndex * SR_SHADER_MAX_VARYING_VECTORS;
+        const math::vec4* pV1 = inVarys + toIndex * SR_SHADER_MAX_VARYING_VECTORS;
 
         for (unsigned i = numVarys; i--;)
         {
-            const math::vec4& v0 = inVarys[offset0+i];
-            const math::vec4& v1 = inVarys[offset1+i];
-            outVarys[i] = math::mix(v0, v1, amt);
+            *outVarys++ = math::mix(*pV0++, *pV1++, amt);
         }
     };
 
