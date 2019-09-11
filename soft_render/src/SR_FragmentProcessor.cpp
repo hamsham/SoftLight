@@ -724,16 +724,18 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
     math::vec2        p2           = math::vec2_cast(screenCoords[2]);
     const math::vec4* bcClipSpace  = pBin->mBarycentricCoords;
     const int32_t     depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON);
+    const float*      pDepthBuf    = (const float*)depthBuffer->data();
+    const int32_t     depthWidth   = (int32_t)depthBuffer->width();
     #if SR_VERTEX_CLIPPING_ENABLED == 0
-        const int32_t     bboxMinX     = (int32_t)math::min(mFboW, math::max(0.f,   math::min(p0[0], p1[0], p2[0])));
-        const int32_t     bboxMinY     = (int32_t)math::min(mFboH, math::max(0.f,   math::min(p0[1], p1[1], p2[1]))+0.5f);
-        const int32_t     bboxMaxX     = (int32_t)math::max(0.f,   math::min(mFboW, math::max(p0[0], p1[0], p2[0]))+0.5f);
-        const int32_t     bboxMaxY     = (int32_t)math::max(0.f,   math::min(mFboH, math::max(p0[1], p1[1], p2[1])));
+        const int32_t bboxMinX     = (int32_t)math::min(mFboW, math::max(0.f,   math::min(p0[0], p1[0], p2[0])));
+        const int32_t bboxMinY     = (int32_t)math::min(mFboH, math::max(0.f,   math::min(p0[1], p1[1], p2[1]))+0.5f);
+        const int32_t bboxMaxX     = (int32_t)math::max(0.f,   math::min(mFboW, math::max(p0[0], p1[0], p2[0]))+0.5f);
+        const int32_t bboxMaxY     = (int32_t)math::max(0.f,   math::min(mFboH, math::max(p0[1], p1[1], p2[1])));
     #else
-        const int32_t     bboxMinX     = (int32_t)math::min(p0[0], p1[0], p2[0]);
-        const int32_t     bboxMinY     = (int32_t)math::ceil(math::min(p0[1], p1[1], p2[1]));
-        const int32_t     bboxMaxX     = (int32_t)math::max(p0[0], p1[0], p2[0]);
-        const int32_t     bboxMaxY     = (int32_t)math::max(p0[1], p1[1], p2[1]);
+        const int32_t bboxMinX     = (int32_t)math::min(p0[0], p1[0], p2[0]);
+        const int32_t bboxMinY     = (int32_t)math::ceil(math::min(p0[1], p1[1], p2[1]));
+        const int32_t bboxMaxX     = (int32_t)math::max(p0[0], p1[0], p2[0]);
+        const int32_t bboxMaxY     = (int32_t)math::max(p0[1], p1[1], p2[1]);
     #endif
     SR_FragCoord*     outCoords    = mQueues;
 
@@ -755,6 +757,8 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
 
     for (int32_t y = bboxMinY+scanlineOffset; y <= bboxMaxY; y += increment)
     {
+        const float* pDepth = (const float*)pDepthBuf + depthWidth * y;
+
         // calculate the bounds of the current scan-line
         const float      yf         = (float)y;
         const math::vec4 bcY        = math::fmadd(bcClipSpace[1], math::vec4{yf}, bcClipSpace[2]);
@@ -780,7 +784,7 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
             const int32_t      x0          = x[0];
             const math::mat4&& bc          = math::outer(xf, bcClipSpace[0]) + bcY;
             const math::vec4&& z           = depth * bc;
-            const math::vec4&& depthTexels = depthTesting ? math::vec4{depthBuffer->texel4<float>(x0, y)} : math::vec4{0.f};
+            const math::vec4&& depthTexels = depthTesting ? *reinterpret_cast<const math::vec4*>(pDepth + x0) : math::vec4{0.f};
     #if SR_REVERSED_Z_BUFFER
             const int_fast32_t      depthTest   = depthTesting ? math::sign_mask(z-depthTexels) : 0x00;
     #else
@@ -841,10 +845,10 @@ void SR_FragmentProcessor::flush_fragments(
 {
     const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
     const SR_FragmentShader fragShader  = mShader->mFragShader;
-    const uint32_t          numVaryings = fragShader.numVaryings;
-    const uint32_t          numOutputs  = fragShader.numOutputs;
+    const uint_fast32_t     numVaryings = fragShader.numVaryings;
+    const uint_fast32_t     numOutputs  = fragShader.numOutputs;
     const SR_BlendMode      blendMode   = fragShader.blend;
-    const bool              depthMask   = fragShader.depthMask == SR_DEPTH_MASK_ON;
+    const uint_fast32_t     depthMask   = fragShader.depthMask == SR_DEPTH_MASK_ON;
     const auto              pShader     = fragShader.shader;
     SR_Framebuffer*         fbo         = mFbo;
     const math::vec4* const inVaryings  = pBin->mVaryings;
