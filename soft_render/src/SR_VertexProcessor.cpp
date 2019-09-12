@@ -1,6 +1,12 @@
 
 #include "lightsky/setup/Macros.h"
 
+#include "lightsky/setup/OS.h"
+
+#ifdef LS_OS_UNIX
+    #include <time.h> // nanosleep, time_spec
+#endif
+
 #include "lightsky/utils/Assertions.h" // LS_DEBUG_ASSERT
 #include "lightsky/utils/Log.h" // utils::LS_LOG...()
 #include "lightsky/utils/Sort.hpp" // utils::sort_quick
@@ -230,6 +236,12 @@ void SR_VertexProcessor::flush_fragments() const noexcept
     const int_fast64_t   syncPoint1 = -mNumThreads-1;
     int_fast64_t         tileId     = mFragProcessors->fetch_add(1, std::memory_order_acq_rel);
 
+    #if defined(LS_OS_UNIX)
+        struct timespec sleepAmt;
+        sleepAmt.tv_sec = 0;
+        sleepAmt.tv_nsec = 1;
+    #endif
+
     // Sort the bins based on their depth.
     if (tileId == mNumThreads-1u)
     {
@@ -257,10 +269,14 @@ void SR_VertexProcessor::flush_fragments() const noexcept
     {
         while (mFragProcessors->load(std::memory_order_consume) > 0)
         {
-            #if LS_ARCH_X86
+            // Wait until the bins are sorted
+            #if defined(LS_ARCH_X86)
                 _mm_pause();
+            #elif defined(LS_OS_UNIX)
+                nanosleep(&sleepAmt, nullptr);
+            #else
+                std::this_thread::yield();
             #endif
-            //std::this_thread::yield();
         }
     }
 
@@ -295,10 +311,14 @@ void SR_VertexProcessor::flush_fragments() const noexcept
         }
         else
         {
-            #if LS_ARCH_X86
+            // wait until all fragments are rendered across the other threads
+            #if defined(LS_OS_UNIX)
+                nanosleep(&sleepAmt, nullptr);
+            #elif defined(LS_ARCH_X86)
                 _mm_pause();
+            #else
+                std::this_thread::yield();
             #endif
-            //std::this_thread::yield();
         }
     }
 }

@@ -89,8 +89,7 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
         {
             const __m128 v0 = _mm_mul_ps(_mm_load_ps(reinterpret_cast<const float*>(inVaryings0++)), bc0);
             const __m128 v1 = _mm_fmadd_ps(_mm_load_ps(reinterpret_cast<const float*>(inVaryings1++)), bc1, v0);
-            const __m128 v2 = _mm_fmadd_ps(_mm_load_ps(reinterpret_cast<const float*>(inVaryings2++)), bc2, v1);
-            _mm_store_ps(reinterpret_cast<float*>(outVaryings++), v2);
+            _mm_store_ps(reinterpret_cast<float*>(outVaryings++), _mm_fmadd_ps(_mm_load_ps(reinterpret_cast<const float*>(inVaryings2++)), bc2, v1));
         }
     #elif defined(LS_ARCH_AARCH64)
         const math::vec4* inVaryings1  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
@@ -105,8 +104,7 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
         {
             const float32x4_t v0 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings0++)),     bc0);
             const float32x4_t v1 = vfmaq_f32(v0, vld1q_f32(reinterpret_cast<const float*>(inVaryings1++)), bc1);
-            const float32x4_t v2 = vfmaq_f32(v1, vld1q_f32(reinterpret_cast<const float*>(inVaryings2++)), bc2);
-            vst1q_f32(reinterpret_cast<float*>(outVaryings++), v2);
+            vst1q_f32(reinterpret_cast<float*>(outVaryings++), vfmaq_f32(v1, vld1q_f32(reinterpret_cast<const float*>(inVaryings2++)), bc2));
         }
     #elif defined(LS_ARCH_ARM)
         const math::vec4* inVaryings1  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
@@ -121,8 +119,7 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
         {
             const float32x4_t v0 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings0++)), bc0);
             const float32x4_t v1 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings1++)), bc1);
-            const float32x4_t v2 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings2++)), bc2);
-            vst1q_f32(reinterpret_cast<float*>(outVaryings++), vaddq_f32(vaddq_f32(v0, v1), v2));
+            vst1q_f32(reinterpret_cast<float*>(outVaryings++), vaddq_f32(vaddq_f32(v0, v1), vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings2++)), bc2)));
         }
     #else
         const math::vec4* inVaryings1 = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
