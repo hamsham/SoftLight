@@ -272,9 +272,10 @@ void SR_VertexProcessor::flush_fragments() const noexcept
             // Wait until the bins are sorted
             #if defined(LS_ARCH_X86)
                 _mm_pause();
-            #elif defined(LS_OS_UNIX)
-                //nanosleep(&sleepAmt, nullptr);
+            #elif defined(LS_OS_LINUX)
                 clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
+            #elif defined(LS_OS_OSX)
+                nanosleep(&sleepAmt, nullptr);
             #else
                 std::this_thread::yield();
             #endif
@@ -313,9 +314,10 @@ void SR_VertexProcessor::flush_fragments() const noexcept
         else
         {
             // wait until all fragments are rendered across the other threads
-            #if defined(LS_OS_UNIX)
-                //nanosleep(&sleepAmt, nullptr);
+            #if defined(LS_OS_LINUX)
                 clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
+            #elif defined(LS_OS_OSX)
+                nanosleep(&sleepAmt, nullptr);
             #elif defined(LS_ARCH_X86)
                 _mm_pause();
             #else
