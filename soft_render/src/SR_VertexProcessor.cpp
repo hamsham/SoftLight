@@ -273,7 +273,8 @@ void SR_VertexProcessor::flush_fragments() const noexcept
             #if defined(LS_ARCH_X86)
                 _mm_pause();
             #elif defined(LS_OS_UNIX)
-                nanosleep(&sleepAmt, nullptr);
+                //nanosleep(&sleepAmt, nullptr);
+                clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
             #else
                 std::this_thread::yield();
             #endif
@@ -313,7 +314,8 @@ void SR_VertexProcessor::flush_fragments() const noexcept
         {
             // wait until all fragments are rendered across the other threads
             #if defined(LS_OS_UNIX)
-                nanosleep(&sleepAmt, nullptr);
+                //nanosleep(&sleepAmt, nullptr);
+                clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
             #elif defined(LS_ARCH_X86)
                 _mm_pause();
             #else
@@ -739,6 +741,10 @@ void SR_VertexProcessor::execute() noexcept
     mBusyProcessors->fetch_sub(1, std::memory_order_acq_rel);
     while (mBusyProcessors->load(std::memory_order_consume) > 0)
     {
+        #if defined(LS_ARCH_X86)
+            _mm_pause();
+        #endif
+
         if (mFragProcessors->load(std::memory_order_consume))
         {
             flush_fragments();
