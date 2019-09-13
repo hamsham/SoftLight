@@ -40,7 +40,7 @@
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SR_TEST_MAX_THREADS
-    #define SR_TEST_MAX_THREADS (ls::math::max(std::thread::hardware_concurrency()/2, 1))
+    #define SR_TEST_MAX_THREADS 4//(ls::math::max(std::thread::hardware_concurrency()/2, 1))
 #endif /* SR_TEST_MAX_THREADS */
 
 #ifndef SR_TEST_USE_PBR
@@ -52,8 +52,12 @@
 #endif
 
 #ifndef SR_BENCHMARK_SCENE
-    #define SR_BENCHMARK_SCENE 1
+    #define SR_BENCHMARK_SCENE 0
 #endif /* SR_BENCHMARK_SCENE */
+
+#ifndef SR_REVERSED_Z_BUFFER
+    #define SR_REVERSED_Z_BUFFER 1
+#endif /* SR_REVERSED_Z_BUFFER */
 
 namespace math = ls::math;
 namespace utils = ls::utils;
@@ -926,8 +930,12 @@ int main()
     camTrans.set_type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
     //camTrans.extract_transforms(math::look_at(math::vec3{75.f}, math::vec3{0.f, 10.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
     camTrans.extract_transforms(math::look_at(math::vec3{0.f}, math::vec3{3.f, -5.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
-    //math::mat4 projMatrix = math::perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 10.f, 100.f);
-    math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
+
+    #if SR_REVERSED_Z_BUFFER
+        math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
+    #else
+        math::mat4 projMatrix = math::perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.1f, 500.f);
+    #endif
 
     if (shouldQuit)
     {
@@ -963,8 +971,12 @@ int main()
                 std::cout<< "Window resized: " << evt.window.width << 'x' << evt.window.height << std::endl;
                 pRenderBuf->terminate();
                 pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
-                //projMatrix = math::perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 10.f, 100.f);
-                projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
+
+                #if SR_REVERSED_Z_BUFFER
+                    projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
+                #else
+                    projMatrix = math::perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.1f, 500.f);
+                #endif
             }
 
             if (evt.type == SR_WinEventType::WIN_EVENT_KEY_DOWN)
@@ -1085,8 +1097,12 @@ int main()
             pGraph->update();
 
             context.framebuffer(0).clear_color_buffers();
-            //context.framebuffer(0).clear_depth_buffer(1.f);
-            context.framebuffer(0).clear_depth_buffer();
+
+            #if SR_REVERSED_Z_BUFFER
+                context.framebuffer(0).clear_depth_buffer();
+            #else
+                context.framebuffer(0).clear_depth_buffer(1.f);
+            #endif
 
             render_scene(pGraph.get(), vpMatrix, ((float)pRenderBuf->width() / (float)pWindow->height()), LS_DEG2RAD(60.f), camTrans);
 

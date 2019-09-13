@@ -683,13 +683,9 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
 
             // perspective correction
             float persp = 1.f / math::dot(homogenous, bc);
-            outCoords->bc[numQueuedFrags] = bc * homogenous * persp;
-
-            const math::vec4 outXYZW{xf, yf, z, persp};
-            outCoords->xyzw[numQueuedFrags] = outXYZW;
-
-            const uint32_t outXY = (uint32_t)((0xFFFF & x) | y16);
-            outCoords->xy[numQueuedFrags] = outXY;
+            outCoords->bc[numQueuedFrags]   = bc * homogenous * persp;
+            outCoords->xyzw[numQueuedFrags] = math::vec4{xf, yf, z, persp};
+            outCoords->xy[numQueuedFrags]   = (uint32_t)((0xFFFF & x) | y16);
             ++numQueuedFrags;
 
             if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
@@ -721,8 +717,6 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
     math::vec2        p2           = math::vec2_cast(screenCoords[2]);
     const math::vec4* bcClipSpace  = pBin->mBarycentricCoords;
     const int32_t     depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON);
-    const float*      pDepthBuf    = (const float*)depthBuffer->data();
-    const int32_t     depthWidth   = (int32_t)depthBuffer->width();
     #if SR_VERTEX_CLIPPING_ENABLED == 0
         const int32_t bboxMinX     = (int32_t)math::min(mFboW, math::max(0.f,   math::min(p0[0], p1[0], p2[0])));
         const int32_t bboxMinY     = (int32_t)math::min(mFboH, math::max(0.f,   math::min(p0[1], p1[1], p2[1]))+0.5f);
@@ -754,8 +748,6 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
 
     for (int32_t y = bboxMinY+scanlineOffset; y <= bboxMaxY; y += increment)
     {
-        const float* pDepth = (const float*)pDepthBuf + depthWidth * y;
-
         // calculate the bounds of the current scan-line
         const float      yf         = (float)y;
         const math::vec4 bcY        = math::fmadd(bcClipSpace[1], math::vec4{yf}, bcClipSpace[2]);
@@ -773,6 +765,7 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
 
         math::vec4i x  = math::vec4i{0, 1, 2, 3} + xMin;
         math::vec4  xf = math::vec4{0.f, 1.f, 2.f, 3.f} + (float)xMin;
+        const float* pDepth = (const float*)depthBuffer->texel_pointer<float>((uint16_t)xMin, (uint16_t)y);
 
         //for (uint16_t y16 = (uint16_t)y; x[0] <= xMax;)
         for (uint32_t y16 = (uint32_t)(y << 16); x[0] <= xMax;)
@@ -781,7 +774,8 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
             const int32_t      x0          = x[0];
             const math::mat4&& bc          = math::outer(xf, bcClipSpace[0]) + bcY;
             const math::vec4&& z           = depth * bc;
-            const math::vec4&& depthTexels = depthTesting ? *reinterpret_cast<const math::vec4*>(pDepth + x0) : math::vec4{0.f};
+            const math::vec4&& depthTexels = depthTesting ? *pDepth : math::vec4{0.f};
+            //const math::vec4&& depthTexels = depthTesting ? depthBuffer->texel4<float>(x0, y) : math::vec4{0.f};
     #if SR_REVERSED_Z_BUFFER
             const int_fast32_t      depthTest   = depthTesting ? math::sign_mask(z-depthTexels) : 0x00;
     #else
@@ -799,12 +793,8 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
                 // perspective correction
                 float persp = 1.f / math::dot(homogenous, bc[i]);
                 outCoords->bc[numQueuedFrags] = bc[i] * homogenous * persp;
-
-                const math::vec4 outXYZ{xf[i], yf, z[i], persp};
-                outCoords->xyzw[numQueuedFrags] = outXYZ;
-
-                const uint32_t outXY = (uint32_t)(((uint16_t)x[i]) | y16);
-                outCoords->xy[numQueuedFrags] = outXY;
+                outCoords->xyzw[numQueuedFrags] = math::vec4{xf[i], yf, z[i], persp};
+                outCoords->xy[numQueuedFrags] = (uint32_t)((0xFFFF & x[i]) | y16);
                 //outCoords->coord[numQueuedFrags].x = (uint16_t)x[i];
                 //outCoords->coord[numQueuedFrags].y = y16;
 
@@ -817,6 +807,7 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
                 }
             }
 
+            pDepth += 4;
             x += 4;
             xf += 4.f;
         }
