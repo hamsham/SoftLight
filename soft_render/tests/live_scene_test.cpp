@@ -40,7 +40,7 @@
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SR_TEST_MAX_THREADS
-    #define SR_TEST_MAX_THREADS 4//(ls::math::max(std::thread::hardware_concurrency()/2, 1))
+    #define SR_TEST_MAX_THREADS (ls::math::max(std::thread::hardware_concurrency()/2, 1))
 #endif /* SR_TEST_MAX_THREADS */
 
 #ifndef SR_TEST_USE_PBR
@@ -52,7 +52,7 @@
 #endif
 
 #ifndef SR_BENCHMARK_SCENE
-    #define SR_BENCHMARK_SCENE 0
+    #define SR_BENCHMARK_SCENE 1
 #endif /* SR_BENCHMARK_SCENE */
 
 #ifndef SR_REVERSED_Z_BUFFER
@@ -245,6 +245,7 @@ bool _normal_frag_shader_impl(SR_FragmentParam& fragParams)
     lightDir = lightDir * math::rcp(lightDist);
 
     const Light         l             = pUniforms->light;
+    const math::vec4    ambient       = l.ambient;
     const float         lightAngle    = math::max(math::dot(lightDir, norm), 0.f);
     const float         constant      = pUniforms->point.constant;
     const float         linear        = pUniforms->point.linear;
@@ -255,7 +256,7 @@ bool _normal_frag_shader_impl(SR_FragmentParam& fragParams)
     const SpotLight     s             = pUniforms->spot;
     const float         theta         = math::dot(lightDir, s.direction);
     const float         spotIntensity = math::smoothstep(s.innerCutoff, s.outerCutoff, theta);
-    const math::vec4&&  specular      = diffuse + (l.spot * (spotIntensity * attenuation));
+    const math::vec4&&  specular      = ambient + diffuse + (l.spot * (spotIntensity * attenuation));
 
     output = math::min(specular, math::vec4{1.f});
 
@@ -323,9 +324,9 @@ SR_VertexShader texture_vert_shader()
 bool _texture_frag_shader_spot(SR_FragmentParam& fragParams)
 {
     const MeshUniforms*  pUniforms = static_cast<const MeshUniforms*>(fragParams.pUniforms);
-    const math::vec4     pos       = fragParams.pVaryings[0];
-    const math::vec4     uv        = fragParams.pVaryings[1];
-    const math::vec4     norm      = fragParams.pVaryings[2];
+    const math::vec4&    pos       = fragParams.pVaryings[0];
+    const math::vec4&    uv        = fragParams.pVaryings[1];
+    const math::vec4&    norm      = fragParams.pVaryings[2];
     const SR_Texture*    albedo    = pUniforms->pTexture;
     float                attenuation;
     math::vec4           pixel;
@@ -341,27 +342,26 @@ bool _texture_frag_shader_spot(SR_FragmentParam& fragParams)
     if (albedo->channels() == 3)
     {
         const math::vec3_t<uint8_t>&& pixel8 = albedo->nearest<math::vec3_t<uint8_t>>(uv[0], uv[1]);
-        const math::vec4_t<uint8_t>&& pixelF = math::vec4_cast<uint8_t>(pixel8, 255);
-        pixel = color_cast<float, uint8_t>(pixelF);
+        pixel = color_cast<float, uint8_t>(math::vec4_cast<uint8_t>(pixel8, 255));
     }
     else
     {
-        const math::vec4_t<uint8_t>&& pixelF = albedo->nearest<math::vec4_t<uint8_t>>(uv[0], uv[1]);
-        pixel = color_cast<float, uint8_t>(pixelF);
+        pixel = color_cast<float, uint8_t>(albedo->nearest<math::vec4_t<uint8_t>>(uv[0], uv[1]));
     }
 
     // Light direction calculation
-    math::vec4  lightDir  = pUniforms->camPos - pos;
-    const float lightDist = math::length(lightDir);
+    math::vec4&& lightDir  = pUniforms->camPos - pos;
+    const float  lightDist = math::length(lightDir);
 
     // normalize
     lightDir = lightDir * math::rcp(lightDist);
 
-    const Light l = pUniforms->light;
+    const Light&     l       = pUniforms->light;
+    const math::vec4 ambient = l.ambient;
 
     // Diffuse light calculation
     {
-        const PointLight p     = pUniforms->point;
+        const PointLight& p    = pUniforms->point;
         const float lightAngle = math::max(math::dot(lightDir, norm), 0.f);
         const float constant   = p.constant;
         const float linear     = p.linear;
@@ -373,7 +373,7 @@ bool _texture_frag_shader_spot(SR_FragmentParam& fragParams)
 
     // Spot light calculation
     {
-        const SpotLight s         = pUniforms->spot;
+        const SpotLight& s        = pUniforms->spot;
         const float theta         = math::dot(lightDir, s.direction);
         const float spotIntensity = math::smoothstep(s.innerCutoff, s.outerCutoff, theta);
 
@@ -382,15 +382,17 @@ bool _texture_frag_shader_spot(SR_FragmentParam& fragParams)
 
     // specular reflection calculation
     {
-        const math::vec4 eyeVec  = pUniforms->camPos - pos;
-        const math::vec4 halfVec = math::normalize((-l.pos-pos) + eyeVec);
-        const float reflectDir   = math::max(math::dot(halfVec, norm), 0.f);
-        specular                 = specularity * math::pow(reflectDir, shininess);
+        const math::vec4&& eyeVec     = pUniforms->camPos - pos;
+        const math::vec4&& halfVec    = math::normalize((-l.pos-pos) + eyeVec);
+        const float        reflectDir = math::max(math::dot(halfVec, norm), 0.f);
+
+        specular = specularity * math::pow(reflectDir, shininess);
     }
 
     // output composition
     {
-        const math::vec4 accumulation = math::min(diffuse+spot+specular, math::vec4{1.f});
+        const math::vec4&& accumulation = math::min(diffuse+spot+specular+ambient, math::vec4{1.f});
+
         fragParams.pOutputs[0] = pixel * accumulation;
     }
 
@@ -525,8 +527,8 @@ bool _texture_frag_shader_pbr(SR_FragmentParam& fragParams)
     outRGB[3] = 1.f;
 
     // Gamma correction
-    //constexpr math::vec4 gamma = {1.f / 2.2f};
-    //outRGB[0] = math::clamp(math::pow(outRGB, gamma), math::vec4{0.f}, math::vec4{1.f});
+    //const math::vec4 gamma = {1.f / 2.2f};
+    //outRGB = math::clamp(math::pow(outRGB, gamma), math::vec4{0.f}, math::vec4{1.f});
     //outRGB[3] = 1.f;
 
     output = outRGB;
@@ -873,7 +875,7 @@ utils::Pointer<SR_SceneGraph> create_context()
     std::shared_ptr<MeshUniforms>  pUniforms{(MeshUniforms*)ls::utils::aligned_malloc(sizeof(MeshUniforms)), [](MeshUniforms* p)->void {ls::utils::aligned_free(p);}};
 
     pUniforms->light.pos        = math::vec4{30.f, 45.f, 45.f, 1.f};
-    pUniforms->light.ambient    = math::vec4{0.25f, 0.25f, 0.25f, 1.f};
+    pUniforms->light.ambient    = math::vec4{0.f, 0.f, 0.f, 1.f};//math::vec4{0.125f, 0.125f, 0.125f, 1.f};
     pUniforms->light.diffuse    = math::vec4{0.5f, 0.5f, 0.5f, 1.f};
     pUniforms->light.spot       = math::vec4{1.f};
     pUniforms->point.constant   = 1.f;

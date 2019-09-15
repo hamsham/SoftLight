@@ -18,7 +18,7 @@
 
 // x86 will grab 4 pixels at a time, swizzle on non-vectorized implementations.
 #ifndef SR_TEXTURE_Z_ORDERING
-    //#define SR_TEXTURE_Z_ORDERING
+    #define SR_TEXTURE_Z_ORDERING 0
 #endif
 
 
@@ -229,7 +229,7 @@ class SR_Texture
 -------------------------------------*/
 inline LS_INLINE ptrdiff_t SR_Texture::map_coordinate(uint_fast32_t x, uint_fast32_t y) const noexcept
 {
-    #ifdef SR_TEXTURE_Z_ORDERING
+    #if SR_TEXTURE_Z_ORDERING
         constexpr uint_fast32_t idsPerBlock = SR_TEXELS_PER_CHUNK*SR_TEXELS_PER_CHUNK;
         const uint_fast32_t     tileX       = x >> SR_TEXEL_SHIFTS_PER_CHUNK;
         const uint_fast32_t     tileY       = y >> SR_TEXEL_SHIFTS_PER_CHUNK;
@@ -264,7 +264,7 @@ inline LS_INLINE ls::math::vec4_t<ptrdiff_t> SR_Texture::map_coordinates(uint_fa
 -------------------------------------*/
 inline LS_INLINE ptrdiff_t SR_Texture::map_coordinate(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
 {
-    #ifdef SR_TEXTURE_Z_ORDERING
+    #if SR_TEXTURE_Z_ORDERING
         const uint_fast32_t idsPerBlock = SR_TEXELS_PER_CHUNK * SR_TEXELS_PER_CHUNK * ((mDepth > 1) ? LS_ENUM_VAL(SR_TEXELS_PER_CHUNK) : 1);
 
         const uint_fast32_t tileX       = x >> SR_TEXEL_SHIFTS_PER_CHUNK;
@@ -290,7 +290,7 @@ inline LS_INLINE ptrdiff_t SR_Texture::map_coordinate(uint_fast32_t x, uint_fast
 -------------------------------------*/
 inline LS_INLINE ls::math::vec4_t<ptrdiff_t> SR_Texture::map_coordinates(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
 {
-    #ifdef SR_TEXTURE_Z_ORDERING
+    #if SR_TEXTURE_Z_ORDERING
         const uint_fast32_t idsPerBlock = SR_TEXELS_PER_CHUNK * SR_TEXELS_PER_CHUNK * ((mDepth > 1) ? LS_ENUM_VAL(SR_TEXELS_PER_CHUNK) : 1);
 
         const uint_fast32_t x0          = x+0u;
@@ -591,7 +591,7 @@ inline LS_INLINE color_type& SR_Texture::texel(uint16_t x, uint16_t y) noexcept
 /*-------------------------------------
  * Retrieve 4 swizzled texels (const)
 -------------------------------------*/
-#ifndef SR_TEXTURE_Z_ORDERING
+#if SR_TEXTURE_Z_ORDERING
 template <>
 inline LS_INLINE const ls::math::vec4_t<float> SR_Texture::texel4<float>(uint16_t x, uint16_t y) const noexcept
 {
@@ -623,7 +623,7 @@ inline const ls::math::vec4_t<float> SR_Texture::texel4<float>(uint16_t x, uint1
 template <typename color_type>
 inline LS_INLINE const ls::math::vec4_t<color_type> SR_Texture::texel4(uint16_t x, uint16_t y) const noexcept
 {
-    #ifdef SR_TEXTURE_Z_ORDERING
+    #if SR_TEXTURE_Z_ORDERING
         const ls::math::vec4_t<ptrdiff_t>&& index = map_coordinates(x, y);
         const color_type* pTexels = reinterpret_cast<const color_type*>(mTexels);
         return ls::math::vec4_t<color_type>{
@@ -647,7 +647,7 @@ inline LS_INLINE const ls::math::vec4_t<color_type> SR_Texture::texel4(uint16_t 
 template <typename color_type>
 inline LS_INLINE const ls::math::vec4_t<color_type> SR_Texture::texel4(uint16_t x, uint16_t y, uint16_t z) const noexcept
 {
-    #ifdef SR_TEXTURE_Z_ORDERING
+    #if SR_TEXTURE_Z_ORDERING
         const ls::math::vec4_t<ptrdiff_t>&& index = map_coordinates(x, y, z);
         const color_type* pTexels = reinterpret_cast<const color_type*>(mTexels);
         return ls::math::vec4_t<color_type>{

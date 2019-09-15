@@ -765,6 +765,8 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
 
         math::vec4i x  = math::vec4i{0, 1, 2, 3} + xMin;
         math::vec4  xf = math::vec4{0.f, 1.f, 2.f, 3.f} + (float)xMin;
+
+        // I'm pretty sure Z-ordering has been ruled out at this point.
         const float* pDepth = (const float*)depthBuffer->texel_pointer<float>((uint16_t)xMin, (uint16_t)y);
 
         //for (uint16_t y16 = (uint16_t)y; x[0] <= xMax;)
@@ -774,8 +776,8 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
             const int32_t      x0          = x[0];
             const math::mat4&& bc          = math::outer(xf, bcClipSpace[0]) + bcY;
             const math::vec4&& z           = depth * bc;
-            const math::vec4&& depthTexels = depthTesting ? *pDepth : math::vec4{0.f};
-            //const math::vec4&& depthTexels = depthTesting ? depthBuffer->texel4<float>(x0, y) : math::vec4{0.f};
+            const math::vec4&& depthTexels = depthTesting ? *reinterpret_cast<const math::vec4*>(pDepth) : math::vec4{0.f};
+            //const math::vec4&& depthTexels = depthTesting ? depthBuffer->raw_texel4<float>(x0, y) : math::vec4{0.f};
     #if SR_REVERSED_Z_BUFFER
             const int_fast32_t      depthTest   = depthTesting ? math::sign_mask(z-depthTexels) : 0x00;
     #else
