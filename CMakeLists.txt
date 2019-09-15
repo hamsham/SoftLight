@@ -32,7 +32,7 @@ check_include_file(immintrin.h HAVE_X86_SIMD)
 check_include_file(arm_neon.h HAVE_ARM_SIMD)
 
 check_cxx_compiler_flag(-march=arm-v7a HAVE_ARM_V7A)
-check_cxx_compiler_flag(-march=arm-v8a HAVE_ARM_V8A)
+check_cxx_compiler_flag(-march=armv8-a HAVE_ARM_V8A)
 
 if (HAVE_X86_SIMD)
     option(ENABLE_X86_OPTIMIZATIONS "Enable x86-specific compiler optimization flags." ON)
