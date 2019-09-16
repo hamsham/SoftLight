@@ -193,6 +193,11 @@ void SR_Framebuffer::clear_depth_buffer(const float_type depthVal) noexcept
         const size_t numBytes = mDepth->width()*mDepth->height()* sizeof(float_type);
         ls::utils::fast_memset_4(reinterpret_cast<void*>(mDepth->data()), *reinterpret_cast<const uint32_t*>(&depthVal), numBytes);
     }
+    else if (sizeof(float_type) == sizeof(uint64_t))
+    {
+        const size_t numBytes = mDepth->width()*mDepth->height()* sizeof(float_type);
+        ls::utils::fast_memset_8(reinterpret_cast<void*>(mDepth->data()), *reinterpret_cast<const uint64_t*>(&depthVal), numBytes);
+    }
     else
     {
         ls::utils::fast_fill<float_type>(reinterpret_cast<float_type*>(mDepth->data()), depthVal, mDepth->width()*mDepth->height());
