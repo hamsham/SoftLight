@@ -245,7 +245,7 @@ void SR_VertexProcessor::flush_fragments() const noexcept
     // Sort the bins based on their depth.
     if (tileId == mNumThreads-1u)
     {
-        const uint_fast64_t maxElements = math::min<uint64_t>(mBinsUsed->load(std::memory_order_consume), SR_SHADER_MAX_FRAG_BINS);
+        const uint_fast64_t maxElements = math::min<uint64_t>(mBinsUsed->load(std::memory_order_consume), SR_SHADER_MAX_PRIM_BINS);
 
         // Blended fragments get sorted back-to-front for correct coloring.
         if (mShader->fragment_shader().blend == SR_BLEND_OFF)
@@ -288,12 +288,12 @@ void SR_VertexProcessor::flush_fragments() const noexcept
         (uint32_t)mNumThreads,
         (float)(mFboW - 1),
         (float)(mFboH - 1),
-        math::min<uint64_t>(mBinsUsed->load(std::memory_order_consume), SR_SHADER_MAX_FRAG_BINS),
+        math::min<uint64_t>(mBinsUsed->load(std::memory_order_consume), SR_SHADER_MAX_PRIM_BINS),
         mShader,
         mFbo,
         mBinIds,
         mFragBins,
-        mVaryings + (tileId*SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_FRAG_BINS),
+        mVaryings + tileId * SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_FRAG_QUEUES,
         mFragQueues + tileId
     };
 
@@ -556,7 +556,7 @@ void SR_VertexProcessor::push_fragments(
     }
 
     int isFragVisible = (bboxMaxX >= 0.f && fboW >= bboxMinX && bboxMaxY >= 0.f && fboH >= bboxMinY);
-    isFragVisible = isFragVisible && (bboxMaxX-bboxMinX >= 1.f) && (bboxMaxY-bboxMinY >= 1.f);
+    //isFragVisible = isFragVisible && (bboxMaxX-bboxMinX >= 1.f) && (bboxMaxY-bboxMinY >= 1.f);
 
     if (isFragVisible)
     {
@@ -580,7 +580,7 @@ void SR_VertexProcessor::push_fragments(
             0.f
         );
 
-        for (unsigned i = 0; i < LS_ARRAY_SIZE(bin.mVaryings); ++i)
+        for (unsigned i = LS_ARRAY_SIZE(bin.mVaryings); i--;)
         {
             bin.mVaryings[i] = varyings[i];
         }
@@ -589,7 +589,7 @@ void SR_VertexProcessor::push_fragments(
         uint_fast64_t binId;
 
         // Attempt to grab a bin index. Flush the bins if they've filled up.
-        while ((binId = pLocks->fetch_add(1, std::memory_order_acq_rel)) >= SR_SHADER_MAX_FRAG_BINS)
+        while ((binId = pLocks->fetch_add(1, std::memory_order_acq_rel)) >= SR_SHADER_MAX_PRIM_BINS)
         {
             flush_fragments();
         }
@@ -599,7 +599,7 @@ void SR_VertexProcessor::push_fragments(
         pFragBins[binId] = bin;
     }
 
-    while (pLocks->load(std::memory_order_consume) >= SR_SHADER_MAX_FRAG_BINS)
+    while (pLocks->load(std::memory_order_consume) >= SR_SHADER_MAX_PRIM_BINS)
     {
         flush_fragments();
     }

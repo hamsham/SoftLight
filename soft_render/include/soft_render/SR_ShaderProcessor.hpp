@@ -37,12 +37,12 @@ enum SR_ShaderLimits
 
     // Maximum number of fragments that get queued before being placed on a
     // framebuffer.
-    SR_SHADER_MAX_FRAG_QUEUES     = 4096,
+    SR_SHADER_MAX_FRAG_QUEUES     = 16384,
 
     // Maximum number of vertex groups which get binned before being sent to a
     // fragment processor. About 16 MB (when multiplied by
     // sizeof(SR_FragmentBin)).
-    SR_SHADER_MAX_FRAG_BINS       = 65535
+    SR_SHADER_MAX_PRIM_BINS       = 8192
 };
 
 
@@ -56,10 +56,10 @@ struct alignas(sizeof(ls::math::vec4)) SR_FragmentBin
     ls::math::vec4 mScreenCoords[SR_SHADER_MAX_SCREEN_COORDS];
 
     // 4-byte floats * 4-element vector * 3 barycentric coordinates = 48 bytes
-    ls::math::vec4 mBarycentricCoords[3];
+    ls::math::vec4 mBarycentricCoords[SR_SHADER_MAX_SCREEN_COORDS];
 
     // 4-byte floats * 4-element vector * 3-vectors-per-tri * 4 varyings-per-vertex = 192 bytes
-    ls::math::vec4 mVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS];
+    ls::math::vec4 mVaryings[SR_SHADER_MAX_SCREEN_COORDS * SR_SHADER_MAX_VARYING_VECTORS];
 
     // 256 bytes = 2048 bits
 };
