@@ -250,7 +250,7 @@ int SR_Texture::init(SR_ColorDataType type, uint16_t w, uint16_t h, uint16_t d) 
     LS_DEBUG_ASSERT(d > 0);
 
     // Z-ordered textures need to be padded if they are not divisible by SR_TEXELS_PER_CHUNK
-    #ifdef SR_TEXTURE_Z_ORDERING
+    #if SR_TEXTURE_Z_ORDERING
         const uint16_t w0 = w + (SR_TEXELS_PER_CHUNK - (w % SR_TEXELS_PER_CHUNK));
         const uint16_t h0 = h + (SR_TEXELS_PER_CHUNK - (h % SR_TEXELS_PER_CHUNK));
     #else
@@ -318,7 +318,7 @@ int SR_Texture::init(const SR_ImgFile& imgFile) noexcept
     {
         const unsigned char* pInTex = reinterpret_cast<const unsigned char*>(imgFile.data());
 
-        #ifdef SR_TEXTURE_Z_ORDERING
+        #if SR_TEXTURE_Z_ORDERING
         const size_t bytesPerColor = mBytesPerTexel;
 
         for (uint16_t z = 0; z < mDepth; ++z)
