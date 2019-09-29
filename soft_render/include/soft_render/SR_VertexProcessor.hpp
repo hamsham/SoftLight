@@ -82,13 +82,13 @@ struct SR_VertexProcessor
 
     // 768 bits (96 bytes) max, padding not included
 
-    void flush_fragments() const noexcept;
+    void flush_bins() const noexcept;
 
     void clip_and_process_tris(
         ls::math::vec4 vertCoords[SR_SHADER_MAX_SCREEN_COORDS],
         ls::math::vec4 pVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS]) noexcept;
 
-    void push_fragments(
+    void push_bin(
         float fboW,
         float fboH,
         ls::math::vec4_t<float>* const screenCoords,

@@ -75,6 +75,8 @@ class SR_WindowBuffer
     inline SR_ColorDataType type() const noexcept;
 
     inline const SR_Texture& texture() const noexcept;
+
+    inline SR_Texture& texture() noexcept;
 };
 
 
@@ -93,6 +95,16 @@ inline SR_ColorDataType SR_WindowBuffer::type() const noexcept
  * Retrieve the texture contained within the backbuffer.
 -------------------------------------*/
 inline const SR_Texture& SR_WindowBuffer::texture() const noexcept
+{
+    return mTexture;
+}
+
+
+
+/*-------------------------------------
+ * Retrieve the texture contained within the backbuffer.
+-------------------------------------*/
+inline SR_Texture& SR_WindowBuffer::texture() noexcept
 {
     return mTexture;
 }

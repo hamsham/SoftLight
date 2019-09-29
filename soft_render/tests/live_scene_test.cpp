@@ -202,9 +202,9 @@ math::vec4 _normal_vert_shader_impl(const size_t vertId, const SR_VertexArray& v
     typedef Tuple<math::vec3, math::vec3> Vertex;
 
     const MeshUniforms* pUniforms = static_cast<const MeshUniforms*>(uniforms);
-    const Vertex&       v         = *vbo.element<const Vertex>(vao.offset(0, vertId));
-    const math::vec3&   vert      = v.const_element<0>();
-    const math::vec3&   norm      = v.const_element<1>();
+    const Vertex*       v         = vbo.element<const Vertex>(vao.offset(0, vertId));
+    const math::vec3&   vert      = v->const_element<0>();
+    const math::vec3&   norm      = v->const_element<1>();
 
     varyings[0] = pUniforms->modelMatrix * math::vec4_cast(vert, 0.f);
     varyings[1] = pUniforms->modelMatrix * math::vec4_cast(norm, 0.f);
@@ -232,20 +232,20 @@ SR_VertexShader normal_vert_shader()
 bool _normal_frag_shader_impl(SR_FragmentParam& fragParams)
 {
     const MeshUniforms* pUniforms     = static_cast<const MeshUniforms*>(fragParams.pUniforms);
-    const math::vec4    pos           = fragParams.pVaryings[0];
-    const math::vec4    norm          = math::normalize(fragParams.pVaryings[1]);
+    const math::vec4&   pos           = fragParams.pVaryings[0];
+    const math::vec4&&  norm          = math::normalize(fragParams.pVaryings[1]);
     math::vec4&         output        = fragParams.pOutputs[0];
 
 
     // Light direction calculation
-    math::vec4  lightDir  = pUniforms->camPos - pos;
-    const float lightDist = math::length(lightDir);
+    math::vec4&& lightDir  = pUniforms->camPos - pos;
+    const float  lightDist = math::length(lightDir);
 
     // normalize
-    lightDir = lightDir * math::rcp(lightDist);
+    lightDir *= math::rcp(lightDist);
 
-    const Light         l             = pUniforms->light;
-    const math::vec4    ambient       = l.ambient;
+    const Light&        l             = pUniforms->light;
+    const math::vec4&   ambient       = l.ambient;
     const float         lightAngle    = math::max(math::dot(lightDir, norm), 0.f);
     const float         constant      = pUniforms->point.constant;
     const float         linear        = pUniforms->point.linear;
@@ -253,7 +253,7 @@ bool _normal_frag_shader_impl(SR_FragmentParam& fragParams)
     const float         attenuation   = math::rcp(constant + (linear*lightDist) + (quadratic*lightDist*lightDist));
     const math::vec4&&  diffuse       = l.diffuse * (lightAngle * attenuation);
 
-    const SpotLight     s             = pUniforms->spot;
+    const SpotLight&    s             = pUniforms->spot;
     const float         theta         = math::dot(lightDir, s.direction);
     const float         spotIntensity = math::smoothstep(s.innerCutoff, s.outerCutoff, theta);
     const math::vec4&&  specular      = ambient + diffuse + (l.spot * (spotIntensity * attenuation));
@@ -802,11 +802,6 @@ int scene_load_cube(SR_SceneGraph& graph)
 utils::Pointer<SR_SceneGraph> create_context()
 {
     int retCode = 0;
-
-    #ifdef LS_ARCH_X86
-    _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
-    _mm_setcsr(_mm_getcsr() | 0x8040); // denormals-are-zero
-    #endif
 
     SR_SceneFileLoader meshLoader;
     utils::Pointer<SR_SceneGraph> pGraph{new SR_SceneGraph{}};

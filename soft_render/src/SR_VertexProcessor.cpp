@@ -48,12 +48,10 @@ namespace
 --------------------------------------*/
 inline void sr_perspective_divide(math::vec4& v) noexcept
 {
-    const float wInv = 1.f / v.v[3];
+    const float wInv = math::rcp(v[3]);
     math::vec4&& temp = v * wInv;
 
-    v[0] = temp[0];
-    v[1] = temp[1];
-    v[2] = temp[2];
+    v = temp;
     v[3] = wInv;
 }
 
@@ -64,8 +62,8 @@ inline void sr_perspective_divide(math::vec4& v) noexcept
 --------------------------------------*/
 inline LS_INLINE void sr_world_to_screen_coords_divided(math::vec4& v, const float widthScale, const float heightScale) noexcept
 {
-    v[0] = widthScale  + v[0] * widthScale;
-    v[1] = heightScale + v[1] * heightScale;
+    v[0] = math::fmadd(widthScale, v[0], widthScale);
+    v[1] = math::fmadd(heightScale, v[1], heightScale);
 }
 
 
@@ -110,7 +108,6 @@ inline size_t get_next_vertex(const SR_IndexBuffer* pIbo, size_t vId) noexcept
 
 inline math::vec3_t<size_t> get_next_vertex3(const SR_IndexBuffer* pIbo, size_t vId) noexcept
 {
-    math::vec3_t<size_t> ret;
     math::vec3_t<unsigned char> byteIds;
     math::vec3_t<unsigned short> shortIds;
     math::vec3_t<unsigned int> intIds;
@@ -119,25 +116,24 @@ inline math::vec3_t<size_t> get_next_vertex3(const SR_IndexBuffer* pIbo, size_t 
     {
         case VERTEX_DATA_BYTE:
             byteIds = *reinterpret_cast<const decltype(byteIds)*>(pIbo->element(vId));
-            ret = (math::vec3_t<size_t>)byteIds;
+            return (math::vec3_t<size_t>)byteIds;
             break;
 
         case VERTEX_DATA_SHORT:
             shortIds = *reinterpret_cast<const decltype(shortIds)*>(pIbo->element(vId));
-            ret = (math::vec3_t<size_t>)shortIds;
+            return (math::vec3_t<size_t>)shortIds;
             break;
 
         case VERTEX_DATA_INT:
             intIds = *reinterpret_cast<const decltype(intIds)*>(pIbo->element(vId));
-            ret = (math::vec3_t<size_t>)intIds;
+            return (math::vec3_t<size_t>)intIds;
             break;
 
         default:
             LS_DEBUG_ASSERT(false);
-            break;
     }
 
-    return ret;
+    return math::vec3_t<size_t>{0, 0, 0};
 }
 
 
@@ -226,7 +222,7 @@ inline LS_INLINE SR_ClipStatus face_visible(const math::vec4 clipCoords[SR_SHADE
 /*-------------------------------------
  * Execute a fragment processor
 -------------------------------------*/
-void SR_VertexProcessor::flush_fragments() const noexcept
+void SR_VertexProcessor::flush_bins() const noexcept
 {
     // Sync Point 1 indicates that all triangles have been sorted.
     // Since we only have two sync points for the bins to process, a negative
@@ -469,8 +465,8 @@ void SR_VertexProcessor::clip_and_process_tris(
         sr_world_to_screen_coords_divided(v1, widthScale, heightScale);
         sr_world_to_screen_coords_divided(v2, widthScale, heightScale);
 
-        //push_fragments(fboW, fboH, newVerts, pVaryings);
-        push_fragments(fboW, fboH, newVerts, newVarys);
+        //push_bin(fboW, fboH, newVerts, pVaryings);
+        push_bin(fboW, fboH, newVerts, newVarys);
         return;
     }
 
@@ -499,8 +495,8 @@ void SR_VertexProcessor::clip_and_process_tris(
         sr_world_to_screen_coords_divided(v1, widthScale, heightScale);
         sr_world_to_screen_coords_divided(v2, widthScale, heightScale);
 
-        //push_fragments(fboW, fboH, newVerts+i, pVaryings);
-        push_fragments(fboW, fboH, tempVerts, tempVarys);
+        //push_bin(fboW, fboH, newVerts+i, pVaryings);
+        push_bin(fboW, fboH, tempVerts, tempVarys);
     }
 }
 
@@ -509,7 +505,7 @@ void SR_VertexProcessor::clip_and_process_tris(
 /*--------------------------------------
  * Publish a vertex to a fragment thread
 --------------------------------------*/
-void SR_VertexProcessor::push_fragments(
+void SR_VertexProcessor::push_bin(
     float fboW,
     float fboH,
     math::vec4* const screenCoords,
@@ -531,34 +527,39 @@ void SR_VertexProcessor::push_fragments(
     // responsible for
 
     // render points through whichever tile/thread they appear in
-    if (m.mode & RENDER_MODE_POINTS)
+    switch (m.mode & (RENDER_MODE_POINTS|RENDER_MODE_LINES|RENDER_MODE_TRIANGLES))
     {
-        bboxMinX = p0[0];
-        bboxMaxX = p0[0];
-        bboxMinY = p0[1];
-        bboxMaxY = p0[1];
-    }
-    else if (m.mode & RENDER_MODE_LINES)
-    {
-        // establish a bounding box to detect overlap with a thread's tiles
-        bboxMinX = math::min(p0[0], p1[0]);
-        bboxMinY = math::min(p0[1], p1[1]);
-        bboxMaxX = math::max(p0[0], p1[0]);
-        bboxMaxY = math::max(p0[1], p1[1]);
-    }
-    else if (m.mode & RENDER_MODE_TRIANGLES)
-    {
-        // establish a bounding box to detect overlap with a thread's tiles
-        bboxMinX = math::min(p0[0], p1[0], p2[0]);
-        bboxMinY = math::min(p0[1], p1[1], p2[1]);
-        bboxMaxX = math::max(p0[0], p1[0], p2[0]);
-        bboxMaxY = math::max(p0[1], p1[1], p2[1]);
+        case RENDER_MODE_POINTS:
+            bboxMinX = p0[0];
+            bboxMaxX = p0[0];
+            bboxMinY = p0[1];
+            bboxMaxY = p0[1];
+            break;
+
+        case RENDER_MODE_LINES:
+            // establish a bounding box to detect overlap with a thread's tiles
+            bboxMinX = math::min(p0[0], p1[0]);
+            bboxMinY = math::min(p0[1], p1[1]);
+            bboxMaxX = math::max(p0[0], p1[0]);
+            bboxMaxY = math::max(p0[1], p1[1]);
+            break;
+
+        case RENDER_MODE_TRIANGLES:
+            // establish a bounding box to detect overlap with a thread's tiles
+            bboxMinX = math::min(p0[0], p1[0], p2[0]);
+            bboxMinY = math::min(p0[1], p1[1], p2[1]);
+            bboxMaxX = math::max(p0[0], p1[0], p2[0]);
+            bboxMaxY = math::max(p0[1], p1[1], p2[1]);
+            break;
+
+        default:
+            break;
     }
 
-    int isFragVisible = (bboxMaxX >= 0.f && fboW >= bboxMinX && bboxMaxY >= 0.f && fboH >= bboxMinY);
-    //isFragVisible = isFragVisible && (bboxMaxX-bboxMinX >= 1.f) && (bboxMaxY-bboxMinY >= 1.f);
+    int isPrimVisible = (bboxMaxX >= 0.f && fboW >= bboxMinX && bboxMaxY >= 0.f && fboH >= bboxMinY);
+    isPrimVisible = isPrimVisible && (bboxMaxX-math::ceil(bboxMinX) > 0.0f) && (bboxMaxY-math::ceil(bboxMinY) > 0.f);
 
-    if (isFragVisible)
+    if (isPrimVisible)
     {
         SR_FragmentBin* const pFragBins = mFragBins;
 
@@ -591,7 +592,7 @@ void SR_VertexProcessor::push_fragments(
         // Attempt to grab a bin index. Flush the bins if they've filled up.
         while ((binId = pLocks->fetch_add(1, std::memory_order_acq_rel)) >= SR_SHADER_MAX_PRIM_BINS)
         {
-            flush_fragments();
+            flush_bins();
         }
 
         // place a triangle into the next available bin
@@ -601,7 +602,7 @@ void SR_VertexProcessor::push_fragments(
 
     while (pLocks->load(std::memory_order_consume) >= SR_SHADER_MAX_PRIM_BINS)
     {
-        flush_fragments();
+        flush_bins();
     }
 }
 
@@ -648,7 +649,7 @@ void SR_VertexProcessor::execute() noexcept
             if (vertCoords[0][3] > 0.f)
             {
                 sr_world_to_screen_coords(vertCoords[0], widthScale, heightScale);
-                push_fragments(fboW, fboH, vertCoords, pVaryings);
+                push_bin(fboW, fboH, vertCoords, pVaryings);
             }
         }
     }
@@ -678,7 +679,7 @@ void SR_VertexProcessor::execute() noexcept
                 sr_world_to_screen_coords(vertCoords[0], widthScale, heightScale);
                 sr_world_to_screen_coords(vertCoords[1], widthScale, heightScale);
 
-                push_fragments(fboW, fboH, vertCoords, pVaryings);
+                push_bin(fboW, fboH, vertCoords, pVaryings);
             }
         }
     }
@@ -718,7 +719,7 @@ void SR_VertexProcessor::execute() noexcept
                 sr_world_to_screen_coords_divided(vertCoords[1], widthScale, heightScale);
                 sr_world_to_screen_coords_divided(vertCoords[2], widthScale, heightScale);
 
-                push_fragments(fboW, fboH, vertCoords, pVaryings);
+                push_bin(fboW, fboH, vertCoords, pVaryings);
             #else
                 if (visStatus == SR_TRIANGLE_FULLY_VISIBLE)
                 {
@@ -730,7 +731,7 @@ void SR_VertexProcessor::execute() noexcept
                     sr_world_to_screen_coords_divided(vertCoords[1], widthScale, heightScale);
                     sr_world_to_screen_coords_divided(vertCoords[2], widthScale, heightScale);
 
-                    push_fragments(fboW, fboH, vertCoords, pVaryings);
+                    push_bin(fboW, fboH, vertCoords, pVaryings);
                 }
                 else
                 {
@@ -749,12 +750,12 @@ void SR_VertexProcessor::execute() noexcept
 
         if (mFragProcessors->load(std::memory_order_consume))
         {
-            flush_fragments();
+            flush_bins();
         }
     }
 
     if (mBinsUsed->load(std::memory_order_consume))
     {
-        flush_fragments();
+        flush_bins();
     }
 }
