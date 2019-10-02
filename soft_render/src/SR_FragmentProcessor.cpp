@@ -867,11 +867,10 @@ void SR_FragmentProcessor::flush_fragments(
 
     // Interpolate varying variables using the barycentric coordinates. I'm
     // interpolating here to maintain cache coherence.
-    math::vec4* pVaryings = mVaryings+numQueuedFrags*SR_SHADER_MAX_VARYING_VECTORS;
-    for (uint_fast32_t i = numQueuedFrags; i--;)
+    math::vec4* pVaryings = mVaryings;
+    for (uint_fast32_t i = 0; i < numQueuedFrags; ++i, pVaryings += SR_SHADER_MAX_VARYING_VECTORS)
     {
         const math::vec4 bc = outCoords->bc[i];
-        pVaryings -= SR_SHADER_MAX_VARYING_VECTORS;
         interpolate_tri_varyings(bc.v, numVaryings, inVaryings, pVaryings);
     }
 
