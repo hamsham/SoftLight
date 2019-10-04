@@ -457,7 +457,7 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context* c, const SR_Mesh*
     // The threads work out between themselves how to partition the data.
     for (uint16_t threadId = 0; threadId < mNumThreads; ++threadId)
     {
-        vertTask.mThreadId = threadId;
+        vertTask.mThreadId = (mNumThreads-1) - threadId;
 
         // Busy waiting will be enabled the moment the first flush occurs on each
         // thread.
