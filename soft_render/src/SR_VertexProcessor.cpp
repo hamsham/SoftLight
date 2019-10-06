@@ -50,7 +50,7 @@ namespace
 class SR_PTVCache
 {
   public:
-    static constexpr unsigned PTV_CACHE_SIZE = 6;
+    static constexpr unsigned PTV_CACHE_SIZE = 4;
 
     static constexpr unsigned PTV_CACHE_MISS = 0xFFFFFFFFu;
 
@@ -62,12 +62,36 @@ class SR_PTVCache
 
     math::vec4 lruVaryings[PTV_CACHE_SIZE][SR_SHADER_MAX_VARYING_VECTORS];
 
+    const SR_VertexArray* vao;
+
+    const SR_VertexBuffer* vbo;
+
+    const SR_UniformBuffer* uniforms;
+
+    ls::math::vec4_t<float> (*shader)(
+        const size_t             vertId,
+        const SR_VertexArray&    vao,
+        const SR_VertexBuffer&   vbo,
+        const SR_UniformBuffer*  uniforms,
+        ls::math::vec4_t<float>* varyings
+    );
+
     SR_PTVCache(const SR_PTVCache&) = delete;
     SR_PTVCache(SR_PTVCache&&) = delete;
     SR_PTVCache& operator=(const SR_PTVCache&) = delete;
     SR_PTVCache& operator=(SR_PTVCache&&) = delete;
 
-    SR_PTVCache() noexcept
+    SR_PTVCache(
+    ls::math::vec4_t<float> (*pShader)(
+        const size_t             vertId,
+        const SR_VertexArray&    vao,
+        const SR_VertexBuffer&   vbo,
+        const SR_UniformBuffer*  uniforms,
+        ls::math::vec4_t<float>* varyings
+    ),
+    const SR_UniformBuffer* pUniforms,
+    const SR_VertexArray* pVao,
+    const SR_VertexBuffer* pVbo) noexcept
     {
         for (size_t& index : lruIndices)
         {
@@ -78,6 +102,11 @@ class SR_PTVCache
         {
             count = -1;
         }
+
+        vao = pVao;
+        vbo = pVbo;
+        uniforms = pUniforms;
+        shader = pShader;
     }
 
     inline unsigned query(size_t index, math::vec4& outVert, math::vec4* outVaryings, unsigned numVaryings) noexcept
@@ -139,41 +168,56 @@ class SR_PTVCache
             lruVaryings[nextIndex][v] = inVaryings[v];
         }
     }
+
+
+    inline void query_and_update(size_t index, math::vec4& outVert, math::vec4* outVaryings, unsigned numVaryings) noexcept
+    {
+        size_t ret = PTV_CACHE_MISS;
+        size_t nextIndex = 0;
+        long long maxCount = 0;
+
+        for (unsigned i = PTV_CACHE_SIZE; i--;)
+        {
+            if (maxCount < lruCounts[i])
+            {
+                nextIndex = i;
+            }
+
+            if (lruIndices[i] == index)
+            {
+                lruCounts[i] = 0;
+                outVert = lruVertices[i];
+
+                for (unsigned v = numVaryings; v--;)
+                {
+                    outVaryings[v] = lruVaryings[i][v];
+                }
+
+                ret = index;
+            }
+            else
+            {
+                if (lruCounts[i] >= 0)
+                {
+                    ++lruCounts[i];
+                }
+            }
+        }
+
+        if (ret == PTV_CACHE_MISS)
+        {
+            lruIndices[nextIndex] = index;
+            lruCounts[nextIndex] = 0;
+            outVert = lruVertices[nextIndex] = shader(index, *vao, *vbo, uniforms, outVaryings);
+
+            for (unsigned v = numVaryings; v--;)
+            {
+                lruVaryings[nextIndex][v] = outVaryings[v];
+            }
+        }
+    }
 };
 #endif
-
-
-
-/*--------------------------------------
- * Calculate the vertex processor's start/end positions
---------------------------------------*/
-template <size_t vertsPerPrim>
-inline void sr_calc_vertex_process_range(size_t totalVerts, size_t numThreads, size_t threadId, size_t& outBegin, size_t& outEnd) noexcept
-{
-    size_t activeThreads = math::min<size_t>(numThreads, totalVerts / vertsPerPrim);
-    size_t chunkSize = totalVerts / activeThreads;
-    size_t remainder;
-
-    // Set to 0 for the last thread to share chunk processing, plus remainder.
-    // Set to 1 for the last thread to only process remaining values.
-    #if 1
-        chunkSize += vertsPerPrim - (chunkSize % vertsPerPrim);
-    #else
-        chunkSize -= chunkSize % vertsPerPrim;
-    #endif
-
-    remainder = totalVerts - (chunkSize * activeThreads);
-
-    outBegin = threadId * chunkSize;
-    outEnd = (threadId+1) * chunkSize;
-
-    if (threadId == (numThreads - 1))
-    {
-        outEnd += remainder;
-    }
-
-    outEnd = math::min<size_t>(outEnd, totalVerts);
-}
 
 
 
@@ -778,7 +822,7 @@ void SR_VertexProcessor::execute() noexcept
     const SR_IndexBuffer*   pIbo;
 
     #if SR_VERTEX_CACHING_ENABLED
-        SR_PTVCache ptvCache;
+        SR_PTVCache ptvCache{shader, pUniforms, &vao, &vbo};
         const size_t numVaryings = vertShader.numVaryings;
     #endif
 
@@ -791,7 +835,7 @@ void SR_VertexProcessor::execute() noexcept
     {
         const bool usingIndices = mMesh.mode == RENDER_MODE_INDEXED_POINTS;
 
-        sr_calc_vertex_process_range<1>(numVerts, mNumThreads, mThreadId, begin, end);
+        sr_calc_indexed_parition<1>(numVerts, mNumThreads, mThreadId, begin, end);
         begin += mMesh.elementBegin;
         end += mMesh.elementBegin;
 
@@ -812,7 +856,7 @@ void SR_VertexProcessor::execute() noexcept
     {
         const bool usingIndices = mMesh.mode == RENDER_MODE_INDEXED_LINES;
 
-        sr_calc_vertex_process_range<2>(numVerts, mNumThreads, mThreadId, begin, end);
+        sr_calc_indexed_parition<2>(numVerts, mNumThreads, mThreadId, begin, end);
         begin += mMesh.elementBegin;
         end += mMesh.elementBegin;
 
@@ -839,7 +883,7 @@ void SR_VertexProcessor::execute() noexcept
     {
         const int usingIndices = mMesh.mode & ((RENDER_MODE_INDEXED_TRIANGLES | RENDER_MODE_INDEXED_TRI_WIRE) ^ (RENDER_MODE_TRIANGLES | RENDER_MODE_TRI_WIRE));
 
-        sr_calc_vertex_process_range<3>(numVerts, mNumThreads, mThreadId, begin, end);
+        sr_calc_indexed_parition<3>(numVerts, mNumThreads, mThreadId, begin, end);
         begin += mMesh.elementBegin;
         end += mMesh.elementBegin;
 
@@ -848,23 +892,9 @@ void SR_VertexProcessor::execute() noexcept
             const math::vec3_t<size_t>&& vertId = usingIndices ? get_next_vertex3(pIbo, i) : math::vec3_t<size_t>{i, i+1, i+2};
 
             #if SR_VERTEX_CACHING_ENABLED
-                if (ptvCache.query(vertId[0], vertCoords[0], pVaryings, numVaryings) == SR_PTVCache::PTV_CACHE_MISS)
-                {
-                    vertCoords[0] = shader(vertId[0], vao, vbo, pUniforms, pVaryings);
-                    ptvCache.update(vertId[0], vertCoords[0], pVaryings, numVaryings);
-                }
-
-                if (ptvCache.query(vertId[1], vertCoords[1], pVaryings + SR_SHADER_MAX_VARYING_VECTORS, numVaryings) == SR_PTVCache::PTV_CACHE_MISS)
-                {
-                    vertCoords[1] = shader(vertId[1], vao, vbo, pUniforms, pVaryings + SR_SHADER_MAX_VARYING_VECTORS);
-                    ptvCache.update(vertId[1], vertCoords[1], pVaryings + SR_SHADER_MAX_VARYING_VECTORS, numVaryings);
-                }
-
-                if (ptvCache.query(vertId[2], vertCoords[2], pVaryings + SR_SHADER_MAX_VARYING_VECTORS * 2, numVaryings) == SR_PTVCache::PTV_CACHE_MISS)
-                {
-                    vertCoords[2] = shader(vertId[2], vao, vbo, pUniforms, pVaryings + SR_SHADER_MAX_VARYING_VECTORS*2);
-                    ptvCache.update(vertId[2], vertCoords[2], pVaryings + SR_SHADER_MAX_VARYING_VECTORS * 2, numVaryings);
-                }
+                ptvCache.query_and_update(vertId[0], vertCoords[0], pVaryings, numVaryings);
+                ptvCache.query_and_update(vertId[1], vertCoords[1], pVaryings + SR_SHADER_MAX_VARYING_VECTORS, numVaryings);
+                ptvCache.query_and_update(vertId[2], vertCoords[2], pVaryings + SR_SHADER_MAX_VARYING_VECTORS * 2, numVaryings);
             #else
                 vertCoords[0] = shader(vertId[0], vao, vbo, pUniforms, pVaryings);
                 vertCoords[1] = shader(vertId[1], vao, vbo, pUniforms, pVaryings + SR_SHADER_MAX_VARYING_VECTORS);

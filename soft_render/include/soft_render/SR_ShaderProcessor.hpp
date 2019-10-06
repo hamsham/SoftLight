@@ -79,6 +79,40 @@ inline LS_INLINE bool operator > (const SR_FragmentBin& a, const SR_FragmentBin&
 
 
 /*-----------------------------------------------------------------------------
+ * Calculate a shader processor's start/end positions
+-----------------------------------------------------------------------------*/
+template <size_t vertsPerPrim, bool lastThreadProcessesLess = false>
+inline void sr_calc_indexed_parition(size_t totalVerts, size_t numThreads, size_t threadId, size_t& outBegin, size_t& outEnd) noexcept
+{
+    size_t totalPrims = totalVerts / vertsPerPrim;
+    size_t activeThreads = numThreads < totalPrims ? numThreads : totalPrims;
+    size_t chunkSize = totalVerts / activeThreads;
+
+    // Set to 0 for the last thread to share chunk processing, plus remainder.
+    // Set to 1 for the last thread to only process remaining values.
+    if (lastThreadProcessesLess)
+    {
+        chunkSize += vertsPerPrim - (chunkSize % vertsPerPrim);
+    }
+    else
+    {
+        chunkSize -= chunkSize % vertsPerPrim;
+    }
+
+    outBegin = threadId * chunkSize;
+    outEnd = (threadId+1) * chunkSize;
+
+    if (threadId == (numThreads - 1))
+    {
+        outEnd += totalVerts - (chunkSize * activeThreads);
+    }
+
+    outEnd = outEnd < totalVerts ? outEnd : totalVerts;
+}
+
+
+
+/*-----------------------------------------------------------------------------
  * Helper structure to put a pixel on the screen
 -----------------------------------------------------------------------------*/
 struct alignas(sizeof(uint32_t)) SR_FragCoordXY
