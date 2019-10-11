@@ -32,6 +32,10 @@ union vec4_t;
 -----------------------------------------------------------------------------*/
 class SR_Framebuffer
 {
+  public:
+    typedef void (*PixelPlacementFuncType)(uint16_t, uint16_t, const ls::math::vec4&, SR_Texture* const);
+    typedef void (*BlendedPixelPlacementFuncType)(uint16_t, uint16_t, const ls::math::vec4&, SR_Texture* const, const SR_BlendMode);
+
   private:
     uint64_t mNumColors;
 
@@ -110,12 +114,16 @@ class SR_Framebuffer
     uint16_t height() const noexcept;
 
     uint16_t depth() const noexcept;
+
+    PixelPlacementFuncType pixel_placement_function(SR_ColorDataType type) const noexcept;
+
+    BlendedPixelPlacementFuncType blended_pixel_placement_function(SR_ColorDataType type) const noexcept;
 };
 
 
 
 /*-------------------------------------
- *
+ * Retrieve an internal color buffer, or NULL if it doesn't exist.
 -------------------------------------*/
 inline const SR_Texture* SR_Framebuffer::get_color_buffer(uint64_t index) const noexcept
 {
@@ -125,7 +133,7 @@ inline const SR_Texture* SR_Framebuffer::get_color_buffer(uint64_t index) const 
 
 
 /*-------------------------------------
- *
+ * Retrieve an internal color buffer, or NULL if it doesn't exist.
 -------------------------------------*/
 inline SR_Texture* SR_Framebuffer::get_color_buffer(uint64_t index) noexcept
 {
@@ -135,7 +143,7 @@ inline SR_Texture* SR_Framebuffer::get_color_buffer(uint64_t index) noexcept
 
 
 /*-------------------------------------
- *
+ * Retrieve the number of active color buffers.
 -------------------------------------*/
 inline uint64_t SR_Framebuffer::num_color_buffers() const noexcept
 {
@@ -145,7 +153,7 @@ inline uint64_t SR_Framebuffer::num_color_buffers() const noexcept
 
 
 /*-------------------------------------
- *
+ * Clear a color buffer
 -------------------------------------*/
 template <typename index_type, typename color_type>
 void SR_Framebuffer::clear_color_buffer(const index_type i, const color_type& c) noexcept
@@ -174,7 +182,7 @@ void SR_Framebuffer::clear_color_buffer(const index_type i, const color_type& c)
 
 
 /*-------------------------------------
- *
+ * Clear the depth buffer
 -------------------------------------*/
 template <typename float_type>
 void SR_Framebuffer::clear_depth_buffer(const float_type depthVal) noexcept
@@ -207,7 +215,7 @@ void SR_Framebuffer::clear_depth_buffer(const float_type depthVal) noexcept
 
 
 /*-------------------------------------
- *
+ * Clear the depth buffer
 -------------------------------------*/
 inline void SR_Framebuffer::clear_depth_buffer() noexcept
 {
@@ -221,7 +229,7 @@ inline void SR_Framebuffer::clear_depth_buffer() noexcept
 
 
 /*-------------------------------------
- *
+ * Retrieve the depth buffer
 -------------------------------------*/
 inline const SR_Texture* SR_Framebuffer::get_depth_buffer() const noexcept
 {
@@ -231,7 +239,7 @@ inline const SR_Texture* SR_Framebuffer::get_depth_buffer() const noexcept
 
 
 /*-------------------------------------
- *
+ * Retrieve the depth buffer
 -------------------------------------*/
 inline SR_Texture* SR_Framebuffer::get_depth_buffer() noexcept
 {

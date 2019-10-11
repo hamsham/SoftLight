@@ -263,9 +263,9 @@ void SR_FragmentProcessor::render_point(
     if (depthTest == SR_DEPTH_TEST_ON)
     {
 #if SR_REVERSED_Z_BUFFER
-        if (fragParams.depth < pDepthBuf->texel<float>(fragParams.x, fragParams.y))
+        if (fragParams.depth < pDepthBuf->raw_texel<float>(fragParams.x, fragParams.y))
 #else
-        if (fragParams.depth > pDepthBuf->texel<float>(fragParams.x, fragParams.y))
+        if (fragParams.depth > pDepthBuf->raw_texel<float>(fragParams.x, fragParams.y))
 #endif
         {
             return;
@@ -477,9 +477,9 @@ void SR_FragmentProcessor::render_line(
         const float      z       = math::mix(z0, z1, interp);
 
 #if SR_REVERSED_Z_BUFFER
-        if (noDepthTest || depthBuf->texel<float>((uint16_t)xi, (uint16_t)yi) <= z)
+        if (noDepthTest || depthBuf->raw_texel<float>((uint16_t)xi, (uint16_t)yi) <= z)
 #else
-        if (noDepthTest || depthBuf->texel<float>((uint16_t)xi, (uint16_t)yi) >= z)
+        if (noDepthTest || depthBuf->raw_texel<float>((uint16_t)xi, (uint16_t)yi) >= z)
 #endif
         {
             interpolate_line_varyings(interp, numVaryings, inVaryings, mVaryings);
@@ -587,7 +587,7 @@ void SR_FragmentProcessor::render_wireframe(const SR_FragmentBin* pBins, const S
             // Ensure the current point is in a triangle by checking the sign
             // bits of all 3 barycentric coordinates.
             const float z = math::dot(depth, bc);
-            const float oldDepth = depthBuffer->texel<float>(x, y);
+            const float oldDepth = depthBuffer->raw_texel<float>(x, y);
 
             // We're only using the barycentric coordinates here to determine
             // if a pixel on the edge of a triangle should still be rendered.
@@ -695,7 +695,7 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
             // Ensure the current point is in a triangle by checking the sign
             // bits of all 3 barycentric coordinates.
             const float z = math::dot(depth, bc);
-            const float oldDepth = depthBuffer->texel<float>(x, y);
+            const float oldDepth = depthBuffer->raw_texel<float>(x, y);
 
             // We're only using the barycentric coordinates here to determine
             // if a pixel on the edge of a triangle should still be rendered.
@@ -788,7 +788,7 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_FragmentBin* pBin, cons
         math::vec4&&  xf   = math::vec4{0.f, 1.f, 2.f, 3.f} + (float)xMin;
 
         // I'm pretty sure Z-ordering has been ruled out at this point.
-        const float* pDepth = (const float*)depthBuffer->texel_pointer<float>((uint16_t)xMin, (uint16_t)y);
+        const float* pDepth = (const float*)depthBuffer->raw_texel_pointer<float>((uint16_t)xMin, (uint16_t)y);
 
         //for (uint16_t y16 = (uint16_t)y; x[0] <= xMax;)
         for (uint32_t y16 = (uint32_t)(y << 16); x[0] <= xMax;)
@@ -859,6 +859,7 @@ void SR_FragmentProcessor::flush_fragments(
     const uint_fast32_t     depthMask   = fragShader.depthMask == SR_DEPTH_MASK_ON;
     const auto              pShader     = fragShader.shader;
     SR_Framebuffer*         fbo         = mFbo;
+    SR_Texture*             pDepthBuf   = fbo->get_depth_buffer();
     const math::vec4* const inVaryings  = pBin->mVaryings;
 
     SR_FragmentParam fragParams;
@@ -897,7 +898,7 @@ void SR_FragmentProcessor::flush_fragments(
 
             if (depthMask)
             {
-                fbo->put_depth_pixel<float>(fragParams.x, fragParams.y, fragParams.depth);
+                pDepthBuf->raw_texel<float>(fragParams.x, fragParams.y) = fragParams.depth;
             }
 
             fragParams.pVaryings += SR_SHADER_MAX_VARYING_VECTORS;
@@ -926,7 +927,7 @@ void SR_FragmentProcessor::flush_fragments(
 
             if (depthMask)
             {
-                fbo->put_depth_pixel<float>(fragParams.x, fragParams.y, fragParams.depth);
+                pDepthBuf->raw_texel<float>(fragParams.x, fragParams.y) = fragParams.depth;
             }
 
             fragParams.pVaryings += SR_SHADER_MAX_VARYING_VECTORS;

@@ -29,7 +29,7 @@ template <typename color_type>
 inline void assign_pixel(
     uint16_t x,
     uint16_t y,
-    const float* rgba,
+    const math::vec4& rgba,
     SR_Texture* pTexture) noexcept
 {
     // texture objects will truncate excess color components
@@ -44,7 +44,7 @@ inline void assign_pixel(
         SR_ColorRGBType<ConvertedType>  rgb;
         SR_ColorRGType<ConvertedType>   rg;
         ConvertedType                   r;
-    } c{color_cast<ConvertedType, float>(*reinterpret_cast<const SR_ColorRGBAf*>(rgba))};
+    } c{color_cast<ConvertedType, float>(rgba)};
 
     // Should be optimized by the compiler
     switch (color_type::num_components())
@@ -66,14 +66,15 @@ template <>
 inline void assign_pixel<SR_ColorRGBA8>(
     uint16_t x,
     uint16_t y,
-    const float* rgba,
+    const math::vec4& rgba,
     SR_Texture* pTexture) noexcept
 {
     // Get a reference to the source texel
-    int32_t* const outTexel = pTexture->texel_pointer<int32_t>(x, y);
-    SR_ColorRGBA8 inTexel = color_cast<uint8_t, float>(*reinterpret_cast<const SR_ColorRGBAf*>(rgba));
+    int32_t* const  outTexel = pTexture->texel_pointer<int32_t>(x, y);
+    SR_ColorRGBA8&& inTexel  = color_cast<uint8_t, float>(rgba);
 
     _mm_stream_si32(outTexel, reinterpret_cast<int32_t&>(inTexel));
+    //*outTexel = reinterpret_cast<int32_t&>(inTexel);
 }
 
 
@@ -82,7 +83,7 @@ template <>
 inline void assign_pixel<SR_ColorRGBA16>(
     uint16_t x,
     uint16_t y,
-    const float* rgba,
+    const math::vec4& rgba,
     SR_Texture* pTexture) noexcept
 {
     // Get a reference to the source texel
@@ -105,7 +106,7 @@ inline void assign_pixel<SR_ColorRGBA16>(
         {
             SR_ColorRGBA16 vec;
             __m64 scalar;
-        } inTexel{ color_cast<uint16_t, float>(*reinterpret_cast<const SR_ColorRGBAf*>(rgba)) };
+        } inTexel{ color_cast<uint16_t, float>(rgba) };
     
         _mm_stream_pi(outTexel, inTexel.scalar);
         _mm_empty();
@@ -118,13 +119,13 @@ template <>
 inline void assign_pixel<SR_ColorRGBAf>(
     uint16_t x,
     uint16_t y,
-    const float* rgba,
+    const math::vec4& rgba,
     SR_Texture* pTexture) noexcept
 {
     // Get a reference to the source texel
     SR_ColorRGBAf* const outTexel = pTexture->texel_pointer<SR_ColorRGBAf>(x, y);
 
-    _mm_stream_ps(reinterpret_cast<float*>(outTexel), _mm_load_ps(rgba));
+    _mm_stream_ps(reinterpret_cast<float*>(outTexel), _mm_load_ps(&rgba));
 }
 #endif
 
@@ -409,12 +410,16 @@ int SR_Framebuffer::reserve_color_buffers(uint64_t numColorBuffers) noexcept
         }
 
         // keep old textures
-        for (uint64_t i = 0; i < numNewColors; ++i)
+        if (mColors)
         {
-            pNewBuffer[i] = mColors[i];
+            for (uint64_t i = 0; i < numNewColors; ++i)
+            {
+                pNewBuffer[i] = mColors[i];
+            }
+
+            delete [] mColors;
         }
 
-        delete [] mColors;
         mColors = pNewBuffer;
     }
     else
@@ -635,9 +640,8 @@ void SR_Framebuffer::put_pixel(
     uint64_t targetId,
     uint16_t x,
     uint16_t y,
-    const math::vec4& colors) noexcept
+    const math::vec4& rgba) noexcept
 {
-    const float* const     rgba     = colors.v;
     SR_Texture* const      pTexture = mColors[targetId];
     const SR_ColorDataType type     = pTexture->type();
 
@@ -783,4 +787,96 @@ uint16_t SR_Framebuffer::depth() const noexcept
     }
 
     return 0;
+}
+
+
+
+/*-------------------------------------
+ * Get the color placement function.
+-------------------------------------*/
+SR_Framebuffer::PixelPlacementFuncType SR_Framebuffer::pixel_placement_function(SR_ColorDataType type) const noexcept
+{
+    switch (type)
+    {
+        case SR_COLOR_R_8U:        return &assign_pixel<SR_ColorR8>;
+        case SR_COLOR_RG_8U:       return &assign_pixel<SR_ColorRG8>;
+        case SR_COLOR_RGB_8U:      return &assign_pixel<SR_ColorRGB8>;
+        case SR_COLOR_RGBA_8U:     return &assign_pixel<SR_ColorRGBA8>;
+
+        case SR_COLOR_R_16U:       return &assign_pixel<SR_ColorR16>;
+        case SR_COLOR_RG_16U:      return &assign_pixel<SR_ColorRG16>;
+        case SR_COLOR_RGB_16U:     return &assign_pixel<SR_ColorRGB16>;
+        case SR_COLOR_RGBA_16U:    return &assign_pixel<SR_ColorRGBA16>;
+
+        case SR_COLOR_R_32U:       return &assign_pixel<SR_ColorR32>;
+        case SR_COLOR_RG_32U:      return &assign_pixel<SR_ColorRG32>;
+        case SR_COLOR_RGB_32U:     return &assign_pixel<SR_ColorRGB32>;
+        case SR_COLOR_RGBA_32U:    return &assign_pixel<SR_ColorRGBA32>;
+
+        case SR_COLOR_R_64U:       return &assign_pixel<SR_ColorR64>;
+        case SR_COLOR_RG_64U:      return &assign_pixel<SR_ColorRG64>;
+        case SR_COLOR_RGB_64U:     return &assign_pixel<SR_ColorRGB64>;
+        case SR_COLOR_RGBA_64U:    return &assign_pixel<SR_ColorRGBA64>;
+
+        case SR_COLOR_R_FLOAT:     return &assign_pixel<SR_ColorRf>;
+        case SR_COLOR_RG_FLOAT:    return &assign_pixel<SR_ColorRGf>;
+        case SR_COLOR_RGB_FLOAT:   return &assign_pixel<SR_ColorRGBf>;
+        case SR_COLOR_RGBA_FLOAT:  return &assign_pixel<SR_ColorRGBAf>;
+
+        case SR_COLOR_R_DOUBLE:    return &assign_pixel<SR_ColorRd>;
+        case SR_COLOR_RG_DOUBLE:   return &assign_pixel<SR_ColorRGd>;
+        case SR_COLOR_RGB_DOUBLE:  return &assign_pixel<SR_ColorRGBd>;
+        case SR_COLOR_RGBA_DOUBLE: return &assign_pixel<SR_ColorRGBAd>;
+
+        default:
+            LS_UNREACHABLE();
+    }
+
+    return nullptr;
+}
+
+
+
+/*-------------------------------------
+ * Get the blended color placement function.
+-------------------------------------*/
+SR_Framebuffer::BlendedPixelPlacementFuncType SR_Framebuffer::blended_pixel_placement_function(SR_ColorDataType type) const noexcept
+{
+    switch (type)
+    {
+        case SR_COLOR_R_8U:        return &assign_alpha_pixel<SR_ColorR8>;
+        case SR_COLOR_RG_8U:       return &assign_alpha_pixel<SR_ColorRG8>;
+        case SR_COLOR_RGB_8U:      return &assign_alpha_pixel<SR_ColorRGB8>;
+        case SR_COLOR_RGBA_8U:     return &assign_alpha_pixel<SR_ColorRGBA8>;
+
+        case SR_COLOR_R_16U:       return &assign_alpha_pixel<SR_ColorR16>;
+        case SR_COLOR_RG_16U:      return &assign_alpha_pixel<SR_ColorRG16>;
+        case SR_COLOR_RGB_16U:     return &assign_alpha_pixel<SR_ColorRGB16>;
+        case SR_COLOR_RGBA_16U:    return &assign_alpha_pixel<SR_ColorRGBA16>;
+
+        case SR_COLOR_R_32U:       return &assign_alpha_pixel<SR_ColorR32>;
+        case SR_COLOR_RG_32U:      return &assign_alpha_pixel<SR_ColorRG32>;
+        case SR_COLOR_RGB_32U:     return &assign_alpha_pixel<SR_ColorRGB32>;
+        case SR_COLOR_RGBA_32U:    return &assign_alpha_pixel<SR_ColorRGBA32>;
+
+        case SR_COLOR_R_64U:       return &assign_alpha_pixel<SR_ColorR64>;
+        case SR_COLOR_RG_64U:      return &assign_alpha_pixel<SR_ColorRG64>;
+        case SR_COLOR_RGB_64U:     return &assign_alpha_pixel<SR_ColorRGB64>;
+        case SR_COLOR_RGBA_64U:    return &assign_alpha_pixel<SR_ColorRGBA64>;
+
+        case SR_COLOR_R_FLOAT:     return &assign_alpha_pixel<SR_ColorRf>;
+        case SR_COLOR_RG_FLOAT:    return &assign_alpha_pixel<SR_ColorRGf>;
+        case SR_COLOR_RGB_FLOAT:   return &assign_alpha_pixel<SR_ColorRGBf>;
+        case SR_COLOR_RGBA_FLOAT:  return &assign_alpha_pixel<SR_ColorRGBAf>;
+
+        case SR_COLOR_R_DOUBLE:    return &assign_alpha_pixel<SR_ColorRd>;
+        case SR_COLOR_RG_DOUBLE:   return &assign_alpha_pixel<SR_ColorRGd>;
+        case SR_COLOR_RGB_DOUBLE:  return &assign_alpha_pixel<SR_ColorRGBd>;
+        case SR_COLOR_RGBA_DOUBLE: return &assign_alpha_pixel<SR_ColorRGBAd>;
+
+        default:
+            LS_UNREACHABLE();
+    }
+
+    return nullptr;
 }
