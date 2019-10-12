@@ -101,7 +101,7 @@ struct SpotLight
 
 
 
-struct MeshUniforms : SR_UniformBuffer
+struct MeshUniforms
 {
     const SR_Texture* pTexture;
     const SR_BoundingBox* aabb;
@@ -125,7 +125,7 @@ struct MeshUniforms : SR_UniformBuffer
 --------------------------------------*/
 math::vec4 _box_vert_shader_impl(const size_t vertId, const SR_VertexArray&, const SR_VertexBuffer&, const SR_UniformBuffer* uniforms, math::vec4* varyings)
 {
-    const MeshUniforms* pUniforms = static_cast<const MeshUniforms*>(uniforms);
+    const MeshUniforms* pUniforms = uniforms->as<MeshUniforms>();
     const math::vec4&   trr       = pUniforms->aabb->max_point();
     const math::vec4&   bfl       = pUniforms->aabb->min_point();
     const math::vec4    points[]  = {
@@ -201,7 +201,7 @@ math::vec4 _normal_vert_shader_impl(const size_t vertId, const SR_VertexArray& v
     // Used to retrieve packed verex data in a single call
     typedef Tuple<math::vec3, math::vec3> Vertex;
 
-    const MeshUniforms* pUniforms = static_cast<const MeshUniforms*>(uniforms);
+    const MeshUniforms* pUniforms = uniforms->as<MeshUniforms>();
     const Vertex*       v         = vbo.element<const Vertex>(vao.offset(0, vertId));
     const math::vec3&   vert      = v->const_element<0>();
     const math::vec3&   norm      = v->const_element<1>();
@@ -231,10 +231,10 @@ SR_VertexShader normal_vert_shader()
 --------------------------------------*/
 bool _normal_frag_shader_impl(SR_FragmentParam& fragParams)
 {
-    const MeshUniforms* pUniforms     = static_cast<const MeshUniforms*>(fragParams.pUniforms);
-    const math::vec4&   pos           = fragParams.pVaryings[0];
-    const math::vec4&&  norm          = math::normalize(fragParams.pVaryings[1]);
-    math::vec4&         output        = fragParams.pOutputs[0];
+    const MeshUniforms* pUniforms = fragParams.pUniforms->as<MeshUniforms>();
+    const math::vec4&   pos       = fragParams.pVaryings[0];
+    const math::vec4&&  norm      = math::normalize(fragParams.pVaryings[1]);
+    math::vec4&         output    = fragParams.pOutputs[0];
 
 
     // Light direction calculation
@@ -291,7 +291,7 @@ math::vec4 _texture_vert_shader_impl(const size_t vertId, const SR_VertexArray& 
     // Used to retrieve packed verex data in a single call
     typedef Tuple<math::vec3, math::vec2, math::vec3> Vertex;
 
-    const MeshUniforms* pUniforms = static_cast<const MeshUniforms*>(uniforms);
+    const MeshUniforms* pUniforms = uniforms->as<MeshUniforms>();
     const Vertex&       v         = *vbo.element<const Vertex>(vao.offset(0, vertId));
     const math::vec3&   vert      = v.const_element<0>();
     const math::vec2&   uv        = v.const_element<1>();
@@ -323,7 +323,7 @@ SR_VertexShader texture_vert_shader()
 --------------------------------------*/
 bool _texture_frag_shader_spot(SR_FragmentParam& fragParams)
 {
-    const MeshUniforms*  pUniforms = static_cast<const MeshUniforms*>(fragParams.pUniforms);
+    const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
     const math::vec4&    pos       = fragParams.pVaryings[0];
     const math::vec4&    uv        = fragParams.pVaryings[1];
     const math::vec4&    norm      = fragParams.pVaryings[2];
@@ -451,7 +451,7 @@ inline float geometry_smith(const vec_type& norm, const vec_type& viewDir, const
 
 bool _texture_frag_shader_pbr(SR_FragmentParam& fragParams)
 {
-    const MeshUniforms*  pUniforms = static_cast<const MeshUniforms*>(fragParams.pUniforms);
+    const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
     const math::vec4     pos       = fragParams.pVaryings[0];
     const math::vec4     uv        = fragParams.pVaryings[1];
     const math::vec4     norm      = math::normalize(fragParams.pVaryings[2]);
@@ -604,7 +604,7 @@ void update_cam_position(SR_Transform& camTrans, float tickTime, utils::Pointer<
 void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspect, float fov, const SR_Transform& camTrans)
 {
     SR_Context&    context   = pGraph->mContext;
-    MeshUniforms*  pUniforms = static_cast<MeshUniforms*>(context.shader(0).uniforms().get());
+    MeshUniforms*  pUniforms = context.ubo(0).as<MeshUniforms>();
     unsigned       numHidden = 0;
     unsigned       numTotal  = 0;
     SR_Plane       planes[6];
@@ -866,8 +866,9 @@ utils::Pointer<SR_SceneGraph> create_context()
     const SR_VertexShader&&   boxVertShader  = box_vert_shader();
     const SR_FragmentShader&& boxFragShader  = box_frag_shader();
 
-    // Uniform variables don't always align properly because of the vtable
-    std::shared_ptr<MeshUniforms>  pUniforms{(MeshUniforms*)ls::utils::aligned_malloc(sizeof(MeshUniforms)), [](MeshUniforms* p)->void {ls::utils::aligned_free(p);}};
+    size_t uboId = context.create_ubo();
+    SR_UniformBuffer& ubo = context.ubo(uboId);
+    MeshUniforms* pUniforms = ubo.as<MeshUniforms>();
 
     pUniforms->light.pos        = math::vec4{30.f, 45.f, 45.f, 1.f};
     pUniforms->light.ambient    = math::vec4{0.f, 0.f, 0.f, 1.f};//math::vec4{0.125f, 0.125f, 0.125f, 1.f};
@@ -880,9 +881,9 @@ utils::Pointer<SR_SceneGraph> create_context()
     pUniforms->spot.outerCutoff = std::cos(LS_DEG2RAD(6.5f));
     pUniforms->spot.epsilon     = pUniforms->spot.outerCutoff / pUniforms->spot.innerCutoff;
 
-    size_t texShaderId  = context.create_shader(texVertShader,  texFragShader,  pUniforms);
-    size_t normShaderId = context.create_shader(normVertShader, normFragShader, pUniforms);
-    size_t boxShaderId  = context.create_shader(boxVertShader,  boxFragShader,  pUniforms);
+    size_t texShaderId  = context.create_shader(texVertShader,  texFragShader,  uboId);
+    size_t normShaderId = context.create_shader(normVertShader, normFragShader, uboId);
+    size_t boxShaderId  = context.create_shader(boxVertShader,  boxFragShader,  uboId);
 
     assert(texShaderId == 0);
     assert(normShaderId == 1);
@@ -1072,7 +1073,7 @@ int main()
             }
 
             #if SR_BENCHMARK_SCENE
-            if (totalFrames >= 600)
+            if (totalFrames >= 1200)
             {
                 shouldQuit = true;
             }
@@ -1084,7 +1085,7 @@ int main()
             {
                 camTrans.apply_transform();
 
-                MeshUniforms* pUniforms = static_cast<MeshUniforms*>(context.shader(1).uniforms().get());
+                MeshUniforms* pUniforms = context.ubo(0).as<MeshUniforms>();
                 const math::vec3&& camTransPos = -camTrans.get_position();
                 pUniforms->camPos = {camTransPos[0], camTransPos[1], camTransPos[2], 1.f};
 

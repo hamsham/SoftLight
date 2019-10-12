@@ -48,7 +48,7 @@ namespace utils = ls::utils;
 /*--------------------------------------
  * Uniforms to share across shader stages
 --------------------------------------*/
-struct VolumeUniforms : SR_UniformBuffer
+struct VolumeUniforms
 {
     float             viewAngle;
     math::vec2        windowSize;
@@ -68,7 +68,7 @@ struct VolumeUniforms : SR_UniformBuffer
 --------------------------------------*/
 math::vec4 _volume_vert_shader(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4*)
 {
-    const VolumeUniforms* pUniforms = static_cast<const VolumeUniforms*>(uniforms);
+    const VolumeUniforms* pUniforms = uniforms->as<VolumeUniforms>();
     const math::vec3&     vert      = *vbo.element<const math::vec3>(vao.offset(0, vertId));
     const math::vec3      spacing   = {pUniforms->spacing[0], pUniforms->spacing[1], pUniforms->spacing[2]};
     const math::vec4      worldPos  = math::vec4{vert[0], vert[1], vert[2], 1.f};
@@ -150,7 +150,7 @@ bool _volume_frag_shader(SR_FragmentParam& fragParam)
 {
     constexpr float       step      = 1.f / 256.f;
     const math::vec4      fragCoord = fragParam.fragCoord;
-    const VolumeUniforms* pUniforms = static_cast<const VolumeUniforms*>(fragParam.pUniforms);
+    const VolumeUniforms* pUniforms = fragParam.pUniforms->as<VolumeUniforms>();;
     const math::vec2&&    winDimens = math::vec2{fragCoord[0], fragCoord[1]} * math::rcp(pUniforms->windowSize);
     const float           focalLen  = math::rcp<float>(math::tan(pUniforms->viewAngle*0.5f));
     const SR_Texture*     volumeTex = pUniforms->pCubeMap;
@@ -520,13 +520,16 @@ utils::Pointer<SR_SceneGraph> init_volume_context()
 
     const SR_VertexShader&&   volVertShader = volume_vert_shader();
     const SR_FragmentShader&& volFragShader = volume_frag_shader();
-    //std::shared_ptr<VolumeUniforms> pUniforms{new VolumeUniforms};
-    std::shared_ptr<VolumeUniforms>  pUniforms{ (VolumeUniforms*)ls::utils::aligned_malloc(sizeof(VolumeUniforms)), [](VolumeUniforms* p)->void {ls::utils::aligned_free(p); } };
+
+    size_t uboId = context.create_ubo();
+    SR_UniformBuffer& ubo = context.ubo(uboId);
+    VolumeUniforms* pUniforms = ubo.as<VolumeUniforms>();
+
     pUniforms->pCubeMap = context.textures()[2];
     pUniforms->pOpacityMap = context.textures()[3];
     pUniforms->pColorMap = context.textures()[4];
 
-    size_t volShaderId = context.create_shader(volVertShader, volFragShader, pUniforms);
+    size_t volShaderId = context.create_shader(volVertShader, volFragShader, uboId);
     assert(volShaderId == 0);
     (void)volShaderId;
 
@@ -550,7 +553,7 @@ utils::Pointer<SR_SceneGraph> init_volume_context()
 void render_volume(SR_SceneGraph* pGraph, const SR_Transform& viewMatrix, const math::mat4& vpMatrix)
 {
     SR_Context&        context   = pGraph->mContext;
-    VolumeUniforms*    pUniforms = static_cast<VolumeUniforms*>(context.shader(0).uniforms().get());
+    VolumeUniforms*    pUniforms = context.ubo(0).as<VolumeUniforms>();
     const math::vec3&& camPos    = viewMatrix.get_abs_position();
     const math::mat4   modelMat  = math::mat4{1.f};
     pUniforms->spacing           = {1.f, 2.f, 2.f, 1.f};
@@ -612,7 +615,7 @@ int main()
     ls::utils::Pointer<SR_WindowBuffer> pRenderBuf {SR_WindowBuffer::create()};
     ls::utils::Pointer<SR_SceneGraph>   pGraph     {std::move(init_volume_context())};
     SR_Context&                         context    = pGraph->mContext;
-    VolumeUniforms* const               pUniforms  {static_cast<VolumeUniforms*>(context.shader(0).uniforms().get())};
+    VolumeUniforms*                     pUniforms = context.ubo(0).as<VolumeUniforms>();
     ls::utils::Pointer<bool[]>          pKeySyms   {new bool[256]};
 
     std::fill_n(pKeySyms.get(), 256, false);

@@ -38,7 +38,7 @@ namespace utils = ls::utils;
 /*-----------------------------------------------------------------------------
  * Shader to display vertices with positions, UVs, normals, and a texture
 -----------------------------------------------------------------------------*/
-struct MeshTestUniforms : SR_UniformBuffer
+struct MeshTestUniforms
 {
     const SR_Texture* pTexture;
     math::vec4        lightPos;
@@ -54,7 +54,7 @@ struct MeshTestUniforms : SR_UniformBuffer
 --------------------------------------*/
 math::vec4 _mesh_test_vert_shader(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4* varyings)
 {
-    const MeshTestUniforms* pUniforms = static_cast<const MeshTestUniforms*>(uniforms);
+    const MeshTestUniforms* pUniforms = uniforms->as<MeshTestUniforms>();
     const math::vec3        vert      = *vbo.element<const math::vec3>(vao.offset(0, vertId));
     const math::vec2        uv        = *vbo.element<const math::vec2>(vao.offset(1, vertId));
     const math::vec3        norm      = *vbo.element<const math::vec3>(vao.offset(2, vertId));
@@ -85,7 +85,7 @@ SR_VertexShader mesh_test_vert_shader()
 --------------------------------------*/
 bool _mesh_test_frag_shader(SR_FragmentParam& fragParams)
 {
-    const MeshTestUniforms* pUniforms = static_cast<const MeshTestUniforms*>(fragParams.pUniforms);
+    const MeshTestUniforms* pUniforms = fragParams.pUniforms->as<MeshTestUniforms>();
     const math::vec4        pos       = fragParams.pVaryings[0];
     const math::vec4        uv        = fragParams.pVaryings[1];
     const math::vec4        norm      = math::normalize(fragParams.pVaryings[2]);
@@ -182,15 +182,13 @@ utils::Pointer<SR_SceneGraph> mesh_test_create_context()
     const SR_VertexShader&&   vertShader = mesh_test_vert_shader();
     const SR_FragmentShader&& fragShader = mesh_test_frag_shader();
 
-    // Uniform variables don't always align properly because of the vtable
-    std::shared_ptr<MeshTestUniforms>  pUniforms{
-        (MeshTestUniforms*)ls::utils::aligned_malloc(sizeof(MeshTestUniforms)),
-        [](MeshTestUniforms* p)->void {ls::utils::aligned_free(p);}
-    };
+    size_t uboId = context.create_ubo();
+    SR_UniformBuffer& ubo = context.ubo(uboId);
+    MeshTestUniforms* pUniforms = ubo.as<MeshTestUniforms>();
 
     pUniforms->lightPos = math::vec4{20.f, 100.f, 20.f, 0.f};
     pUniforms->lightCol = math::vec4{1.f, 0.9f, 0.8f, 1.f};
-    size_t testShaderId = context.create_shader(vertShader,  fragShader,  pUniforms);
+    size_t testShaderId = context.create_shader(vertShader,  fragShader,  uboId);
 
     assert(testShaderId == 0);
     (void)testShaderId;
@@ -207,7 +205,7 @@ utils::Pointer<SR_SceneGraph> mesh_test_create_context()
 void mesh_test_render(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
 {
     SR_Context&       context   = pGraph->mContext;
-    MeshTestUniforms* pUniforms = static_cast<MeshTestUniforms*>(context.shader(0).uniforms().get());
+    MeshTestUniforms* pUniforms = context.ubo(0).as<MeshTestUniforms>();
 
     for (SR_SceneNode& n : pGraph->mNodes)
     {

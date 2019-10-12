@@ -18,7 +18,7 @@ class SR_IndexBuffer;
 struct SR_Mesh;
 class SR_Shader;
 class SR_Texture;
-struct SR_UniformBuffer;
+class SR_UniformBuffer;
 class SR_VertexArray;
 class SR_VertexBuffer;
 struct SR_VertexShader;
@@ -41,6 +41,8 @@ class SR_Context
     std::vector<SR_VertexBuffer> mVbos;
 
     std::vector<SR_IndexBuffer> mIbos;
+
+    std::vector<SR_UniformBuffer> mUniforms;
 
     std::vector<SR_Shader> mShaders;
 
@@ -127,6 +129,19 @@ class SR_Context
     /*
      *
      */
+    const std::vector<SR_UniformBuffer>& ubos() const;
+
+    const SR_UniformBuffer& ubo(std::size_t index) const;
+
+    SR_UniformBuffer& ubo(std::size_t index);
+
+    std::size_t create_ubo();
+
+    void destroy_ubo(std::size_t index);
+
+    /*
+     *
+     */
     const std::vector<SR_Shader>& shaders() const;
 
     const SR_Shader& shader(std::size_t index) const;
@@ -135,8 +150,12 @@ class SR_Context
 
     std::size_t create_shader(
         const SR_VertexShader& vertShader,
+        const SR_FragmentShader& fragShader);
+
+    std::size_t create_shader(
+        const SR_VertexShader& vertShader,
         const SR_FragmentShader& fragShader,
-        const std::shared_ptr<SR_UniformBuffer>& pUniforms = nullptr);
+        std::size_t uniformIndex);
 
     void destroy_shader(std::size_t index);
 

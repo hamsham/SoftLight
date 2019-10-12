@@ -92,7 +92,7 @@ int main()
 
     const SR_VertexShader&& vertShader = line_vert_shader();
     const SR_FragmentShader&& fragShader = line_frag_shader();
-    size_t shaderId  = context.create_shader(vertShader,  fragShader, std::shared_ptr<SR_UniformBuffer>{nullptr});
+    size_t shaderId  = context.create_shader(vertShader,  fragShader);
 
     SR_VertexBuffer& vbo = context.vbo(vboId);
     float tri[3][3] = {

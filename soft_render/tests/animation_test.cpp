@@ -81,7 +81,7 @@ struct SpotLight
 
 
 
-struct AnimUniforms : SR_UniformBuffer
+struct AnimUniforms
 {
     const SR_Texture* pTexture;
     const math::mat4* pBones;
@@ -100,7 +100,7 @@ struct AnimUniforms : SR_UniformBuffer
 --------------------------------------*/
 math::vec4 _normal_vert_shader_impl(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4* varyings)
 {
-    const AnimUniforms* pUniforms = static_cast<const AnimUniforms*>(uniforms);
+    const AnimUniforms* pUniforms = uniforms->as<AnimUniforms>();
 
     const math::vec3& vert = *vbo.element<const math::vec3>(vao.offset(0, vertId));
     const math::vec3& norm = *vbo.element<const math::vec3>(vao.offset(1, vertId));
@@ -130,7 +130,7 @@ SR_VertexShader normal_vert_shader()
 --------------------------------------*/
 bool _normal_frag_shader_impl(SR_FragmentParam& fragParam)
 {
-    const AnimUniforms* pUniforms     = static_cast<const AnimUniforms*>(fragParam.pUniforms);
+    const AnimUniforms* pUniforms     = fragParam.pUniforms->as<AnimUniforms>();
     const math::vec4    pos           = fragParam.pVaryings[0];
     const math::vec4    norm          = math::normalize(fragParam.pVaryings[1]);
 
@@ -171,15 +171,15 @@ SR_FragmentShader normal_frag_shader()
 --------------------------------------*/
 math::vec4 _texture_vert_shader_impl(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4* varyings)
 {
-    const AnimUniforms* pUniforms   = static_cast<const AnimUniforms*>(uniforms);
+    const AnimUniforms* pUniforms   = uniforms->as<AnimUniforms>();
     const math::vec3&   vert        = *vbo.element<const math::vec3>( vao.offset(0, vertId));
     const math::vec2&   uv          = *vbo.element<const math::vec2>( vao.offset(1, vertId));
     const math::vec3&   norm        = *vbo.element<const math::vec3>( vao.offset(2, vertId));
 
     const math::vec4i&  boneIds     = *vbo.element<const math::vec4i>(vao.offset(3, vertId));
-    const math::vec4&   boneWeights = *vbo.element<const math::vec4>( vao.offset(4, vertId));
+    const math::vec4&   boneWeights = *vbo.element<const math::vec4>(vao.offset(4, vertId));
     const math::mat4*   pBones      = pUniforms->pBones;
-    math::mat4          boneTrans   = pBones[boneIds[0]] * boneWeights[0];
+    math::mat4&&        boneTrans   = pBones[boneIds[0]] * boneWeights[0];
 
     boneTrans += pBones[boneIds[1]] * boneWeights[1];
     boneTrans += pBones[boneIds[2]] * boneWeights[2];
@@ -213,7 +213,7 @@ SR_VertexShader texture_vert_shader()
 --------------------------------------*/
 bool _texture_frag_shader(SR_FragmentParam& fragParam)
 {
-    const AnimUniforms*  pUniforms = static_cast<const AnimUniforms*>(fragParam.pUniforms);
+    const AnimUniforms*  pUniforms = fragParam.pUniforms->as<AnimUniforms>();
     const math::vec4     pos       = fragParam.pVaryings[0];
     const math::vec4     uv        = fragParam.pVaryings[1];
     const math::vec4     norm      = fragParam.pVaryings[2];
@@ -363,8 +363,8 @@ void update_cam_position(SR_Transform& camTrans, float tickTime, utils::Pointer<
 -------------------------------------*/
 void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
 {
-    SR_Context&    context   = pGraph->mContext;
-    AnimUniforms*  pUniforms = static_cast<AnimUniforms*>(context.shader(0).uniforms().get());
+    SR_Context& context = pGraph->mContext;
+    AnimUniforms* pUniforms = context.ubo(0).as<AnimUniforms>();
 
     pUniforms->pBones = pGraph->mModelMatrices.data();
 
@@ -476,11 +476,9 @@ utils::Pointer<SR_SceneGraph> create_context()
     const SR_VertexShader&&   texVertShader  = texture_vert_shader();
     const SR_FragmentShader&& texFragShader  = texture_frag_shader();
 
-    // Uniform variables don't always align properly because of the vtable
-    std::shared_ptr<AnimUniforms> pUniforms{(AnimUniforms*)ls::utils::aligned_malloc(sizeof(AnimUniforms)), [](AnimUniforms* p)->void {ls::utils::aligned_free(p);}};
-
-    size_t texShaderId  = context.create_shader(texVertShader,  texFragShader,  pUniforms);
-    size_t normShaderId = context.create_shader(normVertShader, normFragShader, pUniforms);
+    size_t uboId = context.create_ubo();
+    size_t texShaderId  = context.create_shader(texVertShader,  texFragShader,  uboId);
+    size_t normShaderId = context.create_shader(normVertShader, normFragShader, uboId);
 
     assert(texShaderId == 0);
     assert(normShaderId == 1);
@@ -670,7 +668,7 @@ int main()
             {
                 camTrans.apply_transform();
 
-                AnimUniforms* pUniforms = static_cast<AnimUniforms*>(context.shader(1).uniforms().get());
+                AnimUniforms* pUniforms = context.ubo(0).as<AnimUniforms>();
                 const math::vec3 camTransPos = camTrans.get_position();
                 pUniforms->camPos = math::vec4_cast(camTransPos, 1.f);
             }

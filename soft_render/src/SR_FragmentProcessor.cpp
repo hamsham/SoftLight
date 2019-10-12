@@ -233,7 +233,7 @@ void SR_FragmentProcessor::render_point(
     const ls::math::vec4_t<int32_t> dimens) noexcept
 {
     const SR_FragmentShader fragShader  = mShader->mFragShader;
-    const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
+    const SR_UniformBuffer* pUniforms   = mShader->mUniforms;
     const uint32_t          numOutputs  = fragShader.numOutputs;
     const bool              depthTest   = fragShader.depthTest == SR_DEPTH_TEST_ON;
     const bool              depthMask   = fragShader.depthMask == SR_DEPTH_MASK_ON;
@@ -429,7 +429,7 @@ void SR_FragmentProcessor::render_line(
     const bool              noDepthTest = fragShader.depthTest == SR_DEPTH_TEST_OFF;
     const bool              depthMask   = fragShader.depthMask == SR_DEPTH_MASK_ON;
     const auto              shader      = fragShader.shader;
-    const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
+    const SR_UniformBuffer* pUniforms   = mShader->mUniforms;
 
     const math::vec4  screenCoord0  = mBins[binId].mScreenCoords[0];
     const math::vec4  screenCoord1  = mBins[binId].mScreenCoords[1];
@@ -851,7 +851,7 @@ void SR_FragmentProcessor::flush_fragments(
     uint_fast32_t         numQueuedFrags,
     const SR_FragCoord*   outCoords) const noexcept
 {
-    const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
+    const SR_UniformBuffer* pUniforms   = mShader->mUniforms;
     const SR_FragmentShader fragShader  = mShader->mFragShader;
     const uint_fast32_t     numVaryings = fragShader.numVaryings;
     const uint_fast32_t     numOutputs  = fragShader.numOutputs;

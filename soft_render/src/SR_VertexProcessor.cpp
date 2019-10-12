@@ -809,7 +809,7 @@ void SR_VertexProcessor::execute() noexcept
     const SR_VertexShader   vertShader  = mShader->mVertShader;
     const SR_CullMode       cullMode    = vertShader.cullMode;
     const auto              shader      = vertShader.shader;
-    const SR_UniformBuffer* pUniforms   = mShader->mUniforms.get();
+    const SR_UniformBuffer* pUniforms   = mShader->mUniforms;
     const SR_VertexArray&   vao         = mContext->vao(mMesh.vaoId);
     const SR_VertexBuffer&  vbo         = mContext->vbo(vao.get_vertex_buffer());
     const float             fboW        = (float)mFboW;

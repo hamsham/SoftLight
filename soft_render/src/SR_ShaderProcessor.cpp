@@ -10,6 +10,7 @@
 #include "soft_render/SR_FragmentProcessor.hpp"
 #include "soft_render/SR_Framebuffer.hpp" // SR_Framebuffer
 #include "soft_render/SR_ShaderProcessor.hpp"
+#include "soft_render/SR_UniformBuffer.hpp"
 #include "soft_render/SR_VertexProcessor.hpp"
 #include "soft_render/SR_WindowBuffer.hpp"
 
@@ -234,7 +235,9 @@ SR_ProcessorPool::SR_ProcessorPool(unsigned numThreads) noexcept :
     mFragSemaphore{0},
     mShadingSemaphore{0},
     mBinsUsed{0},
+    mBinIds{nullptr},
     mFragBins{nullptr},
+    mVaryings{nullptr},
     mFragQueues{nullptr},
     mThreads{nullptr},
     mNumThreads{0}
@@ -300,7 +303,10 @@ SR_ProcessorPool& SR_ProcessorPool::operator=(SR_ProcessorPool&& p) noexcept
     mBinsUsed.store(0, std::memory_order_relaxed);
     p.mBinsUsed.store(0);
 
+    mBinIds = std::move(p.mBinIds);
     mFragBins = std::move(p.mFragBins);
+    mVaryings = std::move(p.mVaryings);
+    mFragQueues = std::move(p.mFragQueues);
 
     for (unsigned i = 0; i < mNumThreads; ++i)
     {
@@ -309,8 +315,6 @@ SR_ProcessorPool& SR_ProcessorPool::operator=(SR_ProcessorPool&& p) noexcept
     }
 
     mThreads = std::move(p.mThreads);
-
-    mFragQueues = std::move(p.mFragQueues);
 
     mNumThreads = p.mNumThreads;
     p.mNumThreads = 0;

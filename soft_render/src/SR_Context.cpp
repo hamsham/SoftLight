@@ -11,6 +11,7 @@
 #include "soft_render/SR_IndexBuffer.hpp"
 #include "soft_render/SR_Shader.hpp"
 #include "soft_render/SR_Texture.hpp"
+#include "soft_render/SR_UniformBuffer.hpp"
 #include "soft_render/SR_VertexArray.hpp"
 #include "soft_render/SR_VertexBuffer.hpp"
 #include "soft_render/SR_WindowBuffer.hpp"
@@ -36,6 +37,7 @@ SR_Context::SR_Context() noexcept :
     mFbos{},
     mVbos{},
     mIbos{},
+    mUniforms{},
     mShaders{},
     mProcessors{}
 {}
@@ -51,6 +53,7 @@ SR_Context::SR_Context(const SR_Context& c) noexcept :
     mFbos{c.mFbos},
     mVbos{c.mVbos},
     mIbos{c.mIbos},
+    mUniforms{c.mUniforms},
     mShaders{c.mShaders},
     mProcessors{c.mProcessors}
 {
@@ -73,6 +76,7 @@ SR_Context::SR_Context(SR_Context&& c) noexcept :
     mFbos{std::move(c.mFbos)},
     mVbos{std::move(c.mVbos)},
     mIbos{std::move(c.mIbos)},
+    mUniforms{std::move(c.mUniforms)},
     mShaders{std::move(c.mShaders)},
     mProcessors{std::move(c.mProcessors)}
 {}
@@ -90,6 +94,7 @@ SR_Context& SR_Context::operator=(const SR_Context& c) noexcept
         mFbos       = c.mFbos;
         mVbos       = c.mVbos;
         mIbos       = c.mIbos;
+        mUniforms   = c.mUniforms;
         mShaders    = c.mShaders;
 
         for (SR_Texture* pTex : mTextures)
@@ -125,6 +130,7 @@ SR_Context& SR_Context::operator=(SR_Context&& c) noexcept
         mFbos       = std::move(c.mFbos);
         mVbos       = std::move(c.mVbos);
         mIbos       = std::move(c.mIbos);
+        mUniforms   = std::move(c.mUniforms);
         mShaders    = std::move(c.mShaders);
         mProcessors = std::move(c.mProcessors);
     }
@@ -393,6 +399,57 @@ void SR_Context::destroy_ibo(std::size_t index)
 /*-------------------------------------
  *
 -------------------------------------*/
+const std::vector<SR_UniformBuffer>& SR_Context::ubos() const
+{
+    return mUniforms;
+}
+
+
+
+/*-------------------------------------
+ *
+-------------------------------------*/
+const SR_UniformBuffer& SR_Context::ubo(std::size_t index) const
+{
+    return mUniforms[index];
+}
+
+
+
+/*-------------------------------------
+ *
+-------------------------------------*/
+SR_UniformBuffer& SR_Context::ubo(std::size_t index)
+{
+    return mUniforms[index];
+}
+
+
+
+/*-------------------------------------
+ *
+-------------------------------------*/
+std::size_t SR_Context::create_ubo()
+{
+    mUniforms.emplace_back(SR_UniformBuffer{});
+    return mUniforms.size() - 1;
+}
+
+
+
+/*-------------------------------------
+ *
+-------------------------------------*/
+void SR_Context::destroy_ubo(std::size_t index)
+{
+    mUniforms.erase(mUniforms.begin() + index);
+}
+
+
+
+/*-------------------------------------
+ *
+-------------------------------------*/
 const std::vector<SR_Shader>& SR_Context::shaders() const
 {
     return mShaders;
@@ -425,8 +482,7 @@ SR_Shader& SR_Context::shader(std::size_t index)
 -------------------------------------*/
 std::size_t SR_Context::create_shader(
     const SR_VertexShader& vertShader,
-    const SR_FragmentShader& fragShader,
-    const std::shared_ptr<SR_UniformBuffer>& pUniforms)
+    const SR_FragmentShader& fragShader)
 {
     if (vertShader.numVaryings < fragShader.numVaryings)
     {
@@ -448,7 +504,41 @@ std::size_t SR_Context::create_shader(
         return (std::size_t)-1;
     }
 
-    mShaders.emplace_back(SR_Shader{vertShader, fragShader, pUniforms});
+    mShaders.emplace_back(SR_Shader{vertShader, fragShader});
+    return mShaders.size() - 1;
+}
+
+
+
+/*-------------------------------------
+ *
+-------------------------------------*/
+std::size_t SR_Context::create_shader(
+    const SR_VertexShader& vertShader,
+    const SR_FragmentShader& fragShader,
+    std::size_t uniformIndex)
+{
+    if (vertShader.numVaryings < fragShader.numVaryings)
+    {
+        return (std::size_t)-1;
+    }
+
+    if (vertShader.numVaryings > SR_SHADER_MAX_VARYING_VECTORS)
+    {
+        return (std::size_t)-1;
+    }
+
+    if (fragShader.numVaryings > SR_SHADER_MAX_VARYING_VECTORS)
+    {
+        return (std::size_t)-1;
+    }
+
+    if (!fragShader.numOutputs)
+    {
+        return (std::size_t)-1;
+    }
+
+    mShaders.emplace_back(SR_Shader{vertShader, fragShader, mUniforms[uniformIndex]});
     return mShaders.size() - 1;
 }
 

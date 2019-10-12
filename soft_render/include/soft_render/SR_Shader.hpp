@@ -2,8 +2,6 @@
 #ifndef SR_SHADER_HPP
 #define SR_SHADER_HPP
 
-#include <memory> // std::shared_ptr
-
 #include "soft_render/SR_ShaderProcessor.hpp" // SR_SHADER_MAX_FRAG_OUTPUTS, SR_SHADER_MAX_VARYING_VECTORS
 
 
@@ -28,7 +26,7 @@ class SR_Context;
 class SR_Framebuffer;
 struct SR_Mesh;
 class SR_Shader;
-struct SR_UniformBuffer;
+class SR_UniformBuffer;
 class SR_VertexArray;
 class SR_VertexBuffer;
 
@@ -154,13 +152,18 @@ class SR_Shader
     SR_FragmentShader mFragShader;
 
     // Shared pointers are only changed in the move and copy operators
-    mutable std::shared_ptr<SR_UniformBuffer> mUniforms;
+    SR_UniformBuffer* mUniforms;
 
 
     SR_Shader(
         const SR_VertexShader& vertShader,
+        const SR_FragmentShader& fragShader
+    ) noexcept;
+
+    SR_Shader(
+        const SR_VertexShader& vertShader,
         const SR_FragmentShader& fragShader,
-        const std::shared_ptr<SR_UniformBuffer>& pUniforms
+        SR_UniformBuffer& uniforms
     ) noexcept;
 
   public:
@@ -178,7 +181,11 @@ class SR_Shader
 
     uint8_t get_num_fragment_outputs() const noexcept;
 
-    const std::shared_ptr<SR_UniformBuffer> uniforms() const noexcept;
+    const SR_UniformBuffer* uniforms() const noexcept;
+
+    SR_UniformBuffer* uniforms() noexcept;
+
+    void uniforms(SR_UniformBuffer* pUniforms) noexcept;
 
     const SR_VertexShader& vertex_shader() const noexcept;
 
@@ -210,9 +217,29 @@ inline uint8_t SR_Shader::get_num_fragment_outputs() const noexcept
 /*--------------------------------------
  *
 --------------------------------------*/
-inline const std::shared_ptr<SR_UniformBuffer> SR_Shader::uniforms() const noexcept
+inline const SR_UniformBuffer* SR_Shader::uniforms() const noexcept
 {
     return mUniforms;
+}
+
+
+
+/*--------------------------------------
+ *
+--------------------------------------*/
+inline SR_UniformBuffer* SR_Shader::uniforms() noexcept
+{
+    return mUniforms;
+}
+
+
+
+/*--------------------------------------
+ *
+--------------------------------------*/
+inline void SR_Shader::uniforms(SR_UniformBuffer* pUniforms) noexcept
+{
+    mUniforms = pUniforms;
 }
 
 

@@ -38,11 +38,24 @@ SR_Shader::~SR_Shader() noexcept
 --------------------------------------*/
 SR_Shader::SR_Shader(
     const SR_VertexShader& vertShader,
-    const SR_FragmentShader& fragShader,
-    const std::shared_ptr<SR_UniformBuffer>& pUniforms) noexcept :
+    const SR_FragmentShader& fragShader) noexcept :
     mVertShader(vertShader),
     mFragShader(fragShader),
-    mUniforms{pUniforms}
+    mUniforms{nullptr}
+{}
+
+
+
+/*--------------------------------------
+ * Constructor
+--------------------------------------*/
+SR_Shader::SR_Shader(
+    const SR_VertexShader& vertShader,
+    const SR_FragmentShader& fragShader,
+    SR_UniformBuffer& uniforms) noexcept :
+    mVertShader(vertShader),
+    mFragShader(fragShader),
+    mUniforms{&uniforms}
 {}
 
 
@@ -63,7 +76,7 @@ SR_Shader::SR_Shader(const SR_Shader& s) noexcept :
 SR_Shader::SR_Shader(SR_Shader&& s) noexcept :
     mVertShader(std::move(s.mVertShader)),
     mFragShader(std::move(s.mFragShader)),
-    mUniforms{std::move(s.mUniforms)}
+    mUniforms{s.mUniforms}
 {}
 
 
@@ -92,7 +105,7 @@ SR_Shader& SR_Shader::operator=(SR_Shader&& s) noexcept
     {
         mVertShader = std::move(s.mVertShader);
         mFragShader = std::move(s.mFragShader);
-        mUniforms = std::move(s.mUniforms);
+        mUniforms = s.mUniforms;
     }
 
     return *this;
