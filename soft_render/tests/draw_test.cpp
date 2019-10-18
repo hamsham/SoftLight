@@ -173,7 +173,7 @@ int main()
     m.elementBegin = 0;
     m.elementEnd = context.ibos().begin()->count();
     m.vaoId = vaoId;
-    m.mode = RENDER_MODE_POINTS;
+    m.mode = RENDER_MODE_INDEXED_LINES;
 
     context.draw(m, shaderId, fboId);
 

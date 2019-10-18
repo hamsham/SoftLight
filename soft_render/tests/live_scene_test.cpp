@@ -1073,7 +1073,7 @@ int main()
             }
 
             #if SR_BENCHMARK_SCENE
-            if (totalFrames >= 1200)
+            if (totalFrames >= 600)
             {
                 shouldQuit = true;
             }

@@ -55,9 +55,9 @@ struct MeshTestUniforms
 math::vec4 _mesh_test_vert_shader(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4* varyings)
 {
     const MeshTestUniforms* pUniforms = uniforms->as<MeshTestUniforms>();
-    const math::vec3        vert      = *vbo.element<const math::vec3>(vao.offset(0, vertId));
-    const math::vec2        uv        = *vbo.element<const math::vec2>(vao.offset(1, vertId));
-    const math::vec3        norm      = *vbo.element<const math::vec3>(vao.offset(2, vertId));
+    const math::vec3&       vert      = *vbo.element<const math::vec3>(vao.offset(0, vertId));
+    const math::vec2&       uv        = *vbo.element<const math::vec2>(vao.offset(1, vertId));
+    const math::vec3&       norm      = *vbo.element<const math::vec3>(vao.offset(2, vertId));
 
     varyings[0] = pUniforms->modelMatrix * math::vec4{vert[0], vert[1], vert[2], 1.f};
     varyings[1] = math::vec4{uv.v[0], uv.v[1], 0.f, 0.f};
