@@ -788,7 +788,7 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_FragmentBin* pBin, cons
         math::vec4&&  xf   = math::vec4{0.f, 1.f, 2.f, 3.f} + (float)xMin;
 
         // I'm pretty sure Z-ordering has been ruled out at this point.
-        const float* pDepth = (const float*)depthBuffer->raw_texel_pointer<float>((uint16_t)xMin, (uint16_t)y);
+        const float* pDepth = depthBuffer->row_pointer<float>((uintptr_t)y) + xMin;
 
         //for (uint16_t y16 = (uint16_t)y; x[0] <= xMax;)
         for (uint32_t y16 = (uint32_t)(y << 16); x[0] <= xMax;)
