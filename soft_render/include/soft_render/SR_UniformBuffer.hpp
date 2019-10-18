@@ -71,6 +71,7 @@ inline unsigned char* SR_UniformBuffer::buffer() noexcept
 template <typename data_t>
 inline const data_t* SR_UniformBuffer::as() const noexcept
 {
+    static_assert(sizeof(data_t) < SR_MAX_UNIFORM_BUFFER_SIZE, "Cannot access uniform due to insufficient memory.");
     return reinterpret_cast<const data_t*>(mBytes);
 }
 
@@ -79,6 +80,7 @@ inline const data_t* SR_UniformBuffer::as() const noexcept
 template <typename data_t>
 inline data_t* SR_UniformBuffer::as() noexcept
 {
+    static_assert(sizeof(data_t) < SR_MAX_UNIFORM_BUFFER_SIZE, "Cannot access uniform due to insufficient memory.");
     return reinterpret_cast<data_t*>(mBytes);
 }
 
