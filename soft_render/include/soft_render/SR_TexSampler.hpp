@@ -303,8 +303,6 @@ inline LS_INLINE SR_TexWrapMode SR_TexSampler::wrap_mode() const noexcept
 template <typename color_type, SR_TexelOrder mode>
 inline LS_INLINE color_type SR_TexSampler::nearest(float x, float y) const noexcept
 {
-    color_type ret;
-
     if (mWrapping != SR_TEXTURE_WRAP_CUTOFF || (ls::math::min(x, y, 0.f, 0.f) >= 0.f && ls::math::max(x, y, 1.f, 1.f) <= 1.f))
     {
         const SR_Texture::fixed_type xf = ls::math::fixed_cast<SR_Texture::fixed_type, float>(x);
@@ -315,14 +313,10 @@ inline LS_INLINE color_type SR_TexSampler::nearest(float x, float y) const noexc
 
         const ptrdiff_t index = map_coordinate<mode>(xi, yi);
 
-        ret = reinterpret_cast<const color_type*>(mTexData)[index];
-    }
-    else
-    {
-        ret = color_type{0};
+        return reinterpret_cast<const color_type*>(mTexData)[index];
     }
 
-    return ret;
+    return color_type{0};
 }
 
 
