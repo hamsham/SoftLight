@@ -144,6 +144,7 @@ set(SR_LIB_HEADERS
     include/soft_render/SR_Shader.hpp
     include/soft_render/SR_ShaderProcessor.hpp
     include/soft_render/SR_Texture.hpp
+    include/soft_render/SR_TexSampler.hpp
     include/soft_render/SR_Transform.hpp
     include/soft_render/SR_UniformBuffer.hpp
     include/soft_render/SR_VertexArray.hpp
@@ -196,6 +197,7 @@ set(SR_LIB_SOURCES
     src/SR_Shader.cpp
     src/SR_ShaderProcessor.cpp
     src/SR_Texture.cpp
+    src/SR_TexSampler.cpp
     src/SR_Transform.cpp
     src/SR_UniformBuffer.cpp
     src/SR_VertexArray.cpp
