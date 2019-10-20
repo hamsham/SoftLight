@@ -259,9 +259,10 @@ add_library(${PROJECT_NAME} ${SR_LIB_TYPE} ${SR_LIB_SOURCES} ${SR_LIB_HEADERS})
 if (NOT MSVC)
     target_link_libraries(
         ${PROJECT_NAME}
-        lsmath
-        lsutils
-        lssetup
+        LightSky::Game
+        LightSky::Math
+        LightSky::Utils
+        LightSky::Setup
         ${ASSIMP_LIBRARIES}
         ${FREEIMAGE_LIBRARIES}
         ${XCB_LIBRARY}
@@ -273,9 +274,10 @@ if (NOT MSVC)
 else()
     target_link_libraries(
         ${PROJECT_NAME}
-        lsmath
-        lsutils
-        lssetup
+        LightSky::Game
+        LightSky::Math
+        LightSky::Utils
+        LightSky::Setup
         ${ASSIMP_LIBRARIES}
         ${FREEIMAGE_LIBRARIES}
     )

@@ -155,7 +155,7 @@ endif()
 # -------------------------------------
 function(sr_add_test target sources)
     add_executable(${target} ${sources} ${ARGN})
-    target_link_libraries(${target} soft_render lsmath lsutils lsgame lssetup ${SR_EXTERNAL_LIBS})
+    target_link_libraries(${target} soft_render LightSky::Math LightSky::Game LightSky::Utils LightSky::Setup ${SR_EXTERNAL_LIBS})
 endfunction(sr_add_test)
 
 sr_add_test(animation_test          animation_test.cpp)
