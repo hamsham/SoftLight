@@ -79,13 +79,13 @@ if (BUILD_FREEIMAGE OR FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NO
     set_target_properties(freeimage PROPERTIES IMPORTED_LOCATION ${EXTERNAL_PROJECT_PREFIX}/lib/${FREEIMAGE_LIB})
     add_dependencies(freeimage FreeImage)
 
+    set(FREEIMAGE_INCLUDE_PATH CACHE EPATH ${EXTERNAL_PROJECT_PREFIX}/include "The directory where FreeImage.h resides")
+
     if (WIN32)
         set(FREEIMAGE_LIBRARIES ${EXTERNAL_PROJECT_PREFIX}/lib/${FREEIMAGE_LIB} ws2_32)
     else()
         set(FREEIMAGE_LIBRARIES freeimage)
     endif()
-
-
 
 endif()
   
