@@ -28,21 +28,22 @@ namespace
 char* _sr_allocate_texture(size_t w, size_t h, size_t d, size_t bpt)
 {
     // 8 pixels can be acquired at a time
-    const size_t wAlignment = 8 - (w%8);
-    const size_t hAlignment = 8 - (h%8);
-    const size_t numBytes   = (w + wAlignment) * (h + hAlignment) * d * bpt;
+    const size_t numBytes     = w * h * d * bpt;
+    const size_t maxRemaining = 4 * bpt;
+    const size_t texAlignment = maxRemaining - (numBytes % maxRemaining);
+    size_t numAlignedBytes    = numBytes + texAlignment;
 
     #ifdef LS_OS_WINDOWS
-    char* const  pTexels = (char*)ls::utils::aligned_malloc(numBytes);
+    char* const  pTexels = (char*)ls::utils::aligned_malloc(numAlignedBytes);
     #else
     char* pTexels = nullptr;
-    if (0 != posix_memalign((void**)&pTexels, sysconf(_SC_PAGESIZE), numBytes))
+    if (0 != posix_memalign((void**)&pTexels, sysconf(_SC_PAGESIZE), numAlignedBytes))
     {
         return nullptr;
     }
     #endif
 
-    ls::utils::fast_memset(pTexels, 0, numBytes);
+    ls::utils::fast_memset(pTexels, 0, numAlignedBytes);
 
     return pTexels;
 }
@@ -59,21 +60,22 @@ char* _sr_copy_texture(size_t w, size_t h, size_t d, size_t bpt, const char* pDa
     }
 
     // 8 pixels can be acquired at a time
-    const uint16_t wAlignment = 8 - (w%8);
-    const uint16_t hAlignment = 8 - (h%8);
-    const size_t   numBytes   = (w + wAlignment) * (h + hAlignment) * d * bpt;
+    const size_t numBytes    = w * h * d * bpt;
+    const size_t maxRemaining = 4 * bpt;
+    const size_t texAlignment = maxRemaining - (numBytes % maxRemaining);
+    size_t numAlignedBytes    = numBytes + texAlignment;
 
     #ifdef LS_OS_WINDOWS
-    char* const  pTexels    = (char*)ls::utils::aligned_malloc(numBytes);
+    char* const  pTexels    = (char*)ls::utils::aligned_malloc(numAlignedBytes);
     #else
     char* pTexels = nullptr;
-    if (0 != posix_memalign((void**)&pTexels, sysconf(_SC_PAGESIZE), numBytes))
+    if (0 != posix_memalign((void**)&pTexels, sysconf(_SC_PAGESIZE), numAlignedBytes))
     {
         return nullptr;
     }
     #endif
 
-    ls::utils::fast_memcpy(pTexels, pData, numBytes);
+    ls::utils::fast_memcpy(pTexels, pData, numAlignedBytes);
 
     return pTexels;
 }
@@ -243,20 +245,25 @@ SR_Texture& SR_Texture::operator=(SR_Texture&& r) noexcept
 /*-------------------------------------
  *
 -------------------------------------*/
-int SR_Texture::init(SR_ColorDataType type, uint16_t w, uint16_t h, uint16_t d) noexcept
+int SR_Texture::init(SR_ColorDataType type, uint16_t w, uint16_t h, uint16_t d, SR_TexelOrder texelOrder) noexcept
 {
     LS_DEBUG_ASSERT(w > 0);
     LS_DEBUG_ASSERT(h > 0);
     LS_DEBUG_ASSERT(d > 0);
 
+    uint16_t w0, h0;
+
     // Z-ordered textures need to be padded if they are not divisible by SR_TEXELS_PER_CHUNK
-    #if SR_TEXTURE_Z_ORDERING
-        const uint16_t w0 = w + (SR_TEXELS_PER_CHUNK - (w % SR_TEXELS_PER_CHUNK));
-        const uint16_t h0 = h + (SR_TEXELS_PER_CHUNK - (h % SR_TEXELS_PER_CHUNK));
-    #else
-        const uint16_t w0 = w;
-        const uint16_t h0 = h;
-    #endif
+    if (texelOrder == SR_TexelOrder::SR_TEXELS_SWIZZLED)
+    {
+        w0 = w + (SR_TEXELS_PER_CHUNK - (w % SR_TEXELS_PER_CHUNK));
+        h0 = h + (SR_TEXELS_PER_CHUNK - (h % SR_TEXELS_PER_CHUNK));
+    }
+    else
+    {
+        w0 = w;
+        h0 = h;
+    }
 
     const size_t bpt = sr_bytes_per_color(type);
     char* pData = _sr_allocate_texture(w0, h0, d, bpt);
@@ -291,7 +298,7 @@ int SR_Texture::init(SR_ColorDataType type, uint16_t w, uint16_t h, uint16_t d) 
 /*-------------------------------------
  *
 -------------------------------------*/
-int SR_Texture::init(const SR_ImgFile& imgFile) noexcept
+int SR_Texture::init(const SR_ImgFile& imgFile, SR_TexelOrder texelOrder) noexcept
 {
     if (!imgFile.data())
     {
@@ -318,24 +325,27 @@ int SR_Texture::init(const SR_ImgFile& imgFile) noexcept
     {
         const unsigned char* pInTex = reinterpret_cast<const unsigned char*>(imgFile.data());
 
-        #if SR_TEXTURE_Z_ORDERING
-        const size_t bytesPerColor = mBytesPerTexel;
-
-        for (uint16_t z = 0; z < mDepth; ++z)
+        if (texelOrder == SR_TexelOrder::SR_TEXELS_SWIZZLED)
         {
-            for (uint16_t y = 0; y < mHeight; ++y)
+            const size_t bytesPerColor = mBytesPerTexel;
+
+            for (uint16_t z = 0; z < mDepth; ++z)
             {
-                for (uint16_t x = 0; x < mWidth; ++x)
+                for (uint16_t y = 0; y < mHeight; ++y)
                 {
-                    const ptrdiff_t index = x + mWidth * (y + mHeight * z);
-                    const ptrdiff_t offset = bytesPerColor * index;
-                    set_texel(x, y, z, pInTex + offset);
+                    for (uint16_t x = 0; x < mWidth; ++x)
+                    {
+                        const ptrdiff_t index = x + mWidth * (y + mHeight * z);
+                        const ptrdiff_t offset = bytesPerColor * index;
+                        set_texel<SR_TexelOrder::SR_TEXELS_SWIZZLED>(x, y, z, pInTex + offset);
+                    }
                 }
             }
         }
-        #else
-        ls::utils::fast_memcpy(mTexels, pInTex, imgFile.num_bytes());
-        #endif
+        else
+        {
+            ls::utils::fast_memcpy(mTexels, pInTex, imgFile.num_bytes());
+        }
     }
 
     return retCode;
@@ -366,36 +376,4 @@ void SR_Texture::terminate() noexcept
     #endif
 
     mTexels = nullptr;
-}
-
-
-
-/*-------------------------------------
- * Retrieve a raw texels
--------------------------------------*/
-void SR_Texture::set_texels(
-    uint16_t x,
-    uint16_t y,
-    uint16_t z,
-    uint16_t w,
-    uint16_t h,
-    uint16_t d,
-    const void* pData) noexcept
-{
-    const char* pSrc = reinterpret_cast<const char*>(pData);
-    const size_t bytesPerColor = mBytesPerTexel;
-
-    for (uint16_t k = 0; z < d; ++k, ++z)
-    {
-        for (uint16_t j = 0; y < h; ++j, ++y)
-        {
-            for (uint16_t i = 0; x < w; ++i, ++x)
-            {
-                const ptrdiff_t index = i + w * (j + (h * k));
-                const ptrdiff_t offset = (index * bytesPerColor);
-
-                set_texel(x, y, z, pSrc+offset);
-            }
-        }
-    }
 }

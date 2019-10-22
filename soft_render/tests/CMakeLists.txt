@@ -172,5 +172,3 @@ sr_add_test(sr_vertex_info          sr_vertex_info.cpp)
 sr_add_test(volume_test             volume_test.cpp)
 sr_add_test(window_test             window_test.cpp)
 sr_add_test(z_curve_test            z_curve_test.cpp)
-
-target_compile_definitions(z_curve_test PRIVATE SR_TEXTURE_Z_ORDERING=1)

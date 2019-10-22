@@ -501,6 +501,119 @@ void SR_VertexProcessor::flush_bins() const noexcept
 
 
 
+/*--------------------------------------
+ * Publish a vertex to a fragment thread
+--------------------------------------*/
+void SR_VertexProcessor::push_bin(
+    float fboW,
+    float fboH,
+    math::vec4* const screenCoords,
+    const math::vec4* varyings
+) const noexcept
+{
+    const uint_fast32_t numVaryings = mShader->get_num_varyings();
+    unsigned numVerts;
+    const SR_Mesh m = mMesh;
+    std::atomic_uint_fast64_t* const pLocks = mBinsUsed;
+
+    const math::vec4& p0 = screenCoords[0];
+    const math::vec4& p1 = screenCoords[1];
+    const math::vec4& p2 = screenCoords[2];
+    float bboxMinX = -1.f;
+    float bboxMinY = -1.f;
+    float bboxMaxX = -1.f;
+    float bboxMaxY = -1.f;
+
+    // calculate the bounds of the tile which a certain thread will be
+    // responsible for
+
+    // render points through whichever tile/thread they appear in
+    switch (m.mode & (RENDER_MODE_POINTS|RENDER_MODE_LINES|RENDER_MODE_TRIANGLES))
+    {
+        case RENDER_MODE_POINTS:
+            numVerts = 1;
+            bboxMinX = p0[0];
+            bboxMaxX = p0[0];
+            bboxMinY = p0[1];
+            bboxMaxY = p0[1];
+            break;
+
+        case RENDER_MODE_LINES:
+            // establish a bounding box to detect overlap with a thread's tiles
+            numVerts = 2;
+            bboxMinX = math::min(p0[0], p1[0]);
+            bboxMinY = math::min(p0[1], p1[1]);
+            bboxMaxX = math::max(p0[0], p1[0]);
+            bboxMaxY = math::max(p0[1], p1[1]);
+            break;
+
+        case RENDER_MODE_TRIANGLES:
+            // establish a bounding box to detect overlap with a thread's tiles
+            numVerts = 3;
+            bboxMinX = math::min(p0[0], p1[0], p2[0]);
+            bboxMinY = math::min(p0[1], p1[1], p2[1]);
+            bboxMaxX = math::max(p0[0], p1[0], p2[0]);
+            bboxMaxY = math::max(p0[1], p1[1], p2[1]);
+            break;
+
+        default:
+            break;
+    }
+
+    int isPrimVisible = (bboxMaxX >= 0.f && fboW >= bboxMinX && bboxMaxY >= 0.f && fboH >= bboxMinY);
+    isPrimVisible = isPrimVisible && (bboxMaxX-math::ceil(bboxMinX) > 0.0f) && (bboxMaxY-math::ceil(bboxMinY) > 0.f);
+
+    if (isPrimVisible)
+    {
+        SR_FragmentBin* const pFragBins = mFragBins;
+
+        // Check if the output bin is full
+        uint_fast64_t binId;
+
+        // Attempt to grab a bin index. Flush the bins if they've filled up.
+        while ((binId = pLocks->fetch_add(1, std::memory_order_acq_rel)) >= SR_SHADER_MAX_PRIM_BINS)
+        {
+            flush_bins();
+        }
+
+        // place a triangle into the next available bin
+        mBinIds[binId] = (uint32_t)binId;
+
+        // Copy all per-vertex coordinates and varyings to the fragment bins
+        // which will need the data for interpolation. The perspective-divide
+        // is only used for rendering triangles.
+        SR_FragmentBin& bin = pFragBins[binId];
+        bin.mScreenCoords[0] = p0;
+        bin.mScreenCoords[1] = p1;
+        bin.mScreenCoords[2] = p2;
+
+        const float denom = 1.f / ((p0[0]-p2[0])*(p1[1]-p0[1]) - (p0[0]-p1[0])*(p2[1]-p0[1]));
+        bin.mBarycentricCoords[0] = denom*math::vec4(p1[1]-p2[1], p2[1]-p0[1], p0[1]-p1[1], 0.f);
+        bin.mBarycentricCoords[1] = denom*math::vec4(p2[0]-p1[0], p0[0]-p2[0], p1[0]-p0[0], 0.f);
+        bin.mBarycentricCoords[2] = denom*math::vec4(
+            p1[0]*p2[1] - p2[0]*p1[1],
+            p2[0]*p0[1] - p0[0]*p2[1],
+            p0[0]*p1[1] - p1[0]*p0[1],
+            0.f
+        );
+
+        while (numVerts--)
+        {
+            const unsigned offset = numVerts * SR_SHADER_MAX_VARYING_VECTORS;
+            for (unsigned i = numVaryings; i--;)
+            {
+                bin.mVaryings[i+offset] = varyings[i+offset];
+            }
+        }
+    }
+
+    while (pLocks->load(std::memory_order_consume) >= SR_SHADER_MAX_PRIM_BINS)
+    {
+        flush_bins();
+    }
+}
+
+
 
 /*-------------------------------------
  * Ensure only visible triangles get rendered. Triangles should have already
@@ -680,120 +793,6 @@ void SR_VertexProcessor::clip_and_process_tris(
 
         //push_bin(fboW, fboH, newVerts+i, pVaryings);
         push_bin(fboW, fboH, tempVerts, tempVarys);
-    }
-}
-
-
-
-/*--------------------------------------
- * Publish a vertex to a fragment thread
---------------------------------------*/
-void SR_VertexProcessor::push_bin(
-    float fboW,
-    float fboH,
-    math::vec4* const screenCoords,
-    const math::vec4* varyings
-) const noexcept
-{
-    const uint_fast32_t numVaryings = mShader->get_num_varyings();
-    unsigned numVerts;
-    const SR_Mesh m = mMesh;
-    std::atomic_uint_fast64_t* const pLocks = mBinsUsed;
-
-    const math::vec4& p0 = screenCoords[0];
-    const math::vec4& p1 = screenCoords[1];
-    const math::vec4& p2 = screenCoords[2];
-    float bboxMinX = -1.f;
-    float bboxMinY = -1.f;
-    float bboxMaxX = -1.f;
-    float bboxMaxY = -1.f;
-
-    // calculate the bounds of the tile which a certain thread will be
-    // responsible for
-
-    // render points through whichever tile/thread they appear in
-    switch (m.mode & (RENDER_MODE_POINTS|RENDER_MODE_LINES|RENDER_MODE_TRIANGLES))
-    {
-        case RENDER_MODE_POINTS:
-            numVerts = 1;
-            bboxMinX = p0[0];
-            bboxMaxX = p0[0];
-            bboxMinY = p0[1];
-            bboxMaxY = p0[1];
-            break;
-
-        case RENDER_MODE_LINES:
-            // establish a bounding box to detect overlap with a thread's tiles
-            numVerts = 2;
-            bboxMinX = math::min(p0[0], p1[0]);
-            bboxMinY = math::min(p0[1], p1[1]);
-            bboxMaxX = math::max(p0[0], p1[0]);
-            bboxMaxY = math::max(p0[1], p1[1]);
-            break;
-
-        case RENDER_MODE_TRIANGLES:
-            // establish a bounding box to detect overlap with a thread's tiles
-            numVerts = 3;
-            bboxMinX = math::min(p0[0], p1[0], p2[0]);
-            bboxMinY = math::min(p0[1], p1[1], p2[1]);
-            bboxMaxX = math::max(p0[0], p1[0], p2[0]);
-            bboxMaxY = math::max(p0[1], p1[1], p2[1]);
-            break;
-
-        default:
-            break;
-    }
-
-    int isPrimVisible = (bboxMaxX >= 0.f && fboW >= bboxMinX && bboxMaxY >= 0.f && fboH >= bboxMinY);
-    isPrimVisible = isPrimVisible && (bboxMaxX-math::ceil(bboxMinX) > 0.0f) && (bboxMaxY-math::ceil(bboxMinY) > 0.f);
-
-    if (isPrimVisible)
-    {
-        SR_FragmentBin* const pFragBins = mFragBins;
-
-        // Check if the output bin is full
-        uint_fast64_t binId;
-
-        // Attempt to grab a bin index. Flush the bins if they've filled up.
-        while ((binId = pLocks->fetch_add(1, std::memory_order_acq_rel)) >= SR_SHADER_MAX_PRIM_BINS)
-        {
-            flush_bins();
-        }
-
-        // place a triangle into the next available bin
-        mBinIds[binId] = (uint32_t)binId;
-
-        // Copy all per-vertex coordinates and varyings to the fragment bins
-        // which will need the data for interpolation. The perspective-divide
-        // is only used for rendering triangles.
-        SR_FragmentBin& bin = pFragBins[binId];
-        bin.mScreenCoords[0] = p0;
-        bin.mScreenCoords[1] = p1;
-        bin.mScreenCoords[2] = p2;
-
-        const float denom = 1.f / ((p0[0]-p2[0])*(p1[1]-p0[1]) - (p0[0]-p1[0])*(p2[1]-p0[1]));
-        bin.mBarycentricCoords[0] = denom*math::vec4(p1[1]-p2[1], p2[1]-p0[1], p0[1]-p1[1], 0.f);
-        bin.mBarycentricCoords[1] = denom*math::vec4(p2[0]-p1[0], p0[0]-p2[0], p1[0]-p0[0], 0.f);
-        bin.mBarycentricCoords[2] = denom*math::vec4(
-            p1[0]*p2[1] - p2[0]*p1[1],
-            p2[0]*p0[1] - p0[0]*p2[1],
-            p0[0]*p1[1] - p1[0]*p0[1],
-            0.f
-        );
-
-        while (numVerts--)
-        {
-            const unsigned offset = numVerts * SR_SHADER_MAX_VARYING_VECTORS;
-            for (unsigned i = numVaryings; i--;)
-            {
-                bin.mVaryings[i+offset] = varyings[i+offset];
-            }
-        }
-    }
-
-    while (pLocks->load(std::memory_order_consume) >= SR_SHADER_MAX_PRIM_BINS)
-    {
-        flush_bins();
     }
 }
 

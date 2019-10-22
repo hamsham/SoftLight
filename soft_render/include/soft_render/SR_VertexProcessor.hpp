@@ -87,16 +87,16 @@ struct SR_VertexProcessor
 
     void flush_bins() const noexcept;
 
-    void clip_and_process_tris(
-        ls::math::vec4_t<float> vertCoords[SR_SHADER_MAX_SCREEN_COORDS],
-        ls::math::vec4_t<float> pVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS]) noexcept;
-
     void push_bin(
         float fboW,
         float fboH,
         ls::math::vec4_t<float>* const screenCoords,
         const ls::math::vec4_t<float>* varyings
     ) const noexcept;
+
+    void clip_and_process_tris(
+        ls::math::vec4_t<float> vertCoords[SR_SHADER_MAX_SCREEN_COORDS],
+        ls::math::vec4_t<float> pVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS]) noexcept;
 
     void execute() noexcept;
 };

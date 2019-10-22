@@ -650,13 +650,8 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
     math::vec2        p2           = math::vec2_cast(screenCoords[2]);
     const math::vec4* bcClipSpace  = pBin->mBarycentricCoords;
     const int32_t     depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON;
-    #if SR_VERTEX_CLIPPING_ENABLED == 0
-        const int32_t     bboxMinY     = (int32_t)math::min(mFboH, math::max(0.f,   math::min(p0[1], p1[1], p2[1]))+0.5f);
-        const int32_t     bboxMaxY     = (int32_t)math::max(0.f,   math::min(mFboH, math::max(p0[1], p1[1], p2[1])));
-    #else
-        const int32_t     bboxMinY     = (int32_t)math::ceil(math::min(p0[1], p1[1], p2[1]));
-        const int32_t     bboxMaxY     = (int32_t)math::max(p0[1], p1[1], p2[1]);
-    #endif
+    const int32_t     bboxMinY     = (int32_t)math::max(0.f,   math::ceil(math::min(p0[1], p1[1], p2[1])));
+    const int32_t     bboxMaxY     = (int32_t)math::min(mFboH, math::max(p0[1], p1[1], p2[1]));
     SR_FragCoord*     outCoords    = mQueues;
 
     if (p0[1] < p1[1]) std::swap(p0, p1);
@@ -753,13 +748,8 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_FragmentBin* pBin, cons
     math::vec2&&      p2           = math::vec2_cast(screenCoords[2]);
     const math::vec4* bcClipSpace  = pBin->mBarycentricCoords;
     const int32_t     depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON);
-    #if SR_VERTEX_CLIPPING_ENABLED == 0
-        const int32_t bboxMinY     = (int32_t)math::min(mFboH, math::max(0.f,   math::min(p0[1], p1[1], p2[1]))+0.5f);
-        const int32_t bboxMaxY     = (int32_t)math::max(0.f,   math::min(mFboH, math::max(p0[1], p1[1], p2[1])));
-    #else
-        const int32_t bboxMinY     = (int32_t)math::ceil(math::min(p0[1], p1[1], p2[1]));
-        const int32_t bboxMaxY     = (int32_t)math::max(p0[1], p1[1], p2[1]);
-    #endif
+    const int32_t     bboxMinY     = (int32_t)math::max(0.f,   math::ceil(math::min(p0[1], p1[1], p2[1])));
+    const int32_t     bboxMaxY     = (int32_t)math::min(mFboH, math::max(p0[1], p1[1], p2[1]));
     SR_FragCoord*     outCoords    = mQueues;
 
     if (p0[1] < p1[1]) std::swap(p0, p1);
@@ -817,8 +807,6 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_FragmentBin* pBin, cons
                 outCoords->bc[numQueuedFrags] = (bc[i] * homogenous) * persp;
                 outCoords->xyzw[numQueuedFrags] = math::vec4{xf[i], yf, z[i], persp};
                 outCoords->xy[numQueuedFrags] = (uint32_t)((0xFFFF & x[i]) | y16);
-                //outCoords->coord[numQueuedFrags].x = (uint16_t)x[i];
-                //outCoords->coord[numQueuedFrags].y = y16;
 
                 ++numQueuedFrags;
 
