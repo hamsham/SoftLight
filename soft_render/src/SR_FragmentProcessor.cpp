@@ -487,7 +487,6 @@ void SR_FragmentProcessor::render_line(
             fragParams.fragCoord = {xf, yf, z, 1.f};
             fragParams.x = (uint16_t)xi;
             fragParams.y = (uint16_t)yi;
-            fragParams.z = z;
             fragParams.pVaryings = mVaryings;
             const uint_fast32_t haveOutputs = shader(fragParams);
 
@@ -871,8 +870,7 @@ void SR_FragmentProcessor::flush_fragments(
             fragParams.depth     = outCoords->xyzw[i][2];
             fragParams.x         = outCoords->coord[i].x;
             fragParams.y         = outCoords->coord[i].y;
-            fragParams.z         = 0;
-
+            
             uint_fast32_t haveOutputs = pShader(fragParams);
 
             // branchless select
@@ -900,7 +898,6 @@ void SR_FragmentProcessor::flush_fragments(
             fragParams.depth     = outCoords->xyzw[i][2];
             fragParams.x         = outCoords->coord[i].x;
             fragParams.y         = outCoords->coord[i].y;
-            fragParams.z         = 0;
 
             uint_fast32_t haveOutputs = pShader(fragParams);
 

@@ -111,7 +111,6 @@ struct SR_FragmentParam
     alignas(sizeof(float)) float depth;
     alignas(sizeof(uint16_t)) uint16_t x;
     alignas(sizeof(uint16_t)) uint16_t y;
-    alignas(sizeof(uint32_t)) uint32_t z;
 
     const SR_UniformBuffer* pUniforms;
     ls::math::vec4* pVaryings;
