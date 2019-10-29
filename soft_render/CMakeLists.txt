@@ -143,6 +143,7 @@ set(SR_LIB_HEADERS
     include/soft_render/SR_Setup.hpp
     include/soft_render/SR_Shader.hpp
     include/soft_render/SR_ShaderProcessor.hpp
+    include/soft_render/SR_Swizzle.hpp
     include/soft_render/SR_Texture.hpp
     include/soft_render/SR_TexSampler.hpp
     include/soft_render/SR_Transform.hpp

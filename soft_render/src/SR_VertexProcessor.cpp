@@ -169,7 +169,6 @@ class SR_PTVCache
         }
     }
 
-
     inline void query_and_update(size_t index, math::vec4& outVert, math::vec4* outVaryings, unsigned numVaryings) noexcept
     {
         size_t ret = PTV_CACHE_MISS;
@@ -226,11 +225,9 @@ class SR_PTVCache
 --------------------------------------*/
 inline void sr_perspective_divide(math::vec4& v) noexcept
 {
-    const float wInv = math::rcp(v[3]);
-    v[0] *= wInv;
-    v[1] *= wInv;
-    v[2] *= wInv;
-    v[3] = wInv;
+    const math::vec4&& wInv = math::rcp(math::vec4{v[3]});
+    v *= wInv;
+    v[3] = wInv[0];
 }
 
 
@@ -240,8 +237,9 @@ inline void sr_perspective_divide(math::vec4& v) noexcept
 --------------------------------------*/
 inline LS_INLINE void sr_world_to_screen_coords_divided(math::vec4& v, const float widthScale, const float heightScale) noexcept
 {
-    v[0] = math::fmadd(widthScale, v[0], widthScale);
-    v[1] = math::fmadd(heightScale, v[1], heightScale);
+    //v[0] = math::fmadd(widthScale, v[0], widthScale);
+    //v[1] = math::fmadd(heightScale, v[1], heightScale);
+    v = math::fmadd(math::vec4{widthScale, heightScale, 1.f, 1.f}, v, math::vec4{widthScale, heightScale, 0.f, 0.f});
 }
 
 
@@ -417,6 +415,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
     // Sort the bins based on their depth.
     if (tileId == mNumThreads-1u)
     {
+        #if 1
         const uint_fast64_t maxElements = math::min<uint64_t>(mBinsUsed->load(std::memory_order_consume), SR_SHADER_MAX_PRIM_BINS);
 
         // Blended fragments get sorted back-to-front for correct coloring.
@@ -433,6 +432,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
                 return mFragBins[a] < mFragBins[b];
             });
         }
+        #endif
 
         // Let all threads know they can process fragments.
         mFragProcessors->store(syncPoint1, std::memory_order_release);
@@ -519,10 +519,10 @@ void SR_VertexProcessor::push_bin(
     const math::vec4& p0 = screenCoords[0];
     const math::vec4& p1 = screenCoords[1];
     const math::vec4& p2 = screenCoords[2];
-    float bboxMinX = -1.f;
-    float bboxMinY = -1.f;
-    float bboxMaxX = -1.f;
-    float bboxMaxY = -1.f;
+    float bboxMinX;
+    float bboxMinY;
+    float bboxMaxX;
+    float bboxMaxY;
 
     // calculate the bounds of the tile which a certain thread will be
     // responsible for
@@ -557,7 +557,7 @@ void SR_VertexProcessor::push_bin(
             break;
 
         default:
-            break;
+            return;
     }
 
     int isPrimVisible = (bboxMaxX >= 0.f && fboW >= bboxMinX && bboxMaxY >= 0.f && fboH >= bboxMinY);
@@ -829,6 +829,9 @@ void SR_VertexProcessor::execute() noexcept
     {
         pIbo = &mContext->ibo(vao.get_index_buffer());
     }
+
+    LS_PREFETCH(pUniforms, LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_L1);
+    LS_PREFETCH(pVaryings, LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_L1);
 
     if (mMesh.mode & (RENDER_MODE_POINTS | RENDER_MODE_INDEXED_POINTS))
     {

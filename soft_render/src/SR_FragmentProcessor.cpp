@@ -469,8 +469,8 @@ void SR_FragmentProcessor::render_line(
     {
         const float      xf      = math::float_cast<float, fixed_type>(x);
         const float      yf      = math::float_cast<float, fixed_type>(y);
-        const int32_t    xi      = math::integer_cast<int32_t, fixed_type>(math::ceil(x));
-        const int32_t    yi      = math::integer_cast<int32_t, fixed_type>(math::ceil(y));
+        const int32_t    xi      = math::integer_cast<int32_t, fixed_type>(math::floor(x));
+        const int32_t    yi      = math::integer_cast<int32_t, fixed_type>(math::floor(y));
 
         const float      currLen = math::length(math::vec2{xf-x1f, yf-y1f});
         const float      interp  = (currLen*dist);
@@ -653,6 +653,9 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
     const int32_t     bboxMaxY     = (int32_t)math::min(mFboH, math::max(p0[1], p1[1], p2[1]));
     SR_FragCoord*     outCoords    = mQueues;
 
+    // Let each thread start rendering at whichever scanline it's assigned to
+    const int32_t scanlineOffset = sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
+
     if (p0[1] < p1[1]) std::swap(p0, p1);
     if (p0[1] < p2[1]) std::swap(p0, p2);
     if (p1[1] < p2[1]) std::swap(p1, p2);
@@ -662,9 +665,6 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
     #else
     SR_ScanlineBounds scanline{p0, p1, p2};
     #endif
-
-    // Let each thread start rendering at whichever scanline it's assigned to
-    const int32_t scanlineOffset = sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
 
     for (int32_t y = bboxMinY+scanlineOffset; y <= bboxMaxY; y += increment)
     {
@@ -751,6 +751,8 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_FragmentBin* pBin, cons
     const int32_t     bboxMaxY     = (int32_t)math::min(mFboH, math::max(p0[1], p1[1], p2[1]));
     SR_FragCoord*     outCoords    = mQueues;
 
+    const int32_t scanlineOffset = sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
+
     if (p0[1] < p1[1]) std::swap(p0, p1);
     if (p0[1] < p2[1]) std::swap(p0, p2);
     if (p1[1] < p2[1]) std::swap(p1, p2);
@@ -762,8 +764,6 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_FragmentBin* pBin, cons
     #endif
 
     unsigned numQueuedFrags = 0;
-    const int32_t scanlineOffset = sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
-
     for (int32_t y = bboxMinY+scanlineOffset; y <= bboxMaxY; y += increment)
     {
         // calculate the bounds of the current scan-line
