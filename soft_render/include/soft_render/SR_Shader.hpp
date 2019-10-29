@@ -108,7 +108,6 @@ struct SR_FragmentParam
 {
     alignas(sizeof(ls::math::vec4)) ls::math::vec4 fragCoord;
 
-    alignas(sizeof(float)) float depth;
     alignas(sizeof(uint16_t)) uint16_t x;
     alignas(sizeof(uint16_t)) uint16_t y;
 

@@ -252,7 +252,6 @@ void SR_FragmentProcessor::render_point(
 
     fragParams.x = (uint16_t)fragCoord[0];
     fragParams.y = (uint16_t)fragCoord[1];
-    fragParams.depth = fragCoord[2];
     fragParams.pUniforms = pUniforms;
 
     for (unsigned i = SR_SHADER_MAX_VARYING_VECTORS; i--;)
@@ -263,9 +262,9 @@ void SR_FragmentProcessor::render_point(
     if (depthTest == SR_DEPTH_TEST_ON)
     {
 #if SR_REVERSED_Z_BUFFER
-        if (fragParams.depth < pDepthBuf->raw_texel<float>(fragParams.x, fragParams.y))
+        if (fragCoord[2] < pDepthBuf->raw_texel<float>(fragParams.x, fragParams.y))
 #else
-        if (fragParams.depth > pDepthBuf->raw_texel<float>(fragParams.x, fragParams.y))
+        if (fragCoord[2] > pDepthBuf->raw_texel<float>(fragParams.x, fragParams.y))
 #endif
         {
             return;
@@ -303,7 +302,7 @@ void SR_FragmentProcessor::render_point(
 
     if (depthMask)
     {
-        fbo->put_depth_pixel<float>(fragParams.x, fragParams.y, fragParams.depth);
+        fbo->put_depth_pixel<float>(fragParams.x, fragParams.y, fragParams.fragCoord[2]);
     }
 }
 
@@ -867,7 +866,6 @@ void SR_FragmentProcessor::flush_fragments(
         for (uint_fast32_t i = 0; i < numQueuedFrags; ++i)
         {
             fragParams.fragCoord = outCoords->xyzw[i];
-            fragParams.depth     = outCoords->xyzw[i][2];
             fragParams.x         = outCoords->coord[i].x;
             fragParams.y         = outCoords->coord[i].y;
             
@@ -884,7 +882,7 @@ void SR_FragmentProcessor::flush_fragments(
 
             if (depthMask)
             {
-                pDepthBuf->raw_texel<float>(fragParams.x, fragParams.y) = fragParams.depth;
+                pDepthBuf->raw_texel<float>(fragParams.x, fragParams.y) = fragParams.fragCoord[2];
             }
 
             fragParams.pVaryings += SR_SHADER_MAX_VARYING_VECTORS;
@@ -895,7 +893,6 @@ void SR_FragmentProcessor::flush_fragments(
         for (uint_fast32_t i = 0; i < numQueuedFrags; ++i)
         {
             fragParams.fragCoord = outCoords->xyzw[i];
-            fragParams.depth     = outCoords->xyzw[i][2];
             fragParams.x         = outCoords->coord[i].x;
             fragParams.y         = outCoords->coord[i].y;
 
@@ -912,7 +909,7 @@ void SR_FragmentProcessor::flush_fragments(
 
             if (depthMask)
             {
-                pDepthBuf->raw_texel<float>(fragParams.x, fragParams.y) = fragParams.depth;
+                pDepthBuf->raw_texel<float>(fragParams.x, fragParams.y) = fragParams.fragCoord[2];
             }
 
             fragParams.pVaryings += SR_SHADER_MAX_VARYING_VECTORS;
