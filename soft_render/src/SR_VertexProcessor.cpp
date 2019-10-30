@@ -223,11 +223,13 @@ class SR_PTVCache
 /*--------------------------------------
  * Convert world coordinates to screen coordinates (temporary until NDC clipping is added)
 --------------------------------------*/
-inline void sr_perspective_divide(math::vec4& v) noexcept
+inline math::vec4 sr_perspective_divide(math::vec4 v) noexcept
 {
     const math::vec4&& wInv = math::rcp(math::vec4{v[3]});
     v *= wInv;
     v[3] = wInv[0];
+
+    return v;
 }
 
 
@@ -352,24 +354,22 @@ inline LS_INLINE bool frontface_visible(const math::vec4 screenCoords[SR_SHADER_
 inline LS_INLINE SR_ClipStatus face_visible(const math::vec4 clipCoords[SR_SHADER_MAX_WORLD_COORDS]) noexcept
 {
     #if SR_VERTEX_CLIPPING_ENABLED != 0
-        if(-clipCoords[0][3] <= clipCoords[0][0] && clipCoords[0][3] >= clipCoords[0][0]
-        && -clipCoords[0][3] <= clipCoords[0][1] && clipCoords[0][3] >= clipCoords[0][1]
-        && -clipCoords[0][3] <= clipCoords[0][2] && clipCoords[0][3] >= clipCoords[0][2])
+        const float w0p = clipCoords[0][3];
+        const float w1p = clipCoords[1][3];
+        const float w2p = clipCoords[2][3];
+
+        const float w0n = -clipCoords[0][3];
+        const float w1n = -clipCoords[1][3];
+        const float w2n = -clipCoords[2][3];
+
+        if (clipCoords[0] >= w0n && clipCoords[0] <= w0p
+        && clipCoords[1] >= w1n  && clipCoords[1] <= w1p
+        && clipCoords[2] >= w2n && clipCoords[2] <= w2p)
         {
-            if(-clipCoords[1][3] <= clipCoords[1][0] && clipCoords[1][3] >= clipCoords[1][0]
-            && -clipCoords[1][3] <= clipCoords[1][1] && clipCoords[1][3] >= clipCoords[1][1]
-            && -clipCoords[1][3] <= clipCoords[1][2] && clipCoords[1][3] >= clipCoords[1][2])
-            {
-                if(-clipCoords[2][3] <= clipCoords[2][0] && clipCoords[2][3] >= clipCoords[2][0]
-                && -clipCoords[2][3] <= clipCoords[2][1] && clipCoords[2][3] >= clipCoords[2][1]
-                && -clipCoords[2][3] <= clipCoords[2][2] && clipCoords[2][3] >= clipCoords[2][2])
-                {
-                    return SR_TRIANGLE_FULLY_VISIBLE;
-                }
-            }
+            return SR_TRIANGLE_FULLY_VISIBLE;
         }
 
-        if (clipCoords[0][3] >= 1.f || clipCoords[1][3] >= 1.f || clipCoords[2][3] >= 1.f)
+        if (w0p >= 1.f || w1p >= 1.f || w2p >= 1.f)
         {
             return SR_TRIANGLE_PARTIALLY_VISIBLE;
         }
@@ -415,7 +415,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
     // Sort the bins based on their depth.
     if (tileId == mNumThreads-1u)
     {
-        #if 1
+        #if 0
         const uint_fast64_t maxElements = math::min<uint64_t>(mBinsUsed->load(std::memory_order_consume), SR_SHADER_MAX_PRIM_BINS);
 
         // Blended fragments get sorted back-to-front for correct coloring.
@@ -571,7 +571,7 @@ void SR_VertexProcessor::push_bin(
         uint_fast64_t binId;
 
         // Attempt to grab a bin index. Flush the bins if they've filled up.
-        while ((binId = pLocks->fetch_add(1, std::memory_order_acq_rel)) >= SR_SHADER_MAX_PRIM_BINS)
+        while ((binId = pLocks->fetch_add(1, std::memory_order_acq_rel)) >= (uint_fast64_t)SR_SHADER_MAX_PRIM_BINS)
         {
             flush_bins();
         }
@@ -753,9 +753,9 @@ void SR_VertexProcessor::clip_and_process_tris(
         math::vec4& v1 = newVerts[1];
         math::vec4& v2 = newVerts[2];
 
-        sr_perspective_divide(v0);
-        sr_perspective_divide(v1);
-        sr_perspective_divide(v2);
+        v0 = sr_perspective_divide(v0);
+        v1 = sr_perspective_divide(v1);
+        v2 = sr_perspective_divide(v2);
 
         sr_world_to_screen_coords_divided(v0, widthScale, heightScale);
         sr_world_to_screen_coords_divided(v1, widthScale, heightScale);
@@ -766,9 +766,8 @@ void SR_VertexProcessor::clip_and_process_tris(
         return;
     }
 
-    tempVerts[0] = newVerts[0];
+    tempVerts[0] = sr_perspective_divide(newVerts[0]);
     _copy_verts(numVarys, newVarys, tempVarys);
-    sr_perspective_divide(tempVerts[0]);
     sr_world_to_screen_coords_divided(tempVerts[0], widthScale, heightScale);
 
     for (unsigned i = numTotalVerts-2; i--;)
@@ -785,8 +784,8 @@ void SR_VertexProcessor::clip_and_process_tris(
         math::vec4& v1 = tempVerts[1];
         math::vec4& v2 = tempVerts[2];
 
-        sr_perspective_divide(v1);
-        sr_perspective_divide(v2);
+        v1 = sr_perspective_divide(v1);
+        v2 = sr_perspective_divide(v2);
 
         sr_world_to_screen_coords_divided(v1, widthScale, heightScale);
         sr_world_to_screen_coords_divided(v2, widthScale, heightScale);
@@ -908,6 +907,7 @@ void SR_VertexProcessor::execute() noexcept
             {
                 continue;
             }
+
             // Clip-space culling
             const SR_ClipStatus visStatus = face_visible(vertCoords);
             if (visStatus == SR_TRIANGLE_NOT_VISIBLE)
@@ -916,9 +916,9 @@ void SR_VertexProcessor::execute() noexcept
             }
 
             #if SR_VERTEX_CLIPPING_ENABLED == 0
-                sr_perspective_divide(vertCoords[0]);
-                sr_perspective_divide(vertCoords[1]);
-                sr_perspective_divide(vertCoords[2]);
+                vertCoords[0] = sr_perspective_divide(vertCoords[0]);
+                vertCoords[1] = sr_perspective_divide(vertCoords[1]);
+                vertCoords[2] = sr_perspective_divide(vertCoords[2]);
 
                 sr_world_to_screen_coords_divided(vertCoords[0], widthScale, heightScale);
                 sr_world_to_screen_coords_divided(vertCoords[1], widthScale, heightScale);
@@ -928,9 +928,9 @@ void SR_VertexProcessor::execute() noexcept
             #else
                 if (visStatus == SR_TRIANGLE_FULLY_VISIBLE)
                 {
-                    sr_perspective_divide(vertCoords[0]);
-                    sr_perspective_divide(vertCoords[1]);
-                    sr_perspective_divide(vertCoords[2]);
+                    vertCoords[0] = sr_perspective_divide(vertCoords[0]);
+                    vertCoords[1] = sr_perspective_divide(vertCoords[1]);
+                    vertCoords[2] = sr_perspective_divide(vertCoords[2]);
 
                     sr_world_to_screen_coords_divided(vertCoords[0], widthScale, heightScale);
                     sr_world_to_screen_coords_divided(vertCoords[1], widthScale, heightScale);
