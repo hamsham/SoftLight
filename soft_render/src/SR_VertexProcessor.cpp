@@ -415,7 +415,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
     // Sort the bins based on their depth.
     if (tileId == mNumThreads-1u)
     {
-        #if 0
+        #if 1
         const uint_fast64_t maxElements = math::min<uint64_t>(mBinsUsed->load(std::memory_order_consume), SR_SHADER_MAX_PRIM_BINS);
 
         // Blended fragments get sorted back-to-front for correct coloring.
