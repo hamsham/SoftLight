@@ -543,7 +543,7 @@ void SR_FragmentProcessor::render_wireframe(const SR_FragmentBin* pBins, const S
     math::vec2        p1           = math::vec2_cast(screenCoords[1]);
     math::vec2        p2           = math::vec2_cast(screenCoords[2]);
     const math::vec4* bcClipSpace  = pBins->mBarycentricCoords;
-    const int32_t     depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON;
+    const int32_t     depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON);
     const int32_t     bboxMinY     = (int32_t)math::ceil(math::min(p0[1], p1[1], p2[1]));
     const int32_t     bboxMaxY     = (int32_t)math::max(p0[1], p1[1], p2[1]);
     SR_FragCoord*     outCoords    = mQueues;
@@ -593,12 +593,12 @@ void SR_FragmentProcessor::render_wireframe(const SR_FragmentBin* pBins, const S
             // but due to roundoff errors, we need to know if it's close enough
             // to a triangle edge to be rendered.
             #if SR_REVERSED_Z_BUFFER
-                if (depthTesting && (z < oldDepth))
+                if (depthTesting & (z < oldDepth))
                 {
                     continue;
                 }
             #else
-                if (depthTesting && (z > oldDepth))
+                if (depthTesting & (z > oldDepth))
                 {
                     continue;
                 }
@@ -647,7 +647,7 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
     math::vec2        p1           = math::vec2_cast(screenCoords[1]);
     math::vec2        p2           = math::vec2_cast(screenCoords[2]);
     const math::vec4* bcClipSpace  = pBin->mBarycentricCoords;
-    const int32_t     depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON;
+    const int32_t     depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON);
     const int32_t     bboxMinY     = (int32_t)math::max(0.f,   math::ceil(math::min(p0[1], p1[1], p2[1])));
     const int32_t     bboxMaxY     = (int32_t)math::min(mFboH, math::max(p0[1], p1[1], p2[1]));
     SR_FragCoord*     outCoords    = mQueues;
@@ -696,12 +696,12 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
             // but due to roundoff errors, we need to know if it's close enough
             // to a triangle edge to be rendered.
             #if SR_REVERSED_Z_BUFFER
-                if (depthTesting && (z < oldDepth))
+                if (depthTesting & (z < oldDepth))
                 {
                     continue;
                 }
             #else
-                if (depthTesting && (z > oldDepth))
+                if (depthTesting & (z > oldDepth))
                 {
                     continue;
                 }
@@ -782,23 +782,23 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_FragmentBin* pBin, cons
         for (uint32_t y16 = (uint32_t)(y << 16); x[0] <= xMax;)
         {
             // calculate barycentric coordinates and perform a depth test
-            const math::mat4&& bc          = math::outer(xf, bcClipSpace[0]) + bcY;
-            const math::vec4&& z           = depth * bc;
-            const math::vec4&& depthTexels = depthTesting ? *reinterpret_cast<const math::vec4*>(pDepth) : math::vec4{0.f};
-            //const math::vec4&& depthTexels = depthTesting ? depthBuffer->texel4<float>(x0, y) : math::vec4{0.f};
-    #if SR_REVERSED_Z_BUFFER
-            const int_fast32_t      depthTest   = depthTesting ? math::sign_mask(z-depthTexels) : 0x00;
-    #else
-            const int_fast32_t      depthTest   = depthTesting ? math::sign_mask(depthTexels-z) : 0x00;
-    #endif
-            const int_fast32_t      end         = -(depthTest != 0x0F) & math::min<int_fast32_t>(xMax-x[0], 4);
+            const math::mat4&& bc  = math::outer(xf, bcClipSpace[0]) + bcY;
+            const math::vec4&& z   = depthTesting ? (depth * bc) : math::vec4{pDepth[0], pDepth[1], pDepth[2], pDepth[3]};
+            const int_fast32_t end = math::min<int_fast32_t>(xMax-x[0], 4);
 
             for (int32_t i = 0; i < end; ++i)
             {
-                if (depthTest & (0x01 << i))
-                {
-                    continue;
-                }
+                #if SR_REVERSED_Z_BUFFER
+                    if (z[i] <= pDepth[i])
+                    {
+                        continue;
+                    }
+                #else
+                    if (z[i] >= pDepth[i])
+                    {
+                        continue;
+                    }
+                #endif
 
                 // perspective correction
                 const float persp = math::rcp(math::dot(homogenous, bc[i]));
