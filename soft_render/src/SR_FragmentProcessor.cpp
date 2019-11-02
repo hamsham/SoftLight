@@ -156,6 +156,23 @@ inline LS_INLINE void _swap_verts_simd(__m128& a, __m128& b)  noexcept
     a = _mm_or_ps(al, bl);
     b = _mm_or_ps(ag, bg);
 }
+#elif defined(LS_ARCH_ARM)
+inline LS_INLINE void _swap_verts_simd(float32x4_t& a, float32x4_t& b)  noexcept
+{
+    const float32x4_t ya   = vdupq_n_f32(vgetq_lane_f32(a, 2));
+    const float32x4_t yb   = vdupq_n_f32(vgetq_lane_f32(b, 2));
+    const int32x4_t   ai   = reinterpret_f32_s32(a);
+    const int32x4_t   bi   = reinterpret_f32_s32(b);
+
+    const int32x4_t mask = reinterpret_f32_s32(vcleq_s32(ya, yb));
+    const int32x4_t al   = vandq_s32(vmnq_s32(mask), ai);
+    const int32x4_t bl   = vandq_s32(mask, bi);
+    const int32x4_t ag   = vandq_s32(mask, ai);
+    const int32x4_t bg   = vandq_s32(vmnq_s32(mask), bi);
+
+    a = reinterpret_s32_f32(vorrq_s32(al, bl));
+    b = reinterpret_s32_f32(vorrq_s32(ag, bg));
+}
 #endif
 
 
@@ -567,9 +584,15 @@ void SR_FragmentProcessor::render_wireframe(const SR_FragmentBin* pBins, const S
     const int32_t     bboxMaxY     = (int32_t)math::max(p0[1], p1[1], p2[1]);
     SR_FragCoord*     outCoords    = mQueues;
 
-    if (p0[1] < p1[1]) std::swap(p0, p1);
-    if (p0[1] < p2[1]) std::swap(p0, p2);
-    if (p1[1] < p2[1]) std::swap(p1, p2);
+    #if defined(LS_ARCH_X86) || defined(LS_ARCH_ARM)
+        _swap_verts_simd(p0.simd, p1.simd);
+        _swap_verts_simd(p0.simd, p2.simd);
+        _swap_verts_simd(p1.simd, p2.simd);
+    #else
+        if (p0[1] < p1[1]) std::swap(p0, p1);
+        if (p0[1] < p2[1]) std::swap(p0, p2);
+        if (p1[1] < p2[1]) std::swap(p1, p2);
+    #endif
 
     #if SR_VERTEX_CLIPPING_ENABLED == 0
     SR_ScanlineBounds scanline{p0, p1, p2, mFboW};
@@ -674,9 +697,15 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
     // Let each thread start rendering at whichever scanline it's assigned to
     const int32_t scanlineOffset = sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
 
-    if (p0[1] < p1[1]) std::swap(p0, p1);
-    if (p0[1] < p2[1]) std::swap(p0, p2);
-    if (p1[1] < p2[1]) std::swap(p1, p2);
+    #if defined(LS_ARCH_X86) || defined(LS_ARCH_ARM)
+        _swap_verts_simd(p0.simd, p1.simd);
+        _swap_verts_simd(p0.simd, p2.simd);
+        _swap_verts_simd(p1.simd, p2.simd);
+    #else
+        if (p0[1] < p1[1]) std::swap(p0, p1);
+        if (p0[1] < p2[1]) std::swap(p0, p2);
+        if (p1[1] < p2[1]) std::swap(p1, p2);
+    #endif
 
     #if SR_VERTEX_CLIPPING_ENABLED == 0
     SR_ScanlineBounds scanline{p0, p1, p2, mFboW};
@@ -771,7 +800,7 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_FragmentBin* pBin, cons
 
     const int32_t scanlineOffset = sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
 
-    #ifdef LS_ARCH_X86
+    #if defined(LS_ARCH_X86) || defined(LS_ARCH_ARM)
         _swap_verts_simd(p0.simd, p1.simd);
         _swap_verts_simd(p0.simd, p2.simd);
         _swap_verts_simd(p1.simd, p2.simd);
