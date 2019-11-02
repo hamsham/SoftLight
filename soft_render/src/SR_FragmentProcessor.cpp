@@ -141,6 +141,25 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
 
 
 
+/*-------------------------------------
+ * Branchless vertex swap for SSE
+-------------------------------------*/
+#ifdef LS_ARCH_X86
+inline LS_INLINE void _swap_verts_simd(__m128& a, __m128& b)  noexcept
+{
+    const __m128 mask = _mm_cmplt_ps(_mm_permute_ps(a, 0x55), _mm_permute_ps(b, 0x55));
+    const __m128 al   = _mm_andnot_ps(mask, a);
+    const __m128 bl   = _mm_and_ps(mask, b);
+    const __m128 ag   = _mm_and_ps(mask, a);
+    const __m128 bg   = _mm_andnot_ps(mask, b);
+
+    a = _mm_or_ps(al, bl);
+    b = _mm_or_ps(ag, bg);
+}
+#endif
+
+
+
 /*-----------------------------------------------------------------------------
  * Common method to get the beginning and end of a scanline.
 -----------------------------------------------------------------------------*/
@@ -176,7 +195,7 @@ struct SR_ScanlineBounds
         bboxMaxX{(int32_t)math::max(0.f,  math::min(fboW, math::max(p0[0], p1[0], p2[0]))+0.5f)}
     {}
     #else
-    SR_ScanlineBounds(const math::vec2& p0, const math::vec2& p1, const math::vec2& p2) noexcept :
+    SR_ScanlineBounds(const math::vec4& p0, const math::vec4& p1, const math::vec4& p2) noexcept :
         p10x{p1[0] - p0[0]},
         p20x{p2[0] - p0[0]},
         p21x{p2[0] - p1[0]},
@@ -185,12 +204,12 @@ struct SR_ScanlineBounds
         p20y{math::rcp(p2[1] - p0[1])},
         p10xy{p10x * p10y},
         p21xy{p21x * p21y},
-        bboxMinX{(int32_t)math::min(p0[0], p1[0], p2[0])},
-        bboxMaxX{(int32_t)math::max(p0[0], p1[0], p2[0])}
+        bboxMinX{(int32_t)math::min(p0[0], p0[0], p1[0], p2[0])},
+        bboxMaxX{(int32_t)math::max(p0[0], p0[0], p1[0], p2[0])}
     {}
     #endif
 
-    inline void step(const math::vec2& p0, const math::vec2& p1, const float yf) noexcept
+    inline void step(const math::vec4& p0, const math::vec4& p1, const float yf) noexcept
     {
         const float d0         = yf - p0[1];
         const float d1         = yf - p1[1];
@@ -539,9 +558,9 @@ void SR_FragmentProcessor::render_wireframe(const SR_FragmentBin* pBins, const S
     const math::vec4* screenCoords = pBins->mScreenCoords;
     const math::vec4  depth        {screenCoords[0][2], screenCoords[1][2], screenCoords[2][2], 0.f};
     const math::vec4  homogenous   {screenCoords[0][3], screenCoords[1][3], screenCoords[2][3], 0.f};
-    math::vec2        p0           = math::vec2_cast(screenCoords[0]);
-    math::vec2        p1           = math::vec2_cast(screenCoords[1]);
-    math::vec2        p2           = math::vec2_cast(screenCoords[2]);
+    math::vec4        p0           = screenCoords[0];
+    math::vec4        p1           = screenCoords[1];
+    math::vec4        p2           = screenCoords[2];
     const math::vec4* bcClipSpace  = pBins->mBarycentricCoords;
     const int32_t     depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON);
     const int32_t     bboxMinY     = (int32_t)math::ceil(math::min(p0[1], p1[1], p2[1]));
@@ -643,9 +662,9 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
     const math::vec4* screenCoords = pBin->mScreenCoords;
     const math::vec4  depth        {screenCoords[0][2], screenCoords[1][2], screenCoords[2][2], 0.f};
     const math::vec4  homogenous   {screenCoords[0][3], screenCoords[1][3], screenCoords[2][3], 0.f};
-    math::vec2        p0           = math::vec2_cast(screenCoords[0]);
-    math::vec2        p1           = math::vec2_cast(screenCoords[1]);
-    math::vec2        p2           = math::vec2_cast(screenCoords[2]);
+    math::vec4        p0           = screenCoords[0];
+    math::vec4        p1           = screenCoords[1];
+    math::vec4        p2           = screenCoords[2];
     const math::vec4* bcClipSpace  = pBin->mBarycentricCoords;
     const int32_t     depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON);
     const int32_t     bboxMinY     = (int32_t)math::max(0.f,   math::ceil(math::min(p0[1], p1[1], p2[1])));
@@ -741,9 +760,9 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_FragmentBin* pBin, cons
     const math::vec4* screenCoords = pBin->mScreenCoords;
     const math::vec4  depth        {screenCoords[0][2], screenCoords[1][2], screenCoords[2][2], 0.f};
     const math::vec4  homogenous   {screenCoords[0][3], screenCoords[1][3], screenCoords[2][3], 0.f};
-    math::vec2&&      p0           = math::vec2_cast(screenCoords[0]);
-    math::vec2&&      p1           = math::vec2_cast(screenCoords[1]);
-    math::vec2&&      p2           = math::vec2_cast(screenCoords[2]);
+    math::vec4        p0           = screenCoords[0];
+    math::vec4        p1           = screenCoords[1];
+    math::vec4        p2           = screenCoords[2];
     const math::vec4* bcClipSpace  = pBin->mBarycentricCoords;
     const int32_t     depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON);
     const int32_t     bboxMinY     = (int32_t)math::max(0.f,   math::ceil(math::min(p0[1], p1[1], p2[1])));
@@ -752,9 +771,15 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_FragmentBin* pBin, cons
 
     const int32_t scanlineOffset = sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
 
-    if (p0[1] < p1[1]) std::swap(p0, p1);
-    if (p0[1] < p2[1]) std::swap(p0, p2);
-    if (p1[1] < p2[1]) std::swap(p1, p2);
+    #ifdef LS_ARCH_X86
+        _swap_verts_simd(p0.simd, p1.simd);
+        _swap_verts_simd(p0.simd, p2.simd);
+        _swap_verts_simd(p1.simd, p2.simd);
+    #else
+        if (p0[1] < p1[1]) std::swap(p0, p1);
+        if (p0[1] < p2[1]) std::swap(p0, p2);
+        if (p1[1] < p2[1]) std::swap(p1, p2);
+    #endif
 
     #if SR_VERTEX_CLIPPING_ENABLED == 0
     SR_ScanlineBounds scanline{p0, p1, p2, mFboW};
