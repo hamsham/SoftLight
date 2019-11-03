@@ -96,7 +96,7 @@ inline void assign_pixel<SR_ColorRGBA16>(
         {
             SR_ColorRGBA16 vec;
             __int64 scalar;
-        } inTexel{color_cast<uint16_t, float>(*reinterpret_cast<const SR_ColorRGBAf*>(rgba))};
+        } inTexel{color_cast<uint16_t, float>(rgba)};
     
         _mm_stream_si64(outTexel, inTexel.scalar);
     #else
