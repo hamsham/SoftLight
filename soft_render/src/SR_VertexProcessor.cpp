@@ -607,7 +607,7 @@ void SR_VertexProcessor::push_bin(
         }
     }
 
-    while (pLocks->load(std::memory_order_consume) >= SR_SHADER_MAX_PRIM_BINS)
+    if (pLocks->load(std::memory_order_consume) >= SR_SHADER_MAX_PRIM_BINS)
     {
         flush_bins();
     }
