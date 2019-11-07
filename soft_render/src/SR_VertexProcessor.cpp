@@ -28,6 +28,10 @@
     #define SR_VERTEX_CLIPPING_ENABLED 1
 #endif /* SR_VERTEX_CLIPPING_ENABLED */
 
+#ifndef SR_TUNE_HIGH_POLY
+    #define SR_TUNE_HIGH_POLY 0
+#endif /* SR_TUNE_HIGH_POLY */
+
 #ifndef SR_VERTEX_CACHING_ENABLED
     #define SR_VERTEX_CACHING_ENABLED 0
 #endif /* SR_VERTEX_CACHING_ENABLED */
@@ -50,13 +54,13 @@ namespace
 class SR_PTVCache
 {
   public:
-    static constexpr unsigned PTV_CACHE_SIZE = 4;
+    static constexpr unsigned PTV_CACHE_SIZE = 6;
 
-    static constexpr unsigned PTV_CACHE_MISS = 0xFFFFFFFFu;
+    //static constexpr unsigned PTV_CACHE_MISS = 0xFFFFFFFFu;
 
     size_t lruIndices[PTV_CACHE_SIZE];
 
-    long long lruCounts[PTV_CACHE_SIZE];
+    //long long lruCounts[PTV_CACHE_SIZE];
 
     math::vec4 lruVertices[PTV_CACHE_SIZE];
 
@@ -98,10 +102,12 @@ class SR_PTVCache
             index = ~(size_t)0;
         }
 
+        /*
         for (long long& count : lruCounts)
         {
             count = -1;
         }
+        */
 
         vao = pVao;
         vbo = pVbo;
@@ -109,6 +115,7 @@ class SR_PTVCache
         shader = pShader;
     }
 
+    /*
     inline unsigned query(size_t index, math::vec4& outVert, math::vec4* outVaryings, unsigned numVaryings) noexcept
     {
         size_t ret = PTV_CACHE_MISS;
@@ -213,6 +220,32 @@ class SR_PTVCache
             {
                 lruVaryings[nextIndex][v] = outVaryings[v];
             }
+        }
+    }
+    */
+
+    inline void query_and_update(size_t index, math::vec4& outVert, math::vec4* outVaryings, unsigned numVaryings) noexcept
+    {
+        size_t i = index % PTV_CACHE_SIZE;
+
+        if (lruIndices[i] == index)
+        {
+            outVert = lruVertices[i];
+
+            for (unsigned v = numVaryings; v--;)
+            {
+                outVaryings[v] = lruVaryings[i][v];
+            }
+
+            return;
+        }
+
+        lruIndices[i] = index;
+        outVert = lruVertices[i] = shader(index, *vao, *vbo, uniforms, outVaryings);
+
+        for (unsigned v = numVaryings; v--;)
+        {
+            lruVaryings[i][v] = outVaryings[v];
         }
     }
 };
@@ -415,7 +448,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
     // Sort the bins based on their depth.
     if (tileId == mNumThreads-1u)
     {
-        #if 1
+        #if !SR_TUNE_HIGH_POLY
         const uint_fast64_t maxElements = math::min<uint64_t>(mBinsUsed->load(std::memory_order_consume), SR_SHADER_MAX_PRIM_BINS);
 
         // Blended fragments get sorted back-to-front for correct coloring.
@@ -435,7 +468,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
         #endif
 
         // Let all threads know they can process fragments.
-        mFragProcessors->store(syncPoint1, std::memory_order_release);
+        mFragProcessors->store(syncPoint1, std::memory_order_relaxed);
     }
     else
     {
@@ -460,7 +493,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
         (uint32_t)mNumThreads,
         (float)(mFboW - 1),
         (float)(mFboH - 1),
-        math::min<uint64_t>(mBinsUsed->load(std::memory_order_consume), SR_SHADER_MAX_PRIM_BINS),
+        math::min<uint64_t>(mBinsUsed->load(std::memory_order_relaxed), SR_SHADER_MAX_PRIM_BINS),
         mShader,
         mFbo,
         mBinIds,
@@ -479,21 +512,34 @@ void SR_VertexProcessor::flush_bins() const noexcept
     {
         if (tileId == -2)
         {
-            mBinsUsed->store(0, std::memory_order_release);
+            mBinsUsed->store(0, std::memory_order_relaxed);
             mFragProcessors->store(0, std::memory_order_release);
-
         }
         else
         {
-            // wait until all fragments are rendered across the other threads
-            #if defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
-                clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
-            #elif defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
-                nanosleep(&sleepAmt, nullptr);
-            #elif defined(LS_ARCH_X86)
-                _mm_pause();
+            // wait until all fragments are rendered across the other threads.
+            // High-poly models should rely only on _mm_pause() and not sleep
+            // in a hyper-threaded environment.
+            #if SR_TUNE_HIGH_POLY
+                #if defined(LS_ARCH_X86)
+                    _mm_pause();
+                #elif defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
+                    clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
+                #elif defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
+                    nanosleep(&sleepAmt, nullptr);
+                #else
+                    std::this_thread::yield();
+                #endif
             #else
-                std::this_thread::yield();
+                #if defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
+                    clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
+                #elif defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
+                    nanosleep(&sleepAmt, nullptr);
+                #elif defined(LS_ARCH_X86)
+                    _mm_pause();
+                #else
+                    std::this_thread::yield();
+                #endif
             #endif
         }
     }
@@ -560,7 +606,7 @@ void SR_VertexProcessor::push_bin(
             return;
     }
 
-    int isPrimVisible = (bboxMaxX >= 0.f && fboW >= bboxMinX && bboxMaxY >= 0.f && fboH >= bboxMinY);
+    int isPrimVisible = (bboxMaxX >= 0.f && bboxMaxY >= 0.f && fboW >= bboxMinX && fboH >= bboxMinY);
     isPrimVisible = isPrimVisible && (bboxMaxX-math::ceil(bboxMinX) > 0.0f) && (bboxMaxY-math::ceil(bboxMinY) > 0.f);
 
     if (isPrimVisible)
@@ -571,9 +617,13 @@ void SR_VertexProcessor::push_bin(
         uint_fast64_t binId;
 
         // Attempt to grab a bin index. Flush the bins if they've filled up.
-        while ((binId = pLocks->fetch_add(1, std::memory_order_acq_rel)) >= (uint_fast64_t)SR_SHADER_MAX_PRIM_BINS)
+        while (LS_UNLIKELY((binId = pLocks->fetch_add(1, std::memory_order_relaxed)) >= (uint_fast64_t)SR_SHADER_MAX_PRIM_BINS))
         {
             flush_bins();
+
+            #if defined(LS_ARCH_X86)
+                _mm_pause();
+            #endif
         }
 
         // place a triangle into the next available bin
@@ -605,11 +655,6 @@ void SR_VertexProcessor::push_bin(
                 bin.mVaryings[i+offset] = varyings[i+offset];
             }
         }
-    }
-
-    if (pLocks->load(std::memory_order_consume) >= SR_SHADER_MAX_PRIM_BINS)
-    {
-        flush_bins();
     }
 }
 
@@ -814,9 +859,8 @@ void SR_VertexProcessor::execute() noexcept
     const float             fboH        = (float)mFboH;
     const float             widthScale  = fboW * 0.5f;
     const float             heightScale = fboH * 0.5f;
-    const size_t            numVerts    = mMesh.elementEnd - mMesh.elementBegin;
-    size_t                  begin;
-    size_t                  end;
+    size_t                  begin       = mMesh.elementBegin;
+    const size_t            end         = mMesh.elementEnd;
     const SR_IndexBuffer*   pIbo;
 
     #if SR_VERTEX_CACHING_ENABLED
@@ -836,11 +880,10 @@ void SR_VertexProcessor::execute() noexcept
     {
         const bool usingIndices = mMesh.mode == RENDER_MODE_INDEXED_POINTS;
 
-        sr_calc_indexed_parition<1>(numVerts, mNumThreads, mThreadId, begin, end);
-        begin += mMesh.elementBegin;
-        end += mMesh.elementBegin;
+        begin += mThreadId;
+        const size_t step = mNumThreads;
 
-        for (size_t i = begin; i < end; ++i)
+        for (size_t i = begin; i < end; i += step)
         {
             const size_t vertId0 = usingIndices ? get_next_vertex(pIbo, i) : i;
 
@@ -857,11 +900,10 @@ void SR_VertexProcessor::execute() noexcept
     {
         const bool usingIndices = mMesh.mode == RENDER_MODE_INDEXED_LINES;
 
-        sr_calc_indexed_parition<2>(numVerts, mNumThreads, mThreadId, begin, end);
-        begin += mMesh.elementBegin;
-        end += mMesh.elementBegin;
+        begin += mThreadId * 2u;
+        const size_t step = mNumThreads * 2u;
 
-        for (size_t i = begin; i < end; i += 2)
+        for (size_t i = begin; i < end; i += step)
         {
             const size_t index0  = i;
             const size_t index1  = i + 1;
@@ -884,11 +926,10 @@ void SR_VertexProcessor::execute() noexcept
     {
         const int usingIndices = mMesh.mode & ((RENDER_MODE_INDEXED_TRIANGLES | RENDER_MODE_INDEXED_TRI_WIRE) ^ (RENDER_MODE_TRIANGLES | RENDER_MODE_TRI_WIRE));
 
-        sr_calc_indexed_parition<3>(numVerts, mNumThreads, mThreadId, begin, end);
-        begin += mMesh.elementBegin;
-        end += mMesh.elementBegin;
+        begin += mThreadId * 3u;
+        const size_t step = mNumThreads * 3u;
 
-        for (size_t i = begin; i < end; i += 3)
+        for (size_t i = begin; i < end; i += step)
         {
             const math::vec3_t<size_t>&& vertId = usingIndices ? get_next_vertex3(pIbo, i) : math::vec3_t<size_t>{i, i+1, i+2};
 
@@ -947,7 +988,7 @@ void SR_VertexProcessor::execute() noexcept
     }
 
     mBusyProcessors->fetch_sub(1, std::memory_order_acq_rel);
-    while (mBusyProcessors->load(std::memory_order_consume) > 0)
+    while (mBusyProcessors->load(std::memory_order_consume))
     {
         #if defined(LS_ARCH_X86)
             _mm_pause();

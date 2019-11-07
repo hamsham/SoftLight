@@ -199,7 +199,7 @@ struct SR_ScanlineBounds
     int32_t xMax;
 
     #if SR_VERTEX_CLIPPING_ENABLED == 0
-    SR_ScanlineBounds(const math::vec2& p0, const math::vec2& p1, const math::vec2& p2, const float fboW) noexcept :
+    LS_INLINE SR_ScanlineBounds(const math::vec2& p0, const math::vec2& p1, const math::vec2& p2, const float fboW) noexcept :
         p10x{p1[0] - p0[0]},
         p20x{p2[0] - p0[0]},
         p21x{p2[0] - p1[0]},
@@ -212,7 +212,7 @@ struct SR_ScanlineBounds
         bboxMaxX{(int32_t)math::max(0.f,  math::min(fboW, math::max(p0[0], p1[0], p2[0]))+0.5f)}
     {}
     #else
-    SR_ScanlineBounds(const math::vec4& p0, const math::vec4& p1, const math::vec4& p2) noexcept :
+    LS_INLINE SR_ScanlineBounds(const math::vec4& p0, const math::vec4& p1, const math::vec4& p2) noexcept :
         p10x{p1[0] - p0[0]},
         p20x{p2[0] - p0[0]},
         p21x{p2[0] - p1[0]},
@@ -237,7 +237,7 @@ struct SR_ScanlineBounds
 
         const float a = math::fmadd(p21xy, d1, p1[0]);
         const float b = math::fmadd(p10xy, d0, p0[0]);
-        xMax = (int32_t)(*(const float*)((secondHalf & (uintptr_t)&a) | (~secondHalf & (uintptr_t)&b)));
+        xMax = (int32_t)(secondHalf ? a : b);
 
         // Get the beginning and end of the scan-line
         const int32_t temp = math::max(xMin, xMax);
