@@ -13,7 +13,7 @@ compiler:
   - clang
 
 
-dist: bioniic
+dist: bionic
 osx_image: xcode11.2
 
 
