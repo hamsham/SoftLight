@@ -861,17 +861,12 @@ void SR_VertexProcessor::execute() noexcept
     const float             heightScale = fboH * 0.5f;
     size_t                  begin       = mMesh.elementBegin;
     const size_t            end         = mMesh.elementEnd;
-    const SR_IndexBuffer*   pIbo;
+    const SR_IndexBuffer*   pIbo        = vao.has_index_buffer() ? &mContext->ibo(vao.get_index_buffer()) : nullptr;
 
     #if SR_VERTEX_CACHING_ENABLED
         SR_PTVCache ptvCache{shader, pUniforms, &vao, &vbo};
         const size_t numVaryings = vertShader.numVaryings;
     #endif
-
-    if (vao.has_index_buffer())
-    {
-        pIbo = &mContext->ibo(vao.get_index_buffer());
-    }
 
     LS_PREFETCH(pUniforms, LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_L1);
     LS_PREFETCH(pVaryings, LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_L1);
