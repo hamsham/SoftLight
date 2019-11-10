@@ -10,7 +10,7 @@ os:
 
 arch:
   - arm64
-  - arm64
+  - amd64
 
 
 
@@ -38,6 +38,7 @@ addons:
       - libassimp-dev
       - libfreeimage-dev
       - libxcb-shm0-dev
+      - subversion
   homebrew:
     update: true
     packages:
