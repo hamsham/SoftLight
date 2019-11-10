@@ -8,6 +8,12 @@ os:
 
 
 
+arch:
+  - arm64
+  - arm64
+
+
+
 compiler:
   - gcc
   - clang
