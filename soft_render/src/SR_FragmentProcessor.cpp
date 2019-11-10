@@ -161,17 +161,17 @@ inline LS_INLINE void _swap_verts_simd(float32x4_t& a, float32x4_t& b)  noexcept
 {
     const float32x4_t ya   = vdupq_n_f32(vgetq_lane_f32(a, 2));
     const float32x4_t yb   = vdupq_n_f32(vgetq_lane_f32(b, 2));
-    const int32x4_t   ai   = reinterpret_f32_s32(a);
-    const int32x4_t   bi   = reinterpret_f32_s32(b);
+    const uint32x4_t  ai   = vreinterpretq_u32_f32(a);
+    const uint32x4_t  bi   = vreinterpretq_u32_f32(b);
 
-    const int32x4_t mask = reinterpret_f32_s32(vcleq_s32(ya, yb));
-    const int32x4_t al   = vandq_s32(vmnq_s32(mask), ai);
-    const int32x4_t bl   = vandq_s32(mask, bi);
-    const int32x4_t ag   = vandq_s32(mask, ai);
-    const int32x4_t bg   = vandq_s32(vmnq_s32(mask), bi);
+    const uint32x4_t mask = vcltq_f32(ya, yb);
+    const uint32x4_t al   = vandq_u32(vmvnq_u32(mask), ai);
+    const uint32x4_t bl   = vandq_u32(mask, bi);
+    const uint32x4_t ag   = vandq_u32(mask, ai);
+    const uint32x4_t bg   = vandq_u32(vmvnq_u32(mask), bi);
 
-    a = reinterpret_s32_f32(vorrq_s32(al, bl));
-    b = reinterpret_s32_f32(vorrq_s32(ag, bg));
+    a = vreinterpretq_f32_u32(vorrq_u32(al, bl));
+    b = vreinterpretq_f32_u32(vorrq_u32(ag, bg));
 }
 #endif
 
