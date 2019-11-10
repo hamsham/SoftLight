@@ -30,15 +30,16 @@ addons:
       - cmake
       - curl
       - git
+      - x11-utils
       - libx11-dev
       - libx11-xcb-dev
+      - libxext-dev
       - libxcb1-dev
       - libxcb-image0-dev
-      - x11-utils
-      - libassimp-dev
-      - libfreeimage-dev
       - libxcb-shm0-dev
       - subversion
+      - libassimp-dev
+      - libfreeimage-dev
   homebrew:
     update: true
     packages:
