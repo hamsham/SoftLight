@@ -256,7 +256,7 @@ class SR_PTVCache
 /*--------------------------------------
  * Convert world coordinates to screen coordinates (temporary until NDC clipping is added)
 --------------------------------------*/
-inline math::vec4 sr_perspective_divide(math::vec4 v) noexcept
+inline LS_INLINE math::vec4 sr_perspective_divide(math::vec4 v) noexcept
 {
     const math::vec4&& wInv = math::rcp(math::vec4{v[3]});
     v *= wInv;
@@ -282,7 +282,7 @@ inline LS_INLINE void sr_world_to_screen_coords_divided(math::vec4& v, const flo
 /*--------------------------------------
  * Convert world coordinates to screen coordinates (temporary until NDC clipping is added)
 --------------------------------------*/
-inline void sr_world_to_screen_coords(math::vec4& v, const float widthScale, const float heightScale) noexcept
+inline LS_INLINE void sr_world_to_screen_coords(math::vec4& v, const float widthScale, const float heightScale) noexcept
 {
     const float wInv = 1.f / v.v[3];
     math::vec4&& temp = v * wInv;
@@ -317,7 +317,7 @@ inline size_t get_next_vertex(const SR_IndexBuffer* pIbo, size_t vId) noexcept
 
 
 
-inline math::vec3_t<size_t> get_next_vertex3(const SR_IndexBuffer* pIbo, size_t vId) noexcept
+inline LS_INLINE math::vec3_t<size_t> get_next_vertex3(const SR_IndexBuffer* pIbo, size_t vId) noexcept
 {
     math::vec3_t<unsigned char> byteIds;
     math::vec3_t<unsigned short> shortIds;
@@ -472,7 +472,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
     }
     else
     {
-        while (mFragProcessors->load(std::memory_order_consume) > 0)
+        do
         {
             // Wait until the bins are sorted
             #if defined(LS_ARCH_X86)
@@ -485,6 +485,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
                 std::this_thread::yield();
             #endif
         }
+        while (mFragProcessors->load(std::memory_order_consume) > 0);
     }
 
     SR_FragmentProcessor fragTask{
@@ -505,17 +506,16 @@ void SR_VertexProcessor::flush_bins() const noexcept
     fragTask.execute();
 
     // Indicate to all threads we can now process more vertices
-    tileId = mFragProcessors->fetch_add(1, std::memory_order_acq_rel);
-
-    // Wait for the last thread to reset the number of available bins.
-    while (mFragProcessors->load(std::memory_order_consume) < 0)
+    if (-2 == (tileId = mFragProcessors->fetch_add(1, std::memory_order_acq_rel)))
     {
-        if (tileId == -2)
-        {
-            mBinsUsed->store(0, std::memory_order_relaxed);
-            mFragProcessors->store(0, std::memory_order_release);
-        }
-        else
+        mBinsUsed->store(0, std::memory_order_relaxed);
+        mFragProcessors->store(0, std::memory_order_release);
+        return;
+    }
+    else
+    {
+        // Wait for the last thread to reset the number of available bins.
+        do
         {
             // wait until all fragments are rendered across the other threads.
             // High-poly models should rely only on _mm_pause() and not sleep
@@ -542,6 +542,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
                 #endif
             #endif
         }
+        while (mFragProcessors->load(std::memory_order_consume) < 0);
     }
 }
 
