@@ -7,13 +7,6 @@ os:
   - windows
 
 
-
-arch:
-  - arm64
-  - amd64
-
-
-
 compiler:
   - gcc
   - clang
