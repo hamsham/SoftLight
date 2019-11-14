@@ -80,16 +80,16 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
         const math::vec4* inVaryings1  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
         const math::vec4* inVaryings2  = inVaryings0 + (SR_SHADER_MAX_VARYING_VECTORS * 2);
 
-        const __m128 bc  = _mm_load_ps(baryCoords);
+        const __m128 bc  = _mm_castsi128_ps(_mm_lddqu_si128(reinterpret_cast<const __m128i*>(baryCoords)));
         const __m128 bc0 = _mm_permute_ps(bc, 0x00);
         const __m128 bc1 = _mm_permute_ps(bc, 0x55);
         const __m128 bc2 = _mm_permute_ps(bc, 0xAA);
 
         for (uint_fast32_t i = numVaryings; i--;)
         {
-            const __m128 v0 = _mm_mul_ps(_mm_load_ps(reinterpret_cast<const float*>(inVaryings0++)), bc0);
-            const __m128 v1 = _mm_fmadd_ps(_mm_load_ps(reinterpret_cast<const float*>(inVaryings1++)), bc1, v0);
-            _mm_store_ps(reinterpret_cast<float*>(outVaryings++), _mm_fmadd_ps(_mm_load_ps(reinterpret_cast<const float*>(inVaryings2++)), bc2, v1));
+            const __m128 v0 = _mm_mul_ps(_mm_castsi128_ps(_mm_lddqu_si128(reinterpret_cast<const __m128i*>(inVaryings0++))), bc0);
+            const __m128 v1 = _mm_fmadd_ps(_mm_castsi128_ps(_mm_lddqu_si128(reinterpret_cast<const __m128i*>(inVaryings1++))), bc1, v0);
+            _mm_store_ps(reinterpret_cast<float*>(outVaryings++), _mm_fmadd_ps(_mm_castsi128_ps(_mm_lddqu_si128(reinterpret_cast<const __m128i*>(inVaryings2++))), bc2, v1));
         }
     #elif defined(LS_ARCH_AARCH64)
         const math::vec4* inVaryings1  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
@@ -145,19 +145,19 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
  * Branchless vertex swap for SSE
 -------------------------------------*/
 #ifdef LS_ARCH_X86
-inline LS_INLINE void _swap_verts_simd(__m128& a, __m128& b)  noexcept
+inline LS_INLINE void sort_minmax(__m128& a, __m128& b)  noexcept
 {
     const __m128 mask = _mm_cmplt_ps(_mm_permute_ps(a, 0x55), _mm_permute_ps(b, 0x55));
     const __m128 al   = _mm_andnot_ps(mask, a);
+    const __m128 bg   = _mm_andnot_ps(mask, b);
     const __m128 bl   = _mm_and_ps(mask, b);
     const __m128 ag   = _mm_and_ps(mask, a);
-    const __m128 bg   = _mm_andnot_ps(mask, b);
 
     a = _mm_or_ps(al, bl);
     b = _mm_or_ps(ag, bg);
 }
 #elif defined(LS_ARCH_ARM)
-inline LS_INLINE void _swap_verts_simd(float32x4_t& a, float32x4_t& b)  noexcept
+inline LS_INLINE void sort_minmax(float32x4_t& a, float32x4_t& b)  noexcept
 {
     const float32x4_t ya   = vdupq_n_f32(vgetq_lane_f32(a, 2));
     const float32x4_t yb   = vdupq_n_f32(vgetq_lane_f32(b, 2));
@@ -174,6 +174,19 @@ inline LS_INLINE void _swap_verts_simd(float32x4_t& a, float32x4_t& b)  noexcept
     b = vreinterpretq_f32_u32(vorrq_u32(ag, bg));
 }
 #endif
+
+
+inline LS_INLINE void sort_minmax(int32_t& a, int32_t& b)  noexcept
+{
+    const int32_t mask = -(a >= b);
+    const int32_t al   = ~mask & a;
+    const int32_t bg   = ~mask & b;
+    const int32_t bl   = mask & b;
+    const int32_t ag   = mask & a;
+
+    a = al | bl;
+    b = ag | bg;
+}
 
 
 
@@ -199,7 +212,7 @@ struct SR_ScanlineBounds
     int32_t xMax;
 
     #if SR_VERTEX_CLIPPING_ENABLED == 0
-    LS_INLINE SR_ScanlineBounds(const math::vec2& p0, const math::vec2& p1, const math::vec2& p2, const float fboW) noexcept :
+    LS_INLINE SR_ScanlineBounds(const math::vec4& p0, const math::vec4& p1, const math::vec4& p2, const float fboW) noexcept :
         p10x{p1[0] - p0[0]},
         p20x{p2[0] - p0[0]},
         p21x{p2[0] - p1[0]},
@@ -231,18 +244,21 @@ struct SR_ScanlineBounds
         const float d0         = yf - p0[1];
         const float d1         = yf - p1[1];
         const float alpha      = d0 * p20y;
-        const int   secondHalf = -(d1 < 0.f);
+        const int   secondHalf = (d1 < 0.f);
+        const float b          = math::fmadd(p10xy, d0, p0[0]);
+        const float a          = math::fmadd(p21xy, d1, p1[0]);
 
         xMin = (int32_t)math::fmadd(p20x, alpha, p0[0]);
-
-        const float a = math::fmadd(p21xy, d1, p1[0]);
-        const float b = math::fmadd(p10xy, d0, p0[0]);
         xMax = (int32_t)(secondHalf ? a : b);
 
+        sort_minmax(xMin, xMax);
+
+        /*
         // Get the beginning and end of the scan-line
         const int32_t temp = math::max(xMin, xMax);
         xMin = math::clamp<int32_t>(math::min(xMin, xMax), bboxMinX, bboxMaxX);
         xMax = temp;
+        */
 
         #if SR_VERTEX_CLIPPING_ENABLED == 0
             xMin = math::clamp(xMin, bboxMinX, bboxMaxX);
@@ -585,9 +601,9 @@ void SR_FragmentProcessor::render_wireframe(const SR_FragmentBin* pBins, const S
     SR_FragCoord*     outCoords    = mQueues;
 
     #if defined(LS_ARCH_X86) || defined(LS_ARCH_ARM)
-        _swap_verts_simd(p0.simd, p1.simd);
-        _swap_verts_simd(p0.simd, p2.simd);
-        _swap_verts_simd(p1.simd, p2.simd);
+        sort_minmax(p0.simd, p1.simd);
+        sort_minmax(p0.simd, p2.simd);
+        sort_minmax(p1.simd, p2.simd);
     #else
         if (p0[1] < p1[1]) std::swap(p0, p1);
         if (p0[1] < p2[1]) std::swap(p0, p2);
@@ -698,9 +714,9 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
     const int32_t scanlineOffset = sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
 
     #if defined(LS_ARCH_X86) || defined(LS_ARCH_ARM)
-        _swap_verts_simd(p0.simd, p1.simd);
-        _swap_verts_simd(p0.simd, p2.simd);
-        _swap_verts_simd(p1.simd, p2.simd);
+        sort_minmax(p0.simd, p1.simd);
+        sort_minmax(p0.simd, p2.simd);
+        sort_minmax(p1.simd, p2.simd);
     #else
         if (p0[1] < p1[1]) std::swap(p0, p1);
         if (p0[1] < p2[1]) std::swap(p0, p2);
@@ -784,8 +800,8 @@ void SR_FragmentProcessor::render_triangle(const SR_FragmentBin* pBin, const SR_
 -------------------------------------*/
 void SR_FragmentProcessor::render_triangle_simd(const SR_FragmentBin* pBin, const SR_Texture* depthBuffer) const noexcept
 {
-    const uint32_t    yOffset      = (uint32_t)mThreadId;
-    const uint32_t    increment    = (uint32_t)mNumProcessors;
+    const int32_t     yOffset      = (int32_t)mThreadId;
+    const int32_t     increment    = (int32_t)mNumProcessors;
     const math::vec4* screenCoords = pBin->mScreenCoords;
     const math::vec4  depth        {screenCoords[0][2], screenCoords[1][2], screenCoords[2][2], 0.f};
     const math::vec4  homogenous   {screenCoords[0][3], screenCoords[1][3], screenCoords[2][3], 0.f};
@@ -793,7 +809,7 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_FragmentBin* pBin, cons
     math::vec4        p1           = screenCoords[1];
     math::vec4        p2           = screenCoords[2];
     const math::vec4* bcClipSpace  = pBin->mBarycentricCoords;
-    const int32_t     depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON);
+    const int32_t     depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON;
     const int32_t     bboxMinY     = (int32_t)math::max(0.f,   math::ceil(math::min(p0[1], p1[1], p2[1])));
     const int32_t     bboxMaxY     = (int32_t)math::min(mFboH, math::max(p0[1], p1[1], p2[1]));
     SR_FragCoord*     outCoords    = mQueues;
@@ -801,9 +817,9 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_FragmentBin* pBin, cons
     const int32_t scanlineOffset = sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
 
     #if defined(LS_ARCH_X86) || defined(LS_ARCH_ARM)
-        _swap_verts_simd(p0.simd, p1.simd);
-        _swap_verts_simd(p0.simd, p2.simd);
-        _swap_verts_simd(p1.simd, p2.simd);
+        sort_minmax(p0.simd, p1.simd);
+        sort_minmax(p0.simd, p2.simd);
+        sort_minmax(p1.simd, p2.simd);
     #else
         if (p0[1] < p1[1]) std::swap(p0, p1);
         if (p0[1] < p2[1]) std::swap(p0, p2);

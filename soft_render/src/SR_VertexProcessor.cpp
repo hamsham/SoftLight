@@ -793,25 +793,6 @@ void SR_VertexProcessor::clip_and_process_tris(
 
     LS_DEBUG_ASSERT(numTotalVerts <= numTempVerts);
 
-    if (numTotalVerts == 3)
-    {
-        math::vec4& v0 = newVerts[0];
-        math::vec4& v1 = newVerts[1];
-        math::vec4& v2 = newVerts[2];
-
-        v0 = sr_perspective_divide(v0);
-        v1 = sr_perspective_divide(v1);
-        v2 = sr_perspective_divide(v2);
-
-        sr_world_to_screen_coords_divided(v0, widthScale, heightScale);
-        sr_world_to_screen_coords_divided(v1, widthScale, heightScale);
-        sr_world_to_screen_coords_divided(v2, widthScale, heightScale);
-
-        //push_bin(fboW, fboH, newVerts, pVaryings);
-        push_bin(fboW, fboH, newVerts, newVarys);
-        return;
-    }
-
     tempVerts[0] = sr_perspective_divide(newVerts[0]);
     _copy_verts(numVarys, newVarys, tempVarys);
     sr_world_to_screen_coords_divided(tempVerts[0], widthScale, heightScale);
@@ -836,7 +817,6 @@ void SR_VertexProcessor::clip_and_process_tris(
         sr_world_to_screen_coords_divided(v1, widthScale, heightScale);
         sr_world_to_screen_coords_divided(v2, widthScale, heightScale);
 
-        //push_bin(fboW, fboH, newVerts+i, pVaryings);
         push_bin(fboW, fboH, tempVerts, tempVarys);
     }
 }
