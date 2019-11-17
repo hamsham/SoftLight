@@ -244,9 +244,9 @@ struct SR_ScanlineBounds
         const float d0         = yf - p0[1];
         const float d1         = yf - p1[1];
         const float alpha      = d0 * p20y;
-        const int   secondHalf = (d1 < 0.f);
         const float b          = math::fmadd(p10xy, d0, p0[0]);
         const float a          = math::fmadd(p21xy, d1, p1[0]);
+        const int   secondHalf = (d1 < 0.f);
 
         xMin = (int32_t)math::fmadd(p20x, alpha, p0[0]);
         xMax = (int32_t)(secondHalf ? a : b);
@@ -927,7 +927,7 @@ void SR_FragmentProcessor::flush_fragments(
     math::vec4* pVaryings = mVaryings;
     for (uint_fast32_t i = 0; i < numQueuedFrags; ++i, pVaryings += SR_SHADER_MAX_VARYING_VECTORS)
     {
-        const math::vec4 bc = outCoords->bc[i];
+        const math::vec4& bc = outCoords->bc[i];
         interpolate_tri_varyings(bc.v, numVaryings, inVaryings, pVaryings);
     }
 

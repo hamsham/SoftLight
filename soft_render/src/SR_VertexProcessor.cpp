@@ -468,7 +468,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
         #endif
 
         // Let all threads know they can process fragments.
-        mFragProcessors->store(syncPoint1, std::memory_order_relaxed);
+        mFragProcessors->store(syncPoint1, std::memory_order_release);
     }
     else
     {
@@ -508,7 +508,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
     // Indicate to all threads we can now process more vertices
     if (-2 == (tileId = mFragProcessors->fetch_add(1, std::memory_order_acq_rel)))
     {
-        mBinsUsed->store(0, std::memory_order_relaxed);
+        mBinsUsed->store(0, std::memory_order_release);
         mFragProcessors->store(0, std::memory_order_release);
         return;
     }
@@ -618,7 +618,7 @@ void SR_VertexProcessor::push_bin(
         uint_fast64_t binId;
 
         // Attempt to grab a bin index. Flush the bins if they've filled up.
-        while (LS_UNLIKELY((binId = pLocks->fetch_add(1, std::memory_order_relaxed)) >= (uint_fast64_t)SR_SHADER_MAX_PRIM_BINS))
+        while (LS_UNLIKELY((binId = pLocks->fetch_add(1, std::memory_order_acq_rel)) >= (uint_fast64_t)SR_SHADER_MAX_PRIM_BINS))
         {
             flush_bins();
 

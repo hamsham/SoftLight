@@ -38,12 +38,13 @@ class SR_Texture;
  * The initial scanline for a line or triangle being rendered.
  */
 template <typename data_t>
-constexpr data_t sr_scanline_offset(
+constexpr LS_INLINE data_t sr_scanline_offset(
     const data_t numThreads,
     const data_t threadId,
-    const data_t fragmentY)
+    const data_t fragmentY) noexcept
 {
-    return numThreads - 1 - (((fragmentY % numThreads) + threadId) % numThreads);
+    //return numThreads - 1 - (((fragmentY % numThreads) + threadId) % numThreads);
+    return numThreads - 1 - ((fragmentY + threadId) % numThreads);
 }
 
 
