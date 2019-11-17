@@ -160,6 +160,8 @@ SR_RenderWindowXCB& SR_RenderWindowXCB::operator=(const SR_RenderWindowXCB& rw) 
         *this = std::move(*pWindow);
     }
 
+    delete pWindow;
+
     return *this;
 }
 

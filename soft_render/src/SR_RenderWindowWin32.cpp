@@ -185,6 +185,8 @@ SR_RenderWindowWin32& SR_RenderWindowWin32::operator=(const SR_RenderWindowWin32
         *this = std::move(*pWindow);
     }
 
+    delete pWindow;
+
     return *this;
 }
 

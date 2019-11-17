@@ -178,6 +178,8 @@ SR_RenderWindowXlib& SR_RenderWindowXlib::operator=(const SR_RenderWindowXlib& r
         *this = std::move(*pWindow);
     }
 
+    delete pWindow;
+
     return *this;
 }
 
