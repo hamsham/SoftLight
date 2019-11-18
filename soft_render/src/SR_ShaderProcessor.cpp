@@ -509,10 +509,13 @@ void SR_ProcessorPool::run_blit_processors(
     blitter.mBackBuffer = outTex;
 
     // Process most of the rendering on other threads first.
-    for (uint16_t i = 0; i < mNumThreads; ++i)
+    for (uint16_t threadId = 0; threadId < mNumThreads; ++threadId)
     {
-        blitter.mThreadId = i;
-        mThreads[i]->push(processor);
+        blitter.mThreadId = threadId;
+
+        SR_ProcessorPool::Worker* pWorker = mThreads[threadId];
+        pWorker->busy_waiting(false);
+        pWorker->push(processor);
     }
 
     execute();

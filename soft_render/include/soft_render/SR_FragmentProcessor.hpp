@@ -139,11 +139,11 @@ struct SR_FragmentProcessor
         SR_Framebuffer* const fbo,
         const ls::math::vec4_t<int32_t> dimens) noexcept;
 
-    void render_wireframe(const SR_FragmentBin* pBin, const SR_Texture* depthBuffer) const noexcept;
+    void render_wireframe(const SR_Texture* depthBuffer) const noexcept;
 
-    void render_triangle(const SR_FragmentBin* pBin, const SR_Texture* depthBuffer) const noexcept;
+    void render_triangle(const SR_Texture* depthBuffer) const noexcept;
 
-    void render_triangle_simd(const SR_FragmentBin* pBin, const SR_Texture* depthBuffer) const noexcept;
+    void render_triangle_simd(const SR_Texture* depthBuffer) const noexcept;
 
     void flush_fragments(const SR_FragmentBin* pBin, uint_fast32_t numQueuedFrags, const SR_FragCoord* outCoords) const noexcept;
 
