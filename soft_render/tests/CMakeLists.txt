@@ -128,7 +128,7 @@ configure_file(testdata/sibenik/sibenik.obj        testdata/sibenik/sibenik.obj 
 
 configure_file(testdata/head256x256x109            testdata/head256x256x109            COPYONLY)
 
-configure_file(testdata/dragon.obj                testdata/dragon.obj                  COPYONLY)
+#configure_file(testdata/dragon.obj                testdata/dragon.obj                  COPYONLY)
 
 
 
