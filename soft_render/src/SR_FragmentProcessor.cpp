@@ -716,7 +716,7 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
         const int32_t     bboxMaxY     = (int32_t)math::min(mFboH, math::max(p0[1], p1[1], p2[1]));
 
         // Let each thread start rendering at whichever scanline it's assigned to
-        const int32_t scanlineOffset = sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
+        const int32_t scanlineOffset = bboxMinY+sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
 
         #if defined(LS_ARCH_X86) || defined(LS_ARCH_ARM)
             sort_minmax(p0.simd, p1.simd);
@@ -734,7 +734,7 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
         SR_ScanlineBounds scanline{p0, p1, p2};
         #endif
 
-        for (int32_t y = bboxMinY+scanlineOffset; y <= bboxMaxY; y += increment)
+        for (int32_t y = scanlineOffset; y <= bboxMaxY; y += increment)
         {
             // calculate the bounds of the current scan-line
             const float        yf  = (float)y;
@@ -747,7 +747,9 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
             const int32_t xMin = scanline.xMin;
             const int32_t xMax = scanline.xMax;
 
-            for (int32_t x = xMin, y16 = y << 16; x < xMax; ++x)
+            const float* pDepth = depthBuffer->texel_pointer<float>(scanline.xMin, y);
+
+            for (int32_t x = xMin, y16 = y << 16; x < xMax; ++x, ++pDepth)
             {
                 // calculate barycentric coordinates
                 const float  xf = (float)x;
@@ -756,8 +758,7 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
                 // Only render pixels within the triangle edges.
                 // Ensure the current point is in a triangle by checking the sign
                 // bits of all 3 barycentric coordinates.
-                const float oldDepth = depthBuffer->raw_texel<float>(x, y);
-                const float z        = depthTesting ? math::dot(depth, bc) : oldDepth;
+                const float z = depthTesting ? math::dot(depth, bc) : pDepth[0];
 
                 // We're only using the barycentric coordinates here to determine
                 // if a pixel on the edge of a triangle should still be rendered.
@@ -765,12 +766,12 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
                 // but due to roundoff errors, we need to know if it's close enough
                 // to a triangle edge to be rendered.
                 #if SR_REVERSED_Z_BUFFER
-                    if (z < oldDepth)
+                    if (z < pDepth[0])
                     {
                         continue;
                     }
                 #else
-                    if (z > oldDepth)
+                    if (z > pDepth[0])
                     {
                         continue;
                     }
