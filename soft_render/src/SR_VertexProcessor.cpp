@@ -352,23 +352,7 @@ inline LS_INLINE math::vec3_t<size_t> get_next_vertex3(const SR_IndexBuffer* pIb
 /*--------------------------------------
  * Cull backfaces of a triangle
 --------------------------------------*/
-inline LS_INLINE bool backface_visible(const math::vec4 screenCoords[SR_SHADER_MAX_SCREEN_COORDS]) noexcept
-{
-    //return (0.f <= math::dot(math::vec4{0.f, 0.f, 1.f, 1.f}, math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0])));
-    const math::mat3 det{
-        math::vec3{screenCoords[0][0], screenCoords[0][1], screenCoords[0][3]},
-        math::vec3{screenCoords[1][0], screenCoords[1][1], screenCoords[1][3]},
-        math::vec3{screenCoords[2][0], screenCoords[2][1], screenCoords[2][3]}
-    };
-    return (0.f < math::determinant(det));
-}
-
-
-
-/*--------------------------------------
- * Cull frontfaces of a triangle
---------------------------------------*/
-inline LS_INLINE bool frontface_visible(const math::vec4 screenCoords[SR_SHADER_MAX_SCREEN_COORDS]) noexcept
+inline LS_INLINE int back_face_visible(const math::vec4* screenCoords) noexcept
 {
     //return (0.f >= math::dot(math::vec4{0.f, 0.f, 1.f, 1.f}, math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0])));
     const math::mat3 det{
@@ -377,6 +361,22 @@ inline LS_INLINE bool frontface_visible(const math::vec4 screenCoords[SR_SHADER_
         math::vec3{screenCoords[2][0], screenCoords[2][1], screenCoords[2][3]}
     };
     return (0.f > math::determinant(det));
+}
+
+
+
+/*--------------------------------------
+ * Cull frontfaces of a triangle
+--------------------------------------*/
+inline LS_INLINE int front_face_visible(const math::vec4* screenCoords) noexcept
+{
+    //return (0.f <= math::dot(math::vec4{0.f, 0.f, 1.f, 1.f}, math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0])));
+    const math::mat3 det{
+        math::vec3{screenCoords[0][0], screenCoords[0][1], screenCoords[0][3]},
+        math::vec3{screenCoords[1][0], screenCoords[1][1], screenCoords[1][3]},
+        math::vec3{screenCoords[2][0], screenCoords[2][1], screenCoords[2][3]}
+    };
+    return (0.f < math::determinant(det));
 }
 
 
@@ -396,8 +396,8 @@ inline LS_INLINE SR_ClipStatus face_visible(const math::vec4 clipCoords[SR_SHADE
         const float w2n = -clipCoords[2][3];
 
         if (clipCoords[0] >= w0n && clipCoords[0] <= w0p
-        && clipCoords[1] >= w1n  && clipCoords[1] <= w1p
-        && clipCoords[2] >= w2n && clipCoords[2] <= w2p)
+        &&  clipCoords[1] >= w1n && clipCoords[1] <= w1p
+        &&  clipCoords[2] >= w2n && clipCoords[2] <= w2p)
         {
             return SR_TRIANGLE_FULLY_VISIBLE;
         }
@@ -478,7 +478,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
             #if defined(LS_ARCH_X86)
                 _mm_pause();
             #elif defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
-                clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
+                clock_nanosleep(CLOCK_MONOTONIC_RAW, 0, &sleepAmt, nullptr);
             #elif defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
                 nanosleep(&sleepAmt, nullptr);
             #else
@@ -524,7 +524,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
                 #if defined(LS_ARCH_X86)
                     _mm_pause();
                 #elif defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
-                    clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
+                    clock_nanosleep(CLOCK_MONOTONIC_RAW, 0, &sleepAmt, nullptr);
                 #elif defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
                     nanosleep(&sleepAmt, nullptr);
                 #else
@@ -532,7 +532,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
                 #endif
             #else
                 #if defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
-                    clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
+                    clock_nanosleep(CLOCK_MONOTONIC_RAW, 0, &sleepAmt, nullptr);
                 #elif defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
                     nanosleep(&sleepAmt, nullptr);
                 #elif defined(LS_ARCH_X86)
@@ -919,10 +919,19 @@ void SR_VertexProcessor::execute() noexcept
                 vertCoords[2] = shader(vertId[2], vao, vbo, pUniforms, pVaryings + (SR_SHADER_MAX_VARYING_VECTORS * 2));
             #endif
 
-            if ((cullMode == SR_CULL_BACK_FACE && !backface_visible(vertCoords))
-            ||  (cullMode == SR_CULL_FRONT_FACE && !frontface_visible(vertCoords)))
+            if (cullMode == SR_CULL_BACK_FACE)
             {
-                continue;
+                if (back_face_visible(vertCoords))
+                {
+                    continue;
+                }
+            }
+            else if (cullMode == SR_CULL_FRONT_FACE)
+            {
+                if (front_face_visible(vertCoords))
+                {
+                    continue;
+                }
             }
 
             // Clip-space culling

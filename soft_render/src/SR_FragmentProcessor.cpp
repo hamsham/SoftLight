@@ -595,7 +595,7 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
         math::vec4        p1           = screenCoords[1];
         math::vec4        p2           = screenCoords[2];
         const math::vec4* bcClipSpace  = pBin->mBarycentricCoords;
-        const int32_t     depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON);
+        const int32_t     depthTesting = (mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON);
         const int32_t     bboxMinY     = (int32_t)math::ceil(math::min(p0[1], p1[1], p2[1]));
         const int32_t     bboxMaxY     = (int32_t)math::max(p0[1], p1[1], p2[1]);
 
@@ -662,8 +662,8 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
                 #endif
 
                 // perspective correction
-                float persp = math::dot(homogenous, bc);
-                outCoords->bc[numQueuedFrags] = bc * homogenous / persp;
+                float persp = 1.f / math::dot(homogenous, bc);
+                outCoords->bc[numQueuedFrags] = bc * homogenous * persp;
 
                 const math::vec4 outXYZ{xf, yf, z, persp};
                 outCoords->xyzw[numQueuedFrags] = outXYZ;
