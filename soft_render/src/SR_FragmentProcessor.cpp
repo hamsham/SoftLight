@@ -159,16 +159,16 @@ inline LS_INLINE void sort_minmax(__m128& a, __m128& b)  noexcept
 #elif defined(LS_ARCH_ARM)
 inline LS_INLINE void sort_minmax(float32x4_t& a, float32x4_t& b)  noexcept
 {
-    const float32x4_t ya   = vdupq_n_f32(vgetq_lane_f32(a, 2));
-    const float32x4_t yb   = vdupq_n_f32(vgetq_lane_f32(b, 2));
+    const float32x4_t ya   = vdupq_n_f32(vgetq_lane_f32(a, 1));
+    const float32x4_t yb   = vdupq_n_f32(vgetq_lane_f32(b, 1));
     const uint32x4_t  ai   = vreinterpretq_u32_f32(a);
     const uint32x4_t  bi   = vreinterpretq_u32_f32(b);
 
     const uint32x4_t mask = vcltq_f32(ya, yb);
     const uint32x4_t al   = vandq_u32(vmvnq_u32(mask), ai);
+    const uint32x4_t bg   = vandq_u32(vmvnq_u32(mask), bi);
     const uint32x4_t bl   = vandq_u32(mask, bi);
     const uint32x4_t ag   = vandq_u32(mask, ai);
-    const uint32x4_t bg   = vandq_u32(vmvnq_u32(mask), bi);
 
     a = vreinterpretq_f32_u32(vorrq_u32(al, bl));
     b = vreinterpretq_f32_u32(vorrq_u32(ag, bg));
@@ -253,15 +253,9 @@ struct SR_ScanlineBounds
 
         sort_minmax(xMin, xMax);
 
-        /*
-        // Get the beginning and end of the scan-line
-        const int32_t temp = math::max(xMin, xMax);
-        xMin = math::clamp<int32_t>(math::min(xMin, xMax), bboxMinX, bboxMaxX);
-        xMax = temp;
-        */
+        xMin = math::clamp(xMin, bboxMinX, bboxMaxX);
 
         #if SR_VERTEX_CLIPPING_ENABLED == 0
-            xMin = math::clamp(xMin, bboxMinX, bboxMaxX);
             xMax = math::clamp(xMax, bboxMinX, bboxMaxX);
         #endif
     }
