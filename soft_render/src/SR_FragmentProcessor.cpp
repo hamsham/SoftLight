@@ -147,14 +147,13 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
 #ifdef LS_ARCH_X86
 inline LS_INLINE void sort_minmax(__m128& a, __m128& b)  noexcept
 {
-    const __m128 mask = _mm_cmplt_ps(_mm_permute_ps(a, 0x55), _mm_permute_ps(b, 0x55));
-    const __m128 al   = _mm_andnot_ps(mask, a);
-    const __m128 bg   = _mm_andnot_ps(mask, b);
-    const __m128 bl   = _mm_and_ps(mask, b);
-    const __m128 ag   = _mm_and_ps(mask, a);
-
-    a = _mm_or_ps(al, bl);
-    b = _mm_or_ps(ag, bg);
+    const __m128 ay    = _mm_permute_ps(a, 0x55);
+    const __m128 by    = _mm_permute_ps(b, 0x55);
+    const __m128 masks = _mm_cmplt_ps(ay, by);
+    const __m128 at   = a;
+    const __m128 bt   = b;
+    a = _mm_blendv_ps(at, bt, masks);
+    b = _mm_blendv_ps(bt, at, masks);
 }
 #elif defined(LS_ARCH_ARM)
 inline LS_INLINE void sort_minmax(float32x4_t& a, float32x4_t& b)  noexcept
@@ -827,7 +826,7 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
         const int32_t     bboxMinY     = (int32_t)math::max(0.f,   math::ceil(math::min(p0[1], p1[1], p2[1])));
         const int32_t     bboxMaxY     = (int32_t)math::min(mFboH, math::max(p0[1], p1[1], p2[1]));
 
-        const int32_t scanlineOffset = sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
+        const int32_t scanlineOffset = bboxMinY+sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
 
         #if defined(LS_ARCH_X86) || defined(LS_ARCH_ARM)
             sort_minmax(p0.simd, p1.simd);
@@ -845,7 +844,7 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
         SR_ScanlineBounds scanline{p0, p1, p2};
         #endif
 
-        for (int32_t y = bboxMinY+scanlineOffset; y <= bboxMaxY; y += increment)
+        for (int32_t y = scanlineOffset; y <= bboxMaxY; y += increment)
         {
             // calculate the bounds of the current scan-line
             const float yf = (float)y;
