@@ -127,7 +127,7 @@ class SR_Texture
 
     void set_wrap_mode(const SR_TexWrapMode wrapMode) noexcept;
 
-    int init(SR_ColorDataType type, uint16_t w, uint16_t h, uint16_t d = 1, SR_TexelOrder texelOrder = SR_TexelOrder::SR_TEXELS_ORDERED) noexcept;
+    int init(SR_ColorDataType type, uint16_t w, uint16_t h, uint16_t d = 1) noexcept;
 
     int init(const SR_ImgFile& imgFile, SR_TexelOrder texelOrder = SR_TexelOrder::SR_TEXELS_ORDERED) noexcept;
 

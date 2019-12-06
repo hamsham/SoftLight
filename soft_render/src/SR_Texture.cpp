@@ -5,7 +5,7 @@
 
 // Textures on POSIX-based systems are page-aligned. On windows, they're
 // aligned to the size of a vector register (__m256 or float32x4_t).
-#ifndef LS_OS_WINDOWS
+#if !defined(LS_OS_WINDOWS)
     #include <unistd.h> // posix_memalign(), sysconf(_SC_PAGESIZE)
 #endif
 
@@ -25,22 +25,27 @@ namespace
 /*-------------------------------------
  *
 -------------------------------------*/
-char* _sr_allocate_texture(size_t w, size_t h, size_t d, size_t bpt)
+char* _sr_allocate_texture(size_t w, size_t h, size_t d, size_t bpt) noexcept
 {
+    // Z-ordered textures need to be padded if they are not divisible by SR_TEXELS_PER_CHUNK
+    w = w + (SR_TEXELS_PER_CHUNK - (w % SR_TEXELS_PER_CHUNK));
+    h = h + (SR_TEXELS_PER_CHUNK - (h % SR_TEXELS_PER_CHUNK));
+    d = d + (SR_TEXELS_PER_CHUNK - (d % SR_TEXELS_PER_CHUNK));
+
     // 8 pixels can be acquired at a time
     const size_t numBytes     = w * h * d * bpt;
     const size_t maxRemaining = 4 * bpt;
     const size_t texAlignment = maxRemaining - (numBytes % maxRemaining);
     size_t numAlignedBytes    = numBytes + texAlignment;
 
-    #ifdef LS_OS_WINDOWS
-    char* const  pTexels = (char*)ls::utils::aligned_malloc(numAlignedBytes);
+    #if defined(LS_OS_WINDOWS)
+        char* const pTexels = (char*)ls::utils::aligned_malloc(numAlignedBytes);
     #else
-    char* pTexels = nullptr;
-    if (0 != posix_memalign((void**)&pTexels, sysconf(_SC_PAGESIZE), numAlignedBytes))
-    {
-        return nullptr;
-    }
+        char* pTexels = nullptr;
+        if (0 != posix_memalign((void**)&pTexels, sysconf(_SC_PAGESIZE), numAlignedBytes))
+        {
+            return nullptr;
+        }
     #endif
 
     ls::utils::fast_memset(pTexels, 0, numAlignedBytes);
@@ -52,27 +57,32 @@ char* _sr_allocate_texture(size_t w, size_t h, size_t d, size_t bpt)
 /*-------------------------------------
  *
 -------------------------------------*/
-char* _sr_copy_texture(size_t w, size_t h, size_t d, size_t bpt, const char* pData)
+char* _sr_copy_texture(size_t w, size_t h, size_t d, size_t bpt, const char* pData) noexcept
 {
     if (!pData)
     {
         return nullptr;
     }
 
+    // Z-ordered textures need to be padded if they are not divisible by SR_TEXELS_PER_CHUNK
+    w = w + (SR_TEXELS_PER_CHUNK - (w % SR_TEXELS_PER_CHUNK));
+    h = h + (SR_TEXELS_PER_CHUNK - (h % SR_TEXELS_PER_CHUNK));
+    d = d + (SR_TEXELS_PER_CHUNK - (d % SR_TEXELS_PER_CHUNK));
+
     // 8 pixels can be acquired at a time
-    const size_t numBytes    = w * h * d * bpt;
+    const size_t numBytes     = w * h * d * bpt;
     const size_t maxRemaining = 4 * bpt;
     const size_t texAlignment = maxRemaining - (numBytes % maxRemaining);
     size_t numAlignedBytes    = numBytes + texAlignment;
 
-    #ifdef LS_OS_WINDOWS
-    char* const  pTexels    = (char*)ls::utils::aligned_malloc(numAlignedBytes);
+    #if defined(LS_OS_WINDOWS)
+        char* const pTexels = (char*)ls::utils::aligned_malloc(numAlignedBytes);
     #else
-    char* pTexels = nullptr;
-    if (0 != posix_memalign((void**)&pTexels, sysconf(_SC_PAGESIZE), numAlignedBytes))
-    {
-        return nullptr;
-    }
+        char* pTexels = nullptr;
+        if (0 != posix_memalign((void**)&pTexels, sysconf(_SC_PAGESIZE), numAlignedBytes))
+        {
+            return nullptr;
+        }
     #endif
 
     ls::utils::fast_memcpy(pTexels, pData, numAlignedBytes);
@@ -245,28 +255,14 @@ SR_Texture& SR_Texture::operator=(SR_Texture&& r) noexcept
 /*-------------------------------------
  *
 -------------------------------------*/
-int SR_Texture::init(SR_ColorDataType type, uint16_t w, uint16_t h, uint16_t d, SR_TexelOrder texelOrder) noexcept
+int SR_Texture::init(SR_ColorDataType type, uint16_t w, uint16_t h, uint16_t d) noexcept
 {
     LS_DEBUG_ASSERT(w > 0);
     LS_DEBUG_ASSERT(h > 0);
     LS_DEBUG_ASSERT(d > 0);
 
-    uint16_t w0, h0;
-
-    // Z-ordered textures need to be padded if they are not divisible by SR_TEXELS_PER_CHUNK
-    if (texelOrder == SR_TexelOrder::SR_TEXELS_SWIZZLED)
-    {
-        w0 = w + (SR_TEXELS_PER_CHUNK - (w % SR_TEXELS_PER_CHUNK));
-        h0 = h + (SR_TEXELS_PER_CHUNK - (h % SR_TEXELS_PER_CHUNK));
-    }
-    else
-    {
-        w0 = w;
-        h0 = h;
-    }
-
     const size_t bpt = sr_bytes_per_color(type);
-    char* pData = _sr_allocate_texture(w0, h0, d, bpt);
+    char* pData = _sr_allocate_texture(w, h, d, bpt);
 
     if (!pData)
     {
@@ -369,7 +365,7 @@ void SR_Texture::terminate() noexcept
     mBytesPerTexel = 0;
     mNumChannels = 0;
 
-    #ifdef LS_OS_WINDOWS
+    #if defined(LS_OS_WINDOWS)
     ls::utils::aligned_free(mTexels);
     #else
     free(mTexels);

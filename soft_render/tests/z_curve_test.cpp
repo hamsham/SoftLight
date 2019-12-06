@@ -14,7 +14,7 @@ int main()
     constexpr unsigned d = 16;
 
     SR_Texture tex;
-    tex.init(SR_COLOR_R_8U, w, h, d, SR_TexelOrder::SR_TEXELS_SWIZZLED);
+    tex.init(SR_COLOR_R_8U, w, h, d);
 
     for (unsigned z = 0; z < d; ++z)
     {
