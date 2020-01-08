@@ -18,15 +18,12 @@
 #include "soft_render/SR_Context.hpp"
 #include "soft_render/SR_FragmentProcessor.hpp"
 #include "soft_render/SR_IndexBuffer.hpp"
+#include "soft_render/SR_ScanlineBounds.hpp"
 #include "soft_render/SR_Shader.hpp"
 #include "soft_render/SR_ShaderProcessor.hpp"
 #include "soft_render/SR_VertexArray.hpp"
 #include "soft_render/SR_VertexBuffer.hpp"
 #include "soft_render/SR_VertexProcessor.hpp"
-
-#ifndef SR_VERTEX_CLIPPING_ENABLED
-    #define SR_VERTEX_CLIPPING_ENABLED 1
-#endif /* SR_VERTEX_CLIPPING_ENABLED */
 
 #ifndef SR_TUNE_HIGH_POLY
     #define SR_TUNE_HIGH_POLY 0
@@ -54,7 +51,7 @@ namespace
 class SR_PTVCache
 {
   public:
-    static constexpr unsigned PTV_CACHE_SIZE = 6;
+    static constexpr unsigned PTV_CACHE_SIZE = 8;
 
     //static constexpr unsigned PTV_CACHE_MISS = 0xFFFFFFFFu;
 
@@ -226,7 +223,7 @@ class SR_PTVCache
 
     inline void query_and_update(size_t index, math::vec4& outVert, math::vec4* outVaryings, unsigned numVaryings) noexcept
     {
-        size_t i = index % PTV_CACHE_SIZE;
+        size_t i = index & (PTV_CACHE_SIZE-1);
 
         if (lruIndices[i] == index)
         {
@@ -607,7 +604,7 @@ void SR_VertexProcessor::push_bin(
             return;
     }
 
-    int isPrimVisible = (bboxMaxX >= 0.f && bboxMaxY >= 0.f && fboW >= bboxMinX && fboH >= bboxMinY);
+    int isPrimVisible = (bboxMaxX >= 0.f && bboxMaxY >= 0.f && fboW > bboxMinX && fboH > bboxMinY);
     isPrimVisible = isPrimVisible && (bboxMaxX-math::ceil(bboxMinX) > 0.0f) && (bboxMaxY-math::ceil(bboxMinY) > 0.f);
 
     if (isPrimVisible)
