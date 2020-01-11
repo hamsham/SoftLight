@@ -11,11 +11,7 @@
 #include "lightsky/math/scalar_utils.h"
 #include "lightsky/math/vec_utils.h"
 
-
-
-#ifndef SR_VERTEX_CLIPPING_ENABLED
-    #define SR_VERTEX_CLIPPING_ENABLED 1
-#endif /* SR_VERTEX_CLIPPING_ENABLED */
+#include "soft_render/SR_Config.hpp"
 
 
 
@@ -124,8 +120,13 @@ struct alignas(sizeof(float)*4) SR_ScanlineBounds
         p10xy = p10x * p10y;
         p21xy = p21x * p21y;
 
-        bboxMinX = (int32_t)ls::math::min(fboW, ls::math::max(0.f,  ls::math::min(p0[0], p1[0], p2[0])));
-        bboxMaxX = (int32_t)ls::math::max(0.f,  ls::math::min(fboW, ls::math::max(p0[0], p1[0], p2[0]))+0.5f);
+        #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
+            bboxMinX = (int32_t)ls::math::min(fboW, ls::math::max(0.f,  ls::math::min(p0[0], p1[0], p2[0])));
+            bboxMaxX = (int32_t)ls::math::max(0.f,  ls::math::min(fboW, ls::math::max(p0[0], p1[0], p2[0]))+0.5f);
+        #else
+            bboxMinX = (int32_t)ls::math::max(0.f,  ls::math::min(p0[0], p1[0], p2[0]));
+            bboxMaxX = (int32_t)ls::math::min(fboW, ls::math::max(p0[0], p1[0], p2[0]));
+        #endif
     }
 
     inline void LS_INLINE init(ls::math::vec4 p0, ls::math::vec4 p1, ls::math::vec4 p2) noexcept
@@ -175,7 +176,7 @@ struct alignas(sizeof(float)*4) SR_ScanlineBounds
 
         xMin = ls::math::clamp(xMin, bboxMinX, bboxMaxX);
 
-        #if SR_VERTEX_CLIPPING_ENABLED == 0
+        #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
             xMax = ls::math::clamp(xMax, bboxMinX, bboxMaxX);
         #endif
     }

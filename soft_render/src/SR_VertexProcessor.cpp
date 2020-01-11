@@ -15,23 +15,15 @@
 #include "lightsky/math/vec4.h"
 #include "lightsky/math/vec_utils.h"
 
+#include "soft_render/SR_Config.hpp"
 #include "soft_render/SR_Context.hpp"
 #include "soft_render/SR_FragmentProcessor.hpp"
 #include "soft_render/SR_IndexBuffer.hpp"
-#include "soft_render/SR_ScanlineBounds.hpp"
 #include "soft_render/SR_Shader.hpp"
 #include "soft_render/SR_ShaderProcessor.hpp"
 #include "soft_render/SR_VertexArray.hpp"
 #include "soft_render/SR_VertexBuffer.hpp"
 #include "soft_render/SR_VertexProcessor.hpp"
-
-#ifndef SR_TUNE_HIGH_POLY
-    #define SR_TUNE_HIGH_POLY 0
-#endif /* SR_TUNE_HIGH_POLY */
-
-#ifndef SR_VERTEX_CACHING_ENABLED
-    #define SR_VERTEX_CACHING_ENABLED 0
-#endif /* SR_VERTEX_CACHING_ENABLED */
 
 
 
@@ -51,13 +43,15 @@ namespace
 class SR_PTVCache
 {
   public:
-    static constexpr unsigned PTV_CACHE_SIZE = 8;
+    static constexpr size_t PTV_CACHE_SIZE = SR_VERTEX_CACHE_SIZE;
 
-    //static constexpr unsigned PTV_CACHE_MISS = 0xFFFFFFFFu;
+    static constexpr size_t PTV_CACHE_MISS = ~(size_t)0;
 
     size_t lruIndices[PTV_CACHE_SIZE];
 
-    //long long lruCounts[PTV_CACHE_SIZE];
+    #if SR_VERTEX_CACHE_TYPE_LRU
+    long long lruCounts[PTV_CACHE_SIZE];
+    #endif
 
     math::vec4 lruVertices[PTV_CACHE_SIZE];
 
@@ -96,15 +90,15 @@ class SR_PTVCache
     {
         for (size_t& index : lruIndices)
         {
-            index = ~(size_t)0;
+            index = PTV_CACHE_MISS;
         }
 
-        /*
-        for (long long& count : lruCounts)
-        {
-            count = -1;
-        }
-        */
+        #if SR_VERTEX_CACHE_TYPE_LRU
+            for (long long& count : lruCounts)
+            {
+                count = -1;
+            }
+        #endif
 
         vao = pVao;
         vbo = pVbo;
@@ -112,91 +106,31 @@ class SR_PTVCache
         shader = pShader;
     }
 
-    /*
-    inline unsigned query(size_t index, math::vec4& outVert, math::vec4* outVaryings, unsigned numVaryings) noexcept
+    #if SR_VERTEX_CACHE_TYPE_LRU
+    inline void query_and_update(size_t key, math::vec4& outVert, math::vec4* outVaryings, size_t numVaryings) noexcept
     {
         size_t ret = PTV_CACHE_MISS;
-
-        for (unsigned i = PTV_CACHE_SIZE; i--;)
-        {
-            if (lruIndices[i] == index)
-            {
-                lruCounts[i] = 0;
-                outVert = lruVertices[i];
-
-                for (unsigned v = numVaryings; v--;)
-                {
-                    outVaryings[v] = lruVaryings[i][v];
-                }
-
-                ret = index;
-            }
-            else
-            {
-                if (lruCounts[i] >= 0)
-                {
-                    ++lruCounts[i];
-                }
-            }
-        }
-
-        return ret;
-    }
-
-    inline void update(size_t index, const math::vec4& vert, const math::vec4* inVaryings, unsigned numVaryings) noexcept
-    {
-        size_t nextIndex = 0;
+        size_t cacheIndex = 0;
         long long maxCount = 0;
 
-        for (unsigned i = PTV_CACHE_SIZE; i--;)
+        for (size_t i = PTV_CACHE_SIZE; i--;)
         {
-            if (maxCount < lruCounts[i])
+            if (maxCount > lruCounts[i])
             {
-                nextIndex = i;
-
-                if (lruCounts[i] < 0)
-                {
-                    break;
-                }
-
                 maxCount = lruCounts[i];
-            }
-        }
-
-        lruIndices[nextIndex] = index;
-        lruCounts[nextIndex] = 0;
-        lruVertices[nextIndex] = vert;
-
-        for (unsigned v = numVaryings; v--;)
-        {
-            lruVaryings[nextIndex][v] = inVaryings[v];
-        }
-    }
-
-    inline void query_and_update(size_t index, math::vec4& outVert, math::vec4* outVaryings, unsigned numVaryings) noexcept
-    {
-        size_t ret = PTV_CACHE_MISS;
-        size_t nextIndex = 0;
-        long long maxCount = 0;
-
-        for (unsigned i = PTV_CACHE_SIZE; i--;)
-        {
-            if (maxCount < lruCounts[i])
-            {
-                nextIndex = i;
+                cacheIndex = i;
             }
 
-            if (lruIndices[i] == index)
+            if (lruIndices[i] == key)
             {
+                ret = key;
                 lruCounts[i] = 0;
                 outVert = lruVertices[i];
 
-                for (unsigned v = numVaryings; v--;)
+                for (size_t v = numVaryings; v--;)
                 {
                     outVaryings[v] = lruVaryings[i][v];
                 }
-
-                ret = index;
             }
             else
             {
@@ -209,27 +143,28 @@ class SR_PTVCache
 
         if (ret == PTV_CACHE_MISS)
         {
-            lruIndices[nextIndex] = index;
-            lruCounts[nextIndex] = 0;
-            outVert = lruVertices[nextIndex] = shader(index, *vao, *vbo, uniforms, outVaryings);
+            lruIndices[cacheIndex] = key;
+            lruCounts[cacheIndex] = 0;
+            outVert = lruVertices[cacheIndex] = shader(key, *vao, *vbo, uniforms, outVaryings);
 
-            for (unsigned v = numVaryings; v--;)
+            for (size_t v = numVaryings; v--;)
             {
-                lruVaryings[nextIndex][v] = outVaryings[v];
+                lruVaryings[cacheIndex][v] = outVaryings[v];
             }
         }
     }
-    */
 
-    inline void query_and_update(size_t index, math::vec4& outVert, math::vec4* outVaryings, unsigned numVaryings) noexcept
+    #else // SR_VERTEX_CACHE_TYPE_LRU
+
+    inline void query_and_update(size_t key, math::vec4& outVert, math::vec4* outVaryings, size_t numVaryings) noexcept
     {
-        size_t i = index & (PTV_CACHE_SIZE-1);
+        size_t i = key & (PTV_CACHE_SIZE-1);
 
-        if (lruIndices[i] == index)
+        if (lruIndices[i] == key)
         {
             outVert = lruVertices[i];
 
-            for (unsigned v = numVaryings; v--;)
+            for (size_t v = numVaryings; v--;)
             {
                 outVaryings[v] = lruVaryings[i][v];
             }
@@ -237,29 +172,36 @@ class SR_PTVCache
             return;
         }
 
-        lruIndices[i] = index;
-        outVert = lruVertices[i] = shader(index, *vao, *vbo, uniforms, outVaryings);
+        lruIndices[i] = key;
+        outVert = lruVertices[i] = shader(key, *vao, *vbo, uniforms, outVaryings);
 
-        for (unsigned v = numVaryings; v--;)
+        for (size_t v = numVaryings; v--;)
         {
             lruVaryings[i][v] = outVaryings[v];
         }
     }
+
+    #endif // SR_VERTEX_CACHE_TYPE_LRU
 };
-#endif
+
+#endif // SR_VERTEX_CACHING_ENABLED
 
 
 
 /*--------------------------------------
  * Convert world coordinates to screen coordinates (temporary until NDC clipping is added)
 --------------------------------------*/
-inline LS_INLINE math::vec4 sr_perspective_divide(math::vec4 v) noexcept
+inline LS_INLINE math::vec4 sr_perspective_divide(const math::vec4 v) noexcept
 {
-    const math::vec4&& wInv = math::rcp(math::vec4{v[3]});
-    v *= wInv;
-    v[3] = wInv[0];
-
-    return v;
+    #if !defined(LS_ARCH_X86)
+        const math::vec4&& wInv = math::rcp(math::vec4{v[3]});
+        const math::vec4&& vMul = v * wInv;
+        return math::vec4{vMul[0], vMul[1], vMul[2], wInv[0]};
+    #else
+        const __m128 wInv = _mm_rcp_ps(_mm_set1_ps(v[3]));
+        const __m128 vMul = _mm_mul_ps(v.simd, wInv);
+        return math::vec4{_mm_blend_ps(wInv, vMul, 0x07)};
+    #endif
 }
 
 
@@ -269,9 +211,18 @@ inline LS_INLINE math::vec4 sr_perspective_divide(math::vec4 v) noexcept
 --------------------------------------*/
 inline LS_INLINE void sr_world_to_screen_coords_divided(math::vec4& v, const float widthScale, const float heightScale) noexcept
 {
-    //v[0] = math::fmadd(widthScale, v[0], widthScale);
-    //v[1] = math::fmadd(heightScale, v[1], heightScale);
-    v = math::fmadd(math::vec4{widthScale, heightScale, 1.f, 1.f}, v, math::vec4{widthScale, heightScale, 0.f, 0.f});
+    #if !defined(LS_ARCH_X86)
+        v[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  v[0], widthScale)));
+        v[1] = math::max(0.f, math::floor(math::fmadd(heightScale, v[1], heightScale)));
+        //v = math::fmadd(math::vec4{widthScale, heightScale, 1.f, 1.f}, v, math::vec4{widthScale, heightScale, 0.f, 0.f});
+    #else
+        const __m128 wh0 = _mm_set_ps(0.f, 0.f, heightScale, widthScale);
+        const __m128 wh1 = _mm_set_ps(1.f, 1.f, heightScale, widthScale);
+
+        __m128 scl = _mm_fmadd_ps(wh1, v.simd, wh0);
+        scl = _mm_max_ps(_mm_floor_ps(scl), _mm_setzero_ps());
+        v.simd = _mm_blend_ps(scl, v.simd, 0x0C);
+    #endif
 }
 
 
@@ -383,7 +334,7 @@ inline LS_INLINE int front_face_visible(const math::vec4* screenCoords) noexcept
 --------------------------------------*/
 inline LS_INLINE SR_ClipStatus face_visible(const math::vec4 clipCoords[SR_SHADER_MAX_WORLD_COORDS]) noexcept
 {
-    #if SR_VERTEX_CLIPPING_ENABLED != 0
+    #if SR_PRIMITIVE_CLIPPING_ENABLED != 0
         const float w0p = clipCoords[0][3];
         const float w1p = clipCoords[1][3];
         const float w2p = clipCoords[2][3];
@@ -446,7 +397,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
     if (tileId == mNumThreads-1u)
     {
         #if !SR_TUNE_HIGH_POLY
-        const uint_fast64_t maxElements = math::min<uint64_t>(mBinsUsed->load(std::memory_order_consume), SR_SHADER_MAX_PRIM_BINS);
+        const uint_fast64_t maxElements = math::min<uint64_t>(mBinsUsed->load(std::memory_order_consume), SR_SHADER_MAX_BINNED_PRIMS);
 
         // Blended fragments get sorted back-to-front for correct coloring.
         if (mShader->fragment_shader().blend == SR_BLEND_OFF)
@@ -491,12 +442,12 @@ void SR_VertexProcessor::flush_bins() const noexcept
         (uint32_t)mNumThreads,
         (float)(mFboW - 1),
         (float)(mFboH - 1),
-        math::min<uint64_t>(mBinsUsed->load(std::memory_order_relaxed), SR_SHADER_MAX_PRIM_BINS),
+        math::min<uint64_t>(mBinsUsed->load(std::memory_order_relaxed), SR_SHADER_MAX_BINNED_PRIMS),
         mShader,
         mFbo,
         mBinIds,
         mFragBins,
-        mVaryings + tileId * SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_FRAG_QUEUES,
+        mVaryings + tileId * SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_QUEUED_FRAGS,
         mFragQueues + tileId
     };
 
@@ -615,7 +566,7 @@ void SR_VertexProcessor::push_bin(
         uint_fast64_t binId;
 
         // Attempt to grab a bin index. Flush the bins if they've filled up.
-        while (LS_UNLIKELY((binId = pLocks->fetch_add(1, std::memory_order_acq_rel)) >= (uint_fast64_t)SR_SHADER_MAX_PRIM_BINS))
+        while (LS_UNLIKELY((binId = pLocks->fetch_add(1, std::memory_order_acq_rel)) >= (uint_fast64_t)SR_SHADER_MAX_BINNED_PRIMS))
         {
             flush_bins();
 
@@ -790,29 +741,25 @@ void SR_VertexProcessor::clip_and_process_tris(
 
     LS_DEBUG_ASSERT(numTotalVerts <= numTempVerts);
 
-    tempVerts[0] = sr_perspective_divide(newVerts[0]);
+    for (unsigned i = numTotalVerts; i--;)
+    {
+        newVerts[i] = sr_perspective_divide(newVerts[i]);
+        sr_world_to_screen_coords_divided(newVerts[i], widthScale, heightScale);
+    }
+
+    tempVerts[0] = newVerts[0];
     _copy_verts(numVarys, newVarys, tempVarys);
-    sr_world_to_screen_coords_divided(tempVerts[0], widthScale, heightScale);
 
     for (unsigned i = numTotalVerts-2; i--;)
     {
-        unsigned j = i+1;
-        unsigned k = i+2;
+        const unsigned j = i+1;
+        const unsigned k = i+2;
 
         tempVerts[1] = newVerts[j];
-        _copy_verts(numVarys, newVarys+(j*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(1*SR_SHADER_MAX_VARYING_VECTORS));
-
         tempVerts[2] = newVerts[k];
+
+        _copy_verts(numVarys, newVarys+(j*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(1*SR_SHADER_MAX_VARYING_VECTORS));
         _copy_verts(numVarys, newVarys+(k*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(2*SR_SHADER_MAX_VARYING_VECTORS));
-
-        math::vec4& v1 = tempVerts[1];
-        math::vec4& v2 = tempVerts[2];
-
-        v1 = sr_perspective_divide(v1);
-        v2 = sr_perspective_divide(v2);
-
-        sr_world_to_screen_coords_divided(v1, widthScale, heightScale);
-        sr_world_to_screen_coords_divided(v2, widthScale, heightScale);
 
         push_bin(fboW, fboH, tempVerts, tempVarys);
     }
@@ -825,8 +772,9 @@ void SR_VertexProcessor::clip_and_process_tris(
 --------------------------------------*/
 void SR_VertexProcessor::execute() noexcept
 {
-    ls::math::vec4          vertCoords  [SR_SHADER_MAX_SCREEN_COORDS];
-    math::vec4              pVaryings   [SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS];
+    alignas(alignof(math::vec4)) math::vec4 vertCoords[SR_SHADER_MAX_SCREEN_COORDS];
+    alignas(alignof(math::vec4)) math::vec4 pVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS];
+
     const SR_VertexShader   vertShader  = mShader->mVertShader;
     const SR_CullMode       cullMode    = vertShader.cullMode;
     const auto              shader      = vertShader.shader;
@@ -938,7 +886,7 @@ void SR_VertexProcessor::execute() noexcept
                 continue;
             }
 
-            #if SR_VERTEX_CLIPPING_ENABLED == 0
+            #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
                 vertCoords[0] = sr_perspective_divide(vertCoords[0]);
                 vertCoords[1] = sr_perspective_divide(vertCoords[1]);
                 vertCoords[2] = sr_perspective_divide(vertCoords[2]);

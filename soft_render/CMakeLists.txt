@@ -124,6 +124,7 @@ set(SR_LIB_HEADERS
     include/soft_render/SR_BoundingBox.hpp
     include/soft_render/SR_Camera.hpp
     include/soft_render/SR_Color.hpp
+    include/soft_render/SR_Config.hpp
     include/soft_render/SR_Context.hpp
     include/soft_render/SR_FragmentProcessor.hpp
     include/soft_render/SR_Framebuffer.hpp

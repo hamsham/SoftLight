@@ -37,12 +37,12 @@ enum SR_ShaderLimits
 
     // Maximum number of fragments that get queued before being placed on a
     // framebuffer.
-    SR_SHADER_MAX_FRAG_QUEUES     = 16384,
+    SR_SHADER_MAX_QUEUED_FRAGS    = 16384,
 
     // Maximum number of vertex groups which get binned before being sent to a
     // fragment processor. About 16 MB (when multiplied by
     // sizeof(SR_FragmentBin)).
-    SR_SHADER_MAX_PRIM_BINS       = 8192
+    SR_SHADER_MAX_BINNED_PRIMS    = 8192
 };
 
 
@@ -87,27 +87,31 @@ inline void sr_calc_indexed_parition(size_t totalVerts, size_t numThreads, size_
     size_t totalPrims = totalVerts / vertsPerPrim;
     size_t activeThreads = numThreads < totalPrims ? numThreads : totalPrims;
     size_t chunkSize = totalVerts / activeThreads;
+    size_t remainder = chunkSize % vertsPerPrim;
+    size_t beg;
+    size_t end;
 
     // Set to 0 for the last thread to share chunk processing, plus remainder.
     // Set to 1 for the last thread to only process remaining values.
     if (lastThreadProcessesLess)
     {
-        chunkSize += vertsPerPrim - (chunkSize % vertsPerPrim);
+        chunkSize += vertsPerPrim - remainder;
     }
     else
     {
-        chunkSize -= chunkSize % vertsPerPrim;
+        chunkSize -= remainder;
     }
 
-    outBegin = threadId * chunkSize;
-    outEnd = (threadId+1) * chunkSize;
+    beg = threadId * chunkSize;
+    end = beg + chunkSize;
 
     if (threadId == (numThreads - 1))
     {
-        outEnd += totalVerts - (chunkSize * activeThreads);
+        end += totalVerts - (chunkSize * activeThreads);
     }
 
-    outEnd = outEnd < totalVerts ? outEnd : totalVerts;
+    outBegin = beg;
+    outEnd = end < totalVerts ? end : totalVerts;
 }
 
 
@@ -123,13 +127,13 @@ struct alignas(sizeof(uint32_t)) SR_FragCoordXY
 
 struct SR_FragCoord
 {
-    ls::math::vec4 bc[SR_SHADER_MAX_FRAG_QUEUES]; // 32*4
-    ls::math::vec4 xyzw[SR_SHADER_MAX_FRAG_QUEUES]; // 32*4
+    ls::math::vec4 bc[SR_SHADER_MAX_QUEUED_FRAGS]; // 32*4
+    ls::math::vec4 xyzw[SR_SHADER_MAX_QUEUED_FRAGS]; // 32*4
 
     union
     {
-        SR_FragCoordXY coord[SR_SHADER_MAX_FRAG_QUEUES];
-        uint32_t       xy[SR_SHADER_MAX_FRAG_QUEUES]; // 32-bit bitmask of x & y
+        SR_FragCoordXY coord[SR_SHADER_MAX_QUEUED_FRAGS];
+        uint32_t       xy[SR_SHADER_MAX_QUEUED_FRAGS]; // 32-bit bitmask of x & y
     };
     // 256 bits / 32 bytes
 };

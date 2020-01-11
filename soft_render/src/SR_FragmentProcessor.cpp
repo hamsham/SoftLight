@@ -9,16 +9,13 @@
 #include "lightsky/math/mat_utils.h"
 #include "lightsky/math/vec_utils.h"
 
+#include "soft_render/SR_Config.hpp"
 #include "soft_render/SR_FragmentProcessor.hpp"
 #include "soft_render/SR_Framebuffer.hpp" // SR_Framebuffer
 #include "soft_render/SR_ScanlineBounds.hpp"
 #include "soft_render/SR_Shader.hpp" // SR_FragmentShader
 #include "soft_render/SR_ShaderProcessor.hpp" // SR_FragmentBin
 #include "soft_render/SR_Texture.hpp"
-
-#ifndef SR_REVERSED_Z_BUFFER
-    #define SR_REVERSED_Z_BUFFER 1
-#endif
 
 
 
@@ -178,7 +175,7 @@ void SR_FragmentProcessor::render_point(
 
     if (depthTest == SR_DEPTH_TEST_ON)
     {
-#if SR_REVERSED_Z_BUFFER
+#if SR_REVERSED_Z_RENDERING
         if (fragCoord[2] < pDepthBuf->raw_texel<float>(fragParams.x, fragParams.y))
 #else
         if (fragCoord[2] > pDepthBuf->raw_texel<float>(fragParams.x, fragParams.y))
@@ -392,7 +389,7 @@ void SR_FragmentProcessor::render_line(
         const float      interp  = (currLen*dist);
         const float      z       = math::mix(z0, z1, interp);
 
-#if SR_REVERSED_Z_BUFFER
+#if SR_REVERSED_Z_RENDERING
         if (noDepthTest || depthBuf->raw_texel<float>((uint16_t)xi, (uint16_t)yi) <= z)
 #else
         if (noDepthTest || depthBuf->raw_texel<float>((uint16_t)xi, (uint16_t)yi) >= z)
@@ -464,14 +461,21 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
         const math::vec4* pPoints      = pBin->mScreenCoords;
         const math::vec4  depth        {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
         const math::vec4  homogenous   {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
-        const int32_t     bboxMinY     = (int32_t)math::max(0.f,   math::ceil(math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1])));
-        const int32_t     bboxMaxY     = (int32_t)math::min(mFboH, math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]));
-        const math::vec4* bcClipSpace  = pBin->mBarycentricCoords;
+
+        #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
+            const int32_t bboxMinY = (int32_t)math::max(0.f,   math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]));
+            const int32_t bboxMaxY = (int32_t)math::min(mFboH, math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]));
+        #else
+            const int32_t bboxMinY = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
+            const int32_t bboxMaxY = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
+        #endif
+
+        const math::vec4* bcClipSpace = pBin->mBarycentricCoords;
 
         // Let each thread start rendering at whichever scanline it's assigned to
         const int32_t scanlineOffset = bboxMinY+sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
 
-        #if SR_VERTEX_CLIPPING_ENABLED == 0
+        #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
             scanline.init(pPoints[0], pPoints[1], pPoints[2], mFboW);
         #else
             scanline.init(pPoints[0], pPoints[1], pPoints[2]);
@@ -508,7 +512,7 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
                 // This normally involves checking if the coordinate is negative,
                 // but due to roundoff errors, we need to know if it's close enough
                 // to a triangle edge to be rendered.
-                #if SR_REVERSED_Z_BUFFER
+                #if SR_REVERSED_Z_RENDERING
                     if (depthTesting & (z < oldDepth))
                     {
                         continue;
@@ -531,10 +535,10 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
                 outCoords->xy[numQueuedFrags] = outXY;
                 ++numQueuedFrags;
 
-                if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
+                if (numQueuedFrags == SR_SHADER_MAX_QUEUED_FRAGS)
                 {
                     numQueuedFrags = 0;
-                    flush_fragments(pBin, SR_SHADER_MAX_FRAG_QUEUES, outCoords);
+                    flush_fragments(pBin, SR_SHADER_MAX_QUEUED_FRAGS, outCoords);
                 }
             }
         }
@@ -565,23 +569,30 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
         const SR_FragmentBin* pBin = mBins+mBinIds[numBinsProcessed];
 
         uint_fast32_t     numQueuedFrags = 0;
-        const math::vec4* pPoints      = pBin->mScreenCoords;
-        const math::vec4  depth        {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
-        const math::vec4  homogenous   {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
-        const int32_t     bboxMinY     = (int32_t)math::max(0.f,   math::ceil(math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1])));
-        const int32_t     bboxMaxY     = (int32_t)math::min(mFboH, math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]));
-        const math::vec4* bcClipSpace  = pBin->mBarycentricCoords;
+        const math::vec4* pPoints        = pBin->mScreenCoords;
+        const math::vec4  depth          {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
+        const math::vec4  homogenous     {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
+
+        #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
+            const int32_t bboxMinY = (int32_t)math::max(0.f,   math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]));
+            const int32_t bboxMaxY = (int32_t)math::min(mFboH, math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]));
+        #else
+            const int32_t bboxMinY = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
+            const int32_t bboxMaxY = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
+        #endif
+
+        const math::vec4* bcClipSpace = pBin->mBarycentricCoords;
 
         // Let each thread start rendering at whichever scanline it's assigned to
         const int32_t scanlineOffset = bboxMinY+sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
 
-        #if SR_VERTEX_CLIPPING_ENABLED == 0
+        #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
             scanline.init(pPoints[0], pPoints[1], pPoints[2], mFboW);
         #else
             scanline.init(pPoints[0], pPoints[1], pPoints[2]);
         #endif
 
-        for (int32_t y = scanlineOffset; y <= bboxMaxY; y += increment)
+        for (int32_t y = scanlineOffset; y < bboxMaxY; y += increment)
         {
             // calculate the bounds of the current scan-line
             const float        yf  = (float)y;
@@ -612,7 +623,7 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
                 // This normally involves checking if the coordinate is negative,
                 // but due to roundoff errors, we need to know if it's close enough
                 // to a triangle edge to be rendered.
-                #if SR_REVERSED_Z_BUFFER
+                #if SR_REVERSED_Z_RENDERING
                     if (z < pDepth[0])
                     {
                         continue;
@@ -631,10 +642,10 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
                 outCoords->xy[numQueuedFrags]   = (uint32_t)((0xFFFF & x) | y16);
                 ++numQueuedFrags;
 
-                if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
+                if (numQueuedFrags == SR_SHADER_MAX_QUEUED_FRAGS)
                 {
                     numQueuedFrags = 0;
-                    flush_fragments(pBin, SR_SHADER_MAX_FRAG_QUEUES, outCoords);
+                    flush_fragments(pBin, SR_SHADER_MAX_QUEUED_FRAGS, outCoords);
                 }
             }
         }
@@ -668,20 +679,27 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
         const math::vec4* pPoints      = pBin->mScreenCoords;
         const math::vec4  depth        {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
         const math::vec4  homogenous   {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
-        const int32_t     bboxMinY     = (int32_t)math::max(0.f,   math::ceil(math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1])));
-        const int32_t     bboxMaxY     = (int32_t)math::min(mFboH, math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]));
+
+        #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
+            const int32_t bboxMinY = (int32_t)math::max(0.f,   math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]));
+            const int32_t bboxMaxY = (int32_t)math::min(mFboH, math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]));
+        #else
+            const int32_t bboxMinY = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
+            const int32_t bboxMaxY = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
+        #endif
+
         const math::vec4* bcClipSpace  = pBin->mBarycentricCoords;
 
         // Let each thread start rendering at whichever scanline it's assigned to
         const int32_t scanlineOffset = bboxMinY+sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
 
-        #if SR_VERTEX_CLIPPING_ENABLED == 0
+        #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
             scanline.init(pPoints[0], pPoints[1], pPoints[2], mFboW);
         #else
             scanline.init(pPoints[0], pPoints[1], pPoints[2]);
         #endif
 
-        for (int32_t y = scanlineOffset; y <= bboxMaxY; y += increment)
+        for (int32_t y = scanlineOffset; y < bboxMaxY; y += increment)
         {
             // calculate the bounds of the current scan-line
             const float yf = (float)y;
@@ -695,7 +713,7 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
             // I'm pretty sure Z-ordering has been ruled out at this point.
             const float* pDepth = depthBuffer->row_pointer<float>((uintptr_t)y) + xMin;
 
-            for (uint32_t y16 = (uint32_t)(y << 16u); x[0] <= xMax; x += 4, pDepth += 4)
+            for (uint32_t y16 = (uint32_t)(y << 16u); x[0] < xMax; x += 4, pDepth += 4)
             {
                 const math::vec4&& xf = (math::vec4)x;
 
@@ -706,7 +724,7 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
 
                 for (int32_t i = 0; i < end; ++i)
                 {
-                    #if SR_REVERSED_Z_BUFFER
+                    #if SR_REVERSED_Z_RENDERING
                         if (z[i] < pDepth[i])
                         {
                             continue;
@@ -726,10 +744,10 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
 
                     ++numQueuedFrags;
 
-                    if (numQueuedFrags == SR_SHADER_MAX_FRAG_QUEUES)
+                    if (numQueuedFrags == SR_SHADER_MAX_QUEUED_FRAGS)
                     {
                         numQueuedFrags = 0;
-                        flush_fragments(pBin, SR_SHADER_MAX_FRAG_QUEUES, outCoords);
+                        flush_fragments(pBin, SR_SHADER_MAX_QUEUED_FRAGS, outCoords);
                     }
                 }
             }
