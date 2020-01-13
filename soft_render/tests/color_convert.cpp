@@ -22,7 +22,7 @@ void run_tests() noexcept
     SR_ColorTypeHSL<float_type> c4 = hsl_cast<float_type>(c1);
     std::cout << "RGB8 to HSL: "  << c4.h  << ", " << c4.s  << ", " << c4.l << std::endl;
 
-    SR_ColorRGBType<float_type> c5 = rgb_cast<float_type>(c4);
+    SR_ColorRGBType<float_type> c5 = rgb_cast<float_type>(hsv_cast<float_type>(hsl_cast<float_type>(c3)));
     std::cout << "HSLf to RBGf: "  << c5[0]  << ", " << c5[1]  << ", " << c5[2] << std::endl;
 
     c1 = color_cast<uint8_t, float_type>(c5);

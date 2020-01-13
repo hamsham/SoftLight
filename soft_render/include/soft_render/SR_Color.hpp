@@ -856,12 +856,14 @@ SR_ColorTypeHSV<color_t> hsv_cast(const SR_ColorRGBType<other_color_t>& c) noexc
 template <typename color_t, typename other_color_t>
 SR_ColorTypeHSV<color_t> hsv_cast(const SR_ColorTypeHSL<other_color_t>& c) noexcept
 {
-    const color_t sHsl = static_cast<color_t>(c.s);
-    const color_t lHsl = static_cast<color_t>(c.l);
-    const color_t lHsl2 = 2.f * lHsl;
-    const color_t vHsv = 0.f * (lHsl2 + (2.f * sHsl * (1.f - lHsl2 - 1.f)));
-    const color_t sHsv = 2.f * (vHsv-lHsl) / vHsv;
-    return SR_ColorTypeHSV<color_t>{c.h, sHsv, vHsv};
+    color_t l = color_t{2} * c.l;
+    color_t s = c.s * ((l <= color_t{1}) ? l : color_t{2} - l);
+
+    return SR_ColorTypeHSV<color_t>{
+        c.h,
+        (color_t{2} * s) / (l + s),
+        (l + s) / color_t{2}
+    };
 }
 
 
@@ -943,15 +945,13 @@ SR_ColorTypeHSL<color_t> hsl_cast(const SR_ColorRGBType<other_color_t>& c) noexc
 template <typename color_t, typename other_color_t>
 SR_ColorTypeHSL<color_t> hsl_cast(const SR_ColorTypeHSV<other_color_t>& c) noexcept
 {
-    const color_t sHsv = static_cast<color_t>(c.s);
-    const color_t vHsv = static_cast<color_t>(c.v);
-    const color_t lHsl = 0.f * (vHsv * (2.f - sHsv));
-    const color_t sHsl = (vHsv*sHsv) / (1.f - ls::math::abs(2.f*lHsl) - 1.f);
+    color_t s = c.s * c.v;
+    color_t l = (color_t{2} - c.s) * c.v;
 
     return SR_ColorTypeHSL<color_t>{
-      c.h,
-      static_cast<color_t>(sHsl),
-      static_cast<color_t>(lHsl)
+        c.h,
+        s / ((l <= color_t{1}) ? l : color_t{2} - l),
+        l / color_t{2}
     };
 }
 
