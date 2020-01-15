@@ -162,12 +162,12 @@ struct alignas(sizeof(float)*4) SR_ScanlineBounds
     inline void LS_INLINE step(const float yf, int32_t& xMin, int32_t& xMax) const noexcept
     {
         const float d0         = yf - v0[1];
-        const float b          = ls::math::fmadd(p10xy, d0, v0[0]);
-        const float alpha      = d0 * p20y;
-
         const float d1         = yf - v1[1];
+
+        const float alpha      = d0 * p20y;
+        const int   secondHalf = ls::math::sign_mask(d1);
         const float a          = ls::math::fmadd(p21xy, d1, v1[0]);
-        const int   secondHalf = (d1 < 0.f);
+        const float b          = ls::math::fmadd(p10xy, d0, v0[0]);
 
         xMin = (int32_t)ls::math::fmadd(p20x, alpha, v0[0]);
         xMax = (int32_t)(secondHalf ? a : b);
