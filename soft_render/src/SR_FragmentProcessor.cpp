@@ -558,15 +558,16 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
 --------------------------------------*/
 void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const noexcept
 {
-    SR_FragCoord*     outCoords    = mQueues;
-    const int32_t     yOffset      = (uint32_t)mThreadId;
-    const int32_t     increment    = (int32_t)mNumProcessors;
-    const int32_t     depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON;
-    SR_ScanlineBounds scanline;
+    const SR_FragmentBin* pBin         = nullptr;
+    SR_FragCoord*         outCoords    = mQueues;
+    const int32_t         yOffset      = (uint32_t)mThreadId;
+    const int32_t         increment    = (int32_t)mNumProcessors;
+    const int32_t         depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON;
+    SR_ScanlineBounds     scanline;
 
     for (uint64_t numBinsProcessed = 0; numBinsProcessed < mNumBins; ++numBinsProcessed)
     {
-        const SR_FragmentBin* pBin = mBins+mBinIds[numBinsProcessed];
+        pBin = mBins+mBinIds[numBinsProcessed];
 
         uint_fast32_t     numQueuedFrags = 0;
         const math::vec4* pPoints        = pBin->mScreenCoords;
@@ -581,10 +582,10 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
             const int32_t bboxMaxY = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
         #endif
 
-        const math::vec4* bcClipSpace = pBin->mBarycentricCoords;
-
         // Let each thread start rendering at whichever scanline it's assigned to
         const int32_t scanlineOffset = bboxMinY+sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
+
+        const math::vec4* bcClipSpace = pBin->mBarycentricCoords;
 
         #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
             scanline.init(pPoints[0], pPoints[1], pPoints[2], mFboW);
