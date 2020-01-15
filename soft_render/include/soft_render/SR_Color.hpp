@@ -128,7 +128,7 @@ struct SR_ColorLimits
     */
     static constexpr color_t min() noexcept
     {
-        return ls::math::IsFloat<color_t>::value ? static_cast<color_t>(0.0) : std::numeric_limits<color_t>::min();
+        return ls::setup::IsFloat<color_t>::value ? static_cast<color_t>(0.0) : std::numeric_limits<color_t>::min();
     }
 
     /**
@@ -140,7 +140,7 @@ struct SR_ColorLimits
     */
     static constexpr color_t max() noexcept
     {
-        return ls::math::IsFloat<color_t>::value ? static_cast<color_t>(1.0) : std::numeric_limits<color_t>::max();
+        return ls::setup::IsFloat<color_t>::value ? static_cast<color_t>(1.0) : std::numeric_limits<color_t>::max();
     }
 };
 
@@ -209,8 +209,8 @@ typedef SR_ColorR8 SR_ColorR;
  * Integer to integer
 -------------------------------------*/
 template <typename T, typename U>
-constexpr typename ls::utils::EnableIf<ls::math::IsIntegral<T>::value, SR_ColorRType<T>>::type
-color_cast(const typename ls::utils::EnableIf<ls::math::IsIntegral<U>::value, SR_ColorRType<U>>::type& p)
+constexpr typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SR_ColorRType<T>>::type
+color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SR_ColorRType<U>>::type& p)
 {
     return SR_ColorRType<T>
    {
@@ -224,8 +224,8 @@ color_cast(const typename ls::utils::EnableIf<ls::math::IsIntegral<U>::value, SR
  * Float to integer
 -------------------------------------*/
 template <typename T, typename U>
-constexpr typename ls::utils::EnableIf<ls::math::IsIntegral<T>::value, SR_ColorRType<T>>::type
-color_cast(const typename ls::utils::EnableIf<ls::math::IsFloat<U>::value, SR_ColorRType<U>>::type& p)
+constexpr typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SR_ColorRType<T>>::type
+color_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value, SR_ColorRType<U>>::type& p)
 {
     return SR_ColorRType<T>
     {
@@ -239,10 +239,10 @@ color_cast(const typename ls::utils::EnableIf<ls::math::IsFloat<U>::value, SR_Co
  * Integer to float
 -------------------------------------*/
 template <typename T, typename U>
-constexpr typename ls::utils::EnableIf<ls::math::IsFloat<T>::value, SR_ColorRType<T>>::type
-color_cast(const typename ls::utils::EnableIf<ls::math::IsIntegral<U>::value, SR_ColorRType<U>>::type& p)
+constexpr typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SR_ColorRType<T>>::type
+color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SR_ColorRType<U>>::type& p)
 {
-    return ls::math::IsSigned<U>::value
+    return ls::setup::IsSigned<U>::value
     ?
         SR_ColorRType<T>{0.5f * ((T)p.r * (T{1} / std::numeric_limits<U>::max())) + 0.5f}
     :
@@ -264,8 +264,8 @@ constexpr SR_ColorRType<float> color_cast<float, uint8_t>(const SR_ColorRType<ui
  * Float to float
 -------------------------------------*/
 template <typename T, typename U>
-constexpr typename ls::utils::EnableIf<ls::math::IsFloat<T>::value, SR_ColorRType<T>>::type
-color_cast(const typename ls::utils::EnableIf<ls::math::IsFloat<U>::value, SR_ColorRType<U>>::type& p)
+constexpr typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SR_ColorRType<T>>::type
+color_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value, SR_ColorRType<U>>::type& p)
 {
     return SR_ColorRType<T>{(T)p.r};
 }
@@ -311,8 +311,8 @@ typedef SR_ColorRG8 SR_ColorRG;
  * Integral to integral
 -------------------------------------*/
 template <typename T, typename U>
-inline typename ls::utils::EnableIf<ls::math::IsIntegral<T>::value, SR_ColorRGType<T>>::type
-color_cast(const typename ls::utils::EnableIf<ls::math::IsIntegral<U>::value, SR_ColorRGType<U>>::type& p)
+inline typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SR_ColorRGType<T>>::type
+color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SR_ColorRGType<U>>::type& p)
 {
     return (SR_ColorRGType<T>)((SR_ColorRGType<float>)p * ((float)std::numeric_limits<T>::max() / (float)std::numeric_limits<U>::max()));
 }
@@ -323,8 +323,8 @@ color_cast(const typename ls::utils::EnableIf<ls::math::IsIntegral<U>::value, SR
  * Float to integer
 -------------------------------------*/
 template <typename T, typename U>
-inline typename ls::utils::EnableIf<ls::math::IsIntegral<T>::value, SR_ColorRGType<T>>::type
-color_cast(const typename ls::utils::EnableIf<ls::math::IsFloat<U>::value, SR_ColorRGType<U>>::type& p)
+inline typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SR_ColorRGType<T>>::type
+color_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value, SR_ColorRGType<U>>::type& p)
 {
     return (SR_ColorRGType<T>)(p * (U)std::numeric_limits<T>::max());
 }
@@ -335,10 +335,10 @@ color_cast(const typename ls::utils::EnableIf<ls::math::IsFloat<U>::value, SR_Co
  * Integer to float
 -------------------------------------*/
 template <typename T, typename U>
-inline typename ls::utils::EnableIf<ls::math::IsFloat<T>::value, SR_ColorRGType<T>>::type
-color_cast(const typename ls::utils::EnableIf<ls::math::IsIntegral<U>::value, SR_ColorRGType<U>>::type& p)
+inline typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SR_ColorRGType<T>>::type
+color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SR_ColorRGType<U>>::type& p)
 {
-    return ls::math::IsSigned<U>::value
+    return ls::setup::IsSigned<U>::value
            ? (SR_ColorRGType<T>{0.5f} * ((SR_ColorRGType<T>)p * (T{1} / std::numeric_limits<U>::max())) + 0.5f)
            : ((SR_ColorRGType<T>)p * (T{1} / std::numeric_limits<U>::max()));
 }
@@ -357,8 +357,8 @@ inline SR_ColorRGType<float> color_cast<float, uint8_t>(const SR_ColorRGType<uin
  * Float to float
 -------------------------------------*/
 template <typename T, typename U>
-inline typename ls::utils::EnableIf<ls::math::IsFloat<T>::value, SR_ColorRGType<T>>::type
-color_cast(const typename ls::utils::EnableIf<ls::math::IsFloat<U>::value, SR_ColorRGType<U>>::type& p)
+inline typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SR_ColorRGType<T>>::type
+color_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value, SR_ColorRGType<U>>::type& p)
 {
     return (SR_ColorRGType<T>)p;
 }
@@ -404,8 +404,8 @@ typedef SR_ColorRGB8 SR_ColorRGB;
  * Integral to integral
 -------------------------------------*/
 template <typename T, typename U>
-inline typename ls::utils::EnableIf<ls::math::IsIntegral<T>::value, SR_ColorRGBType<T>>::type
-color_cast(const typename ls::utils::EnableIf<ls::math::IsIntegral<U>::value, SR_ColorRGBType<U>>::type& p)
+inline typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SR_ColorRGBType<T>>::type
+color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SR_ColorRGBType<U>>::type& p)
 {
     return (SR_ColorRGBType<T>)((SR_ColorRGBType<float>)p * ((float)std::numeric_limits<T>::max() / (float)std::numeric_limits<U>::max()));
 }
@@ -416,8 +416,8 @@ color_cast(const typename ls::utils::EnableIf<ls::math::IsIntegral<U>::value, SR
  * Float to integer
 -------------------------------------*/
 template <typename T, typename U>
-inline typename ls::utils::EnableIf<ls::math::IsIntegral<T>::value, SR_ColorRGBType<T>>::type
-color_cast(const typename ls::utils::EnableIf<ls::math::IsFloat<U>::value, SR_ColorRGBType<U>>::type& p)
+inline typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SR_ColorRGBType<T>>::type
+color_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value, SR_ColorRGBType<U>>::type& p)
 {
     return (SR_ColorRGBType<T>)(p * (U)std::numeric_limits<T>::max());
 }
@@ -428,10 +428,10 @@ color_cast(const typename ls::utils::EnableIf<ls::math::IsFloat<U>::value, SR_Co
  * Integer to float
 -------------------------------------*/
 template <typename T, typename U>
-inline typename ls::utils::EnableIf<ls::math::IsFloat<T>::value, SR_ColorRGBType<T>>::type
-color_cast(const typename ls::utils::EnableIf<ls::math::IsIntegral<U>::value, SR_ColorRGBType<U>>::type& p)
+inline typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SR_ColorRGBType<T>>::type
+color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SR_ColorRGBType<U>>::type& p)
 {
-    return ls::math::IsSigned<U>::value
+    return ls::setup::IsSigned<U>::value
            ? (SR_ColorRGBType<T>{0.5f} * ((SR_ColorRGBType<T>)p * (T{1} / std::numeric_limits<U>::max())) + 0.5f)
            : ((SR_ColorRGBType<T>)p * (T{1} / std::numeric_limits<U>::max()));
 }
@@ -450,8 +450,8 @@ inline SR_ColorRGBType<float> color_cast<float, uint8_t>(const SR_ColorRGBType<u
  * Float to float
 -------------------------------------*/
 template <typename T, typename U>
-inline typename ls::utils::EnableIf<ls::math::IsFloat<T>::value, SR_ColorRGBType<T>>::type
-color_cast(const typename ls::utils::EnableIf<ls::math::IsFloat<U>::value, SR_ColorRGBType<U>>::type& p)
+inline typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SR_ColorRGBType<T>>::type
+color_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value, SR_ColorRGBType<U>>::type& p)
 {
     return (SR_ColorRGBType<T>)p;
 }
@@ -497,8 +497,8 @@ typedef SR_ColorRGBA8 SR_ColorRGBA;
  * Integral to integral
 -------------------------------------*/
 template <typename T, typename U>
-inline typename ls::utils::EnableIf<ls::math::IsIntegral<T>::value, SR_ColorRGBAType<T>>::type
-color_cast(const typename ls::utils::EnableIf<ls::math::IsIntegral<U>::value, SR_ColorRGBAType<U>>::type& p)
+inline typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SR_ColorRGBAType<T>>::type
+color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SR_ColorRGBAType<U>>::type& p)
 {
     return (SR_ColorRGBAType<T>)((SR_ColorRGBAType<float>)p * ((float)std::numeric_limits<T>::max() / (float)std::numeric_limits<U>::max()));
 }
@@ -509,8 +509,8 @@ color_cast(const typename ls::utils::EnableIf<ls::math::IsIntegral<U>::value, SR
  * Float to integer
 -------------------------------------*/
 template <typename T, typename U>
-inline typename ls::utils::EnableIf<ls::math::IsIntegral<T>::value, SR_ColorRGBAType<T>>::type
-color_cast(const typename ls::utils::EnableIf<ls::math::IsFloat<U>::value, SR_ColorRGBAType<U>>::type& p)
+inline typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SR_ColorRGBAType<T>>::type
+color_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value, SR_ColorRGBAType<U>>::type& p)
 {
     return (SR_ColorRGBAType<T>)(p * (U)std::numeric_limits<T>::max());
 }
@@ -521,10 +521,10 @@ color_cast(const typename ls::utils::EnableIf<ls::math::IsFloat<U>::value, SR_Co
  * Integer to float
 -------------------------------------*/
 template <typename T, typename U>
-inline typename ls::utils::EnableIf<ls::math::IsFloat<T>::value, SR_ColorRGBAType<T>>::type
-color_cast(const typename ls::utils::EnableIf<ls::math::IsIntegral<U>::value, SR_ColorRGBAType<U>>::type& p)
+inline typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SR_ColorRGBAType<T>>::type
+color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SR_ColorRGBAType<U>>::type& p)
 {
-    return ls::math::IsSigned<U>::value
+    return ls::setup::IsSigned<U>::value
     ? (SR_ColorRGBAType<T>{0.5f} * ((SR_ColorRGBAType<T>)p * (T{1} / std::numeric_limits<U>::max())) + 0.5f)
     : ((SR_ColorRGBAType<T>)p * (T{1} / std::numeric_limits<U>::max()));
 }
@@ -561,8 +561,8 @@ inline SR_ColorRGBAType<float> color_cast<float, uint32_t>(const SR_ColorRGBATyp
  * Float to float
 -------------------------------------*/
 template <typename T, typename U>
-inline typename ls::utils::EnableIf<ls::math::IsFloat<T>::value, SR_ColorRGBAType<T>>::type
-color_cast(const typename ls::utils::EnableIf<ls::math::IsFloat<U>::value, SR_ColorRGBAType<U>>::type& p)
+inline typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SR_ColorRGBAType<T>>::type
+color_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value, SR_ColorRGBAType<U>>::type& p)
 {
     return (SR_ColorRGBAType<T>)p;
 }
@@ -589,7 +589,7 @@ constexpr SR_ColorRGBAType<T> color_cast(const SR_ColorRGBAType<T>& p)
 template<typename color_t>
 struct alignas(sizeof(color_t)) SR_ColorTypeHSV
 {
-    static_assert(ls::math::IsFloat<color_t>::value, "HSV can only be represented by floating-point numbers.");
+    static_assert(ls::setup::IsFloat<color_t>::value, "HSV can only be represented by floating-point numbers.");
         
     public:
         color_t h;
@@ -609,7 +609,7 @@ typedef SR_ColorTypeHSV<double> SR_ColorTypeHSVd;
 template<typename color_t>
 struct alignas(sizeof(color_t)) SR_ColorTypeHSL
 {
-    static_assert(ls::math::IsFloat<color_t>::value, "HSL can only be represented by floating-point numbers.");
+    static_assert(ls::setup::IsFloat<color_t>::value, "HSL can only be represented by floating-point numbers.");
         
     public:
         color_t h;
@@ -797,7 +797,7 @@ SR_ColorTypeHSV<color_t> hsv_cast(const SR_ColorRGBType<other_color_t>& c) noexc
     constexpr color_t COLOR_MIN_VAL = SR_ColorLimits<other_color_t>::min();
     color_t normR, normG, normB;
 
-    if (ls::math::IsFloat<other_color_t>::value)
+    if (ls::setup::IsFloat<other_color_t>::value)
     {
         normR = 0.5f * (static_cast<color_t>(c[0]) + 1.f);
         normG = 0.5f * (static_cast<color_t>(c[1]) + 1.f);
@@ -883,7 +883,7 @@ SR_ColorTypeHSL<color_t> hsl_cast(const SR_ColorRGBType<other_color_t>& c) noexc
     constexpr color_t COLOR_MIN_VAL = SR_ColorLimits<other_color_t>::min();
     color_t normR, normG, normB;
 
-    if (ls::math::IsFloat<other_color_t>::value)
+    if (ls::setup::IsFloat<other_color_t>::value)
     {
         normR = 0.5f * (static_cast<color_t>(c[0]) + 1.f);
         normG = 0.5f * (static_cast<color_t>(c[1]) + 1.f);
