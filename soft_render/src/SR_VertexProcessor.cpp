@@ -556,7 +556,7 @@ void SR_VertexProcessor::push_bin(
     }
 
     int isPrimVisible = (bboxMaxX >= 0.f && bboxMaxY >= 0.f && fboW > bboxMinX && fboH > bboxMinY);
-    isPrimVisible = isPrimVisible && (bboxMaxX-math::ceil(bboxMinX) > 0.0f) && (bboxMaxY-math::ceil(bboxMinY) > 0.f);
+    isPrimVisible = isPrimVisible && (bboxMaxX-bboxMinX >= 1.f) && (bboxMaxY-bboxMinY >= 1.f);
 
     if (isPrimVisible)
     {
