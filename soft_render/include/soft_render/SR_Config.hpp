@@ -8,7 +8,7 @@
  * Vertex Processing Configuration
 -----------------------------------------------------------------------------*/
 #ifndef SR_TUNE_HIGH_POLY
-    #define SR_TUNE_HIGH_POLY 0
+    #define SR_TUNE_HIGH_POLY 1
 #endif /* SR_TUNE_HIGH_POLY */
 
 #ifndef SR_VERTEX_CACHING_ENABLED

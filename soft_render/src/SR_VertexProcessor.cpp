@@ -209,6 +209,38 @@ inline LS_INLINE math::vec4 sr_perspective_divide(const math::vec4 v) noexcept
 /*--------------------------------------
  * Convert world coordinates to screen coordinates (temporary until NDC clipping is added)
 --------------------------------------*/
+inline LS_INLINE void sr_perspective_divide3(math::vec4* v) noexcept
+{
+    #if !defined(LS_ARCH_X86)
+        const math::vec4&& wInv0 = math::rcp(math::vec4{v[0][3]});
+        const math::vec4&& wInv1 = math::rcp(math::vec4{v[1][3]});
+        const math::vec4&& wInv2 = math::rcp(math::vec4{v[2][3]});
+        const math::vec4&& vMul0 = v[0] * wInv0;
+        const math::vec4&& vMul1 = v[1] * wInv1;
+        const math::vec4&& vMul2 = v[2] * wInv2;
+        v[0] = {vMul0[0], vMul0[1], vMul0[2], wInv0[0]};
+        v[1] = {vMul1[0], vMul1[1], vMul1[2], wInv1[0]};
+        v[2] = {vMul2[0], vMul2[1], vMul2[2], wInv2[0]};
+    #else
+        const __m128 wInv0 = _mm_rcp_ps(_mm_load1_ps(reinterpret_cast<const float*>(v)+3));
+        const __m128 wInv1 = _mm_rcp_ps(_mm_load1_ps(reinterpret_cast<const float*>(v)+7));
+        const __m128 wInv2 = _mm_rcp_ps(_mm_load1_ps(reinterpret_cast<const float*>(v)+11));
+
+        const __m128 vMul0 = _mm_mul_ps(v[0].simd, wInv0);
+        const __m128 vMul1 = _mm_mul_ps(v[1].simd, wInv1);
+        const __m128 vMul2 = _mm_mul_ps(v[2].simd, wInv2);
+
+        _mm_store_ps(reinterpret_cast<float*>(v+0), _mm_blend_ps(wInv0, vMul0, 0x07));
+        _mm_store_ps(reinterpret_cast<float*>(v+1), _mm_blend_ps(wInv1, vMul1, 0x07));
+        _mm_store_ps(reinterpret_cast<float*>(v+2), _mm_blend_ps(wInv2, vMul2, 0x07));
+    #endif
+}
+
+
+
+/*--------------------------------------
+ * Convert world coordinates to screen coordinates (temporary until NDC clipping is added)
+--------------------------------------*/
 inline LS_INLINE void sr_world_to_screen_coords_divided(math::vec4& v, const float widthScale, const float heightScale) noexcept
 {
     #if !defined(LS_ARCH_X86)
@@ -222,6 +254,46 @@ inline LS_INLINE void sr_world_to_screen_coords_divided(math::vec4& v, const flo
         __m128 scl = _mm_fmadd_ps(wh1, v.simd, wh0);
         scl = _mm_max_ps(_mm_floor_ps(scl), _mm_setzero_ps());
         v.simd = _mm_blend_ps(scl, v.simd, 0x0C);
+    #endif
+}
+
+
+
+/*--------------------------------------
+ * Convert world coordinates to screen coordinates (temporary until NDC clipping is added)
+--------------------------------------*/
+inline LS_INLINE void sr_world_to_screen_coords_divided3(math::vec4* v, const float widthScale, const float heightScale) noexcept
+{
+    #if !defined(LS_ARCH_X86)
+        v[0][0] = math::max(0.f, math::floor(math::fmadd(widthScale,  v[0][0], widthScale)));
+        v[0][1] = math::max(0.f, math::floor(math::fmadd(heightScale, v[0][1], heightScale)));
+
+        v[1][0] = math::max(0.f, math::floor(math::fmadd(widthScale,  v[1][0], widthScale)));
+        v[1][1] = math::max(0.f, math::floor(math::fmadd(heightScale, v[1][1], heightScale)));
+
+        v[2][0] = math::max(0.f, math::floor(math::fmadd(widthScale,  v[2][0], widthScale)));
+        v[2][1] = math::max(0.f, math::floor(math::fmadd(heightScale, v[2][1], heightScale)));
+        //v = math::fmadd(math::vec4{widthScale, heightScale, 1.f, 1.f}, v, math::vec4{widthScale, heightScale, 0.f, 0.f});
+    #else
+
+        const __m128 wh0 = _mm_set_ps(0.f, 0.f, heightScale, widthScale);
+        const __m128 wh1 = _mm_set_ps(1.f, 1.f, heightScale, widthScale);
+
+        const __m128 v0 = _mm_load_ps(reinterpret_cast<float*>(v+0));
+        const __m128 v1 = _mm_load_ps(reinterpret_cast<float*>(v+1));
+        const __m128 v2 = _mm_load_ps(reinterpret_cast<float*>(v+2));
+
+        __m128 scl0 = _mm_fmadd_ps(wh1, v0, wh0);
+        __m128 scl1 = _mm_fmadd_ps(wh1, v1, wh0);
+        __m128 scl2 = _mm_fmadd_ps(wh1, v2, wh0);
+
+        scl0 = _mm_max_ps(_mm_floor_ps(scl0), _mm_setzero_ps());
+        scl1 = _mm_max_ps(_mm_floor_ps(scl1), _mm_setzero_ps());
+        scl2 = _mm_max_ps(_mm_floor_ps(scl2), _mm_setzero_ps());
+
+        _mm_store_ps(reinterpret_cast<float*>(v+0), _mm_blend_ps(scl0, v0, 0x0C));
+        _mm_store_ps(reinterpret_cast<float*>(v+1), _mm_blend_ps(scl1, v1, 0x0C));
+        _mm_store_ps(reinterpret_cast<float*>(v+2), _mm_blend_ps(scl2, v2, 0x0C));
     #endif
 }
 
@@ -300,15 +372,40 @@ inline LS_INLINE math::vec3_t<size_t> get_next_vertex3(const SR_IndexBuffer* pIb
 /*--------------------------------------
  * Cull backfaces of a triangle
 --------------------------------------*/
-inline LS_INLINE int back_face_visible(const math::vec4* screenCoords) noexcept
+inline int back_face_visible(const math::vec4* screenCoords) noexcept
 {
     //return (0.f >= math::dot(math::vec4{0.f, 0.f, 1.f, 1.f}, math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0])));
-    const math::mat3 det{
-        math::vec3{screenCoords[0][0], screenCoords[0][1], screenCoords[0][3]},
-        math::vec3{screenCoords[1][0], screenCoords[1][1], screenCoords[1][3]},
-        math::vec3{screenCoords[2][0], screenCoords[2][1], screenCoords[2][3]}
-    };
-    return (0.f > math::determinant(det));
+
+    #if !defined(LS_ARCH_X86)
+        const math::mat3 det{
+            math::vec3{screenCoords[0][0], screenCoords[0][1], screenCoords[0][3]},
+            math::vec3{screenCoords[1][0], screenCoords[1][1], screenCoords[1][3]},
+            math::vec3{screenCoords[2][0], screenCoords[2][1], screenCoords[2][3]}
+        };
+        return (0.f > math::determinant(det));
+    #else
+        const __m128 col4 = _mm_blend_ps(_mm_permute_ps(screenCoords[0].simd, 0xB4), _mm_setzero_ps(), 0x08);
+        const __m128 row1 = _mm_blend_ps(_mm_permute_ps(screenCoords[1].simd, 0xB4), _mm_setzero_ps(), 0x08);
+        const __m128 row2 = _mm_blend_ps(_mm_permute_ps(screenCoords[2].simd, 0xB4), _mm_setzero_ps(), 0x08);
+
+        constexpr int shuffleMask120 = 0xC9; // indices: <base> + (3, 0, 2, 1): 11001001
+        constexpr int shuffleMask201 = 0xD2; // indices: <base> + (3, 1, 0, 2): 11010010
+
+        const __m128 col0 = _mm_permute_ps(row1, shuffleMask120);
+        const __m128 col2 = _mm_permute_ps(row1, shuffleMask201);
+        const __m128 col1 = _mm_permute_ps(row2, shuffleMask201);
+        const __m128 col3 = _mm_permute_ps(row2, shuffleMask120);
+
+        const __m128 sub0 = _mm_fmsub_ps(col0, col1, _mm_mul_ps(col2, col3));
+        const __m128 mul2 = _mm_mul_ps(sub0, col4);
+
+        // horizontal add: swap the words of each vector, add, then swap each
+        // half of the vectors and perform a final add.
+        const __m128 swap = _mm_add_ps(mul2, _mm_permute_ps(mul2, 0xB1));
+        const __m128 sum  = _mm_add_ps(swap, _mm_permute_ps(swap, 0x0F));
+
+        return 0.f > _mm_cvtss_f32(sum);
+    #endif
 }
 
 
@@ -316,15 +413,40 @@ inline LS_INLINE int back_face_visible(const math::vec4* screenCoords) noexcept
 /*--------------------------------------
  * Cull frontfaces of a triangle
 --------------------------------------*/
-inline LS_INLINE int front_face_visible(const math::vec4* screenCoords) noexcept
+inline int front_face_visible(const math::vec4* screenCoords) noexcept
 {
-    //return (0.f <= math::dot(math::vec4{0.f, 0.f, 1.f, 1.f}, math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0])));
-    const math::mat3 det{
-        math::vec3{screenCoords[0][0], screenCoords[0][1], screenCoords[0][3]},
-        math::vec3{screenCoords[1][0], screenCoords[1][1], screenCoords[1][3]},
-        math::vec3{screenCoords[2][0], screenCoords[2][1], screenCoords[2][3]}
-    };
-    return (0.f < math::determinant(det));
+    //return (0.f >= math::dot(math::vec4{0.f, 0.f, 1.f, 1.f}, math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0])));
+
+    #if !defined(LS_ARCH_X86)
+        const math::mat3 det{
+            math::vec3{screenCoords[0][0], screenCoords[0][1], screenCoords[0][3]},
+            math::vec3{screenCoords[1][0], screenCoords[1][1], screenCoords[1][3]},
+            math::vec3{screenCoords[2][0], screenCoords[2][1], screenCoords[2][3]}
+        };
+        return (0.f < math::determinant(det));
+    #else
+        const __m128 row2 = _mm_blend_ps(_mm_permute_ps(screenCoords[2].simd, 0xB4), _mm_setzero_ps(), 0x08);
+        const __m128 row1 = _mm_blend_ps(_mm_permute_ps(screenCoords[1].simd, 0xB4), _mm_setzero_ps(), 0x08);
+        const __m128 col4 = _mm_blend_ps(_mm_permute_ps(screenCoords[0].simd, 0xB4), _mm_setzero_ps(), 0x08);
+
+        constexpr int shuffleMask120 = 0xC9; // indices: <base> + (3, 0, 2, 1): 11001001
+        constexpr int shuffleMask201 = 0xD2; // indices: <base> + (3, 1, 0, 2): 11010010
+
+        const __m128 col3 = _mm_permute_ps(row2, shuffleMask120);
+        const __m128 col2 = _mm_permute_ps(row1, shuffleMask201);
+        const __m128 col1 = _mm_permute_ps(row2, shuffleMask201);
+        const __m128 col0 = _mm_permute_ps(row1, shuffleMask120);
+
+        const __m128 sub0 = _mm_fmsub_ps(col0, col1, _mm_mul_ps(col2, col3));
+        const __m128 mul2 = _mm_mul_ps(sub0, col4);
+
+        // horizontal add: swap the words of each vector, add, then swap each
+        // half of the vectors and perform a final add.
+        const __m128 swap = _mm_add_ps(mul2, _mm_permute_ps(mul2, 0xB1));
+        const __m128 sum  = _mm_add_ps(swap, _mm_permute_ps(swap, 0x0F));
+
+        return 0.f < _mm_cvtss_f32(sum);
+    #endif
 }
 
 
@@ -426,7 +548,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
             #if defined(LS_ARCH_X86)
                 _mm_pause();
             #elif defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
-                clock_nanosleep(CLOCK_MONOTONIC_RAW, 0, &sleepAmt, nullptr);
+                clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
             #elif defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
                 nanosleep(&sleepAmt, nullptr);
             #else
@@ -472,7 +594,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
                 #if defined(LS_ARCH_X86)
                     _mm_pause();
                 #elif defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
-                    clock_nanosleep(CLOCK_MONOTONIC_RAW, 0, &sleepAmt, nullptr);
+                    clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
                 #elif defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
                     nanosleep(&sleepAmt, nullptr);
                 #else
@@ -480,7 +602,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
                 #endif
             #else
                 #if defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
-                    clock_nanosleep(CLOCK_MONOTONIC_RAW, 0, &sleepAmt, nullptr);
+                    clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
                 #elif defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
                     nanosleep(&sleepAmt, nullptr);
                 #elif defined(LS_ARCH_X86)
@@ -794,7 +916,7 @@ void SR_VertexProcessor::execute() noexcept
         const size_t numVaryings = vertShader.numVaryings;
     #endif
 
-    LS_PREFETCH(pUniforms, LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_L1);
+    LS_PREFETCH(pUniforms, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_L1);
     LS_PREFETCH(pVaryings, LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_L1);
 
     if (mMesh.mode & (RENDER_MODE_POINTS | RENDER_MODE_INDEXED_POINTS))
@@ -887,26 +1009,14 @@ void SR_VertexProcessor::execute() noexcept
             }
 
             #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
-                vertCoords[0] = sr_perspective_divide(vertCoords[0]);
-                vertCoords[1] = sr_perspective_divide(vertCoords[1]);
-                vertCoords[2] = sr_perspective_divide(vertCoords[2]);
-
-                sr_world_to_screen_coords_divided(vertCoords[0], widthScale, heightScale);
-                sr_world_to_screen_coords_divided(vertCoords[1], widthScale, heightScale);
-                sr_world_to_screen_coords_divided(vertCoords[2], widthScale, heightScale);
-
+                sr_perspective_divide3(vertCoords);
+                sr_world_to_screen_coords_divided3(vertCoords, widthScale, heightScale);
                 push_bin(fboW, fboH, vertCoords, pVaryings);
             #else
                 if (visStatus == SR_TRIANGLE_FULLY_VISIBLE)
                 {
-                    vertCoords[0] = sr_perspective_divide(vertCoords[0]);
-                    vertCoords[1] = sr_perspective_divide(vertCoords[1]);
-                    vertCoords[2] = sr_perspective_divide(vertCoords[2]);
-
-                    sr_world_to_screen_coords_divided(vertCoords[0], widthScale, heightScale);
-                    sr_world_to_screen_coords_divided(vertCoords[1], widthScale, heightScale);
-                    sr_world_to_screen_coords_divided(vertCoords[2], widthScale, heightScale);
-
+                    sr_perspective_divide3(vertCoords);
+                    sr_world_to_screen_coords_divided3(vertCoords, widthScale, heightScale);
                     push_bin(fboW, fboH, vertCoords, pVaryings);
                 }
                 else

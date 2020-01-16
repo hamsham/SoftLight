@@ -143,8 +143,6 @@ struct SR_FragmentProcessor
 
     void render_triangle(const SR_Texture* depthBuffer) const noexcept;
 
-    void render_triangle_simd(const SR_Texture* depthBuffer) const noexcept;
-
     void flush_fragments(const SR_FragmentBin* pBin, uint_fast32_t numQueuedFrags, const SR_FragCoord* outCoords) const noexcept;
 
     void execute() noexcept;
