@@ -384,20 +384,21 @@ inline int back_face_visible(const math::vec4* screenCoords) noexcept
         };
         return (0.f > math::determinant(det));
     #else
-        const __m128 col4 = _mm_blend_ps(_mm_permute_ps(screenCoords[0].simd, 0xB4), _mm_setzero_ps(), 0x08);
-        const __m128 row1 = _mm_blend_ps(_mm_permute_ps(screenCoords[1].simd, 0xB4), _mm_setzero_ps(), 0x08);
-        const __m128 row2 = _mm_blend_ps(_mm_permute_ps(screenCoords[2].simd, 0xB4), _mm_setzero_ps(), 0x08);
+        // Swap the z and w components for each vector. Z will be discarded later
+        const __m128 col4 = _mm_permute_ps(screenCoords[0].simd, 0xB4);
 
-        constexpr int shuffleMask120 = 0xC9; // indices: <base> + (3, 0, 2, 1): 11001001
-        constexpr int shuffleMask201 = 0xD2; // indices: <base> + (3, 1, 0, 2): 11010010
+        constexpr int shuffleMask120 = 0x8D; // indices: <base> + (2, 0, 3, 1): 10001101
+        constexpr int shuffleMask201 = 0x93; // indices: <base> + (2, 1, 0, 3): 10010011
 
-        const __m128 col0 = _mm_permute_ps(row1, shuffleMask120);
-        const __m128 col2 = _mm_permute_ps(row1, shuffleMask201);
-        const __m128 col1 = _mm_permute_ps(row2, shuffleMask201);
-        const __m128 col3 = _mm_permute_ps(row2, shuffleMask120);
+        const __m128 col3 = _mm_permute_ps(screenCoords[2].simd, shuffleMask120);
+        const __m128 col2 = _mm_permute_ps(screenCoords[1].simd, shuffleMask201);
+        const __m128 col1 = _mm_permute_ps(screenCoords[2].simd, shuffleMask201);
+        const __m128 col0 = _mm_permute_ps(screenCoords[1].simd, shuffleMask120);
 
         const __m128 sub0 = _mm_fmsub_ps(col0, col1, _mm_mul_ps(col2, col3));
-        const __m128 mul2 = _mm_mul_ps(sub0, col4);
+
+        // Remove the Z component which was shuffled earlier
+        const __m128 mul2 = _mm_blend_ps(_mm_mul_ps(sub0, col4), _mm_setzero_ps(), 0x08);
 
         // horizontal add: swap the words of each vector, add, then swap each
         // half of the vectors and perform a final add.
@@ -425,20 +426,21 @@ inline int front_face_visible(const math::vec4* screenCoords) noexcept
         };
         return (0.f < math::determinant(det));
     #else
-        const __m128 row2 = _mm_blend_ps(_mm_permute_ps(screenCoords[2].simd, 0xB4), _mm_setzero_ps(), 0x08);
-        const __m128 row1 = _mm_blend_ps(_mm_permute_ps(screenCoords[1].simd, 0xB4), _mm_setzero_ps(), 0x08);
-        const __m128 col4 = _mm_blend_ps(_mm_permute_ps(screenCoords[0].simd, 0xB4), _mm_setzero_ps(), 0x08);
+        // Swap the z and w components for each vector. Z will be discarded later
+        const __m128 col4 = _mm_permute_ps(screenCoords[0].simd, 0xB4);
 
-        constexpr int shuffleMask120 = 0xC9; // indices: <base> + (3, 0, 2, 1): 11001001
-        constexpr int shuffleMask201 = 0xD2; // indices: <base> + (3, 1, 0, 2): 11010010
+        constexpr int shuffleMask120 = 0x8D; // indices: <base> + (2, 0, 3, 1): 10001101
+        constexpr int shuffleMask201 = 0x93; // indices: <base> + (2, 1, 0, 3): 10010011
 
-        const __m128 col3 = _mm_permute_ps(row2, shuffleMask120);
-        const __m128 col2 = _mm_permute_ps(row1, shuffleMask201);
-        const __m128 col1 = _mm_permute_ps(row2, shuffleMask201);
-        const __m128 col0 = _mm_permute_ps(row1, shuffleMask120);
+        const __m128 col3 = _mm_permute_ps(screenCoords[2].simd, shuffleMask120);
+        const __m128 col2 = _mm_permute_ps(screenCoords[1].simd, shuffleMask201);
+        const __m128 col1 = _mm_permute_ps(screenCoords[2].simd, shuffleMask201);
+        const __m128 col0 = _mm_permute_ps(screenCoords[1].simd, shuffleMask120);
 
         const __m128 sub0 = _mm_fmsub_ps(col0, col1, _mm_mul_ps(col2, col3));
-        const __m128 mul2 = _mm_mul_ps(sub0, col4);
+
+        // Remove the Z component which was shuffled earlier
+        const __m128 mul2 = _mm_blend_ps(_mm_mul_ps(sub0, col4), _mm_setzero_ps(), 0x08);
 
         // horizontal add: swap the words of each vector, add, then swap each
         // half of the vectors and perform a final add.
@@ -580,7 +582,6 @@ void SR_VertexProcessor::flush_bins() const noexcept
     {
         mBinsUsed->store(0, std::memory_order_release);
         mFragProcessors->store(0, std::memory_order_release);
-        return;
     }
     else
     {
@@ -688,13 +689,9 @@ void SR_VertexProcessor::push_bin(
         uint_fast64_t binId;
 
         // Attempt to grab a bin index. Flush the bins if they've filled up.
-        while (LS_UNLIKELY((binId = pLocks->fetch_add(1, std::memory_order_acq_rel)) >= (uint_fast64_t)SR_SHADER_MAX_BINNED_PRIMS))
+        while ((binId = pLocks->fetch_add(1, std::memory_order_acq_rel)) >= (uint_fast64_t)SR_SHADER_MAX_BINNED_PRIMS)
         {
             flush_bins();
-
-            #if defined(LS_ARCH_X86)
-                _mm_pause();
-            #endif
         }
 
         // place a triangle into the next available bin
@@ -721,9 +718,12 @@ void SR_VertexProcessor::push_bin(
         while (numVerts--)
         {
             const unsigned offset = numVerts * SR_SHADER_MAX_VARYING_VECTORS;
+            const math::vec4* pInVar = varyings+offset;
+            math::vec4* pOutVar = bin.mVaryings+offset;
+
             for (unsigned i = numVaryings; i--;)
             {
-                bin.mVaryings[i+offset] = varyings[i+offset];
+                (*pOutVar++) = (*pInVar++);
             }
         }
     }
@@ -788,7 +788,7 @@ void SR_VertexProcessor::clip_and_process_tris(
         }
     };
 
-    const auto _interpolate_varyings = [&numVarys](const math::vec4* inVarys, math::vec4* outVarys, int fromIndex, int toIndex, float amt)->void
+    const auto _interpolate_varyings = [&numVarys](const math::vec4* inVarys, math::vec4* outVarys, int fromIndex, int toIndex, float amt) noexcept->void
     {
         const math::vec4* pV0 = inVarys + fromIndex * SR_SHADER_MAX_VARYING_VECTORS;
         const math::vec4* pV1 = inVarys + toIndex * SR_SHADER_MAX_VARYING_VECTORS;

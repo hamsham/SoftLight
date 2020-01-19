@@ -10,6 +10,7 @@
 #include "lightsky/setup/Compiler.h" // LS_COMPILER_MSC
 
 #include "soft_render/SR_Color.hpp"
+#include "soft_render/SR_FragmentProcessor.hpp"
 #include "soft_render/SR_Texture.hpp"
 #include "soft_render/SR_WindowBuffer.hpp"
 
@@ -600,13 +601,13 @@ void SR_BlitProcessor::blit_src_rgba() noexcept
 template<class BlipOp>
 void SR_BlitProcessor::blit_nearest() noexcept
 {
-    const BlipOp blitOp;
+    constexpr BlipOp blitOp;
     unsigned char* const pOutBuf = reinterpret_cast<unsigned char* const>(mBackBuffer->data());
 
     const uint_fast32_t inW  = (uint_fast32_t)srcX1 - (uint_fast32_t)srcX0;
     const uint_fast32_t inH  = (uint_fast32_t)srcY1 - (uint_fast32_t)srcY0;
     const uint_fast32_t outW = (uint_fast32_t)dstX1 - (uint_fast32_t)dstX0;
-    const uint_fast32_t outH = (uint_fast32_t)dstY1 - (uint_fast32_t)dstY0;
+    //const uint_fast32_t outH = (uint_fast32_t)dstY1 - (uint_fast32_t)dstY0;
 
     const uint_fast32_t totalOutW = mBackBuffer->width();
     const uint_fast32_t totalOutH = mBackBuffer->height();
@@ -615,9 +616,9 @@ void SR_BlitProcessor::blit_nearest() noexcept
     // make use of the CPU prefetcher when iterating pixels along the x-axis
     const uint_fast32_t x0        = ls::math::max<uint_fast32_t>(0u, dstX0);
     const uint_fast32_t x1        = ls::math::min<uint_fast32_t>(totalOutW, x0 + outW);
-    const uint_fast32_t dstH      = outH / mNumThreads;
-    const uint_fast32_t y0        = ls::math::max<uint_fast32_t>(0u, dstY0 + (mThreadId * dstH));
-    const uint_fast32_t y1        = (mThreadId < mNumThreads-1) ? ls::math::min<uint_fast32_t>(totalOutH, y0 + dstH) : totalOutH;
+    //const uint_fast32_t dstH      = outH / mNumThreads;
+    const uint_fast32_t y0        = dstY0+mThreadId;//sr_scanline_offset(mNumThreads, mThreadId, dstY0);
+    const uint_fast32_t y1        = dstY1;
 
     const sr_fixed_type finW      = ls::math::fixed_cast<sr_fixed_type>(inW);
     const sr_fixed_type finH      = ls::math::fixed_cast<sr_fixed_type>(inH);
@@ -626,12 +627,11 @@ void SR_BlitProcessor::blit_nearest() noexcept
 
     const uint_fast32_t numPixels = (totalOutW*totalOutH) - 1;
 
-    for (uint_fast32_t y = y0; y < y1; ++y)
+    for (uint_fast32_t y = y0; y < y1; y += mNumThreads)
     {
         const sr_fixed_type yf   = ls::math::fixed_cast<sr_fixed_type>(y) * foutH;
         const uint_fast32_t srcY = srcY0 + ls::math::integer_cast<uint_fast32_t>(yf);
 
-        #if 0
         for (uint_fast32_t x = x0; x < x1; ++x)
         {
             const sr_fixed_type  xf       = ls::math::fixed_cast<sr_fixed_type>(x) * foutW;
@@ -640,52 +640,6 @@ void SR_BlitProcessor::blit_nearest() noexcept
 
             blitOp(mTexture, srcX, srcY, pOutBuf, numPixels-outIndex);
         }
-        #else
-        const uint_fast32_t yOffset = totalOutW * y;
-        uint_fast32_t x;
-        for (x = x0; x+4 < x1; x += 4)
-        {
-            sr_fixed_type xf[4] = {
-                ls::math::fixed_cast<sr_fixed_type>(x+0),
-                ls::math::fixed_cast<sr_fixed_type>(x+1),
-                ls::math::fixed_cast<sr_fixed_type>(x+2),
-                ls::math::fixed_cast<sr_fixed_type>(x+3)
-            };
-
-            xf[0] *= foutW;
-            xf[1] *= foutW;
-            xf[2] *= foutW;
-            xf[3] *= foutW;
-
-            const uint_fast32_t srcX[4] = {
-                srcX0 + ls::math::integer_cast<uint_fast32_t>(xf[0]),
-                srcX0 + ls::math::integer_cast<uint_fast32_t>(xf[1]),
-                srcX0 + ls::math::integer_cast<uint_fast32_t>(xf[2]),
-                srcX0 + ls::math::integer_cast<uint_fast32_t>(xf[3])
-            };
-
-            const uint_fast32_t outIndex[4] = {
-                (x+0) + yOffset,
-                (x+1) + yOffset,
-                (x+2) + yOffset,
-                (x+3) + yOffset
-            };
-
-            blitOp(mTexture, srcX[0], srcY, pOutBuf, numPixels-outIndex[0]);
-            blitOp(mTexture, srcX[1], srcY, pOutBuf, numPixels-outIndex[1]);
-            blitOp(mTexture, srcX[2], srcY, pOutBuf, numPixels-outIndex[2]);
-            blitOp(mTexture, srcX[3], srcY, pOutBuf, numPixels-outIndex[3]);
-        }
-
-        for (; x < x1; ++x)
-        {
-            const sr_fixed_type  xf       = ls::math::fixed_cast<sr_fixed_type>(x) * foutW;
-            const uint_fast32_t  srcX     = srcX0 + ls::math::integer_cast<uint_fast32_t>(xf);
-            const uint_fast32_t  outIndex = x + totalOutW * y;
-
-            blitOp(mTexture, srcX, srcY, pOutBuf, numPixels-outIndex);
-        }
-        #endif
     }
 }
 

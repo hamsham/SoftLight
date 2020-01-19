@@ -498,31 +498,25 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
                 const int32_t x = xVals[i];
 
                 // calculate barycentric coordinates
-                const float xf   = (float)x;
-                math::vec4  bc   = (bcClipSpace[0]*xf) + bcY;
+                const float  xf       = (float)x;
+                const float  oldDepth = depthBuffer->raw_texel<float>(x, y);
+                math::vec4&& bc       = math::fmadd(bcClipSpace[0], math::vec4{xf}, bcY);
+                const float  z        = math::dot(depth, bc);
 
-                // Only render pixels within the triangle edges.
-                // Ensure the current point is in a triangle by checking the sign
-                // bits of all 3 barycentric coordinates.
-                const float z = math::dot(depth, bc);
-                const float oldDepth = depthBuffer->raw_texel<float>(x, y);
-
-                // We're only using the barycentric coordinates here to determine
-                // if a pixel on the edge of a triangle should still be rendered.
-                // This normally involves checking if the coordinate is negative,
-                // but due to roundoff errors, we need to know if it's close enough
-                // to a triangle edge to be rendered.
-                #if SR_REVERSED_Z_RENDERING
-                    if (depthTesting & (z < oldDepth))
-                    {
-                        continue;
-                    }
-                #else
-                    if (depthTesting & (z > oldDepth))
-                    {
-                        continue;
-                    }
-                #endif
+                if (depthTesting)
+                {
+                    #if SR_REVERSED_Z_RENDERING
+                        if (z < oldDepth)
+                        {
+                            continue;
+                        }
+                    #else
+                        if (z > oldDepth)
+                        {
+                            continue;
+                        }
+                    #endif
+                }
 
                 // perspective correction
                 float persp = 1.f / math::dot(homogenous, bc);
@@ -613,40 +607,25 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
                 // calculate barycentric coordinates
                 const float  xf = (float)x;
                 math::vec4&& bc = math::fmadd(bcClipSpace[0], math::vec4{xf}, bcY);
+                const float  z  = math::dot(depth, bc);
 
-                // Only render pixels within the triangle edges.
-                // Ensure the current point is in a triangle by checking the sign
-                // bits of all 3 barycentric coordinates.
-                float z;
-
-                // We're only using the barycentric coordinates here to determine
-                // if a pixel on the edge of a triangle should still be rendered.
-                // This normally involves checking if the coordinate is negative,
-                // but due to roundoff errors, we need to know if it's close enough
-                // to a triangle edge to be rendered.
                 if (depthTesting)
                 {
-                    z = math::dot(depth, bc);
-
                     #if SR_REVERSED_Z_RENDERING
-                        if (z < pDepth[0])
+                        if (z < *pDepth)
                         {
                             continue;
                         }
                     #else
-                        if (z > pDepth[0])
+                        if (z > *pDepth)
                         {
                             continue;
                         }
                     #endif
                 }
-                else
-                {
-                    z = pDepth[0];
-                }
 
                 // perspective correction
-                float persp = 1.f / math::dot(bc, homogenous);
+                float persp = math::rcp(math::dot(bc, homogenous));
                 outCoords->bc[numQueuedFrags]   = (bc * homogenous) * persp;
                 outCoords->xyzw[numQueuedFrags] = math::vec4{xf, yf, z, persp};
                 outCoords->xy[numQueuedFrags]   = (uint32_t)((0xFFFF & x) | y16);

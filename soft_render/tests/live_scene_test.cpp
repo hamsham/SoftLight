@@ -14,6 +14,7 @@
 
 #include "soft_render/SR_BoundingBox.hpp"
 #include "soft_render/SR_Camera.hpp"
+#include "soft_render/SR_Config.hpp"
 #include "soft_render/SR_Context.hpp"
 #include "soft_render/SR_IndexBuffer.hpp"
 #include "soft_render/SR_Framebuffer.hpp"
@@ -40,7 +41,7 @@
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SR_TEST_MAX_THREADS
-    #define SR_TEST_MAX_THREADS (ls::math::max<unsigned>(std::thread::hardware_concurrency()/2, 1))
+    #define SR_TEST_MAX_THREADS 4//(ls::math::max<unsigned>(std::thread::hardware_concurrency()/2, 1))
 #endif /* SR_TEST_MAX_THREADS */
 
 #ifndef SR_TEST_USE_PBR
@@ -54,10 +55,6 @@
 #ifndef SR_BENCHMARK_SCENE
     #define SR_BENCHMARK_SCENE 1
 #endif /* SR_BENCHMARK_SCENE */
-
-#ifndef SR_REVERSED_Z_BUFFER
-    #define SR_REVERSED_Z_BUFFER 1
-#endif /* SR_REVERSED_Z_BUFFER */
 
 namespace math = ls::math;
 namespace utils = ls::utils;
@@ -929,7 +926,7 @@ int main()
     //camTrans.extract_transforms(math::look_at(math::vec3{75.f}, math::vec3{0.f, 10.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
     camTrans.extract_transforms(math::look_at(math::vec3{0.f}, math::vec3{3.f, -5.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
 
-    #if SR_REVERSED_Z_BUFFER
+    #if SR_REVERSED_Z_RENDERING
         math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
     #else
         math::mat4 projMatrix = math::perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.1f, 500.f);
@@ -972,7 +969,7 @@ int main()
                 context.texture(0).init(context.texture(0).type(), pWindow->width(), pWindow->height());
                 context.texture(1).init(context.texture(1).type(), pWindow->width(), pWindow->height());
 
-                #if SR_REVERSED_Z_BUFFER
+                #if SR_REVERSED_Z_RENDERING
                     projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
                 #else
                     projMatrix = math::perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.1f, 500.f);
@@ -1098,7 +1095,7 @@ int main()
 
             context.framebuffer(0).clear_color_buffers();
 
-            #if SR_REVERSED_Z_BUFFER
+            #if SR_REVERSED_Z_RENDERING
                 context.framebuffer(0).clear_depth_buffer();
             #else
                 context.framebuffer(0).clear_depth_buffer(1.f);
