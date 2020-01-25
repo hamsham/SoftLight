@@ -1,6 +1,5 @@
 
-#include <iostream>
-#include <limits>
+// Full-screen quad example using the "Compact YCoCg Frame Buffer" technique.
 
 #include "lightsky/math/vec_utils.h"
 #include "lightsky/math/mat_utils.h"
@@ -9,7 +8,6 @@
 #include "lightsky/utils/StringUtils.h"
 #include "lightsky/utils/Time.hpp"
 
-#include "soft_render/SR_Config.hpp"
 #include "soft_render/SR_BoundingBox.hpp"
 #include "soft_render/SR_Color.hpp"
 #include "soft_render/SR_Context.hpp"
@@ -26,8 +24,6 @@
 #include "soft_render/SR_VertexArray.hpp"
 #include "soft_render/SR_VertexBuffer.hpp"
 #include "soft_render/SR_WindowBuffer.hpp"
-
-//#include "test_common.hpp"
 
 namespace math = ls::math;
 namespace utils = ls::utils;
@@ -54,6 +50,7 @@ struct MeshTestUniforms
     SR_ColorRGBAf     lightCol;
     math::mat4        modelMatrix;
     math::mat4        mvpMatrix;
+    bool              edgeFilter;
 };
 
 
@@ -110,27 +107,25 @@ bool _mesh_test_frag_shader(SR_FragmentParam& fragParams)
     math::vec4&& lightDir = math::normalize(pUniforms->lightPos - pos);
 
     // Diffuse light calculation
-    const float lightAngle = math::max(0.5f + math::dot(lightDir, norm) * 0.5f, 0.f);
-
-    constexpr math::mat3 conv{
-         0.25f, 0.5f,  0.25f,
-         0.5f,  0.f,  -0.5f,
-        -0.25f, 0.5f, -0.25f
-    };
-
-    // output composition
-    math::vec3&& pixelYcocg = math::vec3_cast(pixel * pUniforms->lightCol * lightAngle) * conv;
-    //pixelYcocg[0] += 0.01f;
-
-    //SR_ColorYCoCgAf&& pixelYcocg = ycocg_cast<float>(pixel * pUniforms->lightCol * lightAngle);
+    const float lightAngle = math::max(math::dot(lightDir, norm), 0.f);
+    const math::vec4&& composite = pixel + pUniforms->lightCol * lightAngle;
+    const math::vec4&& output = math::clamp(composite, math::vec4{0.f}, math::vec4{1.f});
+    const int amOdd = ((fragParams.x & 1) == (fragParams.y & 1));
 
     #if 1
-        //float c = ((fragParams.x & 1) == (fragParams.y & 1)) ? pixelYcocg.cg : pixelYcocg.co;
-        //fragParams.pOutputs[0] = math::vec4{pixelYcocg.y, c, 0.f, 0.f};
-        float c = ((fragParams.x & 1) == (fragParams.y & 1)) ? pixelYcocg[2] : pixelYcocg[1];
-        fragParams.pOutputs[0] = math::min(math::vec4{pixelYcocg[0], c, 0.f, 0.f}, math::vec4{1.f});
+        constexpr math::mat3 conv{
+             0.25f, 0.5f,  0.25f,
+             0.5f,  0.f,  -0.5f,
+            -0.25f, 0.5f, -0.25f
+        };
+
+        math::vec3&& pixelYcocg = conv * math::vec3_cast(output);
+        float c = amOdd ? pixelYcocg[2] : pixelYcocg[1];
+        fragParams.pOutputs[0] = math::vec4{pixelYcocg[0], c, 0.f, 0.f};
     #else
-        fragParams.pOutputs[0] = math::vec4{pixelYcocg.y, pixelYcocg.co, pixelYcocg.cg, 1.f};
+        SR_ColorYCoCgAf&& pixelYcocg = ycocg_cast<float>(output);
+        float c = amOdd ? pixelYcocg.cg : pixelYcocg.co;
+        fragParams.pOutputs[0] = math::vec4{pixelYcocg.y, c, 0.f, 0.f};
     #endif
 
     return true;
@@ -145,7 +140,7 @@ SR_FragmentShader mesh_test_frag_shader()
     shader.numOutputs  = 1;
     shader.blend       = SR_BLEND_OFF;
     shader.depthTest   = SR_DEPTH_TEST_ON;
-    shader.depthMask   = SR_DEPTH_MASK_OFF;
+    shader.depthMask   = SR_DEPTH_MASK_ON;
     shader.shader      = _mesh_test_frag_shader;
 
     return shader;
@@ -179,90 +174,92 @@ SR_VertexShader ycocg_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-inline LS_INLINE math::vec4 step_luminance(const math::vec4& edge, const math::vec4& x) noexcept
+#if 1
+inline LS_INLINE float filter_luminance(float a, const math::vec2& a1, const math::vec2& a2, const math::vec2& a3, const math::vec2& a4) noexcept
 {
-    return math::vec4{
-        x[0] < edge[0] ? 0.f : 1.f,
-        x[1] < edge[1] ? 0.f : 1.f,
-        x[2] < edge[2] ? 0.f : 1.f,
-        x[3] < edge[3] ? 0.f : 1.f
-    };
-}
+    constexpr float THRESH = 1.f/255.f;
 
-inline float LS_INLINE filter_luminance(float a, const math::vec2& a1, const math::vec2& a2, const math::vec2& a3, const math::vec2& a4) noexcept
-{
-    constexpr float THRESH = 30.f/255.f;
-
-    math::vec4 lum{a1[0], a2[0], a3[0], a4[0]};
-    math::vec4&& w = math::vec4{1.f} - step_luminance(math::vec4{THRESH}, math::abs(lum-a));
+    math::vec4&& lum = math::abs(math::vec4{a1[0], a2[0], a3[0], a4[0]} - a);
+    math::vec4&& w = math::vec4{1.f} - math::step(math::vec4{THRESH}, lum);
 
     float W = w[0] + w[1] + w[2] + w[3];
 
-    w[0] = (W == 0.f) ? 1.f : w[0];
-    W    = (W == 0.f) ? 1.f : W;
+    int c = (W == 0.f);
+    w[0] = c ? 1.f : w[0];
+    W = c ? 1.f : (1.f/W);
 
-    return (w[0]*a1[1] + w[1]*a2[1] + w[2]*a3[1] + w[3]*a4[1]) / W;
+    float d = w[0]*a1[1] + w[1]*a2[1] + w[2]*a3[1] + w[3]*a4[1];
+    return d * W;
 }
 
 //edge-directed reconstruction:
-inline float LS_INLINE adjust_chroma(const SR_Texture* tex, uint16_t x, uint16_t y, float lum) noexcept
+inline LS_INLINE float adjust_chroma(const SR_Texture* tex, uint16_t x, uint16_t y, float lum) noexcept
 {
-    const uint16_t w = tex->width();
-    const uint16_t h = tex->height();
+    const uint16_t w  = tex->width();
+    const uint16_t h  = tex->height();
+    const uint16_t x0 = (x < (w-1)) ? (x+1) : (x-1);
+    const uint16_t x1 = (x > 0)     ? (x-1) : (x+1);
+    const uint16_t y0 = (y < (h-1)) ? (y+1) : (y-1);
+    const uint16_t y1 = (y > 0)     ? (y-1) : (y+1);
 
-    uint16_t x0 = (x < (w-1)) ? (x+1) : x;
-    uint16_t x1 = x > 0       ? (x-1) : x;
-    uint16_t y0 = (y < (h-1)) ? (y+1) : y;
-    uint16_t y1 = y > 0       ? (y-1) : y;
+    constexpr math::vec2 norm{1.f / 254.f};
 
-    math::vec2&& a0 = (math::vec2)tex->texel<math::vec2_t<uint8_t>>(x0, y); //coords + vec2(1.0 / 1024.0, 0.0));
-    math::vec2&& a1 = (math::vec2)tex->texel<math::vec2_t<uint8_t>>(x1, y); //coords - vec2(1.0 / 1024.0, 0.0));
-    math::vec2&& a2 = (math::vec2)tex->texel<math::vec2_t<uint8_t>>(x, y0); //coords + vec2(0.0, 1.0 / 512.0));
-    math::vec2&& a3 = (math::vec2)tex->texel<math::vec2_t<uint8_t>>(x, y1); //coords - vec2(0.0, 1.0 / 512.0));
+    math::vec2&& a0 = norm * (math::vec2)tex->texel<math::vec2_t<uint8_t>>(x0, y); //coords + vec2(1.0 / 1024.0, 0.0));
+    math::vec2&& a1 = norm * (math::vec2)tex->texel<math::vec2_t<uint8_t>>(x1, y); //coords - vec2(1.0 / 1024.0, 0.0));
+    math::vec2&& a2 = norm * (math::vec2)tex->texel<math::vec2_t<uint8_t>>(x, y0); //coords + vec2(0.0, 1.0 / 512.0));
+    math::vec2&& a3 = norm * (math::vec2)tex->texel<math::vec2_t<uint8_t>>(x, y1); //coords - vec2(0.0, 1.0 / 512.0));
+
     return filter_luminance(lum, a0, a1, a2, a3);
 }
+#endif
 
 bool _ycocg_frag_shader(SR_FragmentParam& fragParams)
 {
-    #if 1
-        const MeshTestUniforms* pUniforms = fragParams.pUniforms->as<MeshTestUniforms>();
-        const SR_Texture*       albedo    = pUniforms->pTexture;
+    const MeshTestUniforms* pUniforms = fragParams.pUniforms->as<MeshTestUniforms>();
+    const SR_Texture*       albedo    = pUniforms->pTexture;
+    const uint16_t x0 = fragParams.x;
+    const uint16_t y0 = fragParams.y;
+    const bool amOdd = ((x0 & 1) == (y0 & 1));
+    constexpr float norm255 = 1.f / 254.f;
+    const math::vec2&& pixel0 = (math::vec2)albedo->texel<math::vec2_t<uint8_t>>(x0, y0) * norm255;
 
-        const uint16_t x0 = fragParams.x;
-        const uint16_t y0 = fragParams.y;
-        const uint16_t x1 = x0 > 0 ? (x0-1) : x0;
-        //const uint16_t y1 = y0 > 0 ? (y0-1) : y0;
+    float y = pixel0[0];
+    float co, cg;
 
-        constexpr float norm255 = 1.f / 256.f;
-        const math::vec2&& pixel0 = (math::vec2)albedo->texel<math::vec2_t<uint8_t>>(x0, y0) * norm255;
+    if (pUniforms->edgeFilter)
+    {
+        co = pixel0[1];
+        cg = adjust_chroma(albedo, x0, y0, y);//+norm255);
+    }
+    else
+    {
+        const uint16_t x1 = x0 > 0 ? (x0 - 1) : x0;
         const math::vec2&& pixel1 = (math::vec2)albedo->texel<math::vec2_t<uint8_t>>(x1, y0) * norm255;
+        co = pixel0[1];
+        cg = pixel1[1];
+    }
 
-        bool amOdd = ((fragParams.x & 1) == (fragParams.y & 1));
-        float co = amOdd ? pixel1[1] : pixel0[1];
-        float cg = amOdd ? pixel0[1] : pixel1[1];
-        float y = pixel0[0] + norm255;
+    if (amOdd)
+    {
+        const float temp = co;
+        co = cg;
+        cg = temp;
+    }
 
-        //y = adjust_chroma(albedo, fragParams.x, fragParams.y, pixel0[0]);
-        /*
-        if (amOdd)
-        {
-            cg = adjust_chroma(albedo, fragParams.x, fragParams.y, pixel1[0]);
-        }
-        else
-        {
-            co = adjust_chroma(albedo, fragParams.x, fragParams.y, pixel1[0]);
-        }
-        */
+    // multiply by a matrix versus directly convert
+    #if 1
+        constexpr math::mat3 conv{
+            1.f,  1.f, -1.f,
+            1.f,  0.f,  1.f,
+            1.f, -1.f, -1.f
+        };
 
-        // output composition
-        const math::vec3&& pixelRgb = rgb_cast<float>(SR_ColorYCoCgf{y, co, cg});
-        fragParams.pOutputs[0] = math::vec4_cast<float>(pixelRgb, 1.f);
-
-        //fragParams.pOutputs[0] = math::vec4{1.f, 0.f, 0.f, 1.f};
-        //LS_LOG_MSG();
+        const math::vec3&& pixelRgb = conv * math::vec3{y, co, cg};
     #else
-        fragParams.pOutputs[0] = math::vec4{1.f};
+        const math::vec3&& pixelRgb = rgb_cast<float>(SR_ColorYCoCgf{y, co, cg});
     #endif
+
+    fragParams.pOutputs[0] = math::vec4_cast(pixelRgb, 1.f);
 
     return true;
 }
@@ -394,14 +391,12 @@ utils::Pointer<SR_SceneGraph> mesh_test_create_context()
     utils::Pointer<SR_SceneGraph> pGraph{new SR_SceneGraph{}};
     SR_Context& context = pGraph->mContext;
 
-    //retCode = context.num_threads(std::thread::hardware_concurrency());
-    //assert(retCode == (int)std::thread::hardware_concurrency());
-
     size_t depthId = context.create_texture();
     SR_Texture& depth = context.texture(depthId);
     retCode = depth.init(SR_ColorDataType::SR_COLOR_R_FLOAT, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     assert(retCode == 0);
 
+    // FBO 0, compact YCoCg buffer
     {
         size_t texId = context.create_texture();
         size_t fboId = context.create_framebuffer();
@@ -426,6 +421,7 @@ utils::Pointer<SR_SceneGraph> mesh_test_create_context()
         assert(retCode == 0);
     }
 
+    // FBO 1, decompressed RGB
     {
         size_t texId = context.create_texture();
         size_t fboId = context.create_framebuffer();
@@ -453,14 +449,16 @@ utils::Pointer<SR_SceneGraph> mesh_test_create_context()
     retCode = load_quad_into_scene(*pGraph);
     assert(retCode == 0);
 
-    retCode = meshLoader.load("testdata/heart/heart.obj");
+    //retCode = meshLoader.load("testdata/heart/heart.obj");
+    retCode = meshLoader.load("testdata/african_head/african_head.obj");
     assert(retCode != 0);
 
     retCode = pGraph->import(meshLoader.data());
     assert(retCode == 0);
 
     // Always make sure the scene graph is updated before rendering
-    pGraph->mCurrentTransforms[0].scale(math::vec3{1.f});
+    pGraph->mCurrentTransforms[1].move(math::vec3{0.f, 30.f, 0.f});
+    pGraph->mCurrentTransforms[1].scale(math::vec3{5.f});
     pGraph->update();
 
     const SR_VertexShader&&   vertShader0 = mesh_test_vert_shader();
@@ -473,7 +471,10 @@ utils::Pointer<SR_SceneGraph> mesh_test_create_context()
     MeshTestUniforms* pUniforms = ubo.as<MeshTestUniforms>();
 
     pUniforms->lightPos = math::vec4{20.f, 100.f, 20.f, 0.f};
-    pUniforms->lightCol = math::vec4{1.f, 0.9f, 0.8f, 1.f};
+    pUniforms->lightCol = math::vec4{0.125f, 0.09f, 0.08f, 1.f};
+    pUniforms->modelMatrix = math::mat4{1.f};
+    pUniforms->mvpMatrix = math::mat4{1.f};
+    pUniforms->edgeFilter = true;
     size_t testShaderId0 = context.create_shader(vertShader0,  fragShader0,  uboId);
     size_t testShaderId1 = context.create_shader(vertShader1,  fragShader1,  uboId);
 
@@ -529,7 +530,6 @@ void mesh_test_render(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
         }
     }
 
-    #if 1
     const SR_Mesh&        m          = pGraph->mMeshes[0];
     const SR_Material&    material   = pGraph->mMaterials[0];
     pUniforms->pTexture = material.pTextures[m.materialId];
@@ -539,7 +539,6 @@ void mesh_test_render(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
     const size_t fboid    = 1;
 
     context.draw(m, shaderId, fboid);
-    #endif
 }
 
 
@@ -561,9 +560,9 @@ int main()
     SR_Context&        context        = pGraph->mContext;
     SR_Texture&        tex            = context.texture(2);
     SR_Texture&        depth          = context.texture(0);
-    constexpr int      numFrames      = 300;
     int                shouldQuit     = 0;
-    int                numFramesShown = 0;
+    int                numFrames      = 0;
+    float              secondsCounter = 0.f;
     float              tickTime       = 0.f;
 
     if (pWindow->init(IMAGE_WIDTH, IMAGE_HEIGHT))
@@ -583,15 +582,17 @@ int main()
         pWindow->destroy();
         return -2;
     }
+    else
+    {
+        viewMatrix.set_type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
+        viewMatrix.extract_transforms(math::look_at(math::vec3{10.f, 30.f, 70.f}, math::vec3{0.f, 20.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
+        viewMatrix.apply_transform();
 
-    viewMatrix.set_type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
-    viewMatrix.extract_transforms(math::look_at(math::vec3{10.f, 30.f, 70.f}, math::vec3{0.f, 20.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
-    viewMatrix.apply_transform();
+        pWindow->set_keys_repeat(false); // text mode
+        pWindow->set_mouse_capture(false);
 
-    pWindow->set_keys_repeat(false); // text mode
-    pWindow->set_mouse_capture(true);
-
-    timer.start();
+        timer.start();
+    }
 
     while (!shouldQuit)
     {
@@ -621,6 +622,18 @@ int main()
                     LS_LOG_MSG("Escape button pressed. Exiting.");
                     shouldQuit = true;
                 }
+                else if (keySym == SR_KeySymbol::KEY_SYM_1)
+                {
+                    SR_UniformBuffer& ubo = context.ubo(0);
+                    MeshTestUniforms* pUniforms = ubo.as<MeshTestUniforms>();
+                    pUniforms->edgeFilter = true;
+                }
+                else if (keySym == SR_KeySymbol::KEY_SYM_2)
+                {
+                    SR_UniformBuffer& ubo = context.ubo(0);
+                    MeshTestUniforms* pUniforms = ubo.as<MeshTestUniforms>();
+                    pUniforms->edgeFilter = false;
+                }
             }
             else if (evt.type == SR_WinEventType::WIN_EVENT_CLOSING)
             {
@@ -632,25 +645,29 @@ int main()
         {
             timer.tick();
             tickTime = timer.tick_time().count();
+            secondsCounter += tickTime;
 
-            //viewMatrix.rotate(math::vec3{-tickTime, 0.f, 0.f});
-            //viewMatrix.apply_transform();
+            viewMatrix.rotate(math::vec3{-0.5f*tickTime, 0.f, 0.f});
+            viewMatrix.apply_transform();
 
             context.framebuffer(0).clear_color_buffers();
             context.framebuffer(0).clear_depth_buffer();
-            context.framebuffer(1).clear_color_buffers();
+            //context.framebuffer(1).clear_color_buffers();
             //context.framebuffer(1).clear_depth_buffer();
             mesh_test_render(pGraph.get(), projMatrix*viewMatrix.get_transform());
 
             context.blit(*pRenderBuf, 2);
             pWindow->render(*pRenderBuf);
 
-            ++numFramesShown;
-        }
+            ++numFrames;
 
-        if (numFramesShown >= numFrames)
-        {
-            shouldQuit = true;
+            if (secondsCounter >= 1.f)
+            {
+                LS_LOG_MSG("FPS: ", utils::to_str((float)numFrames / secondsCounter));
+                numFrames = 0;
+                secondsCounter = 0.f;
+            }
+
         }
 
         // All events handled. Now check on the state of the window.
@@ -660,8 +677,6 @@ int main()
             shouldQuit = true;
         }
     }
-
-    LS_LOG_MSG("Rendered ", numFramesShown, " frames in ", utils::to_str(timer.tick_time().count()), " seconds.");
 
     retCode = sr_img_save_ppm(tex.width(), tex.height(), reinterpret_cast<const SR_ColorRGB8*>(tex.data()), "ycocg_test_image.ppm");
     assert(retCode == 0);
