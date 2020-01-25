@@ -45,7 +45,7 @@ addons:
 
 
 install:
-  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then choco install mingw make tortoisesvn; fi
+  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then choco install make tortoisesvn; fi
 
 
 git:
