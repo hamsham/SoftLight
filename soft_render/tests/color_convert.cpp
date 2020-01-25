@@ -28,6 +28,12 @@ void run_tests() noexcept
     c1 = color_cast<uint8_t, float_type>(c5);
     std::cout << "RBG16 to RGB8: "  << (unsigned)c1[0]  << ", " << (unsigned)c1[1]  << ", " << (unsigned)c1[2] << std::endl;
 
+    SR_ColorYCoCg8u c6 = ycocg_cast<uint8_t>(c1);
+    std::cout << "RGB8 to YCoCg: "  << (unsigned)c6.y  << ", " << (unsigned)c6.co  << ", " << (unsigned)c6.cg << std::endl;
+
+    c1 = rgb_cast<uint8_t>(c6);
+    std::cout << "YCoCg to RGB8: "  << (unsigned)c1[0]  << ", " << (unsigned)c1[1]  << ", " << (unsigned)c1[2] << std::endl;
+
     std::cout << std::endl;
 }
 

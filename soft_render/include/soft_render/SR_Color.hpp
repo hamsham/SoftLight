@@ -957,5 +957,254 @@ SR_ColorTypeHSL<color_t> hsl_cast(const SR_ColorTypeHSV<other_color_t>& c) noexc
 
 
 
+/*-----------------------------------------------------------------------------
+ * YCoCg Types
+-----------------------------------------------------------------------------*/
+/**
+ * @brief Generic YcoCg Color Structure
+ */
+template<typename color_t>
+struct alignas(sizeof(color_t)) SR_ColorTypeYCoCg
+{
+    color_t y;
+    color_t co;
+    color_t cg;
+};
+
+// Specializations
+typedef SR_ColorTypeYCoCg<int8_t>   SR_ColorYCoCg8;
+typedef SR_ColorTypeYCoCg<uint8_t>  SR_ColorYCoCg8u;
+typedef SR_ColorTypeYCoCg<int16_t>  SR_ColorYCoCg16;
+typedef SR_ColorTypeYCoCg<uint16_t> SR_ColorYCoCg16u;
+typedef SR_ColorTypeYCoCg<int32_t>  SR_ColorYCoCg32;
+typedef SR_ColorTypeYCoCg<uint32_t> SR_ColorYCoCg32u;
+typedef SR_ColorTypeYCoCg<int64_t>  SR_ColorYCoCg64;
+typedef SR_ColorTypeYCoCg<uint64_t> SR_ColorYCoCg64u;
+typedef SR_ColorTypeYCoCg<float>    SR_ColorYCoCgf;
+typedef SR_ColorTypeYCoCg<double>   SR_ColorYCoCgd;
+
+typedef SR_ColorYCoCgf SR_ColorYCoCg;
+
+
+
+/**
+ * @brief YcoCg Color Structure with Alpha
+ */
+template<typename color_t>
+struct alignas(sizeof(color_t)) SR_ColorTypeYCoCgA
+{
+    color_t y;
+    color_t co;
+    color_t cg;
+    color_t a;
+};
+
+// Specializations
+typedef SR_ColorTypeYCoCgA<int8_t>   SR_ColorYCoCgA8;
+typedef SR_ColorTypeYCoCgA<uint8_t>  SR_ColorYCoCgA8u;
+typedef SR_ColorTypeYCoCgA<int16_t>  SR_ColorYCoCgA16;
+typedef SR_ColorTypeYCoCgA<uint16_t> SR_ColorYCoCgA16u;
+typedef SR_ColorTypeYCoCgA<int32_t>  SR_ColorYCoCgA32;
+typedef SR_ColorTypeYCoCgA<uint32_t> SR_ColorYCoCgA32u;
+typedef SR_ColorTypeYCoCgA<int64_t>  SR_ColorYCoCgA64;
+typedef SR_ColorTypeYCoCgA<uint64_t> SR_ColorYCoCgA64u;
+typedef SR_ColorTypeYCoCgA<float>    SR_ColorYCoCgAf;
+typedef SR_ColorTypeYCoCgA<double>   SR_ColorYCoCgAd;
+
+typedef SR_ColorYCoCgAf SR_ColorYCoCgA;
+
+
+
+/*-----------------------------------------------------------------------------
+ * YCoCg & RGB Casting
+-----------------------------------------------------------------------------*/
+#if 1
+/*-------------------------------------
+ * RGB to YCoCg
+-------------------------------------*/
+template <typename T>
+constexpr SR_ColorTypeYCoCg<T> ycocg_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SR_ColorRGBType<T>>::type& p) noexcept
+{
+    return SR_ColorTypeYCoCgA<T>{
+        (p[2] + (p[0] - p[2]) * T{0.5}) + (p[1] - (p[2] + (p[0] - p[2]) * T{0.5})) * T{0.5},
+        p[0] - p[2],
+        p[1] - (p[2] + (p[0] - p[2]) * T{0.5}),
+    };
+}
+
+
+
+/*-------------------------------------
+ * RGB to YCoCg
+-------------------------------------*/
+template <typename T>
+constexpr SR_ColorTypeYCoCg<T> ycocg_cast(const typename ls::setup::EnableIf<!ls::setup::IsFloat<T>::value && ls::setup::IsSigned<T>::value, SR_ColorRGBType<T>>::type& p) noexcept
+{
+    return SR_ColorTypeYCoCg<T>{
+        (T)(((p[0] + T{2} * p[1] + p[2]) + T{2}) / T{4}),
+        (T)(((p[0] - p[2]) + T{1}) / T{2}),
+        (T)(((-p[0] + T{2} * p[1] - p[2]) + T{2}) / T{4})
+    };
+}
+
+
+
+/*-------------------------------------
+ * RGB to YCoCg
+-------------------------------------*/
+template <typename T>
+constexpr SR_ColorTypeYCoCg<T> ycocg_cast(const typename ls::setup::EnableIf<ls::setup::IsUnsigned<T>::value, SR_ColorRGBType<T>>::type& p) noexcept
+{
+    return SR_ColorTypeYCoCg<T>{
+        (T)(((p[0] + T{2} * p[1] + p[2]) + T{2}) / T{4}),
+        (T)(((p[0] - p[2]) + T{1}) / T{2}),
+        (T)(((T{0} - p[0] + T{2} * p[1] - p[2]) + T{2}) / T{4})
+    };
+}
+
+
+
+/*-------------------------------------
+ * YCoCg to RGB
+-------------------------------------*/
+template <typename T>
+constexpr SR_ColorRGBType<T> rgb_cast(const SR_ColorTypeYCoCg<T>& p) noexcept
+{
+    return SR_ColorRGBType<T>{
+        (T)(p.y + p.co - p.cg),
+        (T)(p.y + p.cg),
+        (T)(p.y - p.co - p.cg)
+    };
+}
+
+
+
+/*-----------------------------------------------------------------------------
+ * YCoCg & RGB Casting
+-----------------------------------------------------------------------------*/
+/*-------------------------------------
+ * RGBA to YCoCg
+-------------------------------------*/
+template <typename T>
+constexpr SR_ColorTypeYCoCgA<T> ycocg_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SR_ColorRGBAType<T>>::type& p) noexcept
+{
+    return SR_ColorTypeYCoCgA<T>{
+        ((p[0] + T{2.0} * p[1] + p[2]) + T{2.0}) * T{0.25},
+        ((p[0] - p[2]) + T{1}) * T{0.5},
+        ((-p[0] + T{2.0} * p[1] - p[2]) + T{2.0}) * T{0.25},
+        p[3]
+    };
+}
+
+
+
+/*-------------------------------------
+ * RGBA to YCoCg
+-------------------------------------*/
+template <typename T>
+constexpr SR_ColorTypeYCoCgA<T> ycocg_cast(const typename ls::setup::EnableIf<!ls::setup::IsFloat<T>::value && ls::setup::IsSigned<T>::value, SR_ColorRGBAType<T>>::type& p) noexcept
+{
+    return SR_ColorTypeYCoCgA<T>{
+        (T)(((p[0] + T{2} * p[1] + p[2]) + T{2}) / T{4}),
+        (T)(((p[0] - p[2]) + T{1}) / T{2}),
+        (T)(((-p[0] + T{2} * p[1] - p[2]) + T{2}) / T{4}),
+        p[3]
+    };
+}
+
+
+
+/*-------------------------------------
+ * RGBA to YCoCg
+-------------------------------------*/
+template <typename T>
+constexpr SR_ColorTypeYCoCgA<T> ycocg_cast(const typename ls::setup::EnableIf<ls::setup::IsUnsigned<T>::value, SR_ColorRGBAType<T>>::type& p) noexcept
+{
+    return SR_ColorTypeYCoCgA<T>{
+        (T)(((p[0] + T{2} * p[1] + p[2]) + T{2}) / T{4}),
+        (T)(((p[0] - p[2]) + T{1}) / T{2}),
+        (T)(((T{0} - p[0] + T{2} * p[1] - p[2]) + T{2}) / T{4}),
+        p[3]
+    };
+}
+
+
+
+/*-------------------------------------
+ * YCoCgA to RGBA
+-------------------------------------*/
+template <typename T>
+constexpr SR_ColorRGBAType<T> rgb_cast(const SR_ColorTypeYCoCgA<T>& p) noexcept
+{
+    return SR_ColorRGBAType<T>{
+        (T)(p.y + p.co - p.cg),
+        (T)(p.y + p.cg),
+        (T)(p.y - p.co - p.cg),
+        p.a
+    };
+}
+
+#else
+
+/*-------------------------------------
+ * RGB to YCoCg
+-------------------------------------*/
+template <typename T>
+inline SR_ColorTypeYCoCg<T> ycocg_cast(const SR_ColorRGBType<T>& p) noexcept
+{
+    T co  = p[0] - p[2];
+    T tmp = p[2] + co / (T)2;
+    T cg  = p[1] - tmp;
+    T y   = tmp + cg / (T)2;
+    return SR_ColorTypeYCoCg<T>{y, co, cg};
+}
+
+/*-------------------------------------
+ * YCoCg to RGB
+-------------------------------------*/
+template <typename T>
+inline SR_ColorRGBType<T> rgb_cast(const SR_ColorTypeYCoCg<T>& p) noexcept
+{
+    T tmp = p.y - p.cg / (T)2;
+    T g   = p.cg + tmp;
+    T b   = tmp - p.co / (T)2;
+    T r   = b + p.co;
+
+    return SR_ColorRGBType<T>{r, g, b};
+}
+
+
+
+/*-------------------------------------
+ * RGBA to YCoCgA
+-------------------------------------*/
+template <typename T>
+inline SR_ColorTypeYCoCgA<T> ycocg_cast(const SR_ColorRGBAType<T>& p) noexcept
+{
+    T co  = p[0] - p[2];
+    T tmp = p[2] + co / (T)2;
+    T cg  = p[1] - tmp;
+    T y   = tmp + cg / (T)2;
+    return SR_ColorTypeYCoCgA<T>{y, co, cg, p[3]};
+}
+
+/*-------------------------------------
+ * YCoCgA to RGBA
+-------------------------------------*/
+template <typename T>
+inline SR_ColorRGBAType<T> rgb_cast(const SR_ColorTypeYCoCgA<T>& p) noexcept
+{
+    T tmp = p.y - p.cg / (T)2;
+    T g   = p.cg + tmp;
+    T b   = tmp - p.co / (T)2;
+    T r   = b + p.co;
+
+    return SR_ColorRGBAType<T>{r, g, b, p.a};
+}
+
+#endif
+
+
+
 #endif /* SR_COLOR_TYPE_HPP */
 
