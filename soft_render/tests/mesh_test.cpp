@@ -7,6 +7,7 @@
 
 #include "lightsky/utils/Time.hpp"
 
+#include "soft_render/SR_Config.hpp"
 #include "soft_render/SR_Context.hpp"
 #include "soft_render/SR_Framebuffer.hpp"
 #include "soft_render/SR_ImgFilePPM.hpp"
@@ -26,11 +27,11 @@ namespace utils = ls::utils;
 
 
 #ifndef IMAGE_WIDTH
-    #define IMAGE_WIDTH 1280
+    #define IMAGE_WIDTH 1920
 #endif /* IMAGE_WIDTH */
 
 #ifndef IMAGE_HEIGHT
-    #define IMAGE_HEIGHT 720
+    #define IMAGE_HEIGHT 1080
 #endif /* IMAGE_HEIGHT */
 
 
@@ -93,7 +94,7 @@ bool _mesh_test_frag_shader(SR_FragmentParam& fragParams)
     math::vec4              pixel;
 
     // normalize the texture colors to within (0.f, 1.f)
-    math::vec3_t<uint8_t>&& pixel8 = albedo->nearest<math::vec3_t<uint8_t>>(uv[0], uv[1]);
+    math::vec3_t<uint8_t>&& pixel8 = albedo->bilinear<math::vec3_t<uint8_t>>(uv[0], uv[1]);
     math::vec4_t<uint8_t> pixelF{pixel8[0], pixel8[1], pixel8[2], 200};
     pixel = color_cast<float, uint8_t>(pixelF);
 
@@ -117,9 +118,9 @@ SR_FragmentShader mesh_test_frag_shader()
     SR_FragmentShader shader;
     shader.numVaryings = 3;
     shader.numOutputs  = 1;
-    shader.blend       = SR_BLEND_ALPHA;
+    shader.blend       = SR_BLEND_OFF;//ALPHA;
     shader.depthTest   = SR_DEPTH_TEST_ON;
-    shader.depthMask   = SR_DEPTH_MASK_OFF;
+    shader.depthMask   = SR_DEPTH_MASK_ON;
     shader.shader      = _mesh_test_frag_shader;
 
     return shader;
@@ -176,7 +177,7 @@ utils::Pointer<SR_SceneGraph> mesh_test_create_context()
     assert(retCode == 0);
 
     // Always make sure the scene graph is updated before rendering
-    pGraph->mCurrentTransforms[0].scale(math::vec3{0.01f});
+    pGraph->mCurrentTransforms[0].scale(math::vec3{1.f});
     pGraph->update();
 
     const SR_VertexShader&&   vertShader = mesh_test_vert_shader();
