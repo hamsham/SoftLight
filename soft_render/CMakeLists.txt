@@ -135,6 +135,7 @@ set(SR_LIB_HEADERS
     include/soft_render/SR_KeySym.hpp
     include/soft_render/SR_Material.hpp
     include/soft_render/SR_Mesh.hpp
+    include/soft_render/SR_PackedVertex.hpp
     include/soft_render/SR_Plane.hpp
     include/soft_render/SR_RenderWindow.hpp
     include/soft_render/SR_ScanlineBounds.hpp
