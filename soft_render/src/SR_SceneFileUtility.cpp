@@ -7,6 +7,7 @@
 
 #include "soft_render/SR_BoundingBox.hpp"
 #include "soft_render/SR_Geometry.hpp"
+#include "soft_render/SR_PackedVertex.hpp"
 #include "soft_render/SR_SceneFileLoader.hpp"
 #include "soft_render/SR_SceneFileUtility.hpp"
 #include "soft_render/SR_Texture.hpp"
@@ -43,7 +44,7 @@ SR_RenderMode sr_convert_assimp_draw_mode(const aiMesh* const pMesh) noexcept
 /*-------------------------------------
  * Convert Assimp vertex attributes into internal enumerations
 -------------------------------------*/
-SR_CommonVertType sr_convert_assimp_verts(const aiMesh* const pMesh) noexcept
+SR_CommonVertType sr_convert_assimp_verts(const aiMesh* const pMesh, bool packNorms) noexcept
 {
     std::underlying_type<SR_CommonVertType>::type vertTypes = 0;
 
@@ -64,12 +65,14 @@ SR_CommonVertType sr_convert_assimp_verts(const aiMesh* const pMesh) noexcept
 
     if (pMesh->HasNormals())
     {
-        vertTypes |= SR_CommonVertType::NORMAL_VERTEX;
+        vertTypes |= packNorms ? SR_CommonVertType::PACKED_NORMAL_VERTEX : SR_CommonVertType::NORMAL_VERTEX;
     }
 
     if (pMesh->HasTangentsAndBitangents())
     {
-        vertTypes |= SR_CommonVertType::TANGENT_VERTEX | SR_CommonVertType::BITANGENT_VERTEX;
+        vertTypes |= packNorms
+            ? (SR_CommonVertType::PACKED_TANGENT_VERTEX | SR_CommonVertType::PACKED_BITANGENT_VERTEX)
+            : (SR_CommonVertType::TANGENT_VERTEX | SR_CommonVertType::BITANGENT_VERTEX);
     }
 
     if (pMesh->HasBones())
@@ -221,6 +224,25 @@ char* sr_calc_mesh_geometry_norm(
 
 
 /*-------------------------------------
+ * Convert Assimp Normals to Internal Normals.
+-------------------------------------*/
+char* sr_calc_mesh_geometry_norm_packed(
+    const unsigned index,
+    const aiMesh* const pMesh,
+    char* pVbo
+) noexcept
+{
+    const aiVector3D* const pInNorms = pMesh->mNormals;
+
+    const aiVector3D&  inNorm = pInNorms[index];
+    const math::vec3&& n      = sr_convert_assimp_vector(inNorm);
+
+    return set_mesh_vertex_data(pVbo, sr_pack_vertex_2_10_10_10(math::normalize(n)));
+}
+
+
+
+/*-------------------------------------
  * Convert Assimp Tangents & BiTangents to Internal ones.
  * Add an index for each submesh to the VBO.
 -------------------------------------*/
@@ -235,6 +257,25 @@ char* sr_calc_mesh_geometry_tangent(
     const math::vec3&& t     = sr_convert_assimp_vector(inTng);
 
     return set_mesh_vertex_data(pVbo, math::normalize(t));
+}
+
+
+
+/*-------------------------------------
+ * Convert Assimp Tangents & BiTangents to Internal ones.
+ * Add an index for each submesh to the VBO.
+-------------------------------------*/
+char* sr_calc_mesh_geometry_tangent_packed(
+    const unsigned index,
+    const aiMesh* const pMesh,
+    char* pVbo,
+    const SR_CommonVertType tangentType
+) noexcept
+{
+    const aiVector3D&  inTng = (tangentType == SR_CommonVertType::PACKED_TANGENT_VERTEX) ? pMesh->mTangents[index] : pMesh->mBitangents[index];
+    const math::vec3&& t     = sr_convert_assimp_vector(inTng);
+
+    return set_mesh_vertex_data(pVbo, sr_pack_vertex_2_10_10_10(math::normalize(t)));
 }
 
 
@@ -301,6 +342,21 @@ unsigned sr_upload_mesh_vertices(
         if (vertTypes & SR_CommonVertType::BITANGENT_VERTEX)
         {
             pVboIter = sr_calc_mesh_geometry_tangent(i, pMesh, pVboIter, SR_CommonVertType::BITANGENT_VERTEX);
+        }
+
+        if (vertTypes & SR_CommonVertType::PACKED_NORMAL_VERTEX)
+        {
+            pVboIter = sr_calc_mesh_geometry_norm_packed(i, pMesh, pVboIter);
+        }
+
+        if (vertTypes & SR_CommonVertType::PACKED_TANGENT_VERTEX)
+        {
+            pVboIter = sr_calc_mesh_geometry_tangent_packed(i, pMesh, pVboIter, SR_CommonVertType::PACKED_TANGENT_VERTEX);
+        }
+
+        if (vertTypes & SR_CommonVertType::PACKED_BITANGENT_VERTEX)
+        {
+            pVboIter = sr_calc_mesh_geometry_tangent_packed(i, pMesh, pVboIter, SR_CommonVertType::PACKED_BITANGENT_VERTEX);
         }
 
         if (vertTypes & SR_CommonVertType::BONE_VERTEX)

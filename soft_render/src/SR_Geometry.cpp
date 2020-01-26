@@ -44,6 +44,21 @@ constexpr char VERT_ATTRIB_NAME_TANGENT[] = "tangAttrib";
 constexpr char VERT_ATTRIB_NAME_BITANGENT[] = "btngAttrib";
 
 /**
+ * @brief Common name for a vertex attribute containing packed vertex normals.
+ */
+constexpr char VERT_ATTRIB_NAME_PACKED_NORMAL[] = "normAttribP";
+
+/**
+ * @brief Common name for a vertex attribute containing packed vertex tangents.
+ */
+constexpr char VERT_ATTRIB_NAME_PACKED_TANGENT[] = "tangAttribP";
+
+/**
+ * @brief Common name for a vertex attribute containing packed vertex bi-tangents.
+ */
+constexpr char VERT_ATTRIB_NAME_PACKED_BITANGENT[] = "btngAttribP";
+
+/**
  * @brief Common name for a vertex attribute containing model matrices.
  */
 constexpr char VERT_ATTRIB_NAME_MODEL_MATRIX[] = "modelMatAttrib";
@@ -220,6 +235,18 @@ unsigned sr_vertex_attrib_offset(const SR_CommonVertType vertexTypes, const SR_C
                     numBytes += sr_bytes_per_vertex(VERTEX_DATA_FLOAT, VERTEX_DIMENSION_3);
                     break;
 
+                case PACKED_NORMAL_VERTEX:
+                    numBytes += sr_bytes_per_vertex(VERTEX_DATA_INT, VERTEX_DIMENSION_1);
+                    break;
+
+                case PACKED_TANGENT_VERTEX:
+                    numBytes += sr_bytes_per_vertex(VERTEX_DATA_INT, VERTEX_DIMENSION_1);
+                    break;
+
+                case PACKED_BITANGENT_VERTEX:
+                    numBytes += sr_bytes_per_vertex(VERTEX_DATA_INT, VERTEX_DIMENSION_1);
+                    break;
+
                 case MODEL_MAT_VERTEX:
                     numBytes += sr_bytes_per_vertex(VERTEX_DATA_FLOAT, VERTEX_DIMENSION_4) * 4;
                     break;
@@ -314,6 +341,15 @@ SR_Dimension sr_dimens_of_vertex(const SR_CommonVertType vertType)
         case BITANGENT_VERTEX:
             return VERTEX_DIMENSION_3;
 
+        case PACKED_NORMAL_VERTEX:
+            return VERTEX_DIMENSION_1;
+
+        case PACKED_TANGENT_VERTEX:
+            return VERTEX_DIMENSION_1;
+
+        case PACKED_BITANGENT_VERTEX:
+            return VERTEX_DIMENSION_1;
+
         case MODEL_MAT_VERTEX:
             return VERTEX_DIMENSION_4;
 
@@ -381,6 +417,15 @@ SR_DataType sr_type_of_vertex(const SR_CommonVertType vertType)
         case BITANGENT_VERTEX:
             return VERTEX_DATA_FLOAT;
 
+        case PACKED_NORMAL_VERTEX:
+            return VERTEX_DATA_INT;
+
+        case PACKED_TANGENT_VERTEX:
+            return VERTEX_DATA_INT;
+
+        case PACKED_BITANGENT_VERTEX:
+            return VERTEX_DATA_INT;
+
         case MODEL_MAT_VERTEX:
             return VERTEX_DATA_FLOAT;
 
@@ -436,6 +481,9 @@ const char* const* sr_common_vertex_names() noexcept
         VERT_ATTRIB_NAME_NORMAL,
         VERT_ATTRIB_NAME_TANGENT,
         VERT_ATTRIB_NAME_BITANGENT,
+        VERT_ATTRIB_NAME_PACKED_NORMAL,
+        VERT_ATTRIB_NAME_PACKED_TANGENT,
+        VERT_ATTRIB_NAME_PACKED_BITANGENT,
         VERT_ATTRIB_NAME_MODEL_MATRIX,
         VERT_ATTRIB_NAME_BONE_ID,
         VERT_ATTRIB_NAME_BONE_WEIGHT,

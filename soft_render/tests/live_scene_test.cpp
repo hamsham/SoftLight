@@ -20,6 +20,7 @@
 #include "soft_render/SR_Framebuffer.hpp"
 #include "soft_render/SR_KeySym.hpp"
 #include "soft_render/SR_Material.hpp"
+#include "soft_render/SR_PackedVertex.hpp"
 #include "soft_render/SR_Plane.hpp"
 #include "soft_render/SR_RenderWindow.hpp"
 #include "soft_render/SR_SceneFileLoader.hpp"
@@ -41,7 +42,7 @@
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SR_TEST_MAX_THREADS
-    #define SR_TEST_MAX_THREADS 4//(ls::math::max<unsigned>(std::thread::hardware_concurrency()/2, 1))
+    #define SR_TEST_MAX_THREADS (ls::math::max<unsigned>(std::thread::hardware_concurrency()/2, 1))
 #endif /* SR_TEST_MAX_THREADS */
 
 #ifndef SR_TEST_USE_PBR
@@ -196,15 +197,15 @@ SR_FragmentShader box_frag_shader()
 math::vec4 _normal_vert_shader_impl(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4* varyings)
 {
     // Used to retrieve packed verex data in a single call
-    typedef Tuple<math::vec3, math::vec3> Vertex;
+    typedef Tuple<math::vec3, int32_t> Vertex;
 
     const MeshUniforms* pUniforms = uniforms->as<MeshUniforms>();
     const Vertex*       v         = vbo.element<const Vertex>(vao.offset(0, vertId));
     const math::vec3&   vert      = v->const_element<0>();
-    const math::vec3&   norm      = v->const_element<1>();
+    const math::vec4&&  norm      = sr_unpack_vertex_vec4(v->const_element<1>());
 
     varyings[0] = pUniforms->modelMatrix * math::vec4_cast(vert, 0.f);
-    varyings[1] = pUniforms->modelMatrix * math::vec4_cast(norm, 0.f);
+    varyings[1] = math::normalize(pUniforms->modelMatrix * norm);
 
     return pUniforms->mvpMatrix * math::vec4_cast(vert, 1.f);
 }
@@ -286,17 +287,17 @@ SR_FragmentShader normal_frag_shader()
 math::vec4 _texture_vert_shader_impl(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4* varyings)
 {
     // Used to retrieve packed verex data in a single call
-    typedef Tuple<math::vec3, math::vec2, math::vec3> Vertex;
+    typedef Tuple<math::vec3, math::vec2, int32_t> Vertex;
 
     const MeshUniforms* pUniforms = uniforms->as<MeshUniforms>();
     const Vertex&       v         = *vbo.element<const Vertex>(vao.offset(0, vertId));
     const math::vec3&   vert      = v.const_element<0>();
     const math::vec2&   uv        = v.const_element<1>();
-    const math::vec3&   norm      = v.const_element<2>();
+    const math::vec4&&  norm      = sr_unpack_vertex_vec4(v.const_element<2>());
 
     varyings[0] = pUniforms->modelMatrix * math::vec4_cast(vert, 0.f);
     varyings[1] = math::vec4_cast(uv, 0.f, 0.f);
-    varyings[2] = math::normalize(pUniforms->modelMatrix * math::vec4_cast(norm, 0.f));
+    varyings[2] = math::normalize(pUniforms->modelMatrix * norm);
 
     return pUniforms->mvpMatrix * math::vec4_cast(vert, 1.f);
 }
@@ -801,6 +802,7 @@ utils::Pointer<SR_SceneGraph> create_context()
     int retCode = 0;
 
     SR_SceneFileLoader meshLoader;
+    SR_SceneLoadOpts opts;
     utils::Pointer<SR_SceneGraph> pGraph{new SR_SceneGraph{}};
     SR_Context& context = pGraph->mContext;
     size_t fboId   = context.create_framebuffer();
@@ -840,8 +842,9 @@ utils::Pointer<SR_SceneGraph> create_context()
     assert(retCode == 0);
 #endif
 
-    retCode = meshLoader.load("testdata/sibenik/sibenik.obj");
-    //retCode = meshLoader.load("testdata/sponza/sponza.obj");
+    opts.packNormals = true;
+    retCode = meshLoader.load("testdata/sibenik/sibenik.obj", opts);
+    //retCode = meshLoader.load("testdata/sponza/sponza.obj", opts);
     assert(retCode != 0);
 
     retCode = pGraph->import(meshLoader.data());

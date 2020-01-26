@@ -129,6 +129,19 @@ SR_VaoGroup& SR_VaoGroup::operator=(SR_VaoGroup&& v) noexcept
 
 
 /*-----------------------------------------------------------------------------
+ * SR_SceneLoadOpts Structure
+-----------------------------------------------------------------------------*/
+SR_SceneLoadOpts sr_default_scene_load_opts() noexcept
+{
+    SR_SceneLoadOpts opts;
+    opts.packNormals = false;
+
+    return opts;
+}
+
+
+
+/*-----------------------------------------------------------------------------
  * SR_SceneFilePreload Class
 -----------------------------------------------------------------------------*/
 /*-------------------------------------
@@ -146,6 +159,7 @@ SR_SceneFilePreload::~SR_SceneFilePreload() noexcept
 -------------------------------------*/
 SR_SceneFilePreload::SR_SceneFilePreload() noexcept :
     mFilepath{},
+    mLoadOpts{sr_default_scene_load_opts()},
     mImporter{nullptr},
     mSceneInfo{},
     mSceneData{},
@@ -161,6 +175,7 @@ SR_SceneFilePreload::SR_SceneFilePreload() noexcept :
 -------------------------------------*/
 SR_SceneFilePreload::SR_SceneFilePreload(SR_SceneFilePreload&& s) noexcept :
     mFilepath{std::move(s.mFilepath)},
+    mLoadOpts{std::move(s.mLoadOpts)},
     mImporter{std::move(s.mImporter)},
     mSceneInfo{std::move(s.mSceneInfo)},
     mSceneData{std::move(s.mSceneData)},
@@ -179,6 +194,7 @@ SR_SceneFilePreload& SR_SceneFilePreload::operator=(SR_SceneFilePreload&& s) noe
     unload();
 
     mFilepath = std::move(s.mFilepath);
+    mLoadOpts = std::move(s.mLoadOpts);
     mImporter = std::move(s.mImporter);
     mSceneInfo = std::move(s.mSceneInfo);
     mSceneData = std::move(s.mSceneData);
@@ -198,6 +214,8 @@ void SR_SceneFilePreload::unload() noexcept
 {
     mFilepath.clear();
 
+    mLoadOpts = sr_default_scene_load_opts();
+
     mImporter.reset();
 
     mSceneInfo = SR_SceneFileMeta{};
@@ -216,11 +234,13 @@ void SR_SceneFilePreload::unload() noexcept
 /*-------------------------------------
  * Load a set of meshes from a file
 -------------------------------------*/
-bool SR_SceneFilePreload::load(const std::string& filename) noexcept
+bool SR_SceneFilePreload::load(const std::string& filename, const SR_SceneLoadOpts& opts) noexcept
 {
     unload();
 
     LS_LOG_MSG("Attempting to load 3D mesh file ", filename, '.');
+
+    mLoadOpts = opts;
 
     // load
     mImporter.reset(new Assimp::Importer);
@@ -318,7 +338,7 @@ const aiScene* SR_SceneFilePreload::preload_mesh_data() noexcept
     for (unsigned meshIter = 0; meshIter < pScene->mNumMeshes; ++meshIter)
     {
         const aiMesh* const pMesh = pScene->mMeshes[meshIter];
-        const SR_CommonVertType inVertType = sr_convert_assimp_verts(pMesh);
+        const SR_CommonVertType inVertType = sr_convert_assimp_verts(pMesh, mLoadOpts.packNormals);
         SR_VaoGroup* outMeshMarker = sr_get_matching_marker(inVertType, mVaoGroups);
 
         // Keep track of where in the output VBO a mesh's data should be placed.
@@ -493,16 +513,16 @@ void SR_SceneFileLoader::unload() noexcept
 /*-------------------------------------
  * Load a set of meshes from a file
 -------------------------------------*/
-bool SR_SceneFileLoader::load(const std::string& filename) noexcept
+bool SR_SceneFileLoader::load(const std::string& filename, const SR_SceneLoadOpts& opts) noexcept
 {
     unload();
 
-    if (!mPreloader.load(filename))
+    if (!mPreloader.load(filename, opts))
     {
         return false;
     }
 
-    return load_scene(mPreloader.mImporter->GetScene());
+    return load_scene(mPreloader.mImporter->GetScene(), opts);
 }
 
 
@@ -519,7 +539,7 @@ bool SR_SceneFileLoader::load(SR_SceneFilePreload&& p) noexcept
     if (p.is_loaded())
     {
         mPreloader = std::move(p);
-        return load_scene(mPreloader.mImporter->GetScene());
+        return load_scene(mPreloader.mImporter->GetScene(), p.mLoadOpts);
     }
 
     return false;
@@ -530,7 +550,7 @@ bool SR_SceneFileLoader::load(SR_SceneFilePreload&& p) noexcept
 /*-------------------------------------
  * Load a set of meshes from a file
 -------------------------------------*/
-bool SR_SceneFileLoader::load_scene(const aiScene* const pScene) noexcept
+bool SR_SceneFileLoader::load_scene(const aiScene* const pScene, const SR_SceneLoadOpts& opts) noexcept
 {
     const std::string& filename = mPreloader.mFilepath;
     SR_SceneGraph& sceneData = mPreloader.mSceneData;
@@ -580,7 +600,7 @@ bool SR_SceneFileLoader::load_scene(const aiScene* const pScene) noexcept
         for (unsigned i = 0; i < pScene->mNumMeshes; ++i)
         {
             const aiMesh* const pMesh = pScene->mMeshes[i];
-            const SR_CommonVertType inVertType = sr_convert_assimp_verts(pMesh);
+            const SR_CommonVertType inVertType = sr_convert_assimp_verts(pMesh, opts.packNormals);
             SR_VaoGroup* outMeshMarker = sr_get_matching_marker(inVertType, tempVaoGroups);
 
             if (!import_bone_data(pMesh, outMeshMarker->baseVert))
@@ -593,7 +613,7 @@ bool SR_SceneFileLoader::load_scene(const aiScene* const pScene) noexcept
         }
     }
 
-    if (!import_mesh_data(pScene))
+    if (!import_mesh_data(pScene, opts))
     {
         LS_LOG_ERR("\tError: Failed to load the 3D mesh ", filename, "!\n");
         unload();
@@ -947,7 +967,7 @@ SR_Texture* SR_SceneFileLoader::load_texture_at_path(
  * preprocess step to allocate and
  * import mesh information
 -------------------------------------*/
-bool SR_SceneFileLoader::import_mesh_data(const aiScene* const pScene) noexcept
+bool SR_SceneFileLoader::import_mesh_data(const aiScene* const pScene, const SR_SceneLoadOpts& opts) noexcept
 {
     LS_LOG_MSG("\tImporting vertices and indices of individual meshes from a file.");
 
@@ -968,7 +988,7 @@ bool SR_SceneFileLoader::import_mesh_data(const aiScene* const pScene) noexcept
     for (unsigned meshId = 0; meshId < pScene->mNumMeshes; ++meshId)
     {
         const aiMesh* const     pMesh       = pScene->mMeshes[meshId];
-        const SR_CommonVertType vertType    = sr_convert_assimp_verts(pMesh);
+        const SR_CommonVertType vertType    = sr_convert_assimp_verts(pMesh, opts.packNormals);
         const size_t            meshGroupId = get_mesh_group_marker(vertType, mPreloader.mVaoGroups);
         SR_VaoGroup&            meshGroup   = tempVboMarks[meshGroupId];
         size_t                  numIndices  = 0;
@@ -982,7 +1002,11 @@ bool SR_SceneFileLoader::import_mesh_data(const aiScene* const pScene) noexcept
 
         // get the offset to the current mesh so it can be sent to a VBO
         const size_t meshOffset = meshGroup.vboOffset + meshGroup.meshOffset;
-        sr_upload_mesh_vertices(pMesh, meshGroup.baseVert, pVbo + meshOffset, meshGroup.vertType, mPreloader.mBones);
+        sr_upload_mesh_vertices(
+            pMesh, meshGroup.baseVert,
+            pVbo + meshOffset,
+            meshGroup.vertType,
+            mPreloader.mBones);
 
         // increment the mesh offset for the next mesh
         meshGroup.meshOffset += sr_vertex_stride(meshGroup.vertType) * pMesh->mNumVertices;

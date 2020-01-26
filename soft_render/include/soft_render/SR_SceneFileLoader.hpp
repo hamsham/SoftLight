@@ -82,6 +82,30 @@ struct SR_SceneFileMeta
 };
 
 
+
+/*-----------------------------------------------------------------------------
+ * @brief SR_SceneLoadOpts Structure
+ *
+ * This structure can be passed into the scene loader to adjust the output
+ * data of a scene being loaded.
+-----------------------------------------------------------------------------*/
+struct SR_SceneLoadOpts
+{
+    bool packNormals;
+};
+
+
+
+/**
+ * @brief Retrieve the default scene loading options.
+ *
+ * @return A SR_SceneLoadOpts structure, containing standard data-modification
+ * options which will affect a scene being loaded.
+ */
+SR_SceneLoadOpts sr_default_scene_load_opts() noexcept;
+
+
+
 /**----------------------------------------------------------------------------
  * Preloading structure which allows a file to load in a separate thread.
 -----------------------------------------------------------------------------*/
@@ -92,6 +116,8 @@ class SR_SceneFilePreload
 
   private:
     std::string mFilepath;
+
+    SR_SceneLoadOpts mLoadOpts;
 
     ls::utils::Pointer<Assimp::Importer> mImporter;
 
@@ -181,7 +207,7 @@ class SR_SceneFilePreload
      * @return true if the file was successfully loaded into memory. False
      * if not.
      */
-    bool load(const std::string& filename) noexcept;
+    bool load(const std::string& filename, const SR_SceneLoadOpts& opts = sr_default_scene_load_opts()) noexcept;
 
     /**
      * @brief Verify that data loaded successfully.
@@ -205,7 +231,7 @@ class SR_SceneFileLoader
 
     // Private functions
   private:
-    bool load_scene(const aiScene* const pScene) noexcept;
+    bool load_scene(const aiScene* const pScene, const SR_SceneLoadOpts& opts) noexcept;
 
     bool allocate_gpu_data() noexcept;
 
@@ -221,7 +247,7 @@ class SR_SceneFileLoader
 
     SR_Texture* load_texture_at_path(const std::string& path, SR_ImgFile& imgLoader, int wrapMode) noexcept;
 
-    bool import_mesh_data(const aiScene* const pScene) noexcept;
+    bool import_mesh_data(const aiScene* const pSceneopts, const SR_SceneLoadOpts& opts) noexcept;
 
     bool import_bone_data(const aiMesh* const pMesh, unsigned baseVertex) noexcept;
 
@@ -385,7 +411,7 @@ class SR_SceneFileLoader
      *
      * @return true if the file was successfully loaded. False if not.
      */
-    bool load(const std::string& filename) noexcept;
+    bool load(const std::string& filename, const SR_SceneLoadOpts& opts = sr_default_scene_load_opts()) noexcept;
 
     /**
      * @brief Import in-memory mesh data, preloaded from a file.
