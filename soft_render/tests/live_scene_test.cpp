@@ -122,9 +122,9 @@ struct MeshUniforms
 /*--------------------------------------
  * Vertex Shader
 --------------------------------------*/
-math::vec4 _box_vert_shader_impl(const size_t vertId, const SR_VertexArray&, const SR_VertexBuffer&, const SR_UniformBuffer* uniforms, math::vec4* varyings)
+math::vec4 _box_vert_shader_impl(SR_VertexParam& param)
 {
-    const MeshUniforms* pUniforms = uniforms->as<MeshUniforms>();
+    const MeshUniforms* pUniforms = param.pUniforms->as<MeshUniforms>();
     const math::vec4&   trr       = pUniforms->aabb->max_point();
     const math::vec4&   bfl       = pUniforms->aabb->min_point();
     const math::vec4    points[]  = {
@@ -138,14 +138,14 @@ math::vec4 _box_vert_shader_impl(const size_t vertId, const SR_VertexArray&, con
         {bfl[0], trr[1], bfl[2], 1.f}
     };
 
-    varyings[0] = math::vec4{
-        (vertId % 3 == 0) ? 1.f : 0.f,
-        (vertId % 3 == 1) ? 1.f : 0.f,
-        (vertId % 3 == 2) ? 1.f : 0.f,
+    param.pVaryings[0] = math::vec4{
+        (param.vertId % 3 == 0) ? 1.f : 0.f,
+        (param.vertId % 3 == 1) ? 1.f : 0.f,
+        (param.vertId % 3 == 2) ? 1.f : 0.f,
         1.f
     };
 
-    return pUniforms->mvpMatrix * points[vertId % LS_ARRAY_SIZE(points)];
+    return pUniforms->mvpMatrix * points[param.vertId % LS_ARRAY_SIZE(points)];
 }
 
 
@@ -195,18 +195,18 @@ SR_FragmentShader box_frag_shader()
 /*--------------------------------------
  * Vertex Shader
 --------------------------------------*/
-math::vec4 _normal_vert_shader_impl(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4* varyings)
+math::vec4 _normal_vert_shader_impl(SR_VertexParam& param)
 {
     // Used to retrieve packed verex data in a single call
     typedef Tuple<math::vec3, int32_t> Vertex;
 
-    const MeshUniforms* pUniforms = uniforms->as<MeshUniforms>();
-    const Vertex*       v         = vbo.element<const Vertex>(vao.offset(0, vertId));
+    const MeshUniforms* pUniforms = param.pUniforms->as<MeshUniforms>();
+    const Vertex*       v         = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));
     const math::vec3&   vert      = v->const_element<0>();
     const math::vec4&&  norm      = sr_unpack_vertex_vec4(v->const_element<1>());
 
-    varyings[0] = pUniforms->modelMatrix * math::vec4_cast(vert, 0.f);
-    varyings[1] = math::normalize(pUniforms->modelMatrix * norm);
+    param.pVaryings[0] = pUniforms->modelMatrix * math::vec4_cast(vert, 0.f);
+    param.pVaryings[1] = math::normalize(pUniforms->modelMatrix * norm);
 
     return pUniforms->mvpMatrix * math::vec4_cast(vert, 1.f);
 }
@@ -285,20 +285,20 @@ SR_FragmentShader normal_frag_shader()
 /*--------------------------------------
  * Vertex Shader
 --------------------------------------*/
-math::vec4 _texture_vert_shader_impl(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4* varyings)
+math::vec4 _texture_vert_shader_impl(SR_VertexParam& param)
 {
     // Used to retrieve packed verex data in a single call
     typedef Tuple<math::vec3, math::vec2, int32_t> Vertex;
 
-    const MeshUniforms* pUniforms = uniforms->as<MeshUniforms>();
-    const Vertex&       v         = *vbo.element<const Vertex>(vao.offset(0, vertId));
-    const math::vec3&   vert      = v.const_element<0>();
-    const math::vec2&   uv        = v.const_element<1>();
-    const math::vec4&&  norm      = sr_unpack_vertex_vec4(v.const_element<2>());
+    const MeshUniforms* pUniforms = param.pUniforms->as<MeshUniforms>();
+    const Vertex*       v         = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));
+    const math::vec3&   vert      = v->const_element<0>();
+    const math::vec2&   uv        = v->const_element<1>();
+    const math::vec4&&  norm      = sr_unpack_vertex_vec4(v->const_element<2>());
 
-    varyings[0] = pUniforms->modelMatrix * math::vec4_cast(vert, 0.f);
-    varyings[1] = math::vec4_cast(uv, 0.f, 0.f);
-    varyings[2] = math::normalize(pUniforms->modelMatrix * norm);
+    param.pVaryings[0] = pUniforms->modelMatrix * math::vec4_cast(vert, 0.f);
+    param.pVaryings[1] = math::vec4_cast(uv, 0.f, 0.f);
+    param.pVaryings[2] = math::normalize(pUniforms->modelMatrix * norm);
 
     return pUniforms->mvpMatrix * math::vec4_cast(vert, 1.f);
 }

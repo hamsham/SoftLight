@@ -33,8 +33,55 @@ enum SR_RenderMode : uint32_t; // SR_Geometry.hpp
 
 
 /*-----------------------------------------------------------------------------
- *
+ * Vertex Shaders
 -----------------------------------------------------------------------------*/
+/*-------------------------------------
+ * Triangle Cull Mode
+-------------------------------------*/
+enum SR_CullMode : uint8_t
+{
+    SR_CULL_BACK_FACE,
+    SR_CULL_FRONT_FACE,
+    SR_CULL_OFF
+};
+
+
+
+/*-------------------------------------
+ * Parameters which go into a vert shader.
+-------------------------------------*/
+struct SR_VertexParam
+{
+    const SR_UniformBuffer* pUniforms;
+
+    size_t vertId;
+    const SR_VertexArray* pVao;
+    const SR_VertexBuffer* pVbo;
+
+    ls::math::vec4* pVaryings;
+};
+
+
+
+/*-------------------------------------
+ * Vertex Shader Configuration.
+-------------------------------------*/
+struct SR_VertexShader
+{
+    uint8_t numVaryings;
+    SR_CullMode cullMode;
+
+    ls::math::vec4_t<float> (*shader)(SR_VertexParam& vertParams);
+};
+
+
+
+/*-----------------------------------------------------------------------------
+ * Fragment Shaders
+-----------------------------------------------------------------------------*/
+/*-------------------------------------
+ * Fragment Blending
+-------------------------------------*/
 enum SR_BlendMode : uint8_t
 {
     SR_BLEND_OFF,
@@ -46,9 +93,9 @@ enum SR_BlendMode : uint8_t
 
 
 
-/*-----------------------------------------------------------------------------
- *
------------------------------------------------------------------------------*/
+/*-------------------------------------
+ * Depth-Write Configuration
+-------------------------------------*/
 enum SR_DepthMask : uint8_t
 {
     SR_DEPTH_MASK_OFF,
@@ -57,9 +104,9 @@ enum SR_DepthMask : uint8_t
 
 
 
-/*-----------------------------------------------------------------------------
- *
------------------------------------------------------------------------------*/
+/*-------------------------------------
+ * Depth Test Configuration
+-------------------------------------*/
 enum SR_DepthTest : uint8_t
 {
     SR_DEPTH_TEST_OFF,
@@ -68,40 +115,9 @@ enum SR_DepthTest : uint8_t
 
 
 
-/*-----------------------------------------------------------------------------
- *
------------------------------------------------------------------------------*/
-enum SR_CullMode : uint8_t
-{
-    SR_CULL_BACK_FACE,
-    SR_CULL_FRONT_FACE,
-    SR_CULL_OFF
-};
-
-
-
-/*-----------------------------------------------------------------------------
- *
------------------------------------------------------------------------------*/
-struct SR_VertexShader
-{
-    uint8_t numVaryings;
-    SR_CullMode cullMode;
-
-    ls::math::vec4_t<float> (*shader)(
-        const size_t             vertId,
-        const SR_VertexArray&    vao,
-        const SR_VertexBuffer&   vbo,
-        const SR_UniformBuffer*  uniforms,
-        ls::math::vec4_t<float>* varyings
-    );
-};
-
-
-
-/*-----------------------------------------------------------------------------
- *
------------------------------------------------------------------------------*/
+/*-------------------------------------
+ * Parameters which go into a frag shader.
+-------------------------------------*/
 struct SR_FragmentParam
 {
     alignas(sizeof(ls::math::vec4)) ls::math::vec4 fragCoord;
@@ -117,9 +133,9 @@ struct SR_FragmentParam
 
 
 
-/*-----------------------------------------------------------------------------
- *
------------------------------------------------------------------------------*/
+/*-------------------------------------
+ * Fragment Shader Configuration.
+-------------------------------------*/
 struct SR_FragmentShader
 {
     uint8_t      numVaryings;

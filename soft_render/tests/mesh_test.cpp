@@ -54,16 +54,16 @@ struct MeshTestUniforms
 /*--------------------------------------
  * Vertex Shader
 --------------------------------------*/
-math::vec4 _mesh_test_vert_shader(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4* varyings)
+math::vec4 _mesh_test_vert_shader(SR_VertexParam& param)
 {
-    const MeshTestUniforms* pUniforms = uniforms->as<MeshTestUniforms>();
-    const math::vec3&       vert      = *vbo.element<const math::vec3>(vao.offset(0, vertId));
-    const math::vec2&       uv        = *vbo.element<const math::vec2>(vao.offset(1, vertId));
-    const math::vec3&       norm      = *vbo.element<const math::vec3>(vao.offset(2, vertId));
+    const MeshTestUniforms* pUniforms = param.pUniforms->as<MeshTestUniforms>();
+    const math::vec3&       vert      = *(param.pVbo->element<const math::vec3>(param.pVao->offset(0, param.vertId)));
+    const math::vec2&       uv        = *(param.pVbo->element<const math::vec2>(param.pVao->offset(1, param.vertId)));
+    const math::vec3&       norm      = *(param.pVbo->element<const math::vec3>(param.pVao->offset(2, param.vertId)));
 
-    varyings[0] = pUniforms->modelMatrix * math::vec4{vert[0], vert[1], vert[2], 1.f};
-    varyings[1] = math::vec4{uv.v[0], uv.v[1], 0.f, 0.f};
-    varyings[2] = math::normalize(pUniforms->modelMatrix * math::vec4{norm[0], norm[1], norm[2], 0.f});
+    param.pVaryings[0] = pUniforms->modelMatrix * math::vec4{vert[0], vert[1], vert[2], 1.f};
+    param.pVaryings[1] = math::vec4{uv.v[0], uv.v[1], 0.f, 0.f};
+    param.pVaryings[2] = math::normalize(pUniforms->modelMatrix * math::vec4{norm[0], norm[1], norm[2], 0.f});
 
     return pUniforms->mvpMatrix * math::vec4{vert[0], vert[1], vert[2], 1.f};
 }

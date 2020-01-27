@@ -897,9 +897,7 @@ void SR_VertexProcessor::process_points(const SR_Mesh& m) noexcept
 
     const SR_VertexShader   vertShader  = mShader->mVertShader;
     const auto              shader      = vertShader.shader;
-    const SR_UniformBuffer* pUniforms   = mShader->mUniforms;
     const SR_VertexArray&   vao         = mContext->vao(m.vaoId);
-    const SR_VertexBuffer&  vbo         = mContext->vbo(vao.get_vertex_buffer());
     const float             fboW        = (float)mFbo->width();
     const float             fboH        = (float)mFbo->height();
     const float             widthScale  = fboW * 0.5f;
@@ -910,14 +908,19 @@ void SR_VertexProcessor::process_points(const SR_Mesh& m) noexcept
 
     const bool usingIndices = m.mode == RENDER_MODE_INDEXED_POINTS;
 
+    SR_VertexParam params;
+    params.pUniforms = mShader->mUniforms;
+    params.pVao = &vao;
+    params.pVbo = &mContext->vbo(vao.get_vertex_buffer());
+
     begin += mThreadId;
     const size_t step = mNumThreads;
 
     for (size_t i = begin; i < end; i += step)
     {
-        const size_t vertId0 = usingIndices ? get_next_vertex(pIbo, i) : i;
-
-        vertCoords[0] = shader(vertId0, vao, vbo, pUniforms, pVaryings);
+        params.vertId    = usingIndices ? get_next_vertex(pIbo, i) : i;
+        params.pVaryings = pVaryings;
+        vertCoords[0]    = shader(params);
 
         if (vertCoords[0][3] > 0.f)
         {
@@ -939,9 +942,7 @@ void SR_VertexProcessor::process_lines(const SR_Mesh& m) noexcept
 
     const SR_VertexShader   vertShader  = mShader->mVertShader;
     const auto              shader      = vertShader.shader;
-    const SR_UniformBuffer* pUniforms   = mShader->mUniforms;
     const SR_VertexArray&   vao         = mContext->vao(m.vaoId);
-    const SR_VertexBuffer&  vbo         = mContext->vbo(vao.get_vertex_buffer());
     const float             fboW        = (float)mFbo->width();
     const float             fboH        = (float)mFbo->height();
     const float             widthScale  = fboW * 0.5f;
@@ -952,18 +953,29 @@ void SR_VertexProcessor::process_lines(const SR_Mesh& m) noexcept
 
     const bool usingIndices = m.mode == RENDER_MODE_INDEXED_LINES;
 
+    SR_VertexParam params;
+    params.pUniforms = mShader->mUniforms;
+    params.pVao = &vao;
+    params.pVbo = &mContext->vbo(vao.get_vertex_buffer());
+
     begin += mThreadId * 2u;
     const size_t step = mNumThreads * 2u;
+
+    LS_PREFETCH(params.pUniforms, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_L1);
+    LS_PREFETCH(pVaryings,        LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_L1);
 
     for (size_t i = begin; i < end; i += step)
     {
         const size_t index0  = i;
         const size_t index1  = i + 1;
-        const size_t vertId0 = usingIndices ? get_next_vertex(pIbo, index0) : index0;
-        const size_t vertId1 = usingIndices ? get_next_vertex(pIbo, index1) : index1;
 
-        vertCoords[0] = shader(vertId0, vao, vbo, pUniforms, pVaryings);
-        vertCoords[1] = shader(vertId1, vao, vbo, pUniforms, pVaryings + SR_SHADER_MAX_VARYING_VECTORS);
+        params.vertId    = usingIndices ? get_next_vertex(pIbo, index0) : index0;
+        params.pVaryings = pVaryings;
+        vertCoords[0]    = shader(params);
+
+        params.vertId    = usingIndices ? get_next_vertex(pIbo, index1) : index1;
+        params.pVaryings = pVaryings + SR_SHADER_MAX_VARYING_VECTORS;
+        vertCoords[1]    = shader(params);
 
         if (vertCoords[0][3] >= 0.f && vertCoords[1][3] >= 0.f)
         {
@@ -988,9 +1000,7 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m) noexcept
     const SR_VertexShader   vertShader  = mShader->mVertShader;
     const SR_CullMode       cullMode    = vertShader.cullMode;
     const auto              shader      = vertShader.shader;
-    const SR_UniformBuffer* pUniforms   = mShader->mUniforms;
     const SR_VertexArray&   vao         = mContext->vao(m.vaoId);
-    const SR_VertexBuffer&  vbo         = mContext->vbo(vao.get_vertex_buffer());
     const float             fboW        = (float)mFbo->width();
     const float             fboH        = (float)mFbo->height();
     const float             widthScale  = fboW * 0.5f;
@@ -1001,13 +1011,18 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m) noexcept
 
     const int usingIndices = m.mode & ((RENDER_MODE_INDEXED_TRIANGLES | RENDER_MODE_INDEXED_TRI_WIRE) ^ (RENDER_MODE_TRIANGLES | RENDER_MODE_TRI_WIRE));
 
+    SR_VertexParam params;
+    params.pUniforms = mShader->mUniforms;
+    params.pVao = &vao;
+    params.pVbo = &mContext->vbo(vao.get_vertex_buffer());
+
     #if SR_VERTEX_CACHING_ENABLED
         SR_PTVCache ptvCache{shader, pUniforms, &vao, &vbo};
         const size_t numVaryings = vertShader.numVaryings;
     #endif
 
-    LS_PREFETCH(pUniforms, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_L1);
-    LS_PREFETCH(pVaryings, LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_L1);
+    LS_PREFETCH(params.pUniforms, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_L1);
+    //LS_PREFETCH(pVaryings,        LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_L1);
 
     begin += mThreadId * 3u;
     const size_t step = mNumThreads * 3u;
@@ -1017,13 +1032,21 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m) noexcept
         const math::vec3_t<size_t>&& vertId = usingIndices ? get_next_vertex3(pIbo, i) : math::vec3_t<size_t>{i, i+1, i+2};
 
         #if SR_VERTEX_CACHING_ENABLED
-                ptvCache.query_and_update(vertId[0], vertCoords[0], pVaryings, numVaryings);
-                ptvCache.query_and_update(vertId[1], vertCoords[1], pVaryings + SR_SHADER_MAX_VARYING_VECTORS, numVaryings);
-                ptvCache.query_and_update(vertId[2], vertCoords[2], pVaryings + SR_SHADER_MAX_VARYING_VECTORS * 2, numVaryings);
+            ptvCache.query_and_update(vertId[0], vertCoords[0], pVaryings, numVaryings);
+            ptvCache.query_and_update(vertId[1], vertCoords[1], pVaryings + SR_SHADER_MAX_VARYING_VECTORS, numVaryings);
+            ptvCache.query_and_update(vertId[2], vertCoords[2], pVaryings + SR_SHADER_MAX_VARYING_VECTORS * 2, numVaryings);
         #else
-            vertCoords[0] = shader(vertId[0], vao, vbo, pUniforms, pVaryings);
-            vertCoords[1] = shader(vertId[1], vao, vbo, pUniforms, pVaryings + SR_SHADER_MAX_VARYING_VECTORS);
-            vertCoords[2] = shader(vertId[2], vao, vbo, pUniforms, pVaryings + (SR_SHADER_MAX_VARYING_VECTORS * 2));
+            params.vertId    = vertId[0];
+            params.pVaryings = pVaryings;
+            vertCoords[0]    = shader(params);
+
+            params.vertId    = vertId[1];
+            params.pVaryings = pVaryings + SR_SHADER_MAX_VARYING_VECTORS;
+            vertCoords[1]    = shader(params);
+
+            params.vertId    = vertId[2];
+            params.pVaryings = pVaryings + SR_SHADER_MAX_VARYING_VECTORS * 2;
+            vertCoords[2]    = shader(params);
         #endif
 
         if (cullMode == SR_CULL_BACK_FACE)
@@ -1049,20 +1072,20 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m) noexcept
         }
 
         #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
-        sr_perspective_divide3(vertCoords);
-                sr_world_to_screen_coords_divided3(vertCoords, widthScale, heightScale);
-                push_bin(fboW, fboH, vertCoords, pVaryings);
-        #else
-        if (visStatus == SR_TRIANGLE_FULLY_VISIBLE)
-        {
             sr_perspective_divide3(vertCoords);
             sr_world_to_screen_coords_divided3(vertCoords, widthScale, heightScale);
             push_bin(fboW, fboH, vertCoords, pVaryings);
-        }
-        else
-        {
-            clip_and_process_tris(fboW, fboH, vertCoords, pVaryings);
-        }
+        #else
+            if (visStatus == SR_TRIANGLE_FULLY_VISIBLE)
+            {
+                sr_perspective_divide3(vertCoords);
+                sr_world_to_screen_coords_divided3(vertCoords, widthScale, heightScale);
+                push_bin(fboW, fboH, vertCoords, pVaryings);
+            }
+            else
+            {
+                clip_and_process_tris(fboW, fboH, vertCoords, pVaryings);
+            }
         #endif
     }
 }

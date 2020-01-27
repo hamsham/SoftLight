@@ -99,15 +99,15 @@ struct AnimUniforms
 /*--------------------------------------
  * Vertex Shader
 --------------------------------------*/
-math::vec4 _normal_vert_shader_impl(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4* varyings)
+math::vec4 _normal_vert_shader_impl(SR_VertexParam& param)
 {
-    const AnimUniforms* pUniforms = uniforms->as<AnimUniforms>();
+    const AnimUniforms* pUniforms = param.pUniforms->as<AnimUniforms>();
 
-    const math::vec3& vert = *vbo.element<const math::vec3>(vao.offset(0, vertId));
-    const math::vec3& norm = *vbo.element<const math::vec3>(vao.offset(1, vertId));
+    const math::vec3& vert = *param.pVbo->element<const math::vec3>(param.pVao->offset(0, param.vertId));
+    const math::vec3& norm = *param.pVbo->element<const math::vec3>(param.pVao->offset(1, param.vertId));
 
-    varyings[0] = pUniforms->modelMatrix * math::vec4_cast(vert, 0.f);
-    varyings[1] = pUniforms->modelMatrix * math::vec4_cast(norm, 0.f);
+    param.pVaryings[0] = pUniforms->modelMatrix * math::vec4_cast(vert, 0.f);
+    param.pVaryings[1] = pUniforms->modelMatrix * math::vec4_cast(norm, 0.f);
 
     return pUniforms->vpMatrix * pUniforms->modelMatrix * math::vec4_cast(vert, 1.f);
 }
@@ -170,15 +170,16 @@ SR_FragmentShader normal_frag_shader()
 /*--------------------------------------
  * Vertex Shader
 --------------------------------------*/
-math::vec4 _texture_vert_shader_impl(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4* varyings)
+math::vec4 _texture_vert_shader_impl(SR_VertexParam& param)
 {
-    const AnimUniforms* pUniforms   = uniforms->as<AnimUniforms>();
-    const math::vec3&   vert        = *vbo.element<const math::vec3>( vao.offset(0, vertId));
-    const math::vec2&   uv          = *vbo.element<const math::vec2>( vao.offset(1, vertId));
-    const math::vec3&   norm        = *vbo.element<const math::vec3>( vao.offset(2, vertId));
+    const AnimUniforms* pUniforms   = param.pUniforms->as<AnimUniforms>();
+    const math::vec3&   vert        = *(param.pVbo->element<const math::vec3>(param.pVao->offset(0, param.vertId)));
+    const math::vec2&   uv          = *(param.pVbo->element<const math::vec2>(param.pVao->offset(1, param.vertId)));
+    const math::vec3&   norm        = *(param.pVbo->element<const math::vec3>(param.pVao->offset(2, param.vertId)));
 
-    const math::vec4i&  boneIds     = *vbo.element<const math::vec4i>(vao.offset(3, vertId));
-    const math::vec4&   boneWeights = *vbo.element<const math::vec4>(vao.offset(4, vertId));
+    const math::vec4i&  boneIds     = *(param.pVbo->element<const math::vec4i>(param.pVao->offset(3, param.vertId)));
+    const math::vec4&   boneWeights = *(param.pVbo->element<const math::vec4>(param.pVao->offset(4,  param.vertId)));
+
     const math::mat4*   pBones      = pUniforms->pBones;
     math::mat4&&        boneTrans   = pBones[boneIds[0]] * boneWeights[0];
 
@@ -188,9 +189,9 @@ math::vec4 _texture_vert_shader_impl(const size_t vertId, const SR_VertexArray& 
 
     const math::mat4&& modelPos = pUniforms->modelMatrix * boneTrans;
 
-    varyings[0] = modelPos * math::vec4_cast(vert, 1.f);
-    varyings[1] = math::vec4_cast(uv, 0.f, 0.f);
-    varyings[2] = math::normalize(boneTrans * math::vec4_cast(norm, 0.f));
+    param.pVaryings[0] = modelPos * math::vec4_cast(vert, 1.f);
+    param.pVaryings[1] = math::vec4_cast(uv, 0.f, 0.f);
+    param.pVaryings[2] = math::normalize(boneTrans * math::vec4_cast(norm, 0.f));
 
     return pUniforms->vpMatrix * modelPos * math::vec4_cast(vert, 1.f);
 }

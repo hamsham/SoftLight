@@ -25,10 +25,10 @@ namespace utils = ls::utils;
 /*--------------------------------------
  * Vertex Shader
 --------------------------------------*/
-math::vec4 _line_vert_shader_impl(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer*, math::vec4*)
+math::vec4 _line_vert_shader_impl(SR_VertexParam& param)
 {
     // Using a value of 1000 for the w-component to help with perspective correction.
-    const math::vec3& vert = *vbo.element<const math::vec3>(vao.offset(0, vertId));
+    const math::vec3& vert = *(param.pVbo->element<const math::vec3>(param.pVao->offset(0, param.vertId)));
     return math::ortho(0.f, 640.f, 0.f, 480.f, 0.01f, 100.f) * math::vec4{vert[0], vert[1], vert[2], 1.f};
 }
 

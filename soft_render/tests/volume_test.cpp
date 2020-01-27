@@ -67,10 +67,10 @@ struct VolumeUniforms
 /*--------------------------------------
  * Vertex Shader
 --------------------------------------*/
-math::vec4 _volume_vert_shader(const size_t vertId, const SR_VertexArray& vao, const SR_VertexBuffer& vbo, const SR_UniformBuffer* uniforms, math::vec4*)
+math::vec4 _volume_vert_shader(SR_VertexParam& param)
 {
-    const VolumeUniforms* pUniforms = uniforms->as<VolumeUniforms>();
-    const math::vec3&     vert      = *vbo.element<const math::vec3>(vao.offset(0, vertId));
+    const VolumeUniforms* pUniforms = param.pUniforms->as<VolumeUniforms>();
+    const math::vec3&     vert      = *(param.pVbo->element<const math::vec3>(param.pVao->offset(0, param.vertId)));
     const math::vec3      spacing   = {pUniforms->spacing[0], pUniforms->spacing[1], pUniforms->spacing[2]};
     const math::vec4      worldPos  = math::vec4{vert[0], vert[1], vert[2], 1.f};
 
