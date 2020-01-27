@@ -184,4 +184,81 @@ inline void sr_calc_indexed_parition(size_t totalVerts, size_t numThreads, size_
 
 
 
+/*-----------------------------------------------------------------------------
+ * Constants needed for shader operation
+-----------------------------------------------------------------------------*/
+enum SR_ShaderLimits
+{
+    SR_SHADER_MAX_WORLD_COORDS    = 3,
+    SR_SHADER_MAX_SCREEN_COORDS   = 3,
+    SR_SHADER_MAX_VARYING_VECTORS = 4,
+    SR_SHADER_MAX_FRAG_OUTPUTS    = 4,
+
+    // Maximum number of fragments that get queued before being placed on a
+    // framebuffer.
+        SR_SHADER_MAX_QUEUED_FRAGS    = 16384,
+
+    // Maximum number of vertex groups which get binned before being sent to a
+    // fragment processor. About 16 MB (when multiplied by
+    // sizeof(SR_FragmentBin)).
+        SR_SHADER_MAX_BINNED_PRIMS    = 8192
+};
+
+
+
+/*-----------------------------------------------------------------------------
+ * Intermediate Fragment Storage for Binning
+-----------------------------------------------------------------------------*/
+struct alignas(sizeof(ls::math::vec4)) SR_FragmentBin
+{
+    // 4-byte floats * 4-element vector * 3 vectors-per-tri = 48 bytes
+    ls::math::vec4 mScreenCoords[SR_SHADER_MAX_SCREEN_COORDS];
+
+    // 4-byte floats * 4-element vector * 3 barycentric coordinates = 48 bytes
+    ls::math::vec4 mBarycentricCoords[SR_SHADER_MAX_SCREEN_COORDS];
+
+    // 4-byte floats * 4-element vector * 3-vectors-per-tri * 4 varyings-per-vertex = 192 bytes
+    ls::math::vec4 mVaryings[SR_SHADER_MAX_SCREEN_COORDS * SR_SHADER_MAX_VARYING_VECTORS];
+
+    // 256 bytes = 2048 bits
+};
+
+// Comparison operator for sorting blended fragments by depth
+inline LS_INLINE bool operator < (const SR_FragmentBin& a, const SR_FragmentBin& b) noexcept
+{
+    return *reinterpret_cast<const int32_t*>(a.mScreenCoords[0].v+3) < *reinterpret_cast<const int32_t*>(b.mScreenCoords[0].v+3);
+}
+
+// Comparison operator for sorting fragments by depth
+inline LS_INLINE bool operator > (const SR_FragmentBin& a, const SR_FragmentBin& b) noexcept
+{
+    return *reinterpret_cast<const int32_t*>(a.mScreenCoords[0].v+3) > *reinterpret_cast<const int32_t*>(b.mScreenCoords[0].v+3);
+}
+
+
+
+/*-----------------------------------------------------------------------------
+ * Helper structure to put a pixel on the screen
+-----------------------------------------------------------------------------*/
+struct alignas(sizeof(uint32_t)) SR_FragCoordXY
+{
+    uint16_t x;
+    uint16_t y;
+};
+
+struct SR_FragCoord
+{
+    ls::math::vec4 bc[SR_SHADER_MAX_QUEUED_FRAGS]; // 32*4
+    ls::math::vec4 xyzw[SR_SHADER_MAX_QUEUED_FRAGS]; // 32*4
+
+    union
+    {
+        SR_FragCoordXY coord[SR_SHADER_MAX_QUEUED_FRAGS];
+        uint32_t       xy[SR_SHADER_MAX_QUEUED_FRAGS]; // 32-bit bitmask of x & y
+    };
+    // 256 bits / 32 bytes
+};
+
+
+
 #endif /* SR_SHADERUTIL_HPP */

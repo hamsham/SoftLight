@@ -6,6 +6,7 @@
 #include <atomic>
 
 #include "soft_render/SR_Mesh.hpp"
+#include "soft_render/SR_ShaderUtil.hpp"
 
 
 

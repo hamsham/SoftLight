@@ -137,6 +137,7 @@ set(SR_LIB_HEADERS
     include/soft_render/SR_Mesh.hpp
     include/soft_render/SR_PackedVertex.hpp
     include/soft_render/SR_Plane.hpp
+    include/soft_render/SR_ProcessorPool.hpp
     include/soft_render/SR_RenderWindow.hpp
     include/soft_render/SR_ScanlineBounds.hpp
     include/soft_render/SR_SceneFileLoader.hpp
@@ -194,6 +195,7 @@ set(SR_LIB_SOURCES
     src/SR_IndexBuffer.cpp
     src/SR_Material.cpp
     src/SR_Mesh.cpp
+    src/SR_ProcessorPool.cpp
     src/SR_RenderWindow.cpp
     src/SR_SceneFileLoader.cpp
     src/SR_SceneFileUtility.cpp

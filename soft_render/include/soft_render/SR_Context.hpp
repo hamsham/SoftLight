@@ -8,7 +8,7 @@
 
 #include "lightsky/utils/Pointer.h"
 
-#include "soft_render/SR_ShaderProcessor.hpp" // SR_ProcessorPool
+#include "soft_render/SR_ProcessorPool.hpp"
 
 
 
