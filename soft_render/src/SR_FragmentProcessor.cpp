@@ -14,6 +14,7 @@
 #include "soft_render/SR_Framebuffer.hpp" // SR_Framebuffer
 #include "soft_render/SR_ScanlineBounds.hpp"
 #include "soft_render/SR_Shader.hpp" // SR_FragmentShader
+#include "soft_render/SR_ShaderUtil.hpp" // sr_scanline_offset()
 #include "soft_render/SR_ShaderProcessor.hpp" // SR_FragmentBin
 #include "soft_render/SR_Texture.hpp"
 

@@ -2,7 +2,7 @@
 #include <cassert>
 #include <iostream>
 
-#include "soft_render/SR_ShaderProcessor.hpp"
+#include "soft_render/SR_ShaderUtil.hpp" // sr_calc_indexed_parition()
 
 int main()
 {

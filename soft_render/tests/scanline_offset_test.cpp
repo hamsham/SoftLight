@@ -1,7 +1,7 @@
 
 #include <iostream>
 
-#include "soft_render/SR_FragmentProcessor.hpp"
+#include "soft_render/SR_ShaderUtil.hpp" // sr_scanline_offset()
 
 
 
