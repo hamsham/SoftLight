@@ -863,7 +863,7 @@ void SR_SceneFileLoader::import_texture_path(
         const unsigned outTexSlot = materialTexOffset+i;
         if (i + materialTexOffset > maxTexCount)
         {
-            std::cerr << "\t\t\tExceeded material texture count." << std::endl;
+            std::cerr << "\t\t\tExceeded material texture count (" << i+materialTexOffset << " > " << maxTexCount << ")." << std::endl;
         }
 
         // Assimp won't clear this by default
