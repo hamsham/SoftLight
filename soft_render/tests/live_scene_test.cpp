@@ -20,6 +20,7 @@
 #include "soft_render/SR_Framebuffer.hpp"
 #include "soft_render/SR_KeySym.hpp"
 #include "soft_render/SR_Material.hpp"
+#include "soft_render/SR_Mesh.hpp"
 #include "soft_render/SR_PackedVertex.hpp"
 #include "soft_render/SR_Plane.hpp"
 #include "soft_render/SR_RenderWindow.hpp"
@@ -42,7 +43,7 @@
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SR_TEST_MAX_THREADS
-    #define SR_TEST_MAX_THREADS (ls::math::max<unsigned>(std::thread::hardware_concurrency()/2, 1))
+    #define SR_TEST_MAX_THREADS 4//(ls::math::max<unsigned>(std::thread::hardware_concurrency()/2, 1))
 #endif /* SR_TEST_MAX_THREADS */
 
 #ifndef SR_TEST_USE_PBR

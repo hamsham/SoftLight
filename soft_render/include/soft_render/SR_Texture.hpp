@@ -7,14 +7,11 @@
 #include "lightsky/setup/Arch.h"
 #include "lightsky/setup/Api.h"
 
-#include "lightsky/utils/Copy.h"
-
 #include "lightsky/math/fixed.h"
 #include "lightsky/math/scalar_utils.h"
 #include "lightsky/math/vec_utils.h"
 
 #include "soft_render/SR_Color.hpp" // SR_ColorDataType
-#include "soft_render/SR_Geometry.hpp"
 
 
 
@@ -492,8 +489,6 @@ inline void SR_Texture::set_texel(uint16_t x, uint16_t y, uint16_t z, const void
     {
         *pOut++ = *pIn++;
     }
-
-    //ls::utils::fast_memcpy(mTexels+offset, pData, bpp);
 }
 
 

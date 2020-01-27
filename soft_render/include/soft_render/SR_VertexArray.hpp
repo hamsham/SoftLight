@@ -5,7 +5,7 @@
 #include <cstddef> // ptrdiff_t
 #include <vector>
 
-#include "soft_render/SR_Geometry.hpp"
+#include "soft_render/SR_Geometry.hpp" // SR_Dimension, SR_DataType
 
 
 

@@ -5,7 +5,6 @@
 #include "lightsky/utils/Pointer.h"
 
 #include "soft_render/SR_Color.hpp" // SR_ColorDataType
-#include "soft_render/SR_Geometry.hpp" // SR_DataType
 
 
 

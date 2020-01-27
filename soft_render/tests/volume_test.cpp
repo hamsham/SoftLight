@@ -19,6 +19,7 @@
 #include "soft_render/SR_Framebuffer.hpp"
 #include "soft_render/SR_KeySym.hpp"
 #include "soft_render/SR_Material.hpp"
+#include "soft_render/SR_Mesh.hpp"
 #include "soft_render/SR_RenderWindow.hpp"
 #include "soft_render/SR_SceneGraph.hpp"
 #include "soft_render/SR_Transform.hpp"

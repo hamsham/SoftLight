@@ -5,7 +5,6 @@
 #ifndef SR_PLANE_HPP
 #define SR_PLANE_HPP
 
-#include "lightsky/math/fixed.h"
 #include "lightsky/math/vec_utils.h"
 
 

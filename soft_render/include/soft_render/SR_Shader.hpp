@@ -2,7 +2,7 @@
 #ifndef SR_SHADER_HPP
 #define SR_SHADER_HPP
 
-#include "soft_render/SR_ShaderProcessor.hpp" // SR_SHADER_MAX_FRAG_OUTPUTS, SR_SHADER_MAX_VARYING_VECTORS
+#include "soft_render/SR_ShaderUtil.hpp" // SR_SHADER_MAX_FRAG_OUTPUTS, SR_SHADER_MAX_VARYING_VECTORS
 
 
 
@@ -23,8 +23,6 @@ namespace math
 
 
 class SR_Context;
-class SR_Framebuffer;
-struct SR_Mesh;
 class SR_Shader;
 class SR_UniformBuffer;
 class SR_VertexArray;

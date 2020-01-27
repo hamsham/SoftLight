@@ -7,7 +7,7 @@
 #include "lightsky/utils/Copy.h"
 #include "lightsky/utils/Pointer.h"
 
-#include "soft_render/SR_Geometry.hpp"
+#include "soft_render/SR_Geometry.hpp" // SR_DataType
 
 
 

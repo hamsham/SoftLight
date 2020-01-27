@@ -7,6 +7,11 @@
 
 #include "lightsky/math/vec4.h"
 
+
+
+/*-----------------------------------------------------------------------------
+ * Forward Declarations
+-----------------------------------------------------------------------------*/
 class SR_Context;
 struct SR_FragCoord;
 struct SR_FragmentBin;
@@ -15,6 +20,7 @@ struct SR_Mesh;
 class SR_Shader;
 struct SR_ShaderProcessor;
 class SR_Texture;
+
 
 
 /*-----------------------------------------------------------------------------

@@ -10,17 +10,7 @@
 #include "lightsky/setup/Compiler.h" // LS_COMPILER_MSC
 
 #include "soft_render/SR_Color.hpp"
-#include "soft_render/SR_FragmentProcessor.hpp"
 #include "soft_render/SR_Texture.hpp"
-#include "soft_render/SR_WindowBuffer.hpp"
-
-
-
-/*-----------------------------------------------------------------------------
- * Forward Declarations
------------------------------------------------------------------------------*/
-class SR_Texture;
-class SR_WindowBuffer;
 
 
 

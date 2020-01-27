@@ -8,8 +8,6 @@
 #include "lightsky/utils/Copy.h"
 #include "lightsky/utils/Pointer.h"
 
-#include "soft_render/SR_Geometry.hpp"
-
 
 
 class SR_VertexBuffer

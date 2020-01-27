@@ -10,6 +10,7 @@
 #include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Log.h"
 
+#include "soft_render/SR_Geometry.hpp" // SR_DataType
 #include "soft_render/SR_ImgFile.hpp"
 
 #include <FreeImage.h>

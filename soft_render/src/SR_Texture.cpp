@@ -10,6 +10,7 @@
 #endif
 
 #include "lightsky/utils/Assertions.h"
+#include "lightsky/utils/Copy.h"
 #include "lightsky/utils/Pointer.h" // aligned allocation
 
 #include "soft_render/SR_ImgFile.hpp"

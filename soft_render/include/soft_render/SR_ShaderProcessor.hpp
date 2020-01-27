@@ -56,4 +56,27 @@ struct SR_ShaderProcessor
 
 
 
+/*--------------------------------------
+ * Task Execution
+--------------------------------------*/
+inline void SR_ShaderProcessor::operator()() noexcept
+{
+    switch (mType)
+    {
+        case SR_VERTEX_SHADER:
+            mVertProcessor.execute();
+            break;
+
+        case SR_FRAGMENT_SHADER:
+            mFragProcessor.execute();
+            break;
+
+        case SR_BLIT_SHADER:
+            mBlitter.execute();
+            break;
+    }
+}
+
+
+
 #endif /* SR_SHADER_PROCESSOR_HPP */

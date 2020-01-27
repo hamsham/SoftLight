@@ -114,26 +114,3 @@ SR_ShaderProcessor& SR_ShaderProcessor::operator=(SR_ShaderProcessor&& sp) noexc
 
     return *this;
 }
-
-
-
-/*--------------------------------------
- * Thread Execution
---------------------------------------*/
-void SR_ShaderProcessor::operator()() noexcept
-{
-    switch (mType)
-    {
-        case SR_VERTEX_SHADER:
-            mVertProcessor.execute();
-            break;
-
-        case SR_FRAGMENT_SHADER:
-            mFragProcessor.execute();
-            break;
-
-        case SR_BLIT_SHADER:
-            mBlitter.execute();
-            break;
-    }
-}

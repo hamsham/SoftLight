@@ -12,6 +12,7 @@
 #include "soft_render/SR_Framebuffer.hpp"
 #include "soft_render/SR_ImgFilePPM.hpp"
 #include "soft_render/SR_Material.hpp"
+#include "soft_render/SR_Mesh.hpp"
 #include "soft_render/SR_SceneFileLoader.hpp"
 #include "soft_render/SR_Texture.hpp"
 #include "soft_render/SR_Transform.hpp"

@@ -1,4 +1,6 @@
 
+#include <utility> // std::move()
+
 #include "lightsky/setup/OS.h" // OS detection
 
 #ifdef LS_OS_WINDOWS

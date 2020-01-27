@@ -16,6 +16,7 @@
 #include "soft_render/SR_IndexBuffer.hpp"
 #include "soft_render/SR_KeySym.hpp"
 #include "soft_render/SR_Material.hpp"
+#include "soft_render/SR_Mesh.hpp"
 #include "soft_render/SR_RenderWindow.hpp"
 #include "soft_render/SR_SceneFileLoader.hpp"
 #include "soft_render/SR_Texture.hpp"
