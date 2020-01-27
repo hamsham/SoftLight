@@ -192,7 +192,9 @@ class SR_ProcessorPool
 
     void execute() noexcept;
 
-    void run_shader_processors(const SR_Context* c, const SR_Mesh* m, const SR_Shader* s, SR_Framebuffer* fbo) noexcept;
+    void run_shader_processors(const SR_Context& c, const SR_Mesh& m, const SR_Shader& s, SR_Framebuffer& fbo) noexcept;
+
+    void run_shader_processors(const SR_Context& c, const SR_Mesh* meshes, uint32_t numMeshes, const SR_Shader& s, SR_Framebuffer& fbo) noexcept;
 
     void clear_fragment_bins() noexcept;
 

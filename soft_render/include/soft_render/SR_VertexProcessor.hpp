@@ -39,16 +39,6 @@ enum SR_ClipStatus
     SR_TRIANGLE_FULLY_VISIBLE
 };
 
-enum SR_ClipPlane
-{
-    SR_CLIP_PLANE_LEFT   = 0x01,
-    SR_CLIP_PLANE_RIGHT  = 0x02,
-    SR_CLIP_PLANE_TOP    = 0x04,
-    SR_CLIP_PLANE_BOTTOM = 0x08,
-    SR_CLIP_PLANE_NEAR   = 0x10,
-    SR_CLIP_PLANE_FAR    = 0x20
-};
-
 
 
 /*-----------------------------------------------------------------------------
@@ -60,30 +50,34 @@ struct SR_VertexProcessor
     uint16_t mThreadId;
     int16_t mNumThreads;
 
-    // 128 bits
+    // 64-128 bits
     std::atomic_int_fast64_t* mFragProcessors;
     std::atomic_uint_fast64_t* mBusyProcessors;
 
-    // 128-256 bits
+    // 96-192 bits
     const SR_Shader*  mShader;
     const SR_Context* mContext;
     SR_Framebuffer*   mFbo;
 
-    // 32-bits
-    uint16_t mFboW;
-    uint16_t mFboH;
+    // 64 bits
+    SR_RenderMode mRenderMode;
+    uint32_t mNumMeshes;
 
-    // 128 bits
-    SR_Mesh mMesh;
+    // 32-64 bits
+    const SR_Mesh* mMeshes;
 
     // 64-128 bits
     std::atomic_uint_fast64_t* mBinsUsed;
     uint32_t* mBinIds;
+
+    // 96-192 bits
     SR_FragmentBin* mFragBins;
     ls::math::vec4_t<float>* mVaryings;
     SR_FragCoord* mFragQueues;
 
-    // 768 bits (96 bytes) max, padding not included
+    // 448 bits (56 bytes) in 32-bit mode
+    // 800 bits (100 bytes) in 64-bit mode
+    // Padding not included
 
     void flush_bins() const noexcept;
 
@@ -95,8 +89,16 @@ struct SR_VertexProcessor
     ) const noexcept;
 
     void clip_and_process_tris(
+        float fboW,
+        float fboH,
         ls::math::vec4_t<float> vertCoords[SR_SHADER_MAX_SCREEN_COORDS],
         ls::math::vec4_t<float> pVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS]) noexcept;
+
+    void process_points(const SR_Mesh& m) noexcept;
+
+    void process_lines(const SR_Mesh& m) noexcept;
+
+    void process_tris(const SR_Mesh& m) noexcept;
 
     void execute() noexcept;
 };

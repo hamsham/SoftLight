@@ -430,7 +430,7 @@ unsigned SR_ProcessorPool::num_threads(unsigned inNumThreads) noexcept
 
 /*-------------------------------------
 -------------------------------------*/
-void SR_ProcessorPool::run_shader_processors(const SR_Context* c, const SR_Mesh* m, const SR_Shader* s, SR_Framebuffer* fbo) noexcept
+void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh& m, const SR_Shader& s, SR_Framebuffer& fbo) noexcept
 {
     // Reserve enough space for each thread to contain all triangles
     mFragSemaphore.store(0, std::memory_order_relaxed);
@@ -445,12 +445,12 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context* c, const SR_Mesh*
     vertTask.mNumThreads     = (int16_t)mNumThreads;
     vertTask.mFragProcessors = &mFragSemaphore;
     vertTask.mBusyProcessors = &mShadingSemaphore;
-    vertTask.mShader         = s;
-    vertTask.mContext        = c;
-    vertTask.mFbo            = fbo;
-    vertTask.mFboW           = fbo->width();
-    vertTask.mFboH           = fbo->height();
-    vertTask.mMesh           = *m;
+    vertTask.mShader         = &s;
+    vertTask.mContext        = &c;
+    vertTask.mFbo            = &fbo;
+    vertTask.mRenderMode     = m.mode;
+    vertTask.mMeshes         = &m;
+    vertTask.mNumMeshes      = 1;
     vertTask.mBinsUsed       = &mBinsUsed;
     vertTask.mBinIds         = mBinIds.get();
     vertTask.mFragBins       = mFragBins.get();
@@ -473,6 +473,61 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context* c, const SR_Mesh*
     // Each thread should now pause except for the main thread.
     execute();
     clear_fragment_bins();
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh* meshes, uint32_t numMeshes, const SR_Shader& s, SR_Framebuffer& fbo) noexcept
+{
+    // Reserve enough space for each thread to contain all triangles
+    mFragSemaphore.store(0, std::memory_order_relaxed);
+    mShadingSemaphore.store(mNumThreads, std::memory_order_relaxed);
+    mBinsUsed.store(0, std::memory_order_relaxed);
+
+    SR_ShaderProcessor task;
+    task.mType = SR_VERTEX_SHADER;
+
+    SR_VertexProcessor& vertTask = task.mVertProcessor;
+    vertTask.mThreadId       = 0;
+    vertTask.mNumThreads     = (int16_t)mNumThreads;
+    vertTask.mFragProcessors = &mFragSemaphore;
+    vertTask.mBusyProcessors = &mShadingSemaphore;
+    vertTask.mShader         = &s;
+    vertTask.mContext        = &c;
+    vertTask.mFbo            = &fbo;
+    vertTask.mRenderMode     = meshes->mode;
+    vertTask.mMeshes         = meshes;
+    vertTask.mNumMeshes      = numMeshes;
+    vertTask.mBinsUsed       = &mBinsUsed;
+    vertTask.mBinIds         = mBinIds.get();
+    vertTask.mFragBins       = mFragBins.get();
+    vertTask.mVaryings       = mVaryings.get();
+    vertTask.mFragQueues     = mFragQueues.get();
+
+    // Divide all vertex processing amongst the available worker threads. Let
+    // The threads work out between themselves how to partition the data.
+    for (uint16_t threadId = 0; threadId < mNumThreads; ++threadId)
+    {
+        vertTask.mThreadId = threadId;
+
+        // Busy waiting will be enabled the moment the first flush occurs on each
+        // thread.
+        SR_ProcessorPool::Worker* pWorker = mThreads[threadId];
+        pWorker->busy_waiting(true);
+        pWorker->push(task);
+    }
+
+    // Each thread should now pause except for the main thread.
+    execute();
+    clear_fragment_bins();
+
+    for (uint16_t threadId = 0; threadId < mNumThreads; ++threadId)
+    {
+        SR_ProcessorPool::Worker* pWorker = mThreads[threadId];
+        pWorker->busy_waiting(false);
+    }
 }
 
 

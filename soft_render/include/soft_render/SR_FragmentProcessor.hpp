@@ -112,10 +112,6 @@ struct SR_FragmentProcessor
     // 32-bits
     uint32_t mNumProcessors;
 
-    // 64-bits
-    float mFboW;
-    float mFboH;
-
     // 64 bits
     uint_fast64_t mNumBins;
 

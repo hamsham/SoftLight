@@ -177,6 +177,11 @@ class SR_Context
     /*
      *
      */
+    void draw_multiple(const SR_Mesh* meshes, uint32_t numMeshes, size_t shaderId, size_t fboId) noexcept;
+
+    /*
+     *
+     */
     void blit(size_t outTextureId, size_t inTextureId) noexcept;
 
     /*
