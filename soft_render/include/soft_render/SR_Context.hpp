@@ -177,7 +177,12 @@ class SR_Context
     /*
      *
      */
-    void draw_multiple(const SR_Mesh* meshes, uint32_t numMeshes, size_t shaderId, size_t fboId) noexcept;
+    void draw_multiple(const SR_Mesh* meshes, size_t numMeshes, size_t shaderId, size_t fboId) noexcept;
+
+    /*
+     *
+     */
+    void draw_instanced(const SR_Mesh& meshes, size_t numInstances, size_t shaderId, size_t fboId) noexcept;
 
     /*
      *

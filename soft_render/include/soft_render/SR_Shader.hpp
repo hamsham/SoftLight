@@ -55,6 +55,7 @@ struct SR_VertexParam
     const SR_UniformBuffer* pUniforms;
 
     size_t vertId;
+    size_t instanceId;
     const SR_VertexArray* pVao;
     const SR_VertexBuffer* pVbo;
 

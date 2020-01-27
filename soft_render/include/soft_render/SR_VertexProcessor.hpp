@@ -60,9 +60,12 @@ struct SR_VertexProcessor
     const SR_Context* mContext;
     SR_Framebuffer*   mFbo;
 
-    // 64 bits
+    // 64-128 bits
+    size_t mNumMeshes;
+    size_t mNumInstances;
+
+    // 32 bits
     SR_RenderMode mRenderMode;
-    uint32_t mNumMeshes;
 
     // 32-64 bits
     const SR_Mesh* mMeshes;
@@ -95,11 +98,11 @@ struct SR_VertexProcessor
         ls::math::vec4_t<float> vertCoords[SR_SHADER_MAX_SCREEN_COORDS],
         ls::math::vec4_t<float> pVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS]) noexcept;
 
-    void process_points(const SR_Mesh& m) noexcept;
+    void process_points(const SR_Mesh& m, size_t instanceId) noexcept;
 
-    void process_lines(const SR_Mesh& m) noexcept;
+    void process_lines(const SR_Mesh& m, size_t instanceId) noexcept;
 
-    void process_tris(const SR_Mesh& m) noexcept;
+    void process_tris(const SR_Mesh& m, size_t instanceId) noexcept;
 
     void execute() noexcept;
 };

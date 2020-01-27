@@ -890,7 +890,7 @@ void SR_VertexProcessor::clip_and_process_tris(
 /*--------------------------------------
  * Process Points
 --------------------------------------*/
-void SR_VertexProcessor::process_points(const SR_Mesh& m) noexcept
+void SR_VertexProcessor::process_points(const SR_Mesh& m, size_t instanceId) noexcept
 {
     alignas(alignof(math::vec4)) math::vec4 vertCoords[SR_SHADER_MAX_SCREEN_COORDS];
     alignas(alignof(math::vec4)) math::vec4 pVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS];
@@ -910,6 +910,7 @@ void SR_VertexProcessor::process_points(const SR_Mesh& m) noexcept
 
     SR_VertexParam params;
     params.pUniforms = mShader->mUniforms;
+    params.instanceId = instanceId;
     params.pVao = &vao;
     params.pVbo = &mContext->vbo(vao.get_vertex_buffer());
 
@@ -935,7 +936,7 @@ void SR_VertexProcessor::process_points(const SR_Mesh& m) noexcept
 /*--------------------------------------
  * Process Lines
 --------------------------------------*/
-void SR_VertexProcessor::process_lines(const SR_Mesh& m) noexcept
+void SR_VertexProcessor::process_lines(const SR_Mesh& m, size_t instanceId) noexcept
 {
     alignas(alignof(math::vec4)) math::vec4 vertCoords[SR_SHADER_MAX_SCREEN_COORDS];
     alignas(alignof(math::vec4)) math::vec4 pVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS];
@@ -955,6 +956,7 @@ void SR_VertexProcessor::process_lines(const SR_Mesh& m) noexcept
 
     SR_VertexParam params;
     params.pUniforms = mShader->mUniforms;
+    params.instanceId = instanceId;
     params.pVao = &vao;
     params.pVbo = &mContext->vbo(vao.get_vertex_buffer());
 
@@ -992,7 +994,7 @@ void SR_VertexProcessor::process_lines(const SR_Mesh& m) noexcept
 /*--------------------------------------
  * Process Triangles
 --------------------------------------*/
-void SR_VertexProcessor::process_tris(const SR_Mesh& m) noexcept
+void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexcept
 {
     alignas(alignof(math::vec4)) math::vec4 vertCoords[SR_SHADER_MAX_SCREEN_COORDS];
     alignas(alignof(math::vec4)) math::vec4 pVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS];
@@ -1013,6 +1015,7 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m) noexcept
 
     SR_VertexParam params;
     params.pUniforms = mShader->mUniforms;
+    params.instanceId = instanceId;
     params.pVao = &vao;
     params.pVbo = &mContext->vbo(vao.get_vertex_buffer());
 
@@ -1097,25 +1100,52 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m) noexcept
 --------------------------------------*/
 void SR_VertexProcessor::execute() noexcept
 {
-    if (mRenderMode & (RENDER_MODE_POINTS | RENDER_MODE_INDEXED_POINTS))
+    if (mNumInstances == 1)
     {
-        for (uint_fast64_t i = 0; i < mNumMeshes; ++i)
+        if (mRenderMode & (RENDER_MODE_POINTS | RENDER_MODE_INDEXED_POINTS))
         {
-            process_points(mMeshes[i]);
+            for (size_t i = 0; i < mNumMeshes; ++i)
+            {
+                process_points(mMeshes[i], 0);
+            }
+        }
+        else if (mRenderMode & (RENDER_MODE_LINES | RENDER_MODE_INDEXED_LINES))
+        {
+            for (size_t i = 0; i < mNumMeshes; ++i)
+            {
+                process_lines(mMeshes[i], 0);
+            }
+        }
+        else if (mRenderMode & (RENDER_MODE_TRIANGLES | RENDER_MODE_INDEXED_TRIANGLES | RENDER_MODE_TRI_WIRE | RENDER_MODE_INDEXED_TRI_WIRE))
+        {
+            for (size_t i = 0; i < mNumMeshes; ++i)
+            {
+                process_tris(mMeshes[i], 0);
+            }
         }
     }
-    else if (mRenderMode & (RENDER_MODE_LINES | RENDER_MODE_INDEXED_LINES))
+    else
     {
-        for (uint_fast64_t i = 0; i < mNumMeshes; ++i)
+        if (mRenderMode & (RENDER_MODE_POINTS | RENDER_MODE_INDEXED_POINTS))
         {
-            process_lines(mMeshes[i]);
+            for (size_t i = 0; i < mNumInstances; ++i)
+            {
+                process_points(mMeshes[0], i);
+            }
         }
-    }
-    else if (mRenderMode & (RENDER_MODE_TRIANGLES | RENDER_MODE_INDEXED_TRIANGLES | RENDER_MODE_TRI_WIRE | RENDER_MODE_INDEXED_TRI_WIRE))
-    {
-        for (uint_fast64_t i = 0; i < mNumMeshes; ++i)
+        else if (mRenderMode & (RENDER_MODE_LINES | RENDER_MODE_INDEXED_LINES))
         {
-            process_tris(mMeshes[i]);
+            for (size_t i = 0; i < mNumInstances; ++i)
+            {
+                process_lines(mMeshes[0], i);
+            }
+        }
+        else if (mRenderMode & (RENDER_MODE_TRIANGLES | RENDER_MODE_INDEXED_TRIANGLES | RENDER_MODE_TRI_WIRE | RENDER_MODE_INDEXED_TRI_WIRE))
+        {
+            for (size_t i = 0; i < mNumInstances; ++i)
+            {
+                process_tris(mMeshes[0], i);
+            }
         }
     }
 

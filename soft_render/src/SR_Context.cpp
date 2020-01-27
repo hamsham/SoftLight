@@ -633,7 +633,7 @@ void SR_Context::import(SR_Context&& inContext) noexcept
 -------------------------------------*/
 void SR_Context::draw(const SR_Mesh& m, size_t shaderId, size_t fboId) noexcept
 {
-    mProcessors.run_shader_processors(*this, m, mShaders[shaderId], mFbos[fboId]);
+    mProcessors.run_shader_processors(*this, m, 1, mShaders[shaderId], mFbos[fboId]);
 }
 
 
@@ -641,12 +641,22 @@ void SR_Context::draw(const SR_Mesh& m, size_t shaderId, size_t fboId) noexcept
 /*-------------------------------------
  * Draw a mesh
 -------------------------------------*/
-void SR_Context::draw_multiple(const SR_Mesh* meshes, uint32_t numMeshes, size_t shaderId, size_t fboId) noexcept
+void SR_Context::draw_multiple(const SR_Mesh* meshes, size_t numMeshes, size_t shaderId, size_t fboId) noexcept
 {
     if (meshes != nullptr && numMeshes > 0)
     {
         mProcessors.run_shader_processors(*this, meshes, numMeshes, mShaders[shaderId], mFbos[fboId]);
     }
+}
+
+
+
+/*-------------------------------------
+ * Draw a mesh
+-------------------------------------*/
+void SR_Context::draw_instanced(const SR_Mesh& m, size_t numInstances, size_t shaderId, size_t fboId) noexcept
+{
+    mProcessors.run_shader_processors(*this, m, numInstances, mShaders[shaderId], mFbos[fboId]);
 }
 
 

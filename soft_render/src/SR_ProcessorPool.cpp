@@ -256,7 +256,7 @@ unsigned SR_ProcessorPool::num_threads(unsigned inNumThreads) noexcept
 
 /*-------------------------------------
 -------------------------------------*/
-void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh& m, const SR_Shader& s, SR_Framebuffer& fbo) noexcept
+void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh& m, size_t numInstances, const SR_Shader& s, SR_Framebuffer& fbo) noexcept
 {
     // Reserve enough space for each thread to contain all triangles
     mFragSemaphore.store(0, std::memory_order_relaxed);
@@ -275,8 +275,9 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh&
     vertTask.mContext        = &c;
     vertTask.mFbo            = &fbo;
     vertTask.mRenderMode     = m.mode;
-    vertTask.mMeshes         = &m;
     vertTask.mNumMeshes      = 1;
+    vertTask.mNumInstances   = numInstances;
+    vertTask.mMeshes         = &m;
     vertTask.mBinsUsed       = &mBinsUsed;
     vertTask.mBinIds         = mBinIds.get();
     vertTask.mFragBins       = mFragBins.get();
@@ -305,7 +306,7 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh&
 
 /*-------------------------------------
 -------------------------------------*/
-void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh* meshes, uint32_t numMeshes, const SR_Shader& s, SR_Framebuffer& fbo) noexcept
+void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh* meshes, size_t numMeshes, const SR_Shader& s, SR_Framebuffer& fbo) noexcept
 {
     // Reserve enough space for each thread to contain all triangles
     mFragSemaphore.store(0, std::memory_order_relaxed);
@@ -324,8 +325,9 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh*
     vertTask.mContext        = &c;
     vertTask.mFbo            = &fbo;
     vertTask.mRenderMode     = meshes->mode;
-    vertTask.mMeshes         = meshes;
     vertTask.mNumMeshes      = numMeshes;
+    vertTask.mNumInstances   = 1;
+    vertTask.mMeshes         = meshes;
     vertTask.mBinsUsed       = &mBinsUsed;
     vertTask.mBinIds         = mBinIds.get();
     vertTask.mFragBins       = mFragBins.get();
@@ -355,7 +357,6 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh*
         pWorker->busy_waiting(false);
     }
 }
-
 
 
 /*-------------------------------------
