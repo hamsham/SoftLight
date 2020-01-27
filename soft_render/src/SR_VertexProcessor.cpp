@@ -58,36 +58,16 @@ class SR_PTVCache
 
     math::vec4 lruVaryings[PTV_CACHE_SIZE][SR_SHADER_MAX_VARYING_VECTORS];
 
-    const SR_VertexArray* vao;
+    SR_VertexParam lruParam;
 
-    const SR_VertexBuffer* vbo;
-
-    const SR_UniformBuffer* uniforms;
-
-    ls::math::vec4_t<float> (*shader)(
-        const size_t             vertId,
-        const SR_VertexArray&    vao,
-        const SR_VertexBuffer&   vbo,
-        const SR_UniformBuffer*  uniforms,
-        ls::math::vec4_t<float>* varyings
-    );
+    ls::math::vec4_t<float> (*shader)(SR_VertexParam&);
 
     SR_PTVCache(const SR_PTVCache&) = delete;
     SR_PTVCache(SR_PTVCache&&) = delete;
     SR_PTVCache& operator=(const SR_PTVCache&) = delete;
     SR_PTVCache& operator=(SR_PTVCache&&) = delete;
 
-    SR_PTVCache(
-    ls::math::vec4_t<float> (*pShader)(
-        const size_t             vertId,
-        const SR_VertexArray&    vao,
-        const SR_VertexBuffer&   vbo,
-        const SR_UniformBuffer*  uniforms,
-        ls::math::vec4_t<float>* varyings
-    ),
-    const SR_UniformBuffer* pUniforms,
-    const SR_VertexArray* pVao,
-    const SR_VertexBuffer* pVbo) noexcept
+    SR_PTVCache(ls::math::vec4_t<float> (*pShader)(SR_VertexParam&), const SR_VertexParam& inParam) noexcept
     {
         for (size_t& index : lruIndices)
         {
@@ -101,9 +81,7 @@ class SR_PTVCache
             }
         #endif
 
-        vao = pVao;
-        vbo = pVbo;
-        uniforms = pUniforms;
+        lruParam = inParam;
         shader = pShader;
     }
 
@@ -146,7 +124,9 @@ class SR_PTVCache
         {
             lruIndices[cacheIndex] = key;
             lruCounts[cacheIndex] = 0;
-            outVert = lruVertices[cacheIndex] = shader(key, *vao, *vbo, uniforms, outVaryings);
+            lruParam.vertId = key;
+            lruParam.pVaryings = outVaryings[cacheIndex];
+            outVert = lruVertices[cacheIndex] = shader(lruParam);
 
             for (size_t v = numVaryings; v--;)
             {
@@ -174,7 +154,9 @@ class SR_PTVCache
         }
 
         lruIndices[i] = key;
-        outVert = lruVertices[i] = shader(key, *vao, *vbo, uniforms, outVaryings);
+        lruParam.vertId = key;
+        lruParam.pVaryings = outVaryings;
+        outVert = lruVertices[i] = shader(lruParam);
 
         for (size_t v = numVaryings; v--;)
         {
@@ -914,14 +896,24 @@ void SR_VertexProcessor::process_points(const SR_Mesh& m, size_t instanceId) noe
     params.pVao = &vao;
     params.pVbo = &mContext->vbo(vao.get_vertex_buffer());
 
+    #if SR_VERTEX_CACHING_ENABLED
+        SR_PTVCache ptvCache{shader, params};
+        const size_t numVaryings = vertShader.numVaryings;
+    #endif
+
     begin += mThreadId;
     const size_t step = mNumThreads;
 
     for (size_t i = begin; i < end; i += step)
     {
-        params.vertId    = usingIndices ? get_next_vertex(pIbo, i) : i;
-        params.pVaryings = pVaryings;
-        vertCoords[0]    = shader(params);
+        #if SR_VERTEX_CACHING_ENABLED
+            const size_t vertId = usingIndices ? get_next_vertex(pIbo, i) : i;
+            ptvCache.query_and_update(vertId, vertCoords[0], pVaryings, numVaryings);
+        #else
+            params.vertId    = usingIndices ? get_next_vertex(pIbo, i) : i;
+            params.pVaryings = pVaryings;
+            vertCoords[0]    = shader(params);
+        #endif
 
         if (vertCoords[0][3] > 0.f)
         {
@@ -960,6 +952,11 @@ void SR_VertexProcessor::process_lines(const SR_Mesh& m, size_t instanceId) noex
     params.pVao = &vao;
     params.pVbo = &mContext->vbo(vao.get_vertex_buffer());
 
+    #if SR_VERTEX_CACHING_ENABLED
+        SR_PTVCache ptvCache{shader, params};
+        const size_t numVaryings = vertShader.numVaryings;
+    #endif
+
     begin += mThreadId * 2u;
     const size_t step = mNumThreads * 2u;
 
@@ -971,13 +968,20 @@ void SR_VertexProcessor::process_lines(const SR_Mesh& m, size_t instanceId) noex
         const size_t index0  = i;
         const size_t index1  = i + 1;
 
-        params.vertId    = usingIndices ? get_next_vertex(pIbo, index0) : index0;
-        params.pVaryings = pVaryings;
-        vertCoords[0]    = shader(params);
+        #if SR_VERTEX_CACHING_ENABLED
+            const size_t vertId0 = usingIndices ? get_next_vertex(pIbo, index0) : index0;
+            const size_t vertId1 = usingIndices ? get_next_vertex(pIbo, index1) : index1;
+            ptvCache.query_and_update(vertId0, vertCoords[0], pVaryings, numVaryings);
+            ptvCache.query_and_update(vertId1, vertCoords[1], pVaryings + SR_SHADER_MAX_VARYING_VECTORS, numVaryings);
+        #else
+            params.vertId    = usingIndices ? get_next_vertex(pIbo, index0) : index0;
+            params.pVaryings = pVaryings;
+            vertCoords[0]    = shader(params);
 
-        params.vertId    = usingIndices ? get_next_vertex(pIbo, index1) : index1;
-        params.pVaryings = pVaryings + SR_SHADER_MAX_VARYING_VECTORS;
-        vertCoords[1]    = shader(params);
+            params.vertId    = usingIndices ? get_next_vertex(pIbo, index1) : index1;
+            params.pVaryings = pVaryings + SR_SHADER_MAX_VARYING_VECTORS;
+            vertCoords[1]    = shader(params);
+        #endif
 
         if (vertCoords[0][3] >= 0.f && vertCoords[1][3] >= 0.f)
         {
@@ -1020,7 +1024,7 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
     params.pVbo = &mContext->vbo(vao.get_vertex_buffer());
 
     #if SR_VERTEX_CACHING_ENABLED
-        SR_PTVCache ptvCache{shader, pUniforms, &vao, &vbo};
+        SR_PTVCache ptvCache{shader, params};
         const size_t numVaryings = vertShader.numVaryings;
     #endif
 
