@@ -11,6 +11,7 @@
 #include <utility> // std::move()
 
 #include "lightsky/utils/Pointer.h" // aligned_alloc
+#include "lightsky/utils/Copy.h" // fast_memset
 
 #include "soft_render/SR_Color.hpp"
 #include "soft_render/SR_RenderWindowWin32.hpp"
