@@ -498,6 +498,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
         struct timespec sleepAmt;
         sleepAmt.tv_sec = 0;
         sleepAmt.tv_nsec = 1;
+        (void)sleepAmt;
     #endif
 
     // Sort the bins based on their depth.
@@ -527,7 +528,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
     }
     else
     {
-        do
+        while (LS_LIKELY(mFragProcessors->load(std::memory_order_consume) > 0))
         {
             // Wait until the bins are sorted
             #if defined(LS_ARCH_X86)
@@ -540,7 +541,6 @@ void SR_VertexProcessor::flush_bins() const noexcept
                 std::this_thread::yield();
             #endif
         }
-        while (mFragProcessors->load(std::memory_order_consume) > 0);
     }
 
     SR_FragmentProcessor fragTask{
@@ -563,38 +563,36 @@ void SR_VertexProcessor::flush_bins() const noexcept
     {
         mBinsUsed->store(0, std::memory_order_release);
         mFragProcessors->store(0, std::memory_order_release);
+        return;
     }
-    else
+
+    // Wait for the last thread to reset the number of available bins.
+    while (LS_LIKELY(mFragProcessors->load(std::memory_order_consume) < 0))
     {
-        // Wait for the last thread to reset the number of available bins.
-        do
-        {
-            // wait until all fragments are rendered across the other threads.
-            // High-poly models should rely only on _mm_pause() and not sleep
-            // in a hyper-threaded environment.
-            #if SR_TUNE_HIGH_POLY
-                #if defined(LS_ARCH_X86)
-                    _mm_pause();
-                #elif defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
-                    clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
-                #elif defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
-                    nanosleep(&sleepAmt, nullptr);
-                #else
-                    std::this_thread::yield();
-                #endif
+        // wait until all fragments are rendered across the other threads.
+        // High-poly models should rely only on _mm_pause() and not sleep
+        // in a hyper-threaded environment.
+        #if SR_TUNE_HIGH_POLY
+            #if defined(LS_ARCH_X86)
+                _mm_pause();
+            #elif defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
+                clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
+            #elif defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
+                nanosleep(&sleepAmt, nullptr);
             #else
-                #if defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
-                    clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
-                #elif defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
-                    nanosleep(&sleepAmt, nullptr);
-                #elif defined(LS_ARCH_X86)
-                    _mm_pause();
-                #else
-                    std::this_thread::yield();
-                #endif
+                std::this_thread::yield();
             #endif
-        }
-        while (mFragProcessors->load(std::memory_order_consume) < 0);
+        #else
+            #if defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
+                clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
+            #elif defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
+                nanosleep(&sleepAmt, nullptr);
+            #elif defined(LS_ARCH_X86)
+                _mm_pause();
+            #else
+                std::this_thread::yield();
+            #endif
+        #endif
     }
 }
 
@@ -603,7 +601,8 @@ void SR_VertexProcessor::flush_bins() const noexcept
 /*--------------------------------------
  * Publish a vertex to a fragment thread
 --------------------------------------*/
-void SR_VertexProcessor::push_bin(
+template <int renderMode>
+inline void SR_VertexProcessor::push_bin(
     float fboW,
     float fboH,
     math::vec4* const screenCoords,
@@ -626,7 +625,7 @@ void SR_VertexProcessor::push_bin(
     // responsible for
 
     // render points through whichever tile/thread they appear in
-    switch (mRenderMode & (RENDER_MODE_POINTS|RENDER_MODE_LINES|RENDER_MODE_TRIANGLES))
+    switch (renderMode)
     {
         case RENDER_MODE_POINTS:
             numVerts = 1;
@@ -658,33 +657,53 @@ void SR_VertexProcessor::push_bin(
             return;
     }
 
-    int isPrimVisible = (bboxMaxX >= 0.f && bboxMaxY >= 0.f && fboW > bboxMinX && fboH > bboxMinY);
-    isPrimVisible = isPrimVisible && (bboxMaxX-bboxMinX >= 1.f) && (bboxMaxY-bboxMinY >= 1.f);
-
-    if (isPrimVisible)
+    int isPrimHidden = (bboxMaxX < 0.f || bboxMaxY < 0.f || fboW < bboxMinX || fboH < bboxMinY);
+    isPrimHidden = isPrimHidden || (bboxMaxX-bboxMinX < 1.f) || (bboxMaxY-bboxMinY < 1.f);
+    if (isPrimHidden)
     {
-        SR_FragmentBin* const pFragBins = mFragBins;
+        return;
+    }
 
-        // Check if the output bin is full
-        uint_fast64_t binId;
+    SR_FragmentBin* const pFragBins = mFragBins;
 
-        // Attempt to grab a bin index. Flush the bins if they've filled up.
-        while ((binId = pLocks->fetch_add(1, std::memory_order_acq_rel)) >= (uint_fast64_t)SR_SHADER_MAX_BINNED_PRIMS)
+    // Check if the output bin is full
+    uint_fast64_t binId;
+
+    // Attempt to grab a bin index. Flush the bins if they've filled up.
+    while (true)
+    {
+        #if defined(LS_ARCH_X86)
+            _mm_lfence();
+        #endif
+
+        binId = pLocks->fetch_add(1, std::memory_order_acq_rel);
+
+        #if defined(LS_ARCH_X86)
+            _mm_sfence();
+        #endif
+
+        if (LS_UNLIKELY(binId >= SR_SHADER_MAX_BINNED_PRIMS))
         {
             flush_bins();
+            continue;
         }
 
-        // place a triangle into the next available bin
-        mBinIds[binId] = (uint32_t)binId;
+        break;
+    }
 
-        // Copy all per-vertex coordinates and varyings to the fragment bins
-        // which will need the data for interpolation. The perspective-divide
-        // is only used for rendering triangles.
-        SR_FragmentBin& bin = pFragBins[binId];
-        bin.mScreenCoords[0] = p0;
-        bin.mScreenCoords[1] = p1;
-        bin.mScreenCoords[2] = p2;
+    // place a triangle into the next available bin
+    mBinIds[binId] = (uint32_t)binId;
 
+    // Copy all per-vertex coordinates and varyings to the fragment bins
+    // which will need the data for interpolation. The perspective-divide
+    // is only used for rendering triangles.
+    SR_FragmentBin& bin = pFragBins[binId];
+    bin.mScreenCoords[0] = p0;
+    bin.mScreenCoords[1] = p1;
+    bin.mScreenCoords[2] = p2;
+
+    if (renderMode == SR_RenderMode::RENDER_MODE_TRIANGLES)
+    {
         const float denom = 1.f / ((p0[0]-p2[0])*(p1[1]-p0[1]) - (p0[0]-p1[0])*(p2[1]-p0[1]));
         bin.mBarycentricCoords[0] = denom*math::vec4(p1[1]-p2[1], p2[1]-p0[1], p0[1]-p1[1], 0.f);
         bin.mBarycentricCoords[1] = denom*math::vec4(p2[0]-p1[0], p0[0]-p2[0], p1[0]-p0[0], 0.f);
@@ -708,6 +727,12 @@ void SR_VertexProcessor::push_bin(
         }
     }
 }
+
+
+
+template void SR_VertexProcessor::push_bin<SR_RenderMode::RENDER_MODE_POINTS>(float, float, math::vec4* const, const math::vec4*) const noexcept;
+template void SR_VertexProcessor::push_bin<SR_RenderMode::RENDER_MODE_LINES>(float, float, math::vec4* const, const math::vec4*) const noexcept;
+template void SR_VertexProcessor::push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES>(float, float, math::vec4* const, const math::vec4*) const noexcept;
 
 
 
@@ -863,7 +888,7 @@ void SR_VertexProcessor::clip_and_process_tris(
         _copy_verts(numVarys, newVarys+(j*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(1*SR_SHADER_MAX_VARYING_VECTORS));
         _copy_verts(numVarys, newVarys+(k*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(2*SR_SHADER_MAX_VARYING_VECTORS));
 
-        push_bin(fboW, fboH, tempVerts, tempVarys);
+        push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES>(fboW, fboH, tempVerts, tempVarys);
     }
 }
 
@@ -918,7 +943,7 @@ void SR_VertexProcessor::process_points(const SR_Mesh& m, size_t instanceId) noe
         if (vertCoords[0][3] > 0.f)
         {
             sr_world_to_screen_coords(vertCoords[0], widthScale, heightScale);
-            push_bin(fboW, fboH, vertCoords, pVaryings);
+            push_bin<SR_RenderMode::RENDER_MODE_POINTS>(fboW, fboH, vertCoords, pVaryings);
         }
     }
 }
@@ -988,7 +1013,7 @@ void SR_VertexProcessor::process_lines(const SR_Mesh& m, size_t instanceId) noex
             sr_world_to_screen_coords(vertCoords[0], widthScale, heightScale);
             sr_world_to_screen_coords(vertCoords[1], widthScale, heightScale);
 
-            push_bin(fboW, fboH, vertCoords, pVaryings);
+            push_bin<SR_RenderMode::RENDER_MODE_LINES>(fboW, fboH, vertCoords, pVaryings);
         }
     }
 }
@@ -1081,13 +1106,13 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
         #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
             sr_perspective_divide3(vertCoords);
             sr_world_to_screen_coords_divided3(vertCoords, widthScale, heightScale);
-            push_bin(fboW, fboH, vertCoords, pVaryings);
+            push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES>(fboW, fboH, vertCoords, pVaryings);
         #else
             if (visStatus == SR_TRIANGLE_FULLY_VISIBLE)
             {
                 sr_perspective_divide3(vertCoords);
                 sr_world_to_screen_coords_divided3(vertCoords, widthScale, heightScale);
-                push_bin(fboW, fboH, vertCoords, pVaryings);
+                push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES>(fboW, fboH, vertCoords, pVaryings);
             }
             else
             {
