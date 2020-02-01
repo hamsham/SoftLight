@@ -550,6 +550,7 @@ void mesh_test_render(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
 int main()
 {
     int retCode = 0;
+    (void)retCode;
 
     utils::Pointer<SR_RenderWindow>  pWindow{std::move(SR_RenderWindow::create())};
     utils::Pointer<SR_WindowBuffer>  pRenderBuf{SR_WindowBuffer::create()};
