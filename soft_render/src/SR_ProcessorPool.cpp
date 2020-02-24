@@ -2,14 +2,23 @@
 #include <utility> // std::move()
 
 #include "lightsky/utils/Log.h"
+#include "lightsky/utils/WorkerThread.hpp"
+
+#include "lightsky/math/vec4.h"
 
 #include "soft_render/SR_BlitProcesor.hpp"
 #include "soft_render/SR_FragmentProcessor.hpp"
-#include "soft_render/SR_Framebuffer.hpp" // SR_Framebuffer
 #include "soft_render/SR_ProcessorPool.hpp"
 #include "soft_render/SR_ShaderProcessor.hpp"
 #include "soft_render/SR_ShaderUtil.hpp" // SR_FragmentBin
 #include "soft_render/SR_VertexProcessor.hpp"
+
+
+
+/*-----------------------------------------------------------------------------
+ * Forward Declarations
+-----------------------------------------------------------------------------*/
+class SR_Framebuffer;
 
 
 

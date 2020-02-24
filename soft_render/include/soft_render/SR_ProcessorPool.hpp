@@ -2,16 +2,33 @@
 #ifndef SR_PROCESSORPOOL_HPP
 #define SR_PROCESSORPOOL_HPP
 
-#include "lightsky/utils/Pointer.h" // Pointer, AlignedPointerDeleter
-#include "lightsky/utils/WorkerThread.hpp"
+#include <atomic>
 
-#include "lightsky/math/vec4.h"
+#include "lightsky/utils/Pointer.h" // Pointer, AlignedPointerDeleter
 
 
 
 /*-----------------------------------------------------------------------------
  * Forward Declarations
 -----------------------------------------------------------------------------*/
+namespace ls
+{
+namespace utils
+{
+template <class T>
+class Worker;
+
+template <class T>
+class WorkerThread;
+} // utils namespace
+
+namespace math
+{
+template <typename T>
+union vec4_t;
+} // math namespace
+} // ls namespace
+
 class SR_Context;
 struct SR_FragCoord;
 struct SR_FragmentBin;
@@ -44,7 +61,7 @@ class SR_ProcessorPool
 
     ls::utils::Pointer<SR_FragmentBin[], ls::utils::AlignedDeleter> mFragBins;
 
-    ls::utils::Pointer<ls::math::vec4[], ls::utils::AlignedDeleter> mVaryings;
+    ls::utils::Pointer<ls::math::vec4_t<float>[], ls::utils::AlignedDeleter> mVaryings;
 
     ls::utils::Pointer<SR_FragCoord[], ls::utils::AlignedDeleter> mFragQueues;
 

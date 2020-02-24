@@ -1,12 +1,7 @@
 
-#include <iostream>
-
 #include "lightsky/setup/Api.h" // LS_IMPERATIVE
 
-#include "lightsky/math/bits.h"
 #include "lightsky/math/fixed.h"
-#include "lightsky/math/mat4.h"
-#include "lightsky/math/mat_utils.h"
 #include "lightsky/math/vec_utils.h"
 
 #include "soft_render/SR_Config.hpp"

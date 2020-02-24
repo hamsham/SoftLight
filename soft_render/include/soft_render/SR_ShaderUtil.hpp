@@ -196,12 +196,12 @@ enum SR_ShaderLimits
 
     // Maximum number of fragments that get queued before being placed on a
     // framebuffer.
-        SR_SHADER_MAX_QUEUED_FRAGS    = 16384,
+    SR_SHADER_MAX_QUEUED_FRAGS    = 16384,
 
     // Maximum number of vertex groups which get binned before being sent to a
     // fragment processor. About 16 MB (when multiplied by
     // sizeof(SR_FragmentBin)).
-        SR_SHADER_MAX_BINNED_PRIMS    = 8192
+    SR_SHADER_MAX_BINNED_PRIMS    = 8192
 };
 
 

@@ -8,10 +8,8 @@
 #endif
 
 #include "lightsky/utils/Assertions.h" // LS_DEBUG_ASSERT
-#include "lightsky/utils/Log.h" // utils::LS_LOG...()
 #include "lightsky/utils/Sort.hpp" // utils::sort_quick
 
-#include "lightsky/math/mat_utils.h"
 #include "lightsky/math/vec4.h"
 #include "lightsky/math/vec_utils.h"
 
@@ -559,7 +557,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
     fragTask.execute();
 
     // Indicate to all threads we can now process more vertices
-    if (-2 == (tileId = mFragProcessors->fetch_add(1, std::memory_order_acq_rel)))
+    if (-2 == mFragProcessors->fetch_add(1, std::memory_order_acq_rel))
     {
         mBinsUsed->store(0, std::memory_order_release);
         mFragProcessors->store(0, std::memory_order_release);
@@ -722,7 +720,7 @@ inline void SR_VertexProcessor::push_bin(
 
             for (unsigned i = numVaryings; i--;)
             {
-                (*pOutVar++) = (*pInVar++);
+                *pOutVar++ = *pInVar++;
             }
         }
     }

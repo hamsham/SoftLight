@@ -2,7 +2,6 @@
 #ifndef SR_VERTEX_PROCESSOR_HPP
 #define SR_VERTEX_PROCESSOR_HPP
 
-#include <array>
 #include <atomic>
 
 #include "soft_render/SR_Mesh.hpp"

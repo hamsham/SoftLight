@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 #include <memory> // std::move()
+#include <thread>
 
 #include "lightsky/math/vec_utils.h"
 #include "lightsky/math/mat_utils.h"

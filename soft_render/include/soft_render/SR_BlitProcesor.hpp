@@ -4,11 +4,6 @@
 
 #include <cstdint>
 
-#include <iostream>
-
-// MSVC can't handle the external templates used in this source file
-#include "lightsky/setup/Compiler.h" // LS_COMPILER_MSC
-
 #include "soft_render/SR_Color.hpp"
 #include "soft_render/SR_Texture.hpp"
 

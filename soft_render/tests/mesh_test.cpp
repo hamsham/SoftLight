@@ -2,6 +2,7 @@
 #include <iostream>
 #include <iomanip> // std::setprecision
 #include <limits>
+#include <thread>
 
 #include "lightsky/math/mat_utils.h"
 

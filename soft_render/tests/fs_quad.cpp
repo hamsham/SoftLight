@@ -178,7 +178,7 @@ SR_VertexShader ycocg_vert_shader()
 #if 1
 inline LS_INLINE float filter_luminance(float a, const math::vec2& a1, const math::vec2& a2, const math::vec2& a3, const math::vec2& a4) noexcept
 {
-    constexpr float THRESH = 1.f/255.f;
+    constexpr float THRESH = 10.f/255.f;
 
     math::vec4&& lum = math::abs(math::vec4{a1[0], a2[0], a3[0], a4[0]} - a);
     math::vec4&& w = math::vec4{1.f} - math::step(math::vec4{THRESH}, lum);
