@@ -18,14 +18,26 @@ if (MINGW)
 	add_definitions(-D_WIN32_WINNT=0x0602)
 endif()
 
+include(buildUtil.cmake)
+
 
 
 # -------------------------------------
 # OS Setup
 # -------------------------------------
-if (NOT WIN32 AND NOT MINGW)
-    find_package(X11 REQUIRED)
+if (APPLE)
+    set(PREFER_COCOA TRUE CACHE BOOL "Set preference to use the Cocoa window backend.")
+endif()
 
+if (PREFER_COCOA)
+    sr_find_library(APPKIT_LIBRARY          AppKit         TRUE)
+    sr_find_library(COCOA_LIBRARY           Cocoa          TRUE)
+    sr_find_library(CORE_FOUNDATION_LIBRARY CoreFoundation TRUE)
+    sr_find_library(CORE_GRAPHICS_LIBRARY   CoreGraphics   TRUE)
+endif()
+
+if (UNIX AND NOT MINGW AND NOT PREFER_COCOA)
+    find_package(X11 REQUIRED)
     if (NOT X11_FOUND)
         message(FATAL_ERROR "Unable to locate the X11 library.")
     else()
@@ -47,29 +59,14 @@ if (NOT WIN32 AND NOT MINGW)
         include_directories(BEFORE SYSTEM ${X11_XShm_INCLUDE_PATH})
     endif()
 
-    find_file(XCB_XCB_HEADER
-        xcb/xcb.h
-        PATHS
-            ${CMAKE_INCLUDE_PATH})
+    find_file(XCB_XCB_HEADER   xcb/xcb.h       PATHS ${CMAKE_INCLUDE_PATH})
+    find_file(XCB_PROTO_HEADER xcb/xproto.h    PATHS ${CMAKE_INCLUDE_PATH})
+    find_file(XCB_IMAGE_HEADER xcb/xcb_image.h PATHS ${CMAKE_INCLUDE_PATH})
+    find_file(XCB_SHM_HEADER   xcb/shm.h       PATHS ${CMAKE_INCLUDE_PATH})
 
-    find_file(XCB_PROTO_HEADER
-        xcb/xproto.h
-        PATHS
-            ${CMAKE_INCLUDE_PATH})
-
-    find_file(XCB_IMAGE_HEADER
-        xcb/xcb_image.h
-        PATHS
-            ${CMAKE_INCLUDE_PATH})
-
-    find_file(XCB_SHM_HEADER
-        xcb/shm.h
-        PATHS
-            ${CMAKE_INCLUDE_PATH})
-
-    find_library(XCB_LIBRARY xcb)
-    find_library(X11_XCB_LIBRARY X11-xcb)
-    find_library(XCB_SHM_LIBRARY xcb-shm)
+    sr_find_library(XCB_LIBRARY     xcb     FALSE)
+    sr_find_library(X11_XCB_LIBRARY X11-xcb FALSE)
+    sr_find_library(XCB_SHM_LIBRARY xcb-shm FALSE)
 
     if (NOT XCB_XCB_HEADER OR NOT XCB_PROTO_HEADER OR NOT XCB_LIBRARY OR NOT X11_XCB_LIBRARY)
         message("-- XCB Not found. Falling back to X11")
@@ -165,6 +162,14 @@ if (WIN32)
         include/soft_render/SR_KeySymWin32.hpp
         include/soft_render/SR_RenderWindowWin32.hpp
         include/soft_render/SR_WindowBufferWin32.hpp)
+
+elseif (PREFER_COCOA)
+    set(SR_LIB_HEADERS
+        ${SR_LIB_HEADERS}
+        include/soft_render/SR_KeySymCocoa.hpp
+        include/soft_render/SR_RenderWindowCocoa.hpp
+        include/soft_render/SR_WindowBufferCocoa.hpp)
+
 else()
     set(SR_LIB_HEADERS
         ${SR_LIB_HEADERS}
@@ -213,12 +218,32 @@ set(SR_LIB_SOURCES
     src/SR_WindowBuffer.cpp)
 
 if(WIN32)
+    message("-- Win32 window backend enabled.")
     set(SR_LIB_SOURCES
         ${SR_LIB_SOURCES}
         src/SR_KeySymWin32.cpp
         src/SR_RenderWindowWin32.cpp
         src/SR_WindowBufferWin32.cpp)
+
+elseif (PREFER_COCOA)
+    message("-- Cocoa window backend enabled.")
+    add_definitions(-DSR_PREFER_COCOA)
+
+    set(SR_LIB_SOURCES
+        ${SR_LIB_SOURCES}
+        src/SR_KeySymCocoa.mm
+        src/SR_RenderWindowCocoa.mm
+        src/SR_WindowBufferCocoa.mm)
+
 elseif(UNIX)
+    if (PREFER_XCB)
+        add_definitions(-DSR_PREFER_XCB)
+        message("-- X11-XCB window backend enabled.")
+    else()
+        add_definitions(-USR_PREFER_XCB)
+        message("-- X11 window backend enabled.")
+    endif()
+
     # X11-shm extensions can not be used on OSX due to shared memory
     # allocation limits
     if(NOT APPLE)
@@ -228,14 +253,6 @@ elseif(UNIX)
         message("-- X11 Shared memory extensions disabled.")
     endif()
 
-    if (PREFER_XCB)
-        add_definitions(-DSR_PREFER_XCB)
-        message("-- X11-XCB window backend enabled.")
-    else()
-        add_definitions(-USR_PREFER_XCB)
-        message("-- X11 window backend enabled.")
-    endif()
-
     set(SR_LIB_SOURCES
         ${SR_LIB_SOURCES}
         src/SR_KeySymXlib.cpp
@@ -243,6 +260,7 @@ elseif(UNIX)
         src/SR_RenderWindowXlib.cpp
         src/SR_WindowBufferXCB.cpp
         src/SR_WindowBufferXlib.cpp)
+
 else()
     message(FATAL_ERROR "Unknown/unsupported platform")
 endif()
@@ -263,31 +281,32 @@ endif()
 
 add_library(${PROJECT_NAME} ${SR_LIB_TYPE} ${SR_LIB_SOURCES} ${SR_LIB_HEADERS})
 
-if (NOT MSVC)
+target_link_libraries(
+    ${PROJECT_NAME}
+    LightSky::Game
+    LightSky::Math
+    LightSky::Utils
+    LightSky::Setup
+    ${ASSIMP_LIBRARIES}
+    ${FREEIMAGE_LIBRARIES})
+
+if (NOT MSVC AND NOT PREFER_COCOA)
     target_link_libraries(
         ${PROJECT_NAME}
-        LightSky::Game
-        LightSky::Math
-        LightSky::Utils
-        LightSky::Setup
-        ${ASSIMP_LIBRARIES}
-        ${FREEIMAGE_LIBRARIES}
         ${XCB_LIBRARY}
         ${XCB_SHM_LIBRARY}
         ${X11_XCB_LIBRARY}
         ${X11_LIBRARIES}
-        pthread
-    )
-else()
+        pthread)
+
+elseif (PREFER_COCOA)
     target_link_libraries(
         ${PROJECT_NAME}
-        LightSky::Game
-        LightSky::Math
-        LightSky::Utils
-        LightSky::Setup
-        ${ASSIMP_LIBRARIES}
-        ${FREEIMAGE_LIBRARIES}
-    )
+        "${APPKIT_LIBRARY}"
+        "${COCOA_LIBRARY}"
+        "${CORE_FOUNDATION_LIBRARY}"
+        "${CORE_GRAPHICS_LIBRARY}")
+
 endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${FREEIMAGE_INCLUDE_PATH})

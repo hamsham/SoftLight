@@ -745,13 +745,13 @@ bool SR_RenderWindowWin32::has_event() const noexcept
 -------------------------------------*/
 bool SR_RenderWindowWin32::peek_event(SR_WindowEvent* const pEvent) noexcept
 {
+    memset(pEvent, '\0', sizeof(SR_WindowEvent));
     if (!has_event())
     {
         return false;
     }
 
     RECT clientRect;
-
     pEvent->pNativeWindow = (ptrdiff_t)mLastMsg.hwnd;
 
     switch (mLastMsg.message)

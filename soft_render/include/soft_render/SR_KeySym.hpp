@@ -6,8 +6,10 @@
 
 #include "lightsky/setup/OS.h" // OS detection
 
-#ifdef LS_OS_WINDOWS
+#if defined(LS_OS_WINDOWS)
     #include "soft_render/SR_KeySymWin32.hpp"
+#elif defined(SR_PREFER_COCOA)
+    #include "soft_render/SR_KeySymCocoa.hpp"
 #else
     #include "soft_render/SR_KeySymXlib.hpp"
 #endif

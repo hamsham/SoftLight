@@ -5,6 +5,8 @@
 
 #ifdef LS_OS_WINDOWS
     #include "soft_render/SR_RenderWindowWin32.hpp"
+#elif defined(SR_PREFER_COCOA)
+        #include "soft_render/SR_RenderWindowCocoa.hpp"
 #else
     #include "soft_render/SR_RenderWindowXCB.hpp"
     #include "soft_render/SR_RenderWindowXlib.hpp"
@@ -80,7 +82,9 @@ ls::utils::Pointer<SR_RenderWindow> SR_RenderWindow::create() noexcept
 {
     #ifdef LS_OS_WINDOWS
         return ls::utils::Pointer<SR_RenderWindow>{new SR_RenderWindowWin32{}};
-    #elif defined(LS_OS_LINUX) || defined(LS_OS_OSX)
+    #elif defined(SR_PREFER_COCOA)
+        return ls::utils::Pointer<SR_RenderWindow>{new SR_RenderWindowCocoa{}};
+    #elif defined(LS_OS_UNIX)
         #if defined(SR_PREFER_XCB)
             return ls::utils::Pointer<SR_RenderWindow>{new SR_RenderWindowXCB{}};
         #else

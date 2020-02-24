@@ -1,6 +1,6 @@
 
-#ifndef SR_RENDERWINDOW_XLIB_HPP
-#define SR_RENDERWINDOW_XLIB_HPP
+#ifndef SR_RENDER_WINDOW_XLIB_HPP
+#define SR_RENDER_WINDOW_XLIB_HPP
 
 #include "soft_render/SR_RenderWindow.hpp"
 
@@ -229,4 +229,4 @@ inline const void* SR_RenderWindowXlib::native_handle() const noexcept
 
 
 
-#endif /* SR_RENDERWINDOW_XLIB_HPP */
+#endif /* SR_RENDER_WINDOW_XLIB_HPP */

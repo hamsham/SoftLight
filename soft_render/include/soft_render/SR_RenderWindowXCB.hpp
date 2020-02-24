@@ -1,6 +1,6 @@
 
-#ifndef SR_RENDERWINDOW_XCB_HPP
-#define SR_RENDERWINDOW_XCB_HPP
+#ifndef SR_RENDER_WINDOW_XCB_HPP
+#define SR_RENDER_WINDOW_XCB_HPP
 
 #include <cstdint> // uint32_t
 
@@ -235,4 +235,4 @@ inline const void* SR_RenderWindowXCB::native_handle() const noexcept
 
 
 
-#endif /* SR_RENDERWINDOW_XCB_HPP */
+#endif /* SR_RENDER_WINDOW_XCB_HPP */

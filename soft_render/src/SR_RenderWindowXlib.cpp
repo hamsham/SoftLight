@@ -790,6 +790,7 @@ bool SR_RenderWindowXlib::has_event() const noexcept
 -------------------------------------*/
 bool SR_RenderWindowXlib::peek_event(SR_WindowEvent* const pEvent) noexcept
 {
+    memset(pEvent, '\0', sizeof(SR_WindowEvent));
     if (!has_event())
     {
         return false;
@@ -1012,17 +1013,17 @@ bool SR_RenderWindowXlib::peek_event(SR_WindowEvent* const pEvent) noexcept
                 mY = pConfig->y;
                 pEvent->window.x = (int16_t)pConfig->x;
                 pEvent->window.y = (int16_t)pConfig->y;
+                break;
             }
-
-            if (mWidth != (unsigned)pConfig->width || mHeight != (unsigned)pConfig->height)
+            else if (mWidth != (unsigned)pConfig->width || mHeight != (unsigned)pConfig->height)
             {
                 pEvent->type = SR_WinEventType::WIN_EVENT_RESIZED;
                 mWidth = (unsigned)pConfig->width;
                 mHeight = (unsigned)pConfig->height;
                 pEvent->window.width = (uint16_t)pConfig->width;
                 pEvent->window.height = (uint16_t)pConfig->height;
+                break;
             }
-            break;
 
         default: // unhandled event
             pEvent->type = SR_WinEventType::WIN_EVENT_UNKNOWN;

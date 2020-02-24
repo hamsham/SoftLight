@@ -1,61 +1,46 @@
 
-#ifndef SR_RENDER_WINDOW_WIN32_HPP
-#define SR_RENDER_WINDOW_WIN32_HPP
-
-// Thanks again Visual Studio
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif /* NOMINMAX */
-
-#ifndef WIN32_LEAN_AND_MEAN
-    #define WIN32_LEAN_AND_MEAN
-#endif /* WIN32_LEAN_AND_MEAN */
-
-#include <windows.h>
+#ifndef SR_RENDER_WINDOW_COCOA_HPP
+#define SR_RENDER_WINDOW_COCOA_HPP
 
 #include "soft_render/SR_RenderWindow.hpp"
 
 
 
 /*-----------------------------------------------------------------------------
- * Win32 Render Window
+ * Cocoa Render Window
 -----------------------------------------------------------------------------*/
-class SR_RenderWindowWin32 final : public SR_RenderWindow
+class SR_RenderWindowCocoa final : public SR_RenderWindow
 {
-    friend class SR_WindowBufferWin32;
+    friend class SR_WindowBufferCocoa;
     friend class SR_BlitProcessor;
 
   private:
-    WNDCLASSEX mWc;
+    void* mWindow; // NSWindow
 
-    HWND mHwnd;
+    void* mDelegate; // NSWindowDelegate
 
-    MSG mLastMsg;
-
-    int mMouseX;
-
-    int mMouseY;
+    void* mLastEvent; // NSEvent;
 
     bool mKeysRepeat;
 
     bool mCaptureMouse;
 
-    static LRESULT CALLBACK WinProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+    int mMouseX;
 
-    LRESULT win_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+    int mMouseY;
 
   public:
-    virtual ~SR_RenderWindowWin32() noexcept override;
+    virtual ~SR_RenderWindowCocoa() noexcept override;
 
-    SR_RenderWindowWin32() noexcept;
+    SR_RenderWindowCocoa() noexcept;
 
-    SR_RenderWindowWin32(const SR_RenderWindowWin32&) noexcept;
+    SR_RenderWindowCocoa(const SR_RenderWindowCocoa&) noexcept;
 
-    SR_RenderWindowWin32(SR_RenderWindowWin32&&) noexcept;
+    SR_RenderWindowCocoa(SR_RenderWindowCocoa&&) noexcept;
 
-    SR_RenderWindowWin32& operator=(const SR_RenderWindowWin32&) noexcept;
+    SR_RenderWindowCocoa& operator=(const SR_RenderWindowCocoa&) noexcept;
 
-    SR_RenderWindowWin32& operator=(SR_RenderWindowWin32&&) noexcept;
+    SR_RenderWindowCocoa& operator=(SR_RenderWindowCocoa&&) noexcept;
 
     int set_title(const char* const pName) noexcept override;
 
@@ -119,16 +104,16 @@ class SR_RenderWindowWin32 final : public SR_RenderWindow
 /*-------------------------------------
  * Ensure a window is available
 -------------------------------------*/
-inline bool SR_RenderWindowWin32::valid() const noexcept
+inline bool SR_RenderWindowCocoa::valid() const noexcept
 {
-    return mHwnd != nullptr;
+    return mWindow != nullptr;
 }
 
 
 /*-------------------------------------
 * Determine the windo state
 -------------------------------------*/
-inline WindowStateInfo SR_RenderWindowWin32::state() const noexcept
+inline WindowStateInfo SR_RenderWindowCocoa::state() const noexcept
 {
     return mCurrentState;
 }
@@ -137,7 +122,7 @@ inline WindowStateInfo SR_RenderWindowWin32::state() const noexcept
 /*-------------------------------------
  * Check if keyboard keys repeat.
 -------------------------------------*/
-inline bool SR_RenderWindowWin32::keys_repeat() const noexcept
+inline bool SR_RenderWindowCocoa::keys_repeat() const noexcept
 {
     return mKeysRepeat;
 }
@@ -147,9 +132,9 @@ inline bool SR_RenderWindowWin32::keys_repeat() const noexcept
 /*-------------------------------------
  * Get the native window handle
 -------------------------------------*/
-inline void*SR_RenderWindowWin32::native_handle() noexcept
+inline void*SR_RenderWindowCocoa::native_handle() noexcept
 {
-    return mHwnd;
+    return mWindow;
 }
 
 
@@ -157,11 +142,11 @@ inline void*SR_RenderWindowWin32::native_handle() noexcept
 /*-------------------------------------
  * Get the native window handle
 -------------------------------------*/
-inline const void* SR_RenderWindowWin32::native_handle() const noexcept
+inline const void* SR_RenderWindowCocoa::native_handle() const noexcept
 {
-    return mHwnd;
+    return mWindow;
 }
 
 
 
-#endif /* SR_RENDER_WINDOW_WIN32_HPP */
+#endif /* SR_RENDER_WINDOW_COCOA_HPP */

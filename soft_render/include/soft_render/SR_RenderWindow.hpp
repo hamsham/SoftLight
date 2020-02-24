@@ -6,8 +6,8 @@
  * - Integrate window buffers
  */
 
-#ifndef SR_RENDERWINDOW_HPP
-#define SR_RENDERWINDOW_HPP
+#ifndef SR_RENDER_WINDOW_HPP
+#define SR_RENDER_WINDOW_HPP
 
 #include <cstddef> // ptrdiff_t
 
@@ -120,4 +120,4 @@ class SR_RenderWindow
 
 
 
-#endif /* SR_RENDERWINDOW_HPP */
+#endif /* SR_RENDER_WINDOW_HPP */

@@ -282,6 +282,7 @@ int SR_RenderWindowXCB::init(unsigned width, unsigned height) noexcept
         | XCB_EVENT_MASK_KEY_PRESS
         | XCB_EVENT_MASK_KEY_RELEASE
         //| XCB_EVENT_MASK_KEYMAP_STATE
+        | XCB_EVENT_MASK_PROPERTY_CHANGE
         | XCB_EVENT_MASK_RESIZE_REDIRECT
         | XCB_EVENT_MASK_STRUCTURE_NOTIFY
         | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
@@ -510,24 +511,30 @@ int SR_RenderWindowXCB::destroy() noexcept
 /*-------------------------------------
  * Set the window size
 -------------------------------------*/
-bool SR_RenderWindowXCB::set_size(unsigned width, unsigned height) noexcept
+bool SR_RenderWindowXCB::set_size(unsigned w, unsigned h) noexcept
 {
-    assert(width <= std::numeric_limits<uint16_t>::max());
-    assert(height <= std::numeric_limits<uint16_t>::max());
+    assert(w <= std::numeric_limits<uint16_t>::max());
+    assert(h <= std::numeric_limits<uint16_t>::max());
 
-    if (!valid() || !width || !height)
+    if (!valid() || !w || !h)
     {
         return false;
     }
 
-    if (mWidth == width && mHeight == height)
+    if (mWidth == w && mHeight == h)
     {
         LS_LOG_ERR("Window size unchanged.");
         return true;
     }
 
-    const uint32_t dimens[] = {(uint32_t)width, (uint32_t)height};
-    xcb_configure_window(mConnection, mWindow, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, dimens);
+    const uint32_t dimens[] = {(uint32_t)w, (uint32_t)h};
+    xcb_void_cookie_t result = xcb_configure_window(mConnection, mWindow, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, dimens);
+
+    xcb_flush(mConnection);
+    if (xcb_request_check(mConnection, result))
+    {
+        return false;
+    }
 
     return true;
 }
@@ -551,7 +558,14 @@ bool SR_RenderWindowXCB::set_position(int x, int y) noexcept
     }
 
     const uint32_t pos[] = {(uint32_t)x, (uint32_t)y};
-    xcb_configure_window(mConnection, mWindow, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, pos);
+    xcb_void_cookie_t result = xcb_configure_window(mConnection, mWindow, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, pos);
+
+    xcb_flush(mConnection);
+    if (xcb_request_check(mConnection, result))
+    {
+        return false;
+    }
+
 
     mX = x;
     mY = y;
@@ -777,6 +791,12 @@ bool SR_RenderWindowXCB::peek_event(SR_WindowEvent* const pEvent) noexcept
     unsigned keyMods = 0;
     unsigned long keySym;
 
+    if (!has_event())
+    {
+        return false;
+    }
+
+    memset(pEvent, '\0', sizeof(SR_WindowEvent));
     switch (_get_xcb_event(mLastEvent))
     {
         case XCB_NONE: // sentinel
@@ -994,17 +1014,17 @@ bool SR_RenderWindowXCB::peek_event(SR_WindowEvent* const pEvent) noexcept
                 mY = pConfig->y;
                 pEvent->window.x = (int16_t)pConfig->x;
                 pEvent->window.y = (int16_t)pConfig->y;
+                break;
             }
-
-            if (mWidth != (unsigned)pConfig->width || mHeight != (unsigned)pConfig->height)
+            else if (mWidth != (unsigned)pConfig->width || mHeight != (unsigned)pConfig->height)
             {
                 pEvent->type = SR_WinEventType::WIN_EVENT_RESIZED;
                 mWidth = (unsigned)pConfig->width;
                 mHeight = (unsigned)pConfig->height;
                 pEvent->window.width = (uint16_t)pConfig->width;
                 pEvent->window.height = (uint16_t)pConfig->height;
+                break;
             }
-            break;
 
         default: // unhandled event
             pEvent->type = SR_WinEventType::WIN_EVENT_UNKNOWN;
