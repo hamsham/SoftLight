@@ -790,7 +790,7 @@ bool SR_RenderWindowXlib::has_event() const noexcept
 -------------------------------------*/
 bool SR_RenderWindowXlib::peek_event(SR_WindowEvent* const pEvent) noexcept
 {
-    memset(pEvent, '\0', sizeof(SR_WindowEvent));
+    utils::fast_memset(pEvent, '\0', sizeof(SR_WindowEvent));
     if (!has_event())
     {
         return false;

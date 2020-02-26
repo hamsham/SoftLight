@@ -5,7 +5,6 @@
 #include <limits> // numeric_limits<>
 #include <memory> // std::move
 #include <new> // std::nothrow
-#include <X11/XKBlib.h>
 
 // XLib should use an un-mangled interface
 extern "C"

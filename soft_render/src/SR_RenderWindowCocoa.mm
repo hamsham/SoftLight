@@ -4,8 +4,6 @@
 
 #include <pthread.h> // pthread_mutex_t, pthread_mutex_lock()
 
-#include "lightsky/setup/Compiler.h"
-
 #include "lightsky/utils/Log.h"
 
 #include "soft_render/SR_Color.hpp"
@@ -171,6 +169,7 @@ int sr_window_init_app(void)
 }
 
 @end
+
 
 
 /*-----------------------------------------------------------------------------
@@ -339,7 +338,7 @@ int SR_RenderWindowCocoa::init(unsigned width, unsigned height) noexcept
     NSUInteger windowStyle = NSWindowStyleMaskTitled  | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable;
     NSRect     screenRect  = [[NSScreen mainScreen] frame];
     NSRect     windowRect  = NSMakeRect((screenRect.size.width-width)*0.5, (screenRect.size.height-height)*0.5, width, height);
-    NSWindow*  window      = [[SR_CocoaWindow alloc] initWithContentRect:windowRect styleMask:(NSWindowStyleMask)windowStyle backing:NSBackingStoreBuffered defer:NO];
+    NSWindow*  window      = [[SR_CocoaWindow alloc] initWithContentRect:windowRect styleMask:(NSWindowStyleMask)windowStyle backing:(NSBackingStoreType)1 defer:NO];
 
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
 
@@ -348,8 +347,7 @@ int SR_RenderWindowCocoa::init(unsigned width, unsigned height) noexcept
     [menubar addItem:appMenuItem];
     [NSApp setMainMenu:menubar];
 
-    // Then we add the quit item to the menu. Fortunately the action is simple since terminate: is
-    // already implemented in NSApplication and the NSApplication is always in the responder chain.
+    // Add quit to the app menu
     NSMenu* appMenu = [[NSMenu new] autorelease];
     NSString* appName = [[NSProcessInfo processInfo] processName];
     NSString* quitTitle = [@"Quit " stringByAppendingString:appName];
@@ -976,7 +974,7 @@ void SR_RenderWindowCocoa::render(SR_WindowBuffer& buffer) noexcept
         CHAR_BIT*bpp,
         bpp*buf.width(),
         (CGColorSpaceRef)buf.mColorSpace,
-        kCGImageAlphaNoneSkipFirst|kCGImageByteOrder32Little,
+        kCGImageAlphaNoneSkipFirst|kCGBitmapByteOrder32Host,
         (CGDataProviderRef)buf.mImageProvider,
         nullptr,
         NO,
