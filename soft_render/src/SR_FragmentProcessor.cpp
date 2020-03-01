@@ -57,25 +57,28 @@ inline void LS_IMPERATIVE interpolate_line_varyings(
  * Interpolate varying variables across a triangle
 --------------------------------------*/
 inline void LS_IMPERATIVE interpolate_tri_varyings(
-    const float*        baryCoords,
-    const uint_fast32_t numVaryings,
-    const math::vec4*   inVaryings0,
-    math::vec4*         outVaryings) noexcept
+    const float*      LS_RESTRICT_PTR baryCoords,
+    uint_fast32_t     numVaryings,
+    const math::vec4* LS_RESTRICT_PTR inVaryings0,
+    math::vec4*       LS_RESTRICT_PTR outVaryings) noexcept
 {
     #if defined(LS_ARCH_X86)
-        const math::vec4* inVaryings1  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
+        const math::vec4* LS_RESTRICT_PTR inVaryings1  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
         const math::vec4* inVaryings2  = inVaryings0 + (SR_SHADER_MAX_VARYING_VECTORS * 2);
 
-        const __m128 bc  = _mm_castsi128_ps(_mm_lddqu_si128(reinterpret_cast<const __m128i*>(baryCoords)));
-        const __m128 bc0 = _mm_permute_ps(bc, 0x00);
-        const __m128 bc1 = _mm_permute_ps(bc, 0x55);
-        const __m128 bc2 = _mm_permute_ps(bc, 0xAA);
+        //const __m128 bc  = _mm_castsi128_ps(_mm_lddqu_si128(reinterpret_cast<const __m128i*>(baryCoords)));
+        //const __m128 bc0 = _mm_permute_ps(bc, 0x00);
+        //const __m128 bc1 = _mm_permute_ps(bc, 0x55);
+        //const __m128 bc2 = _mm_permute_ps(bc, 0xAA);
+        const __m128 bc0 = _mm_set1_ps(baryCoords[0]);
+        const __m128 bc1 = _mm_set1_ps(baryCoords[1]);
+        const __m128 bc2 = _mm_set1_ps(baryCoords[2]);
 
-        for (uint_fast32_t i = numVaryings; i--;)
+        while (numVaryings--)
         {
-            const __m128 v0 = _mm_mul_ps(_mm_castsi128_ps(_mm_lddqu_si128(reinterpret_cast<const __m128i*>(inVaryings0++))), bc0);
-            const __m128 v1 = _mm_fmadd_ps(_mm_castsi128_ps(_mm_lddqu_si128(reinterpret_cast<const __m128i*>(inVaryings1++))), bc1, v0);
-            _mm_store_ps(reinterpret_cast<float*>(outVaryings++), _mm_fmadd_ps(_mm_castsi128_ps(_mm_lddqu_si128(reinterpret_cast<const __m128i*>(inVaryings2++))), bc2, v1));
+            const __m128 v0 = _mm_mul_ps((inVaryings0++)->simd, bc0);
+            const __m128 v1 = _mm_fmadd_ps((inVaryings1++)->simd, bc1, v0);
+            _mm_store_ps(reinterpret_cast<float*>(outVaryings++), _mm_fmadd_ps((inVaryings2++)->simd, bc2, v1));
         }
     #elif defined(LS_ARCH_AARCH64)
         const math::vec4* inVaryings1  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
@@ -595,7 +598,7 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
         {
             // calculate the bounds of the current scan-line
             const float        yf  = (float)y;
-            const math::vec4&& bcY = math::fmadd(bcClipSpace[1], math::vec4{yf}, bcClipSpace[2]);
+            const math::vec4&& bcY = math::fmadd(bcClipSpace[1], math::vec4{yf, yf, yf, 0.f}, bcClipSpace[2]);
 
             // In this rasterizer, we're only rendering the absolute pixels
             // contained within the triangle edges. However this will serve as a
@@ -610,7 +613,7 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
             {
                 // calculate barycentric coordinates
                 const float  xf = (float)x;
-                math::vec4&& bc = math::fmadd(bcClipSpace[0], math::vec4{xf}, bcY);
+                math::vec4&& bc = math::fmadd(bcClipSpace[0], math::vec4{xf, xf, xf, 0.f}, bcY);
                 const float  z  = math::dot(depth, bc);
 
                 if (depthTesting)

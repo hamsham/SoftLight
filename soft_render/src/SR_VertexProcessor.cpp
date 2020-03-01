@@ -711,17 +711,17 @@ inline void SR_VertexProcessor::push_bin(
             p0[0]*p1[1] - p1[0]*p0[1],
             0.f
         );
+    }
 
-        while (numVerts--)
+    while (numVerts--)
+    {
+        const unsigned offset = numVerts * SR_SHADER_MAX_VARYING_VECTORS;
+        const math::vec4* pInVar = varyings+offset;
+        math::vec4* pOutVar = bin.mVaryings+offset;
+
+        for (unsigned i = numVaryings; i--;)
         {
-            const unsigned offset = numVerts * SR_SHADER_MAX_VARYING_VECTORS;
-            const math::vec4* pInVar = varyings+offset;
-            math::vec4* pOutVar = bin.mVaryings+offset;
-
-            for (unsigned i = numVaryings; i--;)
-            {
-                *pOutVar++ = *pInVar++;
-            }
+            *pOutVar++ = *pInVar++;
         }
     }
 }

@@ -140,11 +140,7 @@ inline void SR_ProcessorPool::execute() noexcept
 -------------------------------------*/
 inline void SR_ProcessorPool::clear_fragment_bins() noexcept
 {
-    for (uint16_t i = 0; i < mNumThreads; ++i)
-    {
-        //mFragBins[i].clear();
-        mBinsUsed.store(0);
-    }
+    mBinsUsed.store(0);
 }
 
 

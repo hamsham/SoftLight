@@ -188,18 +188,6 @@ void SR_ProcessorPool::wait() noexcept
         SR_ProcessorPool::Worker* const pWorker = mThreads[threadId];
         pWorker->wait();
     }
-
-    /*
-    for (unsigned threadId = 0; threadId < mNumThreads-1u; ++threadId)
-    {
-        SR_ProcessorPool::Worker* const pWorker = mThreads[threadId];
-
-        while (!pWorker->ready())
-        {
-            continue;
-        }
-    }
-    */
 }
 
 
@@ -295,7 +283,7 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh&
 
     // Divide all vertex processing amongst the available worker threads. Let
     // The threads work out between themselves how to partition the data.
-    for (uint16_t threadId = 0; threadId < mNumThreads; ++threadId)
+    for (uint16_t threadId = 0; threadId < mNumThreads-1; ++threadId)
     {
         vertTask.mThreadId = threadId;
 
@@ -306,8 +294,12 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh&
         pWorker->push(task);
     }
 
+    flush();
+    vertTask.mThreadId = mNumThreads-1;
+    vertTask.execute();
+
     // Each thread should now pause except for the main thread.
-    execute();
+    wait();
     clear_fragment_bins();
 }
 
@@ -345,26 +337,24 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh*
 
     // Divide all vertex processing amongst the available worker threads. Let
     // The threads work out between themselves how to partition the data.
-    for (uint16_t threadId = 0; threadId < mNumThreads; ++threadId)
+    for (uint16_t threadId = 0; threadId < mNumThreads-1; ++threadId)
     {
         vertTask.mThreadId = threadId;
 
         // Busy waiting will be enabled the moment the first flush occurs on each
         // thread.
         SR_ProcessorPool::Worker* pWorker = mThreads[threadId];
-        pWorker->busy_waiting(true);
+        pWorker->busy_waiting(false);
         pWorker->push(task);
     }
 
-    // Each thread should now pause except for the main thread.
-    execute();
-    clear_fragment_bins();
+    flush();
+    vertTask.mThreadId = mNumThreads-1;
+    vertTask.execute();
 
-    for (uint16_t threadId = 0; threadId < mNumThreads; ++threadId)
-    {
-        SR_ProcessorPool::Worker* pWorker = mThreads[threadId];
-        pWorker->busy_waiting(false);
-    }
+    // Each thread should now pause except for the main thread.
+    wait();
+    clear_fragment_bins();
 }
 
 
@@ -400,7 +390,7 @@ void SR_ProcessorPool::run_blit_processors(
     blitter.mBackBuffer = outTex;
 
     // Process most of the rendering on other threads first.
-    for (uint16_t threadId = 0; threadId < mNumThreads; ++threadId)
+    for (uint16_t threadId = 0; threadId < mNumThreads-1; ++threadId)
     {
         blitter.mThreadId = threadId;
 
@@ -409,5 +399,12 @@ void SR_ProcessorPool::run_blit_processors(
         pWorker->push(processor);
     }
 
-    execute();
+    flush();
+    blitter.mThreadId = mNumThreads-1;
+    blitter.execute();
+
+    // Each thread should now pause except for the main thread.
+    wait();
+
+    //execute();
 }
