@@ -953,8 +953,8 @@ void SR_VertexProcessor::process_points(const SR_Mesh& m, size_t instanceId) noe
 --------------------------------------*/
 void SR_VertexProcessor::process_lines(const SR_Mesh& m, size_t instanceId) noexcept
 {
-    alignas(alignof(math::vec4)) math::vec4 vertCoords[SR_SHADER_MAX_SCREEN_COORDS];
-    alignas(alignof(math::vec4)) math::vec4 pVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS];
+    alignas(alignof(math::vec4)) math::vec4 vertCoords[SR_SHADER_MAX_SCREEN_COORDS] = {};
+    alignas(alignof(math::vec4)) math::vec4 pVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS] = {};
 
     const SR_VertexShader   vertShader  = mShader->mVertShader;
     const auto              shader      = vertShader.shader;
