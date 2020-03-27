@@ -671,14 +671,10 @@ inline void SR_VertexProcessor::push_bin(
     while (true)
     {
         #if defined(LS_ARCH_X86)
-            _mm_lfence();
+            _mm_sfence();
         #endif
 
         binId = pLocks->fetch_add(1, std::memory_order_acq_rel);
-
-        #if defined(LS_ARCH_X86)
-            _mm_sfence();
-        #endif
 
         if (LS_UNLIKELY(binId >= SR_SHADER_MAX_BINNED_PRIMS))
         {

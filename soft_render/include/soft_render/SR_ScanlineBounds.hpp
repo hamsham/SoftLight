@@ -86,15 +86,14 @@ struct alignas(sizeof(float)*4) SR_ScanlineBounds
     ls::math::vec2 v0;
     ls::math::vec2 v1;
 
-    float p10xy;
     float p20y;
     float p21xy;
+    float p10xy;
     float p20x;
 
-    int32_t bboxMinX;
     int32_t bboxMaxX;
 
-    inline void LS_INLINE init(ls::math::vec4 p0, ls::math::vec4 p1, ls::math::vec4 p2, const float fboW) noexcept
+    inline void LS_INLINE init(ls::math::vec4& p0, ls::math::vec4& p1, ls::math::vec4& p2, const float fboW) noexcept
     {
         #if defined(LS_ARCH_X86) || defined(LS_ARCH_ARM)
             sr_sort_minmax(p0.simd, p1.simd);
@@ -109,27 +108,20 @@ struct alignas(sizeof(float)*4) SR_ScanlineBounds
         v0 = ls::math::vec2_cast(p0);
         v1 = ls::math::vec2_cast(p1);
 
-        const float p10x = p1[0] - p0[0];
-        const float p21x = p2[0] - p1[0];
+        p20y = p2[1] - p0[1];
+        p21xy = (p2[0] - p1[0]) / (p2[1] - p1[1]);
+        p10xy = (p1[0] - p0[0]) / (p1[1] - p0[1]);
         p20x = p2[0] - p0[0];
-
-        const float p10y = ls::math::rcp(p1[1] - p0[1]);
-        const float p21y = ls::math::rcp(p2[1] - p1[1]);
-        p20y = ls::math::rcp(p2[1] - p0[1]);
-
-        p10xy = p10x * p10y;
-        p21xy = p21x * p21y;
 
         #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
             bboxMinX = (int32_t)ls::math::min(fboW, ls::math::max(0.f,  ls::math::min(p0[0], p1[0], p2[0])));
             bboxMaxX = (int32_t)ls::math::max(0.f,  ls::math::min(fboW, ls::math::max(p0[0], p1[0], p2[0]))+0.5f);
         #else
-            bboxMinX = (int32_t)ls::math::max(0.f,  ls::math::min(p0[0], p1[0], p2[0]));
             bboxMaxX = (int32_t)ls::math::min(fboW, ls::math::max(p0[0], p1[0], p2[0]));
         #endif
     }
 
-    inline void LS_INLINE init(ls::math::vec4 p0, ls::math::vec4 p1, ls::math::vec4 p2) noexcept
+    inline void LS_INLINE init(ls::math::vec4& p0, ls::math::vec4& p1, ls::math::vec4& p2) noexcept
     {
         #if defined(LS_ARCH_X86) || defined(LS_ARCH_ARM)
             sr_sort_minmax(p0.simd, p1.simd);
@@ -144,27 +136,20 @@ struct alignas(sizeof(float)*4) SR_ScanlineBounds
         v0 = ls::math::vec2_cast(p0);
         v1 = ls::math::vec2_cast(p1);
 
-        const float p10x = p1[0] - p0[0];
-        const float p21x = p2[0] - p1[0];
+        p20y = p2[1] - p0[1];
+        p21xy = (p2[0] - p1[0]) / (p2[1] - p1[1]);
+        p10xy = (p1[0] - p0[0]) / (p1[1] - p0[1]);
         p20x = p2[0] - p0[0];
 
-        const float p10y = ls::math::rcp(p1[1] - p0[1]);
-        const float p21y = ls::math::rcp(p2[1] - p1[1]);
-        p20y = ls::math::rcp(p2[1] - p0[1]);
-
-        p10xy = p10x * p10y;
-        p21xy = p21x * p21y;
-
-        bboxMinX = (int32_t)ls::math::min(p0[0], p1[0], p2[0]);
         bboxMaxX = (int32_t)ls::math::max(p0[0], p1[0], p2[0]);
     }
 
     inline void LS_INLINE step(const float yf, int32_t& xMin, int32_t& xMax) const noexcept
     {
-        const float d0         = yf - v0[1];
-        const float d1         = yf - v1[1];
+        const float d0 = yf - v0[1];
+        const float d1 = yf - v1[1];
 
-        const float alpha      = d0 * p20y;
+        const float alpha      = d0 / p20y;
         const int   secondHalf = ls::math::sign_mask(d1);
         const float a          = ls::math::fmadd(p21xy, d1, v1[0]);
         const float b          = ls::math::fmadd(p10xy, d0, v0[0]);
@@ -174,10 +159,10 @@ struct alignas(sizeof(float)*4) SR_ScanlineBounds
 
         sr_sort_minmax(xMin, xMax);
 
-        xMin = ls::math::clamp(xMin, bboxMinX, bboxMaxX);
+        xMin = ls::math::clamp(xMin, 0, bboxMaxX);
 
         #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
-            xMax = ls::math::clamp(xMax, bboxMinX, bboxMaxX);
+            xMax = ls::math::clamp(xMax, 0, bboxMaxX);
         #endif
     }
 };
