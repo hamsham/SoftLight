@@ -4,8 +4,9 @@
 
 #include "lightsky/utils/Pointer.h"
 
-#include "soft_render/SR_RenderWindow.hpp"
 #include "soft_render/SR_KeySym.hpp"
+#include "soft_render/SR_RenderWindow.hpp"
+#include "soft_render/SR_WindowEvent.hpp"
 
 
 

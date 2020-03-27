@@ -23,8 +23,9 @@ extern "C"
 #include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Log.h"
 
-#include "soft_render/SR_RenderWindowXCB.hpp"
 #include "soft_render/SR_WindowBufferXCB.hpp"
+#include "soft_render/SR_RenderWindowXCB.hpp"
+#include "soft_render/SR_WindowEvent.hpp"
 
 
 

@@ -21,8 +21,9 @@ extern "C"
 #include "lightsky/utils/Copy.h"
 #include "lightsky/utils/Log.h"
 
-#include "soft_render/SR_RenderWindowXlib.hpp"
 #include "soft_render/SR_WindowBufferXlib.hpp"
+#include "soft_render/SR_RenderWindowXlib.hpp"
+#include "soft_render/SR_WindowEvent.hpp"
 
 
 

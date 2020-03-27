@@ -1,5 +1,6 @@
 
 #include <iostream>
+#include <thread>
 
 #include "lightsky/math/mat_utils.h"
 
@@ -22,14 +23,22 @@ namespace utils = ls::utils;
 /*-----------------------------------------------------------------------------
  * Shader to display vertices with a position and normal
 -----------------------------------------------------------------------------*/
+struct ColoredVertex
+{
+    math::vec4 pos;
+    math::vec4 color;
+};
+
 /*--------------------------------------
  * Vertex Shader
 --------------------------------------*/
 math::vec4 _line_vert_shader_impl(SR_VertexParam& param)
 {
-    // Using a value of 1000 for the w-component to help with perspective correction.
-    const math::vec3& vert = *(param.pVbo->element<const math::vec3>(param.pVao->offset(0, param.vertId)));
-    return math::ortho(0.f, 640.f, 0.f, 480.f, 0.01f, 100.f) * math::vec4{vert[0], vert[1], vert[2], 1.f};
+    const ColoredVertex& vert = *(param.pVbo->element<const ColoredVertex>(param.pVao->offset(0, param.vertId)));
+
+    param.pVaryings[0] = vert.color;
+
+    return vert.pos;
 }
 
 
@@ -37,8 +46,8 @@ math::vec4 _line_vert_shader_impl(SR_VertexParam& param)
 SR_VertexShader line_vert_shader()
 {
     SR_VertexShader shader;
-    shader.numVaryings = 0;
-    shader.cullMode = SR_CULL_OFF;
+    shader.numVaryings = 1;
+    shader.cullMode = SR_CULL_BACK_FACE;
     shader.shader = _line_vert_shader_impl;
 
     return shader;
@@ -51,7 +60,7 @@ SR_VertexShader line_vert_shader()
 --------------------------------------*/
 bool _line_frag_shader_impl(SR_FragmentParam& fragParam)
 {
-    fragParam.pOutputs[0] = ls::math::vec4{0.f, 1.f, 0.f, 1.f}; // green
+    fragParam.pOutputs[0] = fragParam.pVaryings[0]; // green
     return true;
 }
 
@@ -60,7 +69,7 @@ bool _line_frag_shader_impl(SR_FragmentParam& fragParam)
 SR_FragmentShader line_frag_shader()
 {
     SR_FragmentShader shader;
-    shader.numVaryings = 0;
+    shader.numVaryings = 1;
     shader.numOutputs = 1;
     shader.blend = SR_BLEND_OFF;
     shader.depthMask = SR_DEPTH_MASK_OFF;
@@ -95,13 +104,13 @@ int main()
     size_t shaderId  = context.create_shader(vertShader,  fragShader);
 
     SR_VertexBuffer& vbo = context.vbo(vboId);
-    float tri[3][3] = {
-        {320.f, 120.f, 1.f},
-        {160.f, 400.f, 1.f},
-        {480.f, 400.f, 1.f}
+    ColoredVertex tri[3] = {
+        {{-0.5f, -0.5f, 0.f, 1.f}, {1.f, 0.f, 0.f, 1.f}},
+        {{ 0.f,   0.5f, 0.f, 1.f}, {0.f, 1.f, 0.f, 1.f}},
+        {{ 0.5f, -0.5f, 0.f, 1.f}, {0.f, 0.f, 1.f, 1.f}}
     };
 
-    const size_t numVboBytes = 3 * sr_bytes_per_vertex(SR_DataType::VERTEX_DATA_FLOAT, SR_Dimension::VERTEX_DIMENSION_3);
+    const size_t numVboBytes = sizeof(tri);
     retCode = vbo.init(numVboBytes);
     if (retCode != 0)
     {
@@ -111,14 +120,13 @@ int main()
     vbo.assign(tri, 0, numVboBytes);
 
     SR_IndexBuffer& ibo = context.ibo(iboId);
-    unsigned char indices[3] = {0, 1, 2};
-    retCode = ibo.init(3, SR_DataType::VERTEX_DATA_BYTE);
+    unsigned char indices[3] = {0, 2, 1};
+    retCode = ibo.init(3, SR_DataType::VERTEX_DATA_BYTE, indices);
     if (retCode != 0)
     {
         std::cerr << "Error while creating an IBO: " << retCode << std::endl;
         abort();
     }
-    ibo.assign(indices, 0, 3);
 
     SR_VertexArray& vao = context.vao(vaoId);
     vao.set_vertex_buffer(vboId);
@@ -129,7 +137,9 @@ int main()
         std::cerr << "Error while setting the number of VAO bindings: " << retCode << std::endl;
         abort();
     }
-    vao.set_binding(0, 0, sizeof(float)*3, SR_Dimension::VERTEX_DIMENSION_3, SR_DataType::VERTEX_DATA_FLOAT);
+
+    vao.set_binding(0, 0,                   sizeof(ColoredVertex), SR_Dimension::VERTEX_DIMENSION_4, SR_DataType::VERTEX_DATA_FLOAT);
+    vao.set_binding(1, sizeof(math::vec4),  sizeof(ColoredVertex), SR_Dimension::VERTEX_DIMENSION_4, SR_DataType::VERTEX_DATA_FLOAT);
 
     SR_Texture& tex = context.texture(texId);
     retCode = tex.init(SR_ColorDataType::SR_COLOR_RGB_8U, 640, 480, 1);
@@ -161,6 +171,7 @@ int main()
         std::cerr << "Error while attaching a color buffer to an FBO: " << retCode << std::endl;
         abort();
     }
+    fbo.clear_color_buffer(0, math::vec3_t<uint8_t>{255, 0, 255});
 
     retCode = fbo.attach_depth_buffer(depth);
     if (retCode != 0)
@@ -168,13 +179,15 @@ int main()
         std::cerr << "Error while attaching a depth buffer to an FBO: " << retCode << std::endl;
         abort();
     }
+    fbo.clear_depth_buffer(0.f);
 
     SR_Mesh& m = pGraph->mMeshes.front();
     m.elementBegin = 0;
     m.elementEnd = context.ibos().begin()->count();
     m.vaoId = vaoId;
-    m.mode = RENDER_MODE_INDEXED_LINES;
+    m.mode = RENDER_MODE_INDEXED_TRIANGLES;
 
+    context.num_threads(std::thread::hardware_concurrency());
     context.draw(m, shaderId, fboId);
 
     sr_img_save_ppm(640, 480, reinterpret_cast<const SR_ColorRGB8*>(tex.data()), "draw_test_image.ppm");

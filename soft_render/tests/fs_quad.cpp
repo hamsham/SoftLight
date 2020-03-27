@@ -25,6 +25,7 @@
 #include "soft_render/SR_VertexArray.hpp"
 #include "soft_render/SR_VertexBuffer.hpp"
 #include "soft_render/SR_WindowBuffer.hpp"
+#include "soft_render/SR_WindowEvent.hpp"
 
 namespace math = ls::math;
 namespace utils = ls::utils;

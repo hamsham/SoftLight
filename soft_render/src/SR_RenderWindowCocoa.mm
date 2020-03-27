@@ -8,8 +8,9 @@
 
 #include "soft_render/SR_Color.hpp"
 #include "soft_render/SR_KeySym.hpp"
-#include "soft_render/SR_RenderWindowCocoa.hpp"
 #include "soft_render/SR_WindowBufferCocoa.hpp"
+#include "soft_render/SR_RenderWindowCocoa.hpp"
+#include "soft_render/SR_WindowEvent.hpp"
 
 
 

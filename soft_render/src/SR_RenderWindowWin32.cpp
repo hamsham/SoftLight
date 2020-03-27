@@ -17,8 +17,9 @@
 
 #include "soft_render/SR_Color.hpp"
 #include "soft_render/SR_KeySym.hpp"
-#include "soft_render/SR_RenderWindowWin32.hpp"
 #include "soft_render/SR_WindowBufferWin32.hpp"
+#include "soft_render/SR_RenderWindowWin32.hpp"
+#include "soft_render/SR_WindowEvent.hpp"
 
 
 
