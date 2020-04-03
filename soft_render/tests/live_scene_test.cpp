@@ -24,6 +24,7 @@
 #include "soft_render/SR_PackedVertex.hpp"
 #include "soft_render/SR_Plane.hpp"
 #include "soft_render/SR_RenderWindow.hpp"
+#include "soft_render/SR_Sampler.hpp"
 #include "soft_render/SR_SceneFileLoader.hpp"
 #include "soft_render/SR_SceneGraph.hpp"
 #include "soft_render/SR_Shader.hpp"
@@ -49,10 +50,6 @@
 #ifndef SR_TEST_USE_PBR
     #define SR_TEST_USE_PBR 0
 #endif /* SR_TEST_USE_PBR */
-
-#ifndef SR_TEST_DEBUG_AABBS
-    #define SR_TEST_DEBUG_AABBS 0
-#endif
 
 #ifndef SR_BENCHMARK_SCENE
     #define SR_BENCHMARK_SCENE 1
@@ -103,7 +100,6 @@ struct SpotLight
 struct MeshUniforms
 {
     const SR_Texture* pTexture;
-    const SR_BoundingBox* aabb;
 
     math::vec4 camPos;
     Light light;
@@ -113,79 +109,6 @@ struct MeshUniforms
     math::mat4 modelMatrix;
     math::mat4 mvpMatrix;
 };
-
-
-
-/*-----------------------------------------------------------------------------
- * Shader to display bounding boxes
------------------------------------------------------------------------------*/
-/*--------------------------------------
- * Vertex Shader
---------------------------------------*/
-math::vec4 _box_vert_shader_impl(SR_VertexParam& param)
-{
-    const MeshUniforms* pUniforms = param.pUniforms->as<MeshUniforms>();
-    const math::vec4&   trr       = pUniforms->aabb->max_point();
-    const math::vec4&   bfl       = pUniforms->aabb->min_point();
-    const math::vec4    points[]  = {
-        {bfl[0], bfl[1], trr[2], 1.f},
-        {trr[0], bfl[1], trr[2], 1.f},
-        {trr[0], trr[1], trr[2], 1.f},
-        {bfl[0], trr[1], trr[2], 1.f},
-        {bfl[0], bfl[1], bfl[2], 1.f},
-        {trr[0], bfl[1], bfl[2], 1.f},
-        {trr[0], trr[1], bfl[2], 1.f},
-        {bfl[0], trr[1], bfl[2], 1.f}
-    };
-
-    param.pVaryings[0] = math::vec4{
-        (param.vertId % 3 == 0) ? 1.f : 0.f,
-        (param.vertId % 3 == 1) ? 1.f : 0.f,
-        (param.vertId % 3 == 2) ? 1.f : 0.f,
-        1.f
-    };
-
-    return pUniforms->mvpMatrix * points[param.vertId % LS_ARRAY_SIZE(points)];
-}
-
-
-
-SR_VertexShader box_vert_shader()
-{
-    SR_VertexShader shader;
-    shader.numVaryings = 1;
-    shader.cullMode    = SR_CULL_OFF;
-    shader.shader      = _box_vert_shader_impl;
-
-    return shader;
-}
-
-
-
-/*--------------------------------------
- * Fragment Shader
---------------------------------------*/
-bool _box_frag_shader_impl(SR_FragmentParam& fragParams)
-{
-    fragParams.pOutputs[0] = fragParams.pVaryings[0];
-    //outputs[0] = SR_ColorRGBAf{1.f, 0.f, 1.f, 1.f};
-    return true;
-}
-
-
-
-SR_FragmentShader box_frag_shader()
-{
-    SR_FragmentShader shader;
-    shader.numVaryings = 1;
-    shader.numOutputs  = 1;
-    shader.blend       = SR_BLEND_OFF;
-    shader.depthTest   = SR_DEPTH_TEST_OFF;
-    shader.depthMask   = SR_DEPTH_MASK_OFF;
-    shader.shader      = _box_frag_shader_impl;
-
-    return shader;
-}
 
 
 
@@ -340,12 +263,12 @@ bool _texture_frag_shader_spot(SR_FragmentParam& fragParams)
     // normalize the texture colors to within (0.f, 1.f)
     if (albedo->channels() == 3)
     {
-        const math::vec3_t<uint8_t>&& pixel8 = albedo->nearest<math::vec3_t<uint8_t>>(uv[0], uv[1]);
+        const math::vec3_t<uint8_t>&& pixel8 = sr_sample_nearest<math::vec3_t<uint8_t>, SR_WrapMode::REPEAT, SR_TEXELS_ORDERED>(*albedo, uv[0], uv[1]);
         pixel = color_cast<float, uint8_t>(math::vec4_cast<uint8_t>(pixel8, 255));
     }
     else
     {
-        pixel = color_cast<float, uint8_t>(albedo->nearest<math::vec4_t<uint8_t>>(uv[0], uv[1]));
+        pixel = color_cast<float, uint8_t>(sr_sample_nearest<math::vec4_t<uint8_t>, SR_WrapMode::REPEAT, SR_TEXELS_ORDERED>(*albedo, uv[0], uv[1]));
     }
 
     // Light direction calculation
@@ -604,8 +527,6 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
 {
     SR_Context&    context   = pGraph->mContext;
     MeshUniforms*  pUniforms = context.ubo(0).as<MeshUniforms>();
-    unsigned       numHidden = 0;
-    unsigned       numTotal  = 0;
     SR_Plane       planes[6];
 
     const math::mat4 projection = math::perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 1.f, 10.f);
@@ -643,53 +564,12 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
             // Use the textureless shader if needed
             const size_t shaderId = (size_t)(material.pTextures[0] == nullptr);
 
-            ++numTotal;
-
-            if (!sr_is_visible(box, vp2 * modelMat, planes))
+            if (sr_is_visible(box, vp2 * modelMat, planes))
             {
-                ++numHidden;
-                continue;
+                context.draw(m, shaderId, 0);
             }
-
-            context.draw(m, shaderId, 0);
         }
     }
-
-    // debugging
-#if SR_TEST_DEBUG_AABBS
-    const SR_Mesh& boxMesh = pGraph->mMeshes[0];
-
-    for (SR_SceneNode& n : pGraph->mNodes)
-    {
-        if (n.type != NODE_TYPE_MESH)
-        {
-            continue;
-        }
-
-        const math::mat4& modelMat = pGraph->mModelMatrices[n.nodeId];
-        const size_t numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
-        const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
-
-        pUniforms->modelMatrix = modelMat;
-        pUniforms->mvpMatrix   = vpMatrix * modelMat;
-
-        for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
-        {
-            const size_t nodeMeshId = meshIds[meshId];
-            const SR_BoundingBox& box = pGraph->mMeshBounds[nodeMeshId];
-            pUniforms->aabb = &box;
-
-            if (!sr_is_visible(box, vp2*modelMat, planes))
-            {
-                continue;
-            }
-
-            context.draw(boxMesh, 2,  0);
-        }
-    }
-#endif
-
-    //LS_LOG_MSG("Meshes Hidden: ", numHidden, '/', numTotal, " (", 100.f*((float)numHidden/(float)numTotal), "%).");
 }
 
 
@@ -837,12 +717,6 @@ utils::Pointer<SR_SceneGraph> create_context()
     retCode = fbo.valid();
     assert(retCode == 0);
 
-    // cube exists at index 0
-#if SR_TEST_DEBUG_AABBS
-    retCode = scene_load_cube(*pGraph);
-    assert(retCode == 0);
-#endif
-
     opts.packNormals = true;
     retCode = meshLoader.load("testdata/sibenik/sibenik.obj", opts);
     //retCode = meshLoader.load("testdata/sponza/sponza.obj", opts);
@@ -851,21 +725,15 @@ utils::Pointer<SR_SceneGraph> create_context()
     retCode = pGraph->import(meshLoader.data());
     assert(retCode == 0);
 
-#if SR_TEST_DEBUG_AABBS
-    pGraph->mCurrentTransforms[1].scale(math::vec3{20.f});
-    //pGraph->mCurrentTransforms[1].scale(math::vec3{0.125f});
-#else
     pGraph->mCurrentTransforms[0].scale( math::vec3{20.f});
     //pGraph->mCurrentTransforms[0].scale(math::vec3{0.125f});
-#endif
+
     pGraph->update();
 
     const SR_VertexShader&&   normVertShader = normal_vert_shader();
     const SR_FragmentShader&& normFragShader = normal_frag_shader();
     const SR_VertexShader&&   texVertShader  = texture_vert_shader();
     const SR_FragmentShader&& texFragShader  = texture_frag_shader();
-    const SR_VertexShader&&   boxVertShader  = box_vert_shader();
-    const SR_FragmentShader&& boxFragShader  = box_frag_shader();
 
     size_t uboId = context.create_ubo();
     SR_UniformBuffer& ubo = context.ubo(uboId);
@@ -884,14 +752,11 @@ utils::Pointer<SR_SceneGraph> create_context()
 
     size_t texShaderId  = context.create_shader(texVertShader,  texFragShader,  uboId);
     size_t normShaderId = context.create_shader(normVertShader, normFragShader, uboId);
-    size_t boxShaderId  = context.create_shader(boxVertShader,  boxFragShader,  uboId);
 
     assert(texShaderId == 0);
     assert(normShaderId == 1);
-    assert(boxShaderId == 2);
     (void)texShaderId;
     (void)normShaderId;
-    (void)boxShaderId;
     (void)retCode;
 
     return pGraph;
@@ -1074,10 +939,10 @@ int main()
             }
 
             #if SR_BENCHMARK_SCENE
-            if (totalFrames >= 600)
-            {
-                shouldQuit = true;
-            }
+                if (totalFrames >= 1200)
+                {
+                    shouldQuit = true;
+                }
             #endif
 
             update_cam_position(camTrans, tickTime, pKeySyms);

@@ -22,6 +22,7 @@
 #include "soft_render/SR_Material.hpp"
 #include "soft_render/SR_Mesh.hpp"
 #include "soft_render/SR_RenderWindow.hpp"
+#include "soft_render/SR_Sampler.hpp"
 #include "soft_render/SR_SceneGraph.hpp"
 #include "soft_render/SR_Transform.hpp"
 #include "soft_render/SR_UniformBuffer.hpp"
@@ -31,11 +32,11 @@
 #include "soft_render/SR_WindowEvent.hpp"
 
 #ifndef IMAGE_WIDTH
-    #define IMAGE_WIDTH 1280
+    #define IMAGE_WIDTH 800
 #endif /* IMAGE_WIDTH */
 
 #ifndef IMAGE_HEIGHT
-    #define IMAGE_HEIGHT 720
+    #define IMAGE_HEIGHT 600
 #endif /* IMAGE_HEIGHT */
 
 //#include "test_common.hpp"
@@ -59,7 +60,7 @@ struct VolumeUniforms
     const SR_Texture* pColorMap;
     math::vec4        spacing;
     math::vec4        camPos;
-    math::mat4        mvMatrix;
+    math::mat4        viewMatrix;
     math::mat4        mvpMatrix;
 };
 
@@ -100,21 +101,22 @@ inline bool intersect_ray_box(
     const math::vec4& rayPos,
     const math::vec4& rayDir,
     float& texNear,
-    float& texFar)
+    float& texFar) noexcept
 {
     const math::vec4&& invR    = math::rcp(rayDir);
     const math::vec4&& tbot    = invR * (math::vec4{-1.f}-rayPos);
     const math::vec4&& ttop    = invR * (math::vec4{1.f}-rayPos);
+
     const math::vec4&& tmin    = math::min(ttop, tbot);
-    const math::vec4&& tmax    = math::max(ttop, tbot);
     const math::vec2   minXX   = {tmin[0], tmin[0]};
     const math::vec2   minYZ   = {tmin[1], tmin[2]};
+    const math::vec2&& nearVal = math::max(minXX, minYZ);
+    texNear = math::max(0.f, nearVal[0], nearVal[1]);
+
+    const math::vec4&& tmax    = math::max(ttop, tbot);
     const math::vec2   maxXX   = {tmax[0], tmax[0]};
     const math::vec2   maxYZ   = {tmax[1], tmax[2]};
-    const math::vec2&& nearVal = math::max(minXX, minYZ);
     const math::vec2&& farVal  = math::min(maxXX, maxYZ);
-
-    texNear = math::max(nearVal[0], nearVal[1]);
     texFar = math::min(farVal[0], farVal[1]);
 
     return texNear <= texFar;
@@ -122,28 +124,18 @@ inline bool intersect_ray_box(
 
 
 
-math::vec4 calc_normal(const SR_Texture* tex, const math::vec4& p)
+inline math::vec4 calc_normal(const SR_Texture* tex, const math::vec4& p, float stepLen) noexcept
 {
-    constexpr float eps = 1.f / 32.f;
+    const math::vec4&& a = p + math::vec4{stepLen, 0.f, 0.f, 0.f};
+    const math::vec4&& b = p + math::vec4{0.f, stepLen, 0.f, 0.f};
+    const math::vec4&& c = p + math::vec4{0.f, 0.f, stepLen, 0.f};
 
-    const math::vec4   a   = {eps, 0.f, 0.f, 0.f};
-    const math::vec4   b   = {0.f, eps, 0.f, 0.f};
-    const math::vec4   c   = {0.f, 0.f, eps, 0.f};
-    const math::vec4&& ppa = p+a;
-    const math::vec4&& ppb = p+b;
-    const math::vec4&& ppc = p+c;
-    const math::vec4&& pma = p-a;
-    const math::vec4&& pmb = p-b;
-    const math::vec4&& pmc = p-c;
-
-    return math::normalize(
-        (math::vec4)math::vec4_t<int>{
-            tex->nearest<SR_ColorR8>(ppa[0], ppa[1], ppa[2]).r - tex->nearest<SR_ColorR8>(pma[0], pma[1], pma[2]).r,
-            tex->nearest<SR_ColorR8>(ppb[0], ppb[1], ppb[2]).r - tex->nearest<SR_ColorR8>(pmb[0], pmb[1], pmb[2]).r,
-            tex->nearest<SR_ColorR8>(ppc[0], ppc[1], ppc[2]).r - tex->nearest<SR_ColorR8>(pmc[0], pmc[1], pmc[2]).r,
-            0
-        }
-    );
+    return math::normalize((math::vec4)math::vec4_t<int>{
+        sr_sample_nearest<SR_ColorR8, SR_WrapMode::EDGE, SR_TEXELS_ORDERED>(*tex, a[0], a[1], a[2]).r,
+        sr_sample_nearest<SR_ColorR8, SR_WrapMode::EDGE, SR_TEXELS_ORDERED>(*tex, b[0], b[1], b[2]).r,
+        sr_sample_nearest<SR_ColorR8, SR_WrapMode::EDGE, SR_TEXELS_ORDERED>(*tex, c[0], c[1], c[2]).r,
+        0
+    });
 }
 
 
@@ -152,19 +144,17 @@ bool _volume_frag_shader(SR_FragmentParam& fragParam)
 {
     constexpr float       step      = 1.f / 256.f;
     const math::vec4      fragCoord = fragParam.fragCoord;
-    const VolumeUniforms* pUniforms = fragParam.pUniforms->as<VolumeUniforms>();;
+
+    const VolumeUniforms* pUniforms = fragParam.pUniforms->as<VolumeUniforms>();
+    const float           focalLen  = math::rcp<float>(math::tan(pUniforms->viewAngle * 0.5f));
     const math::vec2&&    winDimens = math::vec2{fragCoord[0], fragCoord[1]} * math::rcp(pUniforms->windowSize);
-    const float           focalLen  = math::rcp<float>(math::tan(pUniforms->viewAngle*0.5f));
     const SR_Texture*     volumeTex = pUniforms->pCubeMap;
     const SR_Texture*     alphaTex  = pUniforms->pOpacityMap;
     const SR_Texture*     colorTex  = pUniforms->pColorMap;
-    const math::vec4      spacing   = pUniforms->spacing;
-    const math::vec4      camPos    = pUniforms->camPos;
-    const math::vec4&&    viewDir   = math::vec4{2.f * winDimens[0] - 1.f, 2.f * winDimens[1] - 1.f, -focalLen, 1.f} / spacing;
-    math::vec4&&          rayDir    = math::normalize(viewDir * pUniforms->mvMatrix);
-    math::vec4            rayStart;
-    math::vec4            rayStop;
-    math::vec4            rayStep;
+    const math::vec4&     spacing   = pUniforms->spacing;
+    const math::vec4&     camPos    = pUniforms->camPos;
+    const math::vec4&&    viewDir   = math::vec4{2.f * winDimens[0] - 1.f, 2.f * winDimens[1] - 1.f, -focalLen, 0.f} / spacing;
+    math::vec4&&          rayDir    = viewDir * pUniforms->viewMatrix;
     float                 nearPos;
     float                 farPos;
 
@@ -172,50 +162,49 @@ bool _volume_frag_shader(SR_FragmentParam& fragParam)
     {
         return false;
     }
-    nearPos = math::max(nearPos, 0.f);
 
-    rayStart    = camPos + rayDir * nearPos;
-    rayStop     = camPos + rayDir * farPos;
-    rayStart    = 0.5f * (rayStart + 1.f);
-    rayStop     = 0.5f * (rayStop + 1.f);
-    rayStart[3] = 0.f;
-    rayStop[3]  = 0.f;
-    rayStep     = math::normalize(rayStop - rayStart) * step;
-    math::vec4 texPos = rayStart;
-    math::vec4_t<float>dstTexel = {0.f};
-    unsigned srcTexel  = 0;
+    math::vec4&& rayStart  = (camPos + rayDir * nearPos + 1.f) * 0.5f;
+    math::vec4&& rayStop   = (camPos + rayDir * farPos + 1.f) * 0.5f;
+    math::vec4&& ray       = rayStop - rayStart;
+    float        rayLen    = math::length(ray);
+    math::vec4&& rayStep   = (ray / rayLen) * step;
+    math::vec4   rayPos    = rayStart;
+    math::vec4   dstTexel  = {0.f};
+    unsigned     intensity;
+    float        srcAlpha;
 
-    do
+    while (dstTexel < 1.f && rayLen > 0.f)
     {
         // Get a pixel with minimal filtering before attempting to do anything more expensive
-        if ((srcTexel = volumeTex->nearest<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r) >= 17)
+        intensity = sr_sample_trilinear<SR_ColorR8, SR_WrapMode::EDGE, SR_TEXELS_ORDERED>(*volumeTex, rayPos[0], rayPos[1], rayPos[2]).r;
+
+        // regular opacity (doesn't take ray steps into account).
+        srcAlpha = alphaTex->raw_texel<float>(intensity);
+
+        if (intensity >= 17 && srcAlpha > 0.f)
         {
-            srcTexel = volumeTex->trilinear<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
-            //srcTexel = volumeTex->bilinear<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
-            //srcTexel = volumeTex->nearest<SR_ColorR8>(texPos[0], texPos[1], texPos[2]).r;
+            const math::vec4&& norm = calc_normal(volumeTex, rayPos, step);
+            const float diffuse = math::clamp(math::dot(norm, math::vec4{0.f, 0.f, 1.f, 0.f}), 0.f, 1.f);
 
-            const SR_ColorRGBf volColor = colorTex->raw_texel<SR_ColorRGBf>(srcTexel);
-            const float        srcAlpha = 0.25f * alphaTex->raw_texel<float>(srcTexel);
+            // corrected opacity, from:
+            // https://github.com/chrislu/schism/blob/master/projects/examples/ex_volume_ray_cast/src/renderer/shader/volume_ray_cast.glslf
+            //srcAlpha = 1.f - math::pow(1.f - srcAlpha, math::length(rayPos-rayStart));
 
-            const math::vec4 n = calc_normal(volumeTex, texPos);
-            const float b = math::clamp(100.f * math::dot(n, rayDir), 0.f, 1.f);
+            const float    blend     = ((1.f-dstTexel[3]) * srcAlpha);
+            SR_ColorRGBf   volColor  = colorTex->raw_texel<SR_ColorRGBf>(intensity); // 0 - 255
+            math::vec4&&   composite = math::vec4_cast(volColor, 1.f) * diffuse * blend;
 
-            dstTexel[0] += b * volColor[2] * srcAlpha;
-            dstTexel[1] += b * volColor[1] * srcAlpha;
-            dstTexel[2] += b * volColor[0] * srcAlpha;
-            dstTexel[3] += srcAlpha;
+            dstTexel += composite;
         }
 
-        texPos += rayStep;
+        rayLen -= step;
+        rayPos += rayStep;
     }
-    while ((dstTexel[3] <= 1.f) && (texPos <= 1.f) && (texPos >= 0.f));
-
-    dstTexel = math::min(dstTexel, math::vec4_t<float>{1.f});
 
     // output composition
-    fragParam.pOutputs[0] = math::min(dstTexel, math::vec4{1.f});
+    fragParam.pOutputs[0] = math::clamp(dstTexel, math::vec4{0.f}, math::vec4{1.f});
 
-    return dstTexel[3] > 0;
+    return dstTexel[3] > 0.f;
 }
 
 
@@ -421,11 +410,21 @@ int create_opacity_map(SR_SceneGraph& graph, const size_t volumeTexIndex)
         }
     };
 
+    #if 1
     add_transfer_func(0,  17,  0.f);
-    add_transfer_func(17, 40,  0.125f);
-    add_transfer_func(40, 50,  0.125f);
-    add_transfer_func(50, 75,  0.1f);
-    add_transfer_func(75, 255, 0.05f);
+    add_transfer_func(17, 29,  0.05f);
+    add_transfer_func(29, 40,  0.002f);
+    add_transfer_func(40, 50,  0.05f);
+    add_transfer_func(50, 60,  0.003f);
+    add_transfer_func(60, 75,  0.05f);
+    add_transfer_func(75, 255, 0.001f);
+    #else
+    add_transfer_func(0,  17,  0.f);
+    add_transfer_func(17, 40,  0.025f);
+    add_transfer_func(40, 50,  0.1f);
+    add_transfer_func(50, 75,  0.15f);
+    add_transfer_func(75, 255, 0.5f);
+    #endif
 
     return 0;
 }
@@ -459,9 +458,16 @@ int create_color_map(SR_SceneGraph& graph, const size_t volumeTexIndex)
         }
     };
 
+    /*
     add_transfer_func(0,  17,  SR_ColorRGBType<float>{0.f,   0.f,  0.f});
     add_transfer_func(17, 40,  SR_ColorRGBType<float>{0.5f,  0.2f, 0.2f});
     add_transfer_func(40, 50,  SR_ColorRGBType<float>{0.4f,  0.3f, 0.1f});
+    add_transfer_func(50, 75,  SR_ColorRGBType<float>{1.f,   1.f,  1.f});
+    add_transfer_func(75, 255, SR_ColorRGBType<float>{0.6f,  0.6f, 0.6f});
+    */
+    add_transfer_func(0,  17,  SR_ColorRGBType<float>{0.f,   0.f,  0.f});
+    add_transfer_func(17, 40,  SR_ColorRGBType<float>{0.2f,  0.2f, 0.5f});
+    add_transfer_func(40, 50,  SR_ColorRGBType<float>{0.1f,  0.3f, 0.4f});
     add_transfer_func(50, 75,  SR_ColorRGBType<float>{1.f,   1.f,  1.f});
     add_transfer_func(75, 255, SR_ColorRGBType<float>{0.6f,  0.6f, 0.6f});
 
@@ -482,7 +488,7 @@ utils::Pointer<SR_SceneGraph> init_volume_context()
     size_t                        texId   = context.create_texture();
     size_t                        depthId = context.create_texture();
 
-    context.num_threads(std::thread::hardware_concurrency() - 2);
+    context.num_threads(std::thread::hardware_concurrency());
 
     SR_Texture& tex = context.texture(texId);
     retCode = tex.init(SR_ColorDataType::SR_COLOR_RGBA_FLOAT, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
@@ -560,7 +566,7 @@ void render_volume(SR_SceneGraph* pGraph, const SR_Transform& viewMatrix, const 
     const math::mat4   modelMat  = math::mat4{1.f};
     pUniforms->spacing           = {1.f, 2.f, 2.f, 1.f};
     pUniforms->camPos            = math::vec4{camPos[0], camPos[1], camPos[2], 0.f};
-    pUniforms->mvMatrix          = viewMatrix.get_transform() * modelMat;
+    pUniforms->viewMatrix        = viewMatrix.get_transform();
     pUniforms->mvpMatrix         = vpMatrix * modelMat;
 
     context.draw(pGraph->mMeshes.back(), 0, 0);
@@ -634,7 +640,7 @@ int main()
     math::mat4 vpMatrix;
     SR_Transform camTrans;
     camTrans.set_type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
-    camTrans.extract_transforms(math::look_from(math::vec3{-2.f}, math::vec3{0.f}, math::vec3{0.f, -1.f, 0.f}));
+    camTrans.extract_transforms(math::look_from(math::vec3{-1.25f}, math::vec3{0.f}, math::vec3{0.f, -1.f, 0.f}));
 
     if (shouldQuit)
     {
@@ -648,7 +654,7 @@ int main()
         return -1;
     }
 
-    if (pRenderBuf->init(*pWindow, IMAGE_WIDTH, IMAGE_HEIGHT) != 0 || pWindow->set_title("Mesh Test") != 0)
+    if (pRenderBuf->init(*pWindow, IMAGE_WIDTH, IMAGE_HEIGHT) != 0 || pWindow->set_title("Volume Rendering Test") != 0)
     {
         return -2;
     }
@@ -700,7 +706,7 @@ int main()
                         break;
 
                     case SR_KeySymbol::KEY_SYM_DOWN:
-                        numThreads = ls::math::max(numThreads - 1u, 1u);
+                        numThreads = (numThreads > 1) ? (numThreads-1) : 1;
                         context.num_threads(numThreads);
                         break;
 
