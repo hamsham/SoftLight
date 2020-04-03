@@ -93,7 +93,7 @@ struct alignas(sizeof(float)*4) SR_ScanlineBounds
 
     int32_t bboxMaxX;
 
-    inline void LS_INLINE init(ls::math::vec4& p0, ls::math::vec4& p1, ls::math::vec4& p2, const float fboW) noexcept
+    inline void LS_INLINE init(ls::math::vec4 p0, ls::math::vec4 p1, ls::math::vec4 p2, const float fboW) noexcept
     {
         #if defined(LS_ARCH_X86) || defined(LS_ARCH_ARM)
             sr_sort_minmax(p0.simd, p1.simd);
@@ -121,7 +121,7 @@ struct alignas(sizeof(float)*4) SR_ScanlineBounds
         #endif
     }
 
-    inline void LS_INLINE init(ls::math::vec4& p0, ls::math::vec4& p1, ls::math::vec4& p2) noexcept
+    inline void LS_INLINE init(ls::math::vec4 p0, ls::math::vec4 p1, ls::math::vec4 p2) noexcept
     {
         #if defined(LS_ARCH_X86) || defined(LS_ARCH_ARM)
             sr_sort_minmax(p0.simd, p1.simd);
