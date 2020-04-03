@@ -1029,25 +1029,18 @@ inline color_type SR_Texture::bilinear(float x, float y) const noexcept
     const float      dy      = yf - (float)yi0;
     const float      omdx    = 1.f - dx;
     const float      omdy    = 1.f - dy;
-    const color_type pixel0  = this->texel<color_type, order>(xi0, yi0);
-    const color_type pixel1  = this->texel<color_type, order>(xi0, yi1);
-    const color_type pixel2  = this->texel<color_type, order>(xi1, yi0);
-    const color_type pixel3  = this->texel<color_type, order>(xi1, yi1);
-    const float      weight0 = omdx * omdy;
-    const float      weight1 = omdx * dy;
-    const float      weight2 = dx * omdy;
-    const float      weight3 = dx * dy;
-    color_type       ret;
+    const auto&&   pixel0  = color_cast<float, typename color_type::value_type>(texel<color_type, order>(xi0, yi0));
+    const auto&&   pixel1  = color_cast<float, typename color_type::value_type>(texel<color_type, order>(xi0, yi1));
+    const auto&&   pixel2  = color_cast<float, typename color_type::value_type>(texel<color_type, order>(xi1, yi0));
+    const auto&&   pixel3  = color_cast<float, typename color_type::value_type>(texel<color_type, order>(xi1, yi1));
+    const auto&&   weight0 = pixel0 * omdx * omdy;
+    const auto&&   weight1 = pixel1 * omdx * dy;
+    const auto&&   weight2 = pixel2 * dx * omdy;
+    const auto&&   weight3 = pixel3 * dx * dy;
 
-    switch (color_type::num_components())
-    {
-        case 4: ret[3] = (weight0*pixel0[3]) + (weight1*pixel1[3]) + (weight2*pixel2[3]) + (weight3*pixel3[3]);
-        case 3: ret[2] = (weight0*pixel0[2]) + (weight1*pixel1[2]) + (weight2*pixel2[2]) + (weight3*pixel3[2]);
-        case 2: ret[1] = (weight0*pixel0[1]) + (weight1*pixel1[1]) + (weight2*pixel2[1]) + (weight3*pixel3[1]);
-        case 1: ret[0] = (weight0*pixel0[0]) + (weight1*pixel1[0]) + (weight2*pixel2[0]) + (weight3*pixel3[0]);
-    }
+    const auto&& ret = ls::math::sum(weight0, weight1, weight2, weight3);
 
-    return ret;
+    return color_cast<typename color_type::value_type, float>(ret);
 }
 
 
@@ -1063,36 +1056,29 @@ inline color_type SR_Texture::bilinear(float x, float y, float z) const noexcept
         return color_type{0};
     }
 
-    const float      xf      = wrap_coordinate(x) * mWidthf;
-    const float      yf      = wrap_coordinate(y) * mHeightf;
-    const uint16_t   zi      = (uint16_t)ls::math::round(wrap_coordinate(z) * mDepthf);
-    const uint16_t   xi0     = (uint16_t)xf;
-    const uint16_t   yi0     = (uint16_t)yf;
-    const uint16_t   xi1     = ls::math::clamp<uint16_t>(xi0+1u, 0u, mWidth);
-    const uint16_t   yi1     = ls::math::clamp<uint16_t>(yi0+1u, 0u, mHeight);
-    const float      dx      = xf - (float)xi0;
-    const float      dy      = yf - (float)yi0;
-    const float      omdx    = 1.f - dx;
-    const float      omdy    = 1.f - dy;
-    const color_type pixel0  = this->texel<color_type, order>(xi0, yi0, zi);
-    const color_type pixel1  = this->texel<color_type, order>(xi0, yi1, zi);
-    const color_type pixel2  = this->texel<color_type, order>(xi1, yi0, zi);
-    const color_type pixel3  = this->texel<color_type, order>(xi1, yi1, zi);
-    const float      weight0 = omdx * omdy;
-    const float      weight1 = omdx * dy;
-    const float      weight2 = dx * omdy;
-    const float      weight3 = dx * dy;
-    color_type       ret;
+    const float    xf      = wrap_coordinate(x) * mWidthf;
+    const float    yf      = wrap_coordinate(y) * mHeightf;
+    const uint16_t zi      = (uint16_t)ls::math::round(wrap_coordinate(z) * mDepthf);
+    const uint16_t xi0     = (uint16_t)xf;
+    const uint16_t yi0     = (uint16_t)yf;
+    const uint16_t xi1     = ls::math::clamp<uint16_t>(xi0+1u, 0u, mWidth);
+    const uint16_t yi1     = ls::math::clamp<uint16_t>(yi0+1u, 0u, mHeight);
+    const float    dx      = xf - (float)xi0;
+    const float    dy      = yf - (float)yi0;
+    const float    omdx    = 1.f - dx;
+    const float    omdy    = 1.f - dy;
+    const auto&&   pixel0  = color_cast<float, typename color_type::value_type>(texel<color_type, order>(xi0, yi0, zi));
+    const auto&&   pixel1  = color_cast<float, typename color_type::value_type>(texel<color_type, order>(xi0, yi1, zi));
+    const auto&&   pixel2  = color_cast<float, typename color_type::value_type>(texel<color_type, order>(xi1, yi0, zi));
+    const auto&&   pixel3  = color_cast<float, typename color_type::value_type>(texel<color_type, order>(xi1, yi1, zi));
+    const auto&&   weight0 = pixel0 * omdx * omdy;
+    const auto&&   weight1 = pixel1 * omdx * dy;
+    const auto&&   weight2 = pixel2 * dx * omdy;
+    const auto&&   weight3 = pixel3 * dx * dy;
 
-    switch (color_type::num_components())
-    {
-        case 4: ret[3] = (weight0*pixel0[3]) + (weight1*pixel1[3]) + (weight2*pixel2[3]) + (weight3*pixel3[3]);
-        case 3: ret[2] = (weight0*pixel0[2]) + (weight1*pixel1[2]) + (weight2*pixel2[2]) + (weight3*pixel3[2]);
-        case 2: ret[1] = (weight0*pixel0[1]) + (weight1*pixel1[1]) + (weight2*pixel2[1]) + (weight3*pixel3[1]);
-        case 1: ret[0] = (weight0*pixel0[0]) + (weight1*pixel1[0]) + (weight2*pixel2[0]) + (weight3*pixel3[0]);
-    }
+    const auto&& ret = ls::math::sum(weight0, weight1, weight2, weight3);
 
-    return ret;
+    return color_cast<typename color_type::value_type, float>(ret);
 }
 
 
@@ -1160,14 +1146,14 @@ inline color_type SR_Texture::trilinear(float x, float y, float z) const noexcep
     const math::vec3_t<uint16_t> uv110 = {xi, yi, ri};
     const math::vec3_t<uint16_t> uv111 = {xi, yi, zi};
 
-    const color_type c000 = texel<color_type, order>(uv000[0], uv000[1], uv000[2]);
-    const color_type c100 = texel<color_type, order>(uv100[0], uv100[1], uv100[2]);
-    const color_type c010 = texel<color_type, order>(uv010[0], uv010[1], uv010[2]);
-    const color_type c001 = texel<color_type, order>(uv001[0], uv001[1], uv001[2]);
-    const color_type c101 = texel<color_type, order>(uv101[0], uv101[1], uv101[2]);
-    const color_type c011 = texel<color_type, order>(uv011[0], uv011[1], uv011[2]);
-    const color_type c110 = texel<color_type, order>(uv110[0], uv110[1], uv110[2]);
-    const color_type c111 = texel<color_type, order>(uv111[0], uv111[1], uv111[2]);
+    const auto&& c000 = color_cast<float, typename color_type::value_type>(texel<color_type, order>(uv000[0], uv000[1], uv000[2]));
+    const auto&& c100 = color_cast<float, typename color_type::value_type>(texel<color_type, order>(uv100[0], uv100[1], uv100[2]));
+    const auto&& c010 = color_cast<float, typename color_type::value_type>(texel<color_type, order>(uv010[0], uv010[1], uv010[2]));
+    const auto&& c001 = color_cast<float, typename color_type::value_type>(texel<color_type, order>(uv001[0], uv001[1], uv001[2]));
+    const auto&& c101 = color_cast<float, typename color_type::value_type>(texel<color_type, order>(uv101[0], uv101[1], uv101[2]));
+    const auto&& c011 = color_cast<float, typename color_type::value_type>(texel<color_type, order>(uv011[0], uv011[1], uv011[2]));
+    const auto&& c110 = color_cast<float, typename color_type::value_type>(texel<color_type, order>(uv110[0], uv110[1], uv110[2]));
+    const auto&& c111 = color_cast<float, typename color_type::value_type>(texel<color_type, order>(uv111[0], uv111[1], uv111[2]));
 
     // floating-point math can be used for calculating the texel weights
     const float xf = x - math::floor(x);
@@ -1177,26 +1163,27 @@ inline color_type SR_Texture::trilinear(float x, float y, float z) const noexcep
     const float zf = z - math::floor(z);
     const float zd = 1.f - zf;
 
-    const float weight000 = xd*yd*zd;
-    const float weight100 = xf*yd*zd;
-    const float weight010 = xd*yf*zd;
-    const float weight001 = xd*yd*zf;
-    const float weight101 = xf*yd*zf;
-    const float weight011 = xd*yf*zf;
-    const float weight110 = xf*yf*zd;
-    const float weight111 = xf*yf*zf;
+    const auto&& weight000 = c000 * xd*yd*zd;
+    const auto&& weight100 = c100 * xf*yd*zd;
+    const auto&& weight010 = c010 * xd*yf*zd;
+    const auto&& weight001 = c001 * xd*yd*zf;
+    const auto&& weight101 = c101 * xf*yd*zf;
+    const auto&& weight011 = c011 * xd*yf*zf;
+    const auto&& weight110 = c110 * xf*yf*zd;
+    const auto&& weight111 = c111 * xf*yf*zf;
 
-    color_type ret;
+    const auto&& ret = math::sum(
+        weight000,
+        weight100,
+        weight010,
+        weight001,
+        weight101,
+        weight011,
+        weight110,
+        weight111
+    );
 
-    switch (color_type::num_components())
-    {
-        case 4: ret[3] = math::sum<float>(weight000*c000[3], weight100*c100[3], weight010*c010[3], weight001*c001[3], weight101*c101[3], weight011*c011[3], weight110*c110[3], weight111*c111[3]);
-        case 3: ret[2] = math::sum<float>(weight000*c000[2], weight100*c100[2], weight010*c010[2], weight001*c001[2], weight101*c101[2], weight011*c011[2], weight110*c110[2], weight111*c111[2]);
-        case 2: ret[1] = math::sum<float>(weight000*c000[1], weight100*c100[1], weight010*c010[1], weight001*c001[1], weight101*c101[1], weight011*c011[1], weight110*c110[1], weight111*c111[1]);
-        case 1: ret[0] = math::sum<float>(weight000*c000[0], weight100*c100[0], weight010*c010[0], weight001*c001[0], weight101*c101[0], weight011*c011[0], weight110*c110[0], weight111*c111[0]);
-    }
-
-    return ret;
+    return color_cast<typename color_type::value_type, float>(ret);
 }
 
 
