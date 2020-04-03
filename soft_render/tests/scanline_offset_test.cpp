@@ -14,7 +14,8 @@ int main()
         std::cout << "Scanline " << scanline << ':';
         for (int i = 0; i < numThreads; ++i)
         {
-            std::cout << "\n\t" << scanline + sr_scanline_offset<int>(numThreads, i, scanline) << " --- " << sr_scanline_offset<int>(numThreads, i, scanline);
+            int threadForScanline = sr_scanline_offset<int>(numThreads, i, scanline);
+            std::cout << "\n\t" << scanline+i << " --- " << threadForScanline;
         }
         std::cout << '\n' << std::endl;
     }
