@@ -184,6 +184,12 @@ struct alignas(sizeof(T)) SR_ColorRType
 
     template <typename index_t>
     inline T& operator[] (index_t n) noexcept { return (&r)[n]; }
+
+    constexpr SR_ColorRType operator+(const SR_ColorRType<T>& n) const noexcept { return SR_ColorRType{r + n.r}; }
+    constexpr SR_ColorRType operator*(const SR_ColorRType<T>& n) const noexcept { return SR_ColorRType{r * n.r}; }
+
+    constexpr SR_ColorRType operator+(const T n) const noexcept { return SR_ColorRType{r + n}; }
+    constexpr SR_ColorRType operator*(const T n) const noexcept { return SR_ColorRType{r * n}; }
 };
 
 
@@ -227,10 +233,7 @@ template <typename T, typename U>
 constexpr typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SR_ColorRType<T>>::type
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value, SR_ColorRType<U>>::type& p)
 {
-    return SR_ColorRType<T>
-    {
-        (T)(std::numeric_limits<U>::max() * p.r)
-    };
+    return (SR_ColorRType<T>)(p.r * (U)std::numeric_limits<T>::max());
 }
 
 
