@@ -136,6 +136,7 @@ set(SR_LIB_HEADERS
     include/soft_render/SR_Plane.hpp
     include/soft_render/SR_ProcessorPool.hpp
     include/soft_render/SR_RenderWindow.hpp
+    include/soft_render/SR_Sampler.hpp
     include/soft_render/SR_ScanlineBounds.hpp
     include/soft_render/SR_SceneFileLoader.hpp
     include/soft_render/SR_SceneFileUtility.hpp
