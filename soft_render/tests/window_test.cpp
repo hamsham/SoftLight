@@ -117,14 +117,14 @@ int main()
       {
         std::cout << "Mouse Enter/Leave: " << evt.mousePos.x << 'x' << evt.mousePos.y << std::endl;
       }
-      else if (0 != (evt.type & SR_WinEventType::WIN_EVENT_MOVED))
+      else if (evt.type == SR_WinEventType::WIN_EVENT_MOVED)
       {
         std::cout << "Window moved: "
                   << evt.window.x << 'x' << evt.window.y << " - "
                   << pWindow->x_position() << 'x' << pWindow->y_position()
                   << std::endl;
       }
-      else if (0 != (evt.type & SR_WinEventType::WIN_EVENT_RESIZED))
+      else if (evt.type == SR_WinEventType::WIN_EVENT_RESIZED)
       {
         std::cout << "Window resized: "
                   << evt.window.width << 'x' << evt.window.height << " - "

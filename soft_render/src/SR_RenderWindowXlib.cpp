@@ -808,6 +808,8 @@ bool SR_RenderWindowXlib::peek_event(SR_WindowEvent* const pEvent) noexcept
 
     unsigned keyMods = 0;
     KeySym keySym;
+    int x, y;
+    Window w;
 
     switch (mLastEvent->type)
     {
@@ -1006,14 +1008,18 @@ bool SR_RenderWindowXlib::peek_event(SR_WindowEvent* const pEvent) noexcept
         case ConfigureNotify:
             pConfig = &mLastEvent->xconfigure;
             pEvent->pNativeWindow = pConfig->window;
+            x = pConfig->x;
+            y = pConfig->y;
 
-            if (mX != pConfig->x || mY != pConfig->y)
+            XTranslateCoordinates(mDisplay, mWindow, RootWindow(mDisplay, DefaultScreen(mDisplay)), 0, 0, &x, &y, &w);
+
+            if (mX != x || mY != y)
             {
                 pEvent->type = SR_WinEventType::WIN_EVENT_MOVED;
-                mX = pConfig->x;
-                mY = pConfig->y;
-                pEvent->window.x = (int16_t)pConfig->x;
-                pEvent->window.y = (int16_t)pConfig->y;
+                mX = x;
+                mY = y;
+                pEvent->window.x = (int16_t)x;
+                pEvent->window.y = (int16_t)y;
                 break;
             }
             else if (mWidth != (unsigned)pConfig->width || mHeight != (unsigned)pConfig->height)
