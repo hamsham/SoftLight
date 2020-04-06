@@ -642,13 +642,15 @@ void SR_RenderWindowCocoa::update() noexcept
 
     if (pEvent.type == NSEventTypeMouseMoved && mCaptureMouse)
     {
+        CGRect viewFrame = [pWindow convertRectToScreen:[pWindow.contentView frame]];
+        //CGRect winFrame = [pWindow frame];
         CGRect screenFrame = [[pWindow screen] frame];
-        CGFloat x = pWindow.frame.origin.x;
-        CGFloat y = pWindow.frame.origin.y;
-        CGFloat px = x + pWindow.frame.size.width * (CGFloat)0.5;
-        CGFloat py = screenFrame.size.height - (y + pWindow.frame.size.height * (CGFloat)0.5);
+        //CGFloat scale = [pWindow backingScaleFactor];
+        CGFloat px = viewFrame.origin.x + (viewFrame.size.width * 0.5f);
+        CGFloat py = screenFrame.size.height - (viewFrame.origin.y + (viewFrame.size.height * 0.5f));
+        CGPoint p = NSMakeRect(px, py, 0.f, 0.f).origin;
 
-        CGWarpMouseCursorPosition(CGPointMake(px, py));
+        CGWarpMouseCursorPosition(p);
     }
 
     mLastEvent = pEvent;
