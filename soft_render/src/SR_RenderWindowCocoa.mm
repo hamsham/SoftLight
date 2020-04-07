@@ -39,6 +39,9 @@ int sr_window_init_app(void)
     Window Object
 -----------------------------------------------------------------------------*/
 @interface SR_CocoaWindow: NSWindow
+{
+    NSAutoreleasePool* mPool;
+}
 @end
 
 
@@ -49,33 +52,36 @@ int sr_window_init_app(void)
 {
     if (self = [super initWithContentRect:contentRect styleMask:style backing:backingStoreType defer:flag])
     {
-        NSTrackingArea*area = [[NSTrackingArea alloc] initWithRect:[[self contentView] frame] options:(NSTrackingMouseEnteredAndExited|NSTrackingInVisibleRect|NSTrackingActiveAlways) owner:self userInfo:nil];
+        mPool = [[NSAutoreleasePool alloc] init];
+
+        NSTrackingArea* area = [[[NSTrackingArea alloc] initWithRect:[[self contentView] frame] options:(NSTrackingMouseEnteredAndExited|NSTrackingInVisibleRect|NSTrackingActiveAlways) owner:self userInfo:nil] autorelease];
         [[self contentView] addTrackingArea:area];
     }
 
     return self;
+}
 
+-(void)drain
+{
+    [mPool release];
+    mPool = [[NSAutoreleasePool alloc] init];
 }
 
 -(void)mouseEntered:(NSEvent *)evt
 {
-    NSPoint mousePos = [evt locationInWindow];
-    NSInteger x, y;
-    x = (NSInteger)mousePos.x;
-    y = (NSInteger)mousePos.y;
-
-    NSEvent* moveEvt = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:CGPointMake(0.0, 0.0) modifierFlags:(NSEventModifierFlags)0 timestamp:0.0 windowNumber:[self windowNumber] context:nil subtype:SR_WinEventType::WIN_EVENT_MOUSE_ENTER data1:x data2:y];
+    NSPoint   mousePos = [evt locationInWindow];
+    NSInteger x        = (NSInteger)mousePos.x;
+    NSInteger y        = (NSInteger)mousePos.y;
+    NSEvent*  moveEvt  = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:CGPointMake(0.0, 0.0) modifierFlags:(NSEventModifierFlags)0 timestamp:0.0 windowNumber:[self windowNumber] context:nil subtype:SR_WinEventType::WIN_EVENT_MOUSE_ENTER data1:x data2:y];
     [self postEvent:moveEvt atStart:NO];
 }
 
 -(void)mouseExited:(NSEvent *)evt
 {
-    NSPoint mousePos = [evt locationInWindow];
-    NSInteger x, y;
-    x = (NSInteger)mousePos.x;
-    y = (NSInteger)mousePos.y;
-
-    NSEvent* moveEvt = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:CGPointMake(0.0, 0.0) modifierFlags:(NSEventModifierFlags)0 timestamp:0.0 windowNumber:[self windowNumber] context:nil subtype:SR_WinEventType::WIN_EVENT_MOUSE_LEAVE data1:x data2:y];
+    NSPoint   mousePos = [evt locationInWindow];
+    NSInteger x        = (NSInteger)mousePos.x;
+    NSInteger y        = (NSInteger)mousePos.y;
+    NSEvent*  moveEvt  = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:CGPointMake(0.0, 0.0) modifierFlags:(NSEventModifierFlags)0 timestamp:0.0 windowNumber:[self windowNumber] context:nil subtype:SR_WinEventType::WIN_EVENT_MOUSE_LEAVE data1:x data2:y];
     [self postEvent:moveEvt atStart:NO];
 }
 
@@ -115,27 +121,22 @@ int sr_window_init_app(void)
     [pWindow postEvent:closeEvent atStart:NO];
 }
 
-- (NSSize)windowWillResize: (NSWindow *)sender toSize:(NSSize)frameSize
+- (void)windowDidResize:(NSNotification*)notification
 {
-    (void)sender;
-    NSInteger w, h;
-    w = (NSInteger)frameSize.width;
-    h = (NSInteger)frameSize.height;
-
-    NSEvent* resizeEvt = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:CGPointMake(0.0, 0.0) modifierFlags:(NSEventModifierFlags)0 timestamp:0.0 windowNumber:[pWindow windowNumber] context:nil subtype:SR_WinEventType::WIN_EVENT_RESIZED data1:w data2:h];
+    (void)notification;
+    NSRect    frame     = [pWindow frame];
+    NSInteger w         = (NSInteger)frame.size.width;
+    NSInteger h         = (NSInteger)frame.size.height;
+    NSEvent*  resizeEvt = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:CGPointMake(0.0, 0.0) modifierFlags:(NSEventModifierFlags)0 timestamp:0.0 windowNumber:[pWindow windowNumber] context:nil subtype:SR_WinEventType::WIN_EVENT_RESIZED data1:w data2:h];
     [pWindow postEvent:resizeEvt atStart:NO];
-
-    return frameSize;
 }
 
 - (void)windowDidMove:(NSNotification *)notification
 {
     (void)notification;
-    NSInteger x, y;
-    x = (NSInteger)pWindow.frame.origin.x;
-    y = (NSInteger)pWindow.frame.origin.y;
-
-    NSEvent* moveEvt = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:CGPointMake(0.0, 0.0) modifierFlags:(NSEventModifierFlags)0 timestamp:0.0 windowNumber:[pWindow windowNumber] context:nil subtype:SR_WinEventType::WIN_EVENT_MOVED data1:x data2:y];
+    NSInteger x       = (NSInteger)pWindow.frame.origin.x;
+    NSInteger y       = (NSInteger)pWindow.frame.origin.y;
+    NSEvent*  moveEvt = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:CGPointMake(0.0, 0.0) modifierFlags:(NSEventModifierFlags)0 timestamp:0.0 windowNumber:[pWindow windowNumber] context:nil subtype:SR_WinEventType::WIN_EVENT_MOVED data1:x data2:y];
     [pWindow postEvent:moveEvt atStart:NO];
 }
 
@@ -143,15 +144,15 @@ int sr_window_init_app(void)
 {
     (void)notification;
     NSEvent* exposeEvt = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:CGPointMake(0.0, 0.0) modifierFlags:(NSEventModifierFlags)0 timestamp:0.0 windowNumber:[pWindow windowNumber] context:nil subtype:SR_WinEventType::WIN_EVENT_EXPOSED data1:0 data2:0];
-    [pWindow sendEvent:exposeEvt];
+    [pWindow postEvent:exposeEvt atStart:NO];
 }
 
 - (void)windowDidChangeOcclusionState:(NSNotification *)notification
 {
     (void)notification;
-    NSInteger amVisible = NSWindowOcclusionStateVisible == [pWindow occlusionState];
+    NSInteger       amVisible = NSWindowOcclusionStateVisible == [pWindow occlusionState];
     SR_WinEventType srEvtType = amVisible ? SR_WinEventType::WIN_EVENT_EXPOSED : SR_WinEventType::WIN_EVENT_HIDDEN;
-    NSEvent* hideEvt = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:CGPointMake(0.0, 0.0) modifierFlags:(NSEventModifierFlags)0 timestamp:0.0 windowNumber:[pWindow windowNumber] context:nil subtype:srEvtType data1:amVisible data2:0];
+    NSEvent*        hideEvt   = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:CGPointMake(0.0, 0.0) modifierFlags:(NSEventModifierFlags)0 timestamp:0.0 windowNumber:[pWindow windowNumber] context:nil subtype:srEvtType data1:amVisible data2:0];
     [pWindow postEvent:hideEvt atStart:NO];
 }
 
@@ -338,18 +339,18 @@ int SR_RenderWindowCocoa::init(unsigned width, unsigned height) noexcept
 
     NSUInteger windowStyle = NSWindowStyleMaskTitled  | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable;
     NSRect     screenRect  = [[NSScreen mainScreen] frame];
-    NSRect     windowRect  = NSMakeRect((screenRect.size.width-width)*0.5, (screenRect.size.height-height)*0.5, width, height);
+    NSRect     windowRect  = NSMakeRect(screenRect.origin.x+(screenRect.size.width-width)*0.5, screenRect.origin.y+(screenRect.size.height-height)*0.5, width, height);
     NSWindow*  window      = [[SR_CocoaWindow alloc] initWithContentRect:windowRect styleMask:(NSWindowStyleMask)windowStyle backing:(NSBackingStoreType)1 defer:NO];
 
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
 
-    NSMenu* menubar = [[NSMenu new] autorelease];
-    NSMenuItem* appMenuItem = [[NSMenuItem new] autorelease];
+    NSMenu* menubar = [[[NSMenu alloc] init] autorelease];
+    NSMenuItem* appMenuItem = [[[NSMenuItem alloc] init] autorelease];
     [menubar addItem:appMenuItem];
     [NSApp setMainMenu:menubar];
 
     // Add quit to the app menu
-    NSMenu* appMenu = [[NSMenu new] autorelease];
+    NSMenu* appMenu = [[[NSMenu alloc] init] autorelease];
     NSString* appName = [[NSProcessInfo processInfo] processName];
     NSString* quitTitle = [@"Quit " stringByAppendingString:appName];
     NSMenuItem* quitMenuItem = [[[NSMenuItem alloc] initWithTitle:quitTitle action:@selector(terminate:) keyEquivalent:@"q"] autorelease];
@@ -576,7 +577,6 @@ bool SR_RenderWindowCocoa::set_position(int x, int y) noexcept
 SR_RenderWindow* SR_RenderWindowCocoa::clone() const noexcept
 {
     const SR_RenderWindowCocoa& self = *this; // nullptr check
-
     SR_RenderWindowCocoa* pWindow = new(std::nothrow) SR_RenderWindowCocoa(self);
 
     return pWindow;
@@ -595,14 +595,15 @@ void SR_RenderWindowCocoa::update() noexcept
         return;
     }
 
-    NSWindow* pWindow = (NSWindow*)mWindow;
+    SR_CocoaWindow* pWindow = (SR_CocoaWindow*)mWindow;
+    [pWindow drain];
+
     NSEvent* pEvent = nil;
 
     if (mLastEvent)
     {
-        //NSEvent* evt = (NSEvent*)mLastEvent;
-        //[NSApp sendEvent:evt];
-        //[evt release];
+        NSEvent* evt = (NSEvent*)mLastEvent;
+        [NSApp sendEvent:evt];
         mLastEvent = nullptr;
     }
 
@@ -931,16 +932,8 @@ bool SR_RenderWindowCocoa::peek_event(SR_WindowEvent* const pEvent) noexcept
 -------------------------------------*/
 bool SR_RenderWindowCocoa::pop_event(SR_WindowEvent* const pEvent) noexcept
 {
-    //NSWindow* pWindow = (NSWindow*)mWindow;
     bool ret = peek_event(pEvent);
-
-    if (mLastEvent)
-    {
-        NSEvent* evt = (NSEvent*)mLastEvent;
-        [NSApp sendEvent:evt];
-        //[evt release];
-    }
-
+    mLastEvent = nullptr;
     return ret;
 }
 
