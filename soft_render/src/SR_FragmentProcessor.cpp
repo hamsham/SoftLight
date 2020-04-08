@@ -63,22 +63,24 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
     math::vec4*       LS_RESTRICT_PTR outVaryings) noexcept
 {
     #if defined(LS_ARCH_X86)
+        (void)numVaryings;
         const math::vec4* LS_RESTRICT_PTR inVaryings1  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
         const math::vec4* LS_RESTRICT_PTR inVaryings2  = inVaryings0 + (SR_SHADER_MAX_VARYING_VECTORS * 2);
 
-        const __m128 bc  = _mm_castsi128_ps(_mm_lddqu_si128(reinterpret_cast<const __m128i*>(baryCoords)));
-        const __m128 bc0 = _mm_permute_ps(bc, 0x00);
-        const __m128 bc1 = _mm_permute_ps(bc, 0x55);
-        const __m128 bc2 = _mm_permute_ps(bc, 0xAA);
-        //const __m128 bc0 = _mm_set1_ps(baryCoords[0]);
-        //const __m128 bc1 = _mm_set1_ps(baryCoords[1]);
-        //const __m128 bc2 = _mm_set1_ps(baryCoords[2]);
+        const __m256 bc  = _mm256_broadcast_ps(reinterpret_cast<const __m128*>(baryCoords));
+        const __m256 bc0 = _mm256_permute_ps(bc, 0x00);
+        const __m256 bc1 = _mm256_permute_ps(bc, 0x55);
+        const __m256 bc2 = _mm256_permute_ps(bc, 0xAA);
 
-        while (numVaryings--)
+        for (uint_fast64_t i = SR_SHADER_MAX_VARYING_VECTORS/2; i--; outVaryings += 2, inVaryings0 += 2, inVaryings1 += 2, inVaryings2 += 2)
         {
-            const __m128 v0 = _mm_mul_ps((inVaryings0++)->simd, bc0);
-            const __m128 v1 = _mm_fmadd_ps((inVaryings1++)->simd, bc1, v0);
-            _mm_store_ps(reinterpret_cast<float*>(outVaryings++), _mm_fmadd_ps((inVaryings2++)->simd, bc2, v1));
+            const __m256 a = _mm256_castsi256_ps(_mm256_lddqu_si256(reinterpret_cast<const __m256i*>(inVaryings0)));
+            const __m256 b = _mm256_castsi256_ps(_mm256_lddqu_si256(reinterpret_cast<const __m256i*>(inVaryings1)));
+            const __m256 c = _mm256_castsi256_ps(_mm256_lddqu_si256(reinterpret_cast<const __m256i*>(inVaryings2)));
+            const __m256 v0 = _mm256_mul_ps(bc0, a);
+            const __m256 v1 = _mm256_mul_ps(bc1, b);
+            const __m256 v2 = _mm256_mul_ps(bc2, c);
+            _mm256_store_ps(reinterpret_cast<float*>(outVaryings), _mm256_add_ps(v2, _mm256_add_ps(v0, v1)));
         }
     #elif defined(LS_ARCH_AARCH64)
         const math::vec4* inVaryings1  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;

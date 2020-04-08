@@ -56,13 +56,13 @@ inline LS_INLINE void sr_sort_minmax(float32x4_t& a, float32x4_t& b)  noexcept
 
 inline LS_INLINE void sr_sort_minmax(int32_t& a, int32_t& b)  noexcept
 {
-    #if 0
+    #if 1
 
     const int32_t mask = -(a >= b);
     const int32_t al   = ~mask & a;
     const int32_t bg   = ~mask & b;
-    const int32_t bl   = mask & b;
     const int32_t ag   = mask & a;
+    const int32_t bl   = mask & b;
 
     a = al | bl;
     b = ag | bg;
@@ -136,7 +136,7 @@ struct alignas(sizeof(float)*4) SR_ScanlineBounds
         v0 = ls::math::vec2_cast(p0);
         v1 = ls::math::vec2_cast(p1);
 
-        p20y = p2[1] - p0[1];
+        p20y = 1.f / (p2[1] - p0[1]);
         p21xy = (p2[0] - p1[0]) / (p2[1] - p1[1]);
         p10xy = (p1[0] - p0[0]) / (p1[1] - p0[1]);
         p20x = p2[0] - p0[0];
@@ -149,17 +149,24 @@ struct alignas(sizeof(float)*4) SR_ScanlineBounds
         const float d0 = yf - v0[1];
         const float d1 = yf - v1[1];
 
-        const float alpha      = d0 / p20y;
-        const int   secondHalf = ls::math::sign_mask(d1);
-        const float a          = ls::math::fmadd(p21xy, d1, v1[0]);
-        const float b          = ls::math::fmadd(p10xy, d0, v0[0]);
-
+        const float alpha = d0 * p20y;
         xMin = (int32_t)ls::math::fmadd(p20x, alpha, v0[0]);
-        xMax = (int32_t)(secondHalf ? a : b);
+
+        #if defined(LS_ARCH_X86)
+            const __m128 secondHalf = _mm_cmplt_ss(_mm_set_ss(d1), _mm_setzero_ps());
+            const __m128 a          = _mm_and_ps(secondHalf,    _mm_set_ss(p21xy * d1 + v1[0]));
+            const __m128 b          = _mm_andnot_ps(secondHalf, _mm_set_ss(p10xy * d0 + v0[0]));
+            xMax = _mm_cvtt_ss2si(_mm_or_ps(a, b));
+        #else
+            const int   secondHalf = ls::math::sign_mask(d1);
+            const float a          = ls::math::fmadd(p21xy, d1, v1[0]);
+            const float b          = ls::math::fmadd(p10xy, d0, v0[0]);
+            xMax = (int32_t)(secondHalf ? a : b);
+        #endif
 
         sr_sort_minmax(xMin, xMax);
 
-        xMin = ls::math::clamp(xMin, 0, bboxMaxX);
+        xMin = ls::math::clamp<int32_t>(xMin, 0, bboxMaxX);
 
         #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
             xMax = ls::math::clamp(xMax, 0, bboxMaxX);

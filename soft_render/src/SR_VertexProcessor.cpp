@@ -366,25 +366,26 @@ inline int back_face_visible(const math::vec4* screenCoords) noexcept
         return (0.f > math::determinant(det));
     #else
         // Swap the z and w components for each vector. Z will be discarded later
-        const __m128 col4 = _mm_permute_ps(screenCoords[0].simd, 0xB4);
+        const __m128 col4 = _mm_blend_ps(_mm_permute_ps(screenCoords[0].simd, 0xB4), _mm_setzero_ps(), 0x08);
 
         constexpr int shuffleMask120 = 0x8D; // indices: <base> + (2, 0, 3, 1): 10001101
         constexpr int shuffleMask201 = 0x93; // indices: <base> + (2, 1, 0, 3): 10010011
 
-        const __m128 col3 = _mm_permute_ps(screenCoords[2].simd, shuffleMask120);
         const __m128 col2 = _mm_permute_ps(screenCoords[1].simd, shuffleMask201);
-        const __m128 col1 = _mm_permute_ps(screenCoords[2].simd, shuffleMask201);
-        const __m128 col0 = _mm_permute_ps(screenCoords[1].simd, shuffleMask120);
+        const __m128 col3 = _mm_mul_ps(col2, _mm_permute_ps(screenCoords[2].simd, shuffleMask120));
 
-        const __m128 sub0 = _mm_fmsub_ps(col0, col1, _mm_mul_ps(col2, col3));
+        const __m128 col0 = _mm_permute_ps(screenCoords[1].simd, shuffleMask120);
+        const __m128 col1 = _mm_mul_ps(col0, _mm_permute_ps(screenCoords[2].simd, shuffleMask201));
+
+        const __m128 sub0 = _mm_sub_ps(col1, col3);
 
         // Remove the Z component which was shuffled earlier
-        const __m128 mul2 = _mm_blend_ps(_mm_mul_ps(sub0, col4), _mm_setzero_ps(), 0x08);
+        const __m128 mul2 = _mm_mul_ps(sub0, col4);
 
         // horizontal add: swap the words of each vector, add, then swap each
         // half of the vectors and perform a final add.
-        const __m128 swap = _mm_add_ps(mul2, _mm_permute_ps(mul2, 0xB1));
-        const __m128 sum  = _mm_add_ps(swap, _mm_permute_ps(swap, 0x0F));
+        const __m128 swap = _mm_add_ps(mul2, _mm_movehl_ps(mul2, mul2));
+        const __m128 sum  = _mm_add_ps(swap, _mm_permute_ps(swap, 1));
 
         return 0.f > _mm_cvtss_f32(sum);
     #endif
@@ -408,25 +409,26 @@ inline int front_face_visible(const math::vec4* screenCoords) noexcept
         return (0.f < math::determinant(det));
     #else
         // Swap the z and w components for each vector. Z will be discarded later
-        const __m128 col4 = _mm_permute_ps(screenCoords[0].simd, 0xB4);
+        const __m128 col4 = _mm_blend_ps(_mm_permute_ps(screenCoords[0].simd, 0xB4), _mm_setzero_ps(), 0x08);
 
         constexpr int shuffleMask120 = 0x8D; // indices: <base> + (2, 0, 3, 1): 10001101
         constexpr int shuffleMask201 = 0x93; // indices: <base> + (2, 1, 0, 3): 10010011
 
-        const __m128 col3 = _mm_permute_ps(screenCoords[2].simd, shuffleMask120);
         const __m128 col2 = _mm_permute_ps(screenCoords[1].simd, shuffleMask201);
-        const __m128 col1 = _mm_permute_ps(screenCoords[2].simd, shuffleMask201);
-        const __m128 col0 = _mm_permute_ps(screenCoords[1].simd, shuffleMask120);
+        const __m128 col3 = _mm_mul_ps(col2, _mm_permute_ps(screenCoords[2].simd, shuffleMask120));
 
-        const __m128 sub0 = _mm_fmsub_ps(col0, col1, _mm_mul_ps(col2, col3));
+        const __m128 col0 = _mm_permute_ps(screenCoords[1].simd, shuffleMask120);
+        const __m128 col1 = _mm_mul_ps(col0, _mm_permute_ps(screenCoords[2].simd, shuffleMask201));
+
+        const __m128 sub0 = _mm_sub_ps(col1, col3);
 
         // Remove the Z component which was shuffled earlier
-        const __m128 mul2 = _mm_blend_ps(_mm_mul_ps(sub0, col4), _mm_setzero_ps(), 0x08);
+        const __m128 mul2 = _mm_mul_ps(sub0, col4);
 
         // horizontal add: swap the words of each vector, add, then swap each
         // half of the vectors and perform a final add.
-        const __m128 swap = _mm_add_ps(mul2, _mm_permute_ps(mul2, 0xB1));
-        const __m128 sum  = _mm_add_ps(swap, _mm_permute_ps(swap, 0x0F));
+        const __m128 swap = _mm_add_ps(mul2, _mm_movehl_ps(mul2, mul2));
+        const __m128 sum  = _mm_add_ps(swap, _mm_permute_ps(swap, 1));
 
         return 0.f < _mm_cvtss_f32(sum);
     #endif
@@ -671,10 +673,14 @@ inline void SR_VertexProcessor::push_bin(
     while (true)
     {
         #if defined(LS_ARCH_X86)
-            _mm_sfence();
+            _mm_lfence();
         #endif
 
         binId = pLocks->fetch_add(1, std::memory_order_acq_rel);
+
+        #if defined(LS_ARCH_X86)
+            _mm_sfence();
+        #endif
 
         if (LS_UNLIKELY(binId >= SR_SHADER_MAX_BINNED_PRIMS))
         {

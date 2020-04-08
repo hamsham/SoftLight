@@ -27,33 +27,33 @@ struct alignas(sizeof(int32_t)) SR_PackedVertex_2_10_10_10
     int32_t z: 10;
     int32_t w: 2;
 
-    constexpr SR_PackedVertex_2_10_10_10(const int32_t& v) noexcept :
+    constexpr LS_INLINE SR_PackedVertex_2_10_10_10(const int32_t& v) noexcept :
         x{(v >>  0) & 0x03FF},
         y{(v >> 10) & 0x03FF},
         z{(v >> 20) & 0x03FF},
         w{0}
     {}
 
-    constexpr SR_PackedVertex_2_10_10_10(const ls::math::vec3& v) noexcept :
+    constexpr LS_INLINE SR_PackedVertex_2_10_10_10(const ls::math::vec3& v) noexcept :
         x{(int32_t)(v[0] * 511.f)},
         y{(int32_t)(v[1] * 511.f)},
         z{(int32_t)(v[2] * 511.f)},
         w{0}
     {}
 
-    inline SR_PackedVertex_2_10_10_10(const ls::math::vec4& v) noexcept :
+    constexpr LS_INLINE SR_PackedVertex_2_10_10_10(const ls::math::vec4& v) noexcept :
         x{(int32_t)(v[0] * 511.f)},
         y{(int32_t)(v[1] * 511.f)},
         z{(int32_t)(v[2] * 511.f)},
         w{0}
     {}
     
-    explicit inline operator int32_t() const noexcept
+    explicit inline LS_INLINE operator int32_t() const noexcept
     {
         return *reinterpret_cast<const int32_t*>(this);
     }
 
-    explicit constexpr operator ls::math::vec3() const noexcept
+    explicit constexpr LS_INLINE operator ls::math::vec3() const noexcept
     {
         return ls::math::vec3{
             (float)x * (1.f / 511.f),
@@ -62,14 +62,17 @@ struct alignas(sizeof(int32_t)) SR_PackedVertex_2_10_10_10
         };
     }
 
-    explicit inline operator ls::math::vec4() const noexcept
+    explicit inline LS_INLINE operator ls::math::vec4() const noexcept
     {
-        return ls::math::vec4{
-            (float)x * (1.f / 511.f),
-            (float)y * (1.f / 511.f),
-            (float)z * (1.f / 511.f),
-            0.f
-        };
+        #if !defined(LS_ARCH_X86)
+            return ls::math::vec4{(float)x, (float)y, (float)z, 0.f} * ls::math::vec4{1.f / 511.f, 1.f / 511.f, 1.f / 511.f, 0.f};
+        #else
+            // BEWARE: Undefined behavior ahead
+            const __m128i elems    = _mm_castps_si128(_mm_load1_ps(reinterpret_cast<const float*>(this)));
+            const __m128i shifted  = _mm_sllv_epi32(elems,   _mm_set_epi32(0, 2, 12, 22));
+            const __m128i extended = _mm_srav_epi32(shifted, _mm_set_epi32(30, 22, 22, 22));
+            return ls::math::vec4{_mm_mul_ps(_mm_cvtepi32_ps(extended), _mm_set1_ps(1.f/511.f))};
+        #endif
     }
 };
 
@@ -105,7 +108,7 @@ inline int32_t sr_pack_vertex_2_10_10_10(const ls::math::vec3& norm) noexcept
  * @return A signed 32-bit integer containing a vertex normal with data in the
  * range of [-2^10, 2^10].
 -------------------------------------*/
-inline int32_t sr_pack_vertex_2_10_10_10(const ls::math::vec4& norm) noexcept
+inline LS_INLINE int32_t sr_pack_vertex_2_10_10_10(const ls::math::vec4& norm) noexcept
 {
     return (int32_t)SR_PackedVertex_2_10_10_10{norm};
 }
@@ -121,7 +124,7 @@ inline int32_t sr_pack_vertex_2_10_10_10(const ls::math::vec4& norm) noexcept
  *
  * @return A 3D vector containing the unpacked vertex.
 -------------------------------------*/
-inline ls::math::vec3 sr_unpack_vertex_vec3(int32_t norm) noexcept
+constexpr LS_INLINE ls::math::vec3 sr_unpack_vertex_vec3(int32_t norm) noexcept
 {
     return (ls::math::vec3)SR_PackedVertex_2_10_10_10{norm};
 }
@@ -138,7 +141,7 @@ inline ls::math::vec3 sr_unpack_vertex_vec3(int32_t norm) noexcept
  *
  * @return A 4D vector containing the unpacked vertex.
 -------------------------------------*/
-inline ls::math::vec4 sr_unpack_vertex_vec4(int32_t norm) noexcept
+inline LS_INLINE ls::math::vec4 sr_unpack_vertex_vec4(int32_t norm) noexcept
 {
     return (ls::math::vec4)SR_PackedVertex_2_10_10_10{norm};
 }
