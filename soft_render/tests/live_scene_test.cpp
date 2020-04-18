@@ -9,6 +9,7 @@
 
 #include "lightsky/utils/Log.h"
 #include "lightsky/utils/Pointer.h"
+#include "lightsky/utils/StringUtils.h"
 #include "lightsky/utils/Time.hpp"
 #include "lightsky/utils/Tuple.h"
 
@@ -36,15 +37,15 @@
 #include "soft_render/SR_WindowEvent.hpp"
 
 #ifndef IMAGE_WIDTH
-    #define IMAGE_WIDTH 1280
+    #define IMAGE_WIDTH 1024
 #endif /* IMAGE_WIDTH */
 
 #ifndef IMAGE_HEIGHT
-    #define IMAGE_HEIGHT 720
+    #define IMAGE_HEIGHT 1024
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SR_TEST_MAX_THREADS
-    #define SR_TEST_MAX_THREADS 4//(ls::math::max<unsigned>(std::thread::hardware_concurrency()/2, 1))
+    #define SR_TEST_MAX_THREADS 14//(ls::math::max<unsigned>(std::thread::hardware_concurrency()/2, 1))
 #endif /* SR_TEST_MAX_THREADS */
 
 #ifndef SR_TEST_USE_PBR
@@ -263,12 +264,12 @@ bool _texture_frag_shader_spot(SR_FragmentParam& fragParams)
     // normalize the texture colors to within (0.f, 1.f)
     if (albedo->channels() == 3)
     {
-        const math::vec3_t<uint8_t>&& pixel8 = sr_sample_nearest<math::vec3_t<uint8_t>, SR_WrapMode::REPEAT, SR_TEXELS_ORDERED>(*albedo, uv[0], uv[1]);
+        const math::vec3_t<uint8_t>&& pixel8 = sr_sample_nearest<math::vec3_t<uint8_t>, SR_WrapMode::REPEAT>(*albedo, uv[0], uv[1]);
         pixel = color_cast<float, uint8_t>(math::vec4_cast<uint8_t>(pixel8, 255));
     }
     else
     {
-        pixel = color_cast<float, uint8_t>(sr_sample_nearest<math::vec4_t<uint8_t>, SR_WrapMode::REPEAT, SR_TEXELS_ORDERED>(*albedo, uv[0], uv[1]));
+        pixel = color_cast<float, uint8_t>(sr_sample_nearest<math::vec4_t<uint8_t>, SR_WrapMode::REPEAT>(*albedo, uv[0], uv[1]));
     }
 
     // Light direction calculation
@@ -384,13 +385,13 @@ bool _texture_frag_shader_pbr(SR_FragmentParam& fragParams)
     // normalize the texture colors to within (0.f, 1.f)
     if (pTexture->channels() == 3)
     {
-        const math::vec3_t<uint8_t>&& pixel8 = pTexture->nearest<math::vec3_t<uint8_t>>(uv[0], uv[1]);
+        const math::vec3_t<uint8_t>&& pixel8 = sr_sample_nearest<math::vec3_t<uint8_t>, SR_WrapMode::REPEAT>(*pTexture, uv[0], uv[1]);
         const math::vec4_t<uint8_t>&& pixelF = math::vec4_cast<uint8_t>(pixel8, 255);
         pixel = color_cast<float, uint8_t>(pixelF);
     }
     else
     {
-        const math::vec4_t<uint8_t>&& pixelF = pTexture->nearest<math::vec4_t<uint8_t>>(uv[0], uv[1]);
+        const math::vec4_t<uint8_t>&& pixelF = sr_sample_nearest<math::vec4_t<uint8_t>, SR_WrapMode::REPEAT>(*pTexture, uv[0], uv[1]);
         pixel = color_cast<float, uint8_t>(pixelF);
     }
 
@@ -570,107 +571,6 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
             }
         }
     }
-}
-
-
-
-/*-------------------------------------
- * Load a cube mesh
--------------------------------------*/
-int scene_load_cube(SR_SceneGraph& graph)
-{
-    int retCode = 0;
-    SR_Context& context = graph.mContext;
-    constexpr unsigned numVerts = 8;
-    constexpr unsigned numIndices = 36;
-    size_t numVboBytes = 0;
-
-    size_t vboId = context.create_vbo();
-    SR_VertexBuffer& vbo = context.vbo(vboId);
-    retCode = vbo.init(numVerts*sizeof(math::vec3));
-    if (retCode != 0)
-    {
-        std::cerr << "Error while creating a VBO: " << retCode << std::endl;
-        abort();
-    }
-
-    size_t iboId = context.create_ibo();
-    SR_IndexBuffer& ibo = context.ibo(iboId);
-    retCode = ibo.init(numIndices, SR_DataType::VERTEX_DATA_BYTE);
-    if (retCode != 0)
-    {
-        std::cerr << "Error while creating an IBO: " << retCode << std::endl;
-        abort();
-    }
-
-    size_t vaoId = context.create_vao();
-    SR_VertexArray& vao = context.vao(vaoId);
-    vao.set_vertex_buffer(vboId);
-    vao.set_index_buffer(iboId);
-    retCode = vao.set_num_bindings(1);
-    if (retCode != 1)
-    {
-        std::cerr << "Error while setting the number of VAO bindings: " << retCode << std::endl;
-        abort();
-    }
-
-    constexpr math::vec3 verts[numVerts] = {
-        {-1.f, -1.f,  1.f}, // 0
-        { 1.f, -1.f,  1.f}, // 1
-        { 1.f,  1.f,  1.f}, // 2
-        {-1.f,  1.f,  1.f}, // 3
-        {-1.f, -1.f, -1.f}, // 4
-        { 1.f, -1.f, -1.f}, // 5
-        { 1.f,  1.f, -1.f}, // 6
-        {-1.f,  1.f, -1.f}  // 7
-    };
-
-    constexpr uint8_t indices[numIndices] = {
-        // front
-        0, 1, 2,
-        2, 3, 0,
-        // right
-        1, 5, 6,
-        6, 2, 1,
-        // back
-        7, 6, 5,
-        5, 4, 7,
-        // left
-        4, 0, 3,
-        3, 7, 4,
-        // bottom
-        4, 5, 1,
-        1, 0, 4,
-        // top
-        3, 2, 6,
-        6, 7, 3
-    };
-
-    // Create the vertex buffer
-    vbo.assign(verts, numVboBytes, sizeof(verts));
-    ibo.assign(indices, 0, numIndices);
-    vao.set_binding(0, numVboBytes, sizeof(math::vec3), SR_Dimension::VERTEX_DIMENSION_3, SR_DataType::VERTEX_DATA_FLOAT);
-
-    ls::utils::Pointer<size_t[]> meshId{new size_t[1]};
-    meshId[0] = 0;
-
-    graph.mNodes.push_back({SR_SceneNodeType::NODE_TYPE_EMPTY, 0, 0, SCENE_NODE_ROOT_ID});
-    graph.mBaseTransforms.emplace_back(math::mat4{1.f});
-    graph.mCurrentTransforms.push_back(SR_Transform{math::mat4{1.f}, SR_TRANSFORM_TYPE_MODEL});
-    graph.mNodeNames.emplace_back(std::string{"AABB"});
-    graph.mModelMatrices.emplace_back(math::mat4{1.f});
-    graph.mNodeMeshes.emplace_back(std::move(meshId));
-    graph.mNumNodeMeshes.push_back(1);
-    graph.mMeshes.emplace_back(SR_Mesh());
-
-    SR_Mesh& mesh = graph.mMeshes.back();
-    mesh.vaoId = vaoId;
-    mesh.elementBegin = 0;
-    mesh.elementEnd = numIndices;
-    mesh.mode = SR_RenderMode::RENDER_MODE_INDEXED_TRI_WIRE;
-    mesh.materialId = (uint32_t)-1;
-
-    return 0;
 }
 
 
@@ -939,7 +839,7 @@ int main()
             }
 
             #if SR_BENCHMARK_SCENE
-                if (totalFrames >= 1200)
+                if (totalFrames >= 600)
                 {
                     shouldQuit = true;
                 }

@@ -22,6 +22,7 @@
 #include "soft_render/SR_Mesh.hpp"
 #include "soft_render/SR_Material.hpp"
 #include "soft_render/SR_RenderWindow.hpp"
+#include "soft_render/SR_Sampler.hpp"
 #include "soft_render/SR_SceneFileLoader.hpp"
 #include "soft_render/SR_SceneGraph.hpp"
 #include "soft_render/SR_Shader.hpp"
@@ -199,13 +200,13 @@ bool _texture_frag_shader(SR_FragmentParam& fragParam)
     // normalize the texture colors to within (0.f, 1.f)
     if (pTexture->channels() == 3)
     {
-        const math::vec3_t<uint8_t>&& pixel8 = pTexture->nearest<math::vec3_t<uint8_t>>(uv[0], uv[1]);
+        const math::vec3_t<uint8_t>&& pixel8 = sr_sample_nearest<math::vec3_t<uint8_t>, SR_WrapMode::REPEAT>(*pTexture, uv[0], uv[1]);
         const math::vec4_t<uint8_t>&& pixelF = math::vec4_cast<uint8_t>(pixel8, 255);
         albedo = color_cast<float, uint8_t>(pixelF);
     }
     else
     {
-        const math::vec4_t<uint8_t>&& pixelF = pTexture->nearest<math::vec4_t<uint8_t>>(uv[0], uv[1]);
+        const math::vec4_t<uint8_t>&& pixelF = sr_sample_nearest<math::vec4_t<uint8_t>, SR_WrapMode::REPEAT>(*pTexture, uv[0], uv[1]);
         albedo = color_cast<float, uint8_t>(pixelF);
     }
 

@@ -115,9 +115,6 @@ SR_Texture::SR_Texture() noexcept :
     mWidth{0},
     mHeight{0},
     mDepth{0},
-    mWidthf{0.f},
-    mHeightf{0.f},
-    mDepthf{0.f},
     mType{SR_COLOR_RGB_DEFAULT},
     mBytesPerTexel{0},
     mNumChannels{0},
@@ -134,9 +131,6 @@ SR_Texture::SR_Texture(const SR_Texture& r) noexcept :
     mWidth{r.mWidth},
     mHeight{r.mHeight},
     mDepth{r.mDepth},
-    mWidthf{r.mWidthf},
-    mHeightf{r.mHeightf},
-    mDepthf{r.mDepthf},
     mType{r.mType},
     mBytesPerTexel{r.mBytesPerTexel},
     mNumChannels{r.mNumChannels},
@@ -153,9 +147,6 @@ SR_Texture::SR_Texture(SR_Texture&& r) noexcept :
     mWidth{r.mWidth},
     mHeight{r.mHeight},
     mDepth{r.mDepth},
-    mWidthf{r.mWidthf},
-    mHeightf{r.mHeightf},
-    mDepthf{r.mDepthf},
     mType{r.mType},
     mBytesPerTexel{r.mBytesPerTexel},
     mNumChannels{r.mNumChannels},
@@ -165,9 +156,6 @@ SR_Texture::SR_Texture(SR_Texture&& r) noexcept :
     r.mWidth = 0;
     r.mHeight = 0;
     r.mDepth = 0;
-    r.mWidthf = 0.f;
-    r.mHeightf = 0.f;
-    r.mDepthf = 0.f;
     r.mType = SR_COLOR_RGB_DEFAULT;
     r.mBytesPerTexel = 0;
     r.mNumChannels = 0;
@@ -227,15 +215,6 @@ SR_Texture& SR_Texture::operator=(SR_Texture&& r) noexcept
     mDepth = r.mDepth;
     r.mDepth = 0;
 
-    mWidth = r.mWidth;
-    r.mWidthf = 0.f;
-
-    mHeightf = r.mHeightf;
-    r.mHeightf = 0.f;
-
-    mDepthf = r.mDepthf;
-    r.mDepthf = 0.f;
-
     mType = r.mType;
     r.mType = SR_COLOR_RGB_DEFAULT;
 
@@ -279,9 +258,6 @@ int SR_Texture::init(SR_ColorDataType type, uint16_t w, uint16_t h, uint16_t d) 
     mWidth         = w;
     mHeight        = h;
     mDepth         = d;
-    mWidthf        = (float)w;
-    mHeightf       = (float)h;
-    mDepthf        = (float)d;
     mType          = type;
     mBytesPerTexel = (uint16_t)bpt;
     mNumChannels   = (uint32_t)sr_elements_per_color(type);
@@ -359,9 +335,6 @@ void SR_Texture::terminate() noexcept
     mWidth = 0;
     mHeight = 0;
     mDepth = 0;
-    mWidthf = 0.f;
-    mHeightf = 0.f;
-    mDepthf = 0.f;
     mType = SR_COLOR_RGB_DEFAULT;
     mBytesPerTexel = 0;
     mNumChannels = 0;

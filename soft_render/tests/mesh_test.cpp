@@ -14,6 +14,7 @@
 #include "soft_render/SR_ImgFilePPM.hpp"
 #include "soft_render/SR_Material.hpp"
 #include "soft_render/SR_Mesh.hpp"
+#include "soft_render/SR_Sampler.hpp"
 #include "soft_render/SR_SceneFileLoader.hpp"
 #include "soft_render/SR_Texture.hpp"
 #include "soft_render/SR_Transform.hpp"
@@ -96,7 +97,7 @@ bool _mesh_test_frag_shader(SR_FragmentParam& fragParams)
     math::vec4              pixel;
 
     // normalize the texture colors to within (0.f, 1.f)
-    math::vec3_t<uint8_t>&& pixel8 = albedo->bilinear<math::vec3_t<uint8_t>>(uv[0], uv[1]);
+    math::vec3_t<uint8_t>&& pixel8 = sr_sample_nearest<math::vec3_t<uint8_t>, SR_WrapMode::REPEAT>(*albedo, uv[0], uv[1]);
     math::vec4_t<uint8_t> pixelF{pixel8[0], pixel8[1], pixel8[2], 200};
     pixel = color_cast<float, uint8_t>(pixelF);
 
