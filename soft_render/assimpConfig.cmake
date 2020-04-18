@@ -8,7 +8,7 @@ find_package(assimp MODULE)
 # #####################################
 option(BUILD_ASSIMP "Force ASSIMP to build from source." OFF)
 
-if (BUILD_ASSIMP OR ASSIMP_INCLUDE_DIR STREQUAL ASSIMP_INCLUDE_DIR-NOTFOUND OR ASSIMP_LIBRARIES STREQUAL ASSIMP_LIBRARIES-NOTFOUND)
+if (BUILD_ASSIMP OR NOT ASSIMP_INCLUDE_DIR OR NOT ASSIMP_LIBRARIES)
 
     message("-- Building ASSIMP from source")
   
