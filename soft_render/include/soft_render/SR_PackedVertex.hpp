@@ -68,7 +68,7 @@ struct alignas(sizeof(int32_t)) SR_PackedVertex_2_10_10_10
             return ls::math::vec4{(float)x, (float)y, (float)z, 0.f} * ls::math::vec4{1.f / 511.f, 1.f / 511.f, 1.f / 511.f, 0.f};
         #else
             // BEWARE: Undefined behavior ahead
-            const __m128i elems    = _mm_castps_si128(_mm_load1_ps(reinterpret_cast<const float*>(this)));
+            const __m128i elems    = _mm_set1_epi32(*reinterpret_cast<const int32_t*>(this));
             const __m128i shifted  = _mm_sllv_epi32(elems,   _mm_set_epi32(0, 2, 12, 22));
             const __m128i extended = _mm_srav_epi32(shifted, _mm_set_epi32(30, 22, 22, 22));
             return ls::math::vec4{_mm_mul_ps(_mm_cvtepi32_ps(extended), _mm_set1_ps(1.f/511.f))};
