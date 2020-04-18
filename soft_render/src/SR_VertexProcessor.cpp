@@ -10,8 +10,7 @@
 #include "lightsky/utils/Assertions.h" // LS_DEBUG_ASSERT
 #include "lightsky/utils/Sort.hpp" // utils::sort_quick
 
-#include "lightsky/math/vec4.h"
-#include "lightsky/math/vec_utils.h"
+#include "lightsky/math/mat_utils.h"
 
 #include "soft_render/SR_Config.hpp"
 #include "soft_render/SR_Context.hpp"
@@ -310,8 +309,7 @@ inline size_t get_next_vertex(const SR_IndexBuffer* pIbo, size_t vId) noexcept
         case VERTEX_DATA_SHORT: return *reinterpret_cast<const unsigned short*>(pIbo->element(vId));
         case VERTEX_DATA_INT:   return *reinterpret_cast<const unsigned int*>(pIbo->element(vId));
         default:
-            LS_DEBUG_ASSERT(false);
-            break;
+            LS_UNREACHABLE();
     }
     return vId;
 }
@@ -329,20 +327,17 @@ inline LS_INLINE math::vec3_t<size_t> get_next_vertex3(const SR_IndexBuffer* pIb
         case VERTEX_DATA_BYTE:
             byteIds = *reinterpret_cast<const decltype(byteIds)*>(pIbo->element(vId));
             return (math::vec3_t<size_t>)byteIds;
-            break;
 
         case VERTEX_DATA_SHORT:
             shortIds = *reinterpret_cast<const decltype(shortIds)*>(pIbo->element(vId));
             return (math::vec3_t<size_t>)shortIds;
-            break;
 
         case VERTEX_DATA_INT:
             intIds = *reinterpret_cast<const decltype(intIds)*>(pIbo->element(vId));
             return (math::vec3_t<size_t>)intIds;
-            break;
 
         default:
-            LS_DEBUG_ASSERT(false);
+            LS_UNREACHABLE();
     }
 
     return math::vec3_t<size_t>{0, 0, 0};
