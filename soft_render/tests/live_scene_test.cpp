@@ -37,15 +37,15 @@
 #include "soft_render/SR_WindowEvent.hpp"
 
 #ifndef IMAGE_WIDTH
-    #define IMAGE_WIDTH 1024
+    #define IMAGE_WIDTH 1280
 #endif /* IMAGE_WIDTH */
 
 #ifndef IMAGE_HEIGHT
-    #define IMAGE_HEIGHT 1024
+    #define IMAGE_HEIGHT 720
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SR_TEST_MAX_THREADS
-    #define SR_TEST_MAX_THREADS 14//(ls::math::max<unsigned>(std::thread::hardware_concurrency()/2, 1))
+    #define SR_TEST_MAX_THREADS (ls::math::max<unsigned>(std::thread::hardware_concurrency()-2, 1))
 #endif /* SR_TEST_MAX_THREADS */
 
 #ifndef SR_TEST_USE_PBR
@@ -126,13 +126,13 @@ math::vec4 _normal_vert_shader_impl(SR_VertexParam& param)
 
     const MeshUniforms* pUniforms = param.pUniforms->as<MeshUniforms>();
     const Vertex*       v         = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));
-    const math::vec3&   vert      = v->const_element<0>();
+    const math::vec4&&  vert      = math::vec4_cast(v->const_element<0>(), 1.f);
     const math::vec4&&  norm      = sr_unpack_vertex_vec4(v->const_element<1>());
 
-    param.pVaryings[0] = pUniforms->modelMatrix * math::vec4_cast(vert, 0.f);
-    param.pVaryings[1] = math::normalize(pUniforms->modelMatrix * norm);
+    param.pVaryings[0] = pUniforms->modelMatrix * vert;
+    param.pVaryings[1] = pUniforms->modelMatrix * norm;
 
-    return pUniforms->mvpMatrix * math::vec4_cast(vert, 1.f);
+    return pUniforms->mvpMatrix * vert;
 }
 
 
@@ -216,15 +216,15 @@ math::vec4 _texture_vert_shader_impl(SR_VertexParam& param)
 
     const MeshUniforms* pUniforms = param.pUniforms->as<MeshUniforms>();
     const Vertex*       v         = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));
-    const math::vec3&   vert      = v->const_element<0>();
-    const math::vec2&   uv        = v->const_element<1>();
+    const math::vec4&&  vert      = math::vec4_cast(v->const_element<0>(), 1.f);
+    const math::vec4&&  uv        = math::vec4_cast(v->const_element<1>(), 0.f, 0.f);
     const math::vec4&&  norm      = sr_unpack_vertex_vec4(v->const_element<2>());
 
-    param.pVaryings[0] = pUniforms->modelMatrix * math::vec4_cast(vert, 0.f);
-    param.pVaryings[1] = math::vec4_cast(uv, 0.f, 0.f);
-    param.pVaryings[2] = math::normalize(pUniforms->modelMatrix * norm);
+    param.pVaryings[0] = pUniforms->modelMatrix * vert;
+    param.pVaryings[1] = uv;
+    param.pVaryings[2] = pUniforms->modelMatrix * norm;
 
-    return pUniforms->mvpMatrix * math::vec4_cast(vert, 1.f);
+    return pUniforms->mvpMatrix * vert;
 }
 
 
@@ -249,7 +249,7 @@ bool _texture_frag_shader_spot(SR_FragmentParam& fragParams)
     const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
     const math::vec4&    pos       = fragParams.pVaryings[0];
     const math::vec4&    uv        = fragParams.pVaryings[1];
-    const math::vec4&    norm      = fragParams.pVaryings[2];
+    const math::vec4&    norm      = math::normalize(fragParams.pVaryings[2]);
     const SR_Texture*    albedo    = pUniforms->pTexture;
     float                attenuation;
     math::vec4           pixel;
@@ -839,7 +839,7 @@ int main()
             }
 
             #if SR_BENCHMARK_SCENE
-                if (totalFrames >= 600)
+                if (totalFrames >= 1200)
                 {
                     shouldQuit = true;
                 }
