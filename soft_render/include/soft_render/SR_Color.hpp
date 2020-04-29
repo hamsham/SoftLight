@@ -220,7 +220,7 @@ color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, S
 {
     return SR_ColorRType<T>
    {
-       (T)(((float)std::numeric_limits<T>::max() / std::numeric_limits<U>::max()) * p.r)
+       (T)(((float)std::numeric_limits<T>::max() / (float)std::numeric_limits<U>::max()) * p.r)
    };
 }
 
@@ -247,9 +247,9 @@ color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, S
 {
     return ls::setup::IsSigned<U>::value
     ?
-        SR_ColorRType<T>{0.5f * ((T)p.r * (T{1} / std::numeric_limits<U>::max())) + 0.5f}
+        SR_ColorRType<T>{0.5f * ((T)p.r * (T{1} / (float)std::numeric_limits<U>::max())) + 0.5f}
     :
-        SR_ColorRType<T>{(T)p.r * (T{1} / std::numeric_limits<U>::max())};
+        SR_ColorRType<T>{(T)p.r * (T{1} / (float)std::numeric_limits<U>::max())};
 }
 
 
@@ -342,8 +342,8 @@ inline typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SR_ColorRGType
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SR_ColorRGType<U>>::type& p)
 {
     return ls::setup::IsSigned<U>::value
-           ? (SR_ColorRGType<T>{0.5f} * ((SR_ColorRGType<T>)p * (T{1} / std::numeric_limits<U>::max())) + 0.5f)
-           : ((SR_ColorRGType<T>)p * (T{1} / std::numeric_limits<U>::max()));
+           ? (SR_ColorRGType<T>{0.5f} * ((SR_ColorRGType<T>)p * (T{1} / (float)std::numeric_limits<U>::max())) + 0.5f)
+           : ((SR_ColorRGType<T>)p * (T{1} / (float)std::numeric_limits<U>::max()));
 }
 
 
@@ -435,8 +435,8 @@ inline typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SR_ColorRGBTyp
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SR_ColorRGBType<U>>::type& p)
 {
     return ls::setup::IsSigned<U>::value
-           ? (SR_ColorRGBType<T>{0.5f} * ((SR_ColorRGBType<T>)p * (T{1} / std::numeric_limits<U>::max())) + 0.5f)
-           : ((SR_ColorRGBType<T>)p * (T{1} / std::numeric_limits<U>::max()));
+           ? (SR_ColorRGBType<T>{0.5f} * ((SR_ColorRGBType<T>)p * (T{1} / (float)std::numeric_limits<U>::max())) + 0.5f)
+           : ((SR_ColorRGBType<T>)p * (T{1} / (float)std::numeric_limits<U>::max()));
 }
 
 
@@ -529,7 +529,7 @@ color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, S
 {
     return ls::setup::IsSigned<U>::value
     ? (SR_ColorRGBAType<T>{0.5f} * ((SR_ColorRGBAType<T>)p * (T{1} / std::numeric_limits<U>::max())) + 0.5f)
-    : ((SR_ColorRGBAType<T>)p * (T{1} / std::numeric_limits<U>::max()));
+    : ((SR_ColorRGBAType<T>)p * (T{1} / (float)std::numeric_limits<U>::max()));
 }
 
 
