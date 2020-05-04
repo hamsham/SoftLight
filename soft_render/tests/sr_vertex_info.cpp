@@ -28,36 +28,27 @@ void print_vertex_info()
 {
     utils::log_msg(
         "Vertex Byte Sizes:",
-        "\n\tPOSITION_VERTEX:         ", sr_vertex_byte_size(POSITION_VERTEX),
-        "\n\tTEXTURE_VERTEX:          ", sr_vertex_byte_size(TEXTURE_VERTEX),
-        "\n\tCOLOR_VERTEX:            ", sr_vertex_byte_size(COLOR_VERTEX),
-
-        "\n\tNORMAL_VERTEX:           ", sr_vertex_byte_size(NORMAL_VERTEX),
-        "\n\tTANGENT_VERTEX:          ", sr_vertex_byte_size(TANGENT_VERTEX),
-        "\n\tBITANGENT_VERTEX:        ", sr_vertex_byte_size(BITANGENT_VERTEX),
-
-        "\n\tPACKED_NORMAL_VERTEX:    ", sr_vertex_byte_size(PACKED_NORMAL_VERTEX),
-        "\n\tPACKED_TANGENT_VERTEX:   ", sr_vertex_byte_size(PACKED_TANGENT_VERTEX),
-        "\n\tPACKED_BITANGENT_VERTEX: ", sr_vertex_byte_size(PACKED_BITANGENT_VERTEX),
-
-        "\n\tMODEL_MAT_VERTEX:        ", sr_vertex_byte_size(MODEL_MAT_VERTEX),
-
-        "\n\tBONE_ID_VERTEX:          ", sr_vertex_byte_size(BONE_ID_VERTEX),
-        "\n\tBONE_WEIGHT_VERTEX:      ", sr_vertex_byte_size(BONE_WEIGHT_VERTEX),
-
-        "\n\tAMBIENT_VERTEX:          ", sr_vertex_byte_size(AMBIENT_VERTEX),
-        "\n\tDIFFUSE_VERTEX:          ", sr_vertex_byte_size(DIFFUSE_VERTEX),
-        "\n\tSPECULAR_VERTEX:         ", sr_vertex_byte_size(SPECULAR_VERTEX),
-        "\n\tROUGHNESS_VERTEX:        ", sr_vertex_byte_size(ROUGHNESS_VERTEX),
-        "\n\tMETALLIC_VERTEX:         ", sr_vertex_byte_size(METALLIC_VERTEX),
-
-        "\n\tINDEX_VERTEX:            ", sr_vertex_byte_size(INDEX_VERTEX),
-        "\n\tBBOX_TRR_VERTEX:         ", sr_vertex_byte_size(BBOX_TRR_VERTEX),
-        "\n\tBBOX_BFL_VERTEX:         ", sr_vertex_byte_size(BBOX_BFL_VERTEX),
-
-        "\n\tSTANDARD_VERTEX:         ", sr_vertex_byte_size(STANDARD_VERTEX),
-        "\n\tBONE_VERTEX:             ", sr_vertex_byte_size(BONE_VERTEX),
-        "\n\tOCCLUSION_VERTEX:        ", sr_vertex_byte_size(OCCLUSION_VERTEX),
+        "\n\tPOSITION_VERTEX:           ", sr_vertex_byte_size(POSITION_VERTEX),
+        "\n\tTEXTURE_VERTEX:            ", sr_vertex_byte_size(TEXTURE_VERTEX),
+        "\n\tPACKED_TEXTURE_VERTEX:     ", sr_vertex_byte_size(PACKED_TEXTURE_VERTEX),
+        "\n\tCOLOR_VERTEX:              ", sr_vertex_byte_size(COLOR_VERTEX),
+        "\n\tNORMAL_VERTEX:             ", sr_vertex_byte_size(NORMAL_VERTEX),
+        "\n\tTANGENT_VERTEX:            ", sr_vertex_byte_size(TANGENT_VERTEX),
+        "\n\tBITANGENT_VERTEX:          ", sr_vertex_byte_size(BITANGENT_VERTEX),
+        "\n\tPACKED_NORMAL_VERTEX:      ", sr_vertex_byte_size(PACKED_NORMAL_VERTEX),
+        "\n\tPACKED_TANGENT_VERTEX:     ", sr_vertex_byte_size(PACKED_TANGENT_VERTEX),
+        "\n\tPACKED_BITANGENT_VERTEX:   ", sr_vertex_byte_size(PACKED_BITANGENT_VERTEX),
+        "\n\tMODEL_MAT_VERTEX:          ", sr_vertex_byte_size(MODEL_MAT_VERTEX),
+        "\n\tBONE_ID_VERTEX:            ", sr_vertex_byte_size(BONE_ID_VERTEX),
+        "\n\tPACKED_BONE_ID_VERTEX:     ", sr_vertex_byte_size(PACKED_BONE_ID_VERTEX),
+        "\n\tBONE_WEIGHT_VERTEX:        ", sr_vertex_byte_size(BONE_WEIGHT_VERTEX),
+        "\n\tPACKED_BONE_WEIGHT_VERTEX: ", sr_vertex_byte_size(PACKED_BONE_WEIGHT_VERTEX),
+        "\n\tINDEX_VERTEX:              ", sr_vertex_byte_size(INDEX_VERTEX),
+        "\n\tBBOX_TRR_VERTEX:           ", sr_vertex_byte_size(BBOX_TRR_VERTEX),
+        "\n\tBBOX_BFL_VERTEX:           ", sr_vertex_byte_size(BBOX_BFL_VERTEX),
+        "\n\tSTANDARD_VERTEX:           ", sr_vertex_byte_size(STANDARD_VERTEX),
+        "\n\tBONE_VERTEX:               ", sr_vertex_byte_size(BONE_VERTEX),
+        "\n\tOCCLUSION_VERTEX:          ", sr_vertex_byte_size(OCCLUSION_VERTEX),
         '\n');
 }
 
@@ -67,36 +58,27 @@ void print_stride_info()
 {
     utils::log_msg(
         "Vertex Strides:",
-        "\n\tPOSITION_VERTEX:         ", sr_vertex_stride(POSITION_VERTEX),
-        "\n\tTEXTURE_VERTEX:          ", sr_vertex_stride(TEXTURE_VERTEX),
-        "\n\tCOLOR_VERTEX:            ", sr_vertex_stride(COLOR_VERTEX),
-
-        "\n\tNORMAL_VERTEX:           ", sr_vertex_stride(NORMAL_VERTEX),
-        "\n\tTANGENT_VERTEX:          ", sr_vertex_stride(TANGENT_VERTEX),
-        "\n\tBITANGENT_VERTEX:        ", sr_vertex_stride(BITANGENT_VERTEX),
-
-        "\n\tPACKED_NORMAL_VERTEX:    ", sr_vertex_stride(PACKED_NORMAL_VERTEX),
-        "\n\tPACKED_TANGENT_VERTEX:   ", sr_vertex_stride(PACKED_TANGENT_VERTEX),
-        "\n\tPACKED_BITANGENT_VERTEX: ", sr_vertex_stride(PACKED_BITANGENT_VERTEX),
-
-        "\n\tMODEL_MAT_VERTEX:        ", sr_vertex_stride(MODEL_MAT_VERTEX),
-
-        "\n\tBONE_ID_VERTEX:          ", sr_vertex_stride(BONE_ID_VERTEX),
-        "\n\tBONE_WEIGHT_VERTEX:      ", sr_vertex_stride(BONE_WEIGHT_VERTEX),
-
-        "\n\tAMBIENT_VERTEX:          ", sr_vertex_stride(AMBIENT_VERTEX),
-        "\n\tDIFFUSE_VERTEX:          ", sr_vertex_stride(DIFFUSE_VERTEX),
-        "\n\tSPECULAR_VERTEX:         ", sr_vertex_stride(SPECULAR_VERTEX),
-        "\n\tROUGHNESS_VERTEX:        ", sr_vertex_stride(ROUGHNESS_VERTEX),
-        "\n\tMETALLIC_VERTEX:         ", sr_vertex_stride(METALLIC_VERTEX),
-
-        "\n\tINDEX_VERTEX:            ", sr_vertex_stride(INDEX_VERTEX),
-        "\n\tBBOX_TRR_VERTEX:         ", sr_vertex_stride(BBOX_TRR_VERTEX),
-        "\n\tBBOX_BFL_VERTEX:         ", sr_vertex_stride(BBOX_BFL_VERTEX),
-
-        "\n\tSTANDARD_VERTEX:         ", sr_vertex_stride(STANDARD_VERTEX),
-        "\n\tBONE_VERTEX:             ", sr_vertex_stride(BONE_VERTEX),
-        "\n\tOCCLUSION_VERTEX:        ", sr_vertex_stride(OCCLUSION_VERTEX),
+        "\n\tPOSITION_VERTEX:           ", sr_vertex_stride(POSITION_VERTEX),
+        "\n\tTEXTURE_VERTEX:            ", sr_vertex_stride(TEXTURE_VERTEX),
+        "\n\tPACKED_TEXTURE_VERTEX:     ", sr_vertex_stride(PACKED_TEXTURE_VERTEX),
+        "\n\tCOLOR_VERTEX:              ", sr_vertex_stride(COLOR_VERTEX),
+        "\n\tNORMAL_VERTEX:             ", sr_vertex_stride(NORMAL_VERTEX),
+        "\n\tTANGENT_VERTEX:            ", sr_vertex_stride(TANGENT_VERTEX),
+        "\n\tBITANGENT_VERTEX:          ", sr_vertex_stride(BITANGENT_VERTEX),
+        "\n\tPACKED_NORMAL_VERTEX:      ", sr_vertex_stride(PACKED_NORMAL_VERTEX),
+        "\n\tPACKED_TANGENT_VERTEX:     ", sr_vertex_stride(PACKED_TANGENT_VERTEX),
+        "\n\tPACKED_BITANGENT_VERTEX:   ", sr_vertex_stride(PACKED_BITANGENT_VERTEX),
+        "\n\tMODEL_MAT_VERTEX:          ", sr_vertex_stride(MODEL_MAT_VERTEX),
+        "\n\tBONE_ID_VERTEX:            ", sr_vertex_stride(BONE_ID_VERTEX),
+        "\n\tPACKED_BONE_ID_VERTEX:     ", sr_vertex_stride(PACKED_BONE_ID_VERTEX),
+        "\n\tBONE_WEIGHT_VERTEX:        ", sr_vertex_stride(BONE_WEIGHT_VERTEX),
+        "\n\tPACKED_BONE_WEIGHT_VERTEX: ", sr_vertex_stride(PACKED_BONE_WEIGHT_VERTEX),
+        "\n\tINDEX_VERTEX:              ", sr_vertex_stride(INDEX_VERTEX),
+        "\n\tBBOX_TRR_VERTEX:           ", sr_vertex_stride(BBOX_TRR_VERTEX),
+        "\n\tBBOX_BFL_VERTEX:           ", sr_vertex_stride(BBOX_BFL_VERTEX),
+        "\n\tSTANDARD_VERTEX:           ", sr_vertex_stride(STANDARD_VERTEX),
+        "\n\tBONE_VERTEX:               ", sr_vertex_stride(BONE_VERTEX),
+        "\n\tOCCLUSION_VERTEX:          ", sr_vertex_stride(OCCLUSION_VERTEX),
         '\n');
 }
 
