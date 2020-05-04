@@ -23,6 +23,12 @@ constexpr char VERT_ATTRIB_NAME_POSITION[] = "posAttrib";
 constexpr char VERT_ATTRIB_NAME_TEXTURE[] = "uvAttrib";
 
 /**
+ * @brief Common name for a vertex attribute containing half-float UV
+ * coordinates.
+ */
+constexpr char VERT_ATTRIB_NAME_PACKED_TEXTURE[] = "uvAttribP";
+
+/**
  * @brief Common name for a vertex attribute containing floating-point color
  * information.
  */
@@ -72,31 +78,6 @@ constexpr char VERT_ATTRIB_NAME_BONE_ID[] = "boneIdAttrib";
  * @brief Common name for a vertex attribute containing skeletal bone weights.
  */
 constexpr char VERT_ATTRIB_NAME_BONE_WEIGHT[] = "boneWeightAttrib";
-
-/**
- * @brief Common name for an ambient lighting vertex attribute.
- */
-constexpr char VERT_ATTRIB_NAME_AMBIENT[] = "ambientAttrib";
-
-/**
- * @brief Common name for a diffuse lighting vertex attribute.
- */
-constexpr char VERT_ATTRIB_NAME_DIFFUSE[] = "diffuseAttrib";
-
-/**
- * @brief Common name for a specular vertex component.
- */
-constexpr char VERT_ATTRIB_NAME_SPECULAR[] = "specularAttrib";
-
-/**
- * @brief Common name for a roughness vertex component.
- */
-constexpr char VERT_ATTRIB_NAME_ROUGHNESS[] = "roughAttrib";
-
-/**
- * @brief Common name for a metallic vertex component.
- */
-constexpr char VERT_ATTRIB_NAME_METALLIC[] = "metalAttrib";
 
 /**
  * @brief Common name for an instance index vertex component.
@@ -219,6 +200,10 @@ unsigned sr_vertex_attrib_offset(const SR_CommonVertType vertexTypes, const SR_C
                     numBytes += sr_bytes_per_vertex(VERTEX_DATA_FLOAT, VERTEX_DIMENSION_2);
                     break;
 
+                case PACKED_TEXTURE_VERTEX:
+                    numBytes += sr_bytes_per_vertex(VERTEX_DATA_SHORT, VERTEX_DIMENSION_2);
+                    break;
+
                 case COLOR_VERTEX:
                     numBytes += sr_bytes_per_vertex(VERTEX_DATA_FLOAT, VERTEX_DIMENSION_4);
                     break;
@@ -257,26 +242,6 @@ unsigned sr_vertex_attrib_offset(const SR_CommonVertType vertexTypes, const SR_C
 
                 case BONE_WEIGHT_VERTEX: // Maximum of 4 bone weights per vertex
                     numBytes += sr_bytes_per_vertex(VERTEX_DATA_FLOAT, VERTEX_DIMENSION_4);
-                    break;
-
-                case AMBIENT_VERTEX:
-                    numBytes += sr_bytes_per_vertex(VERTEX_DATA_BYTE, VERTEX_DIMENSION_1);
-                    break;
-
-                case DIFFUSE_VERTEX:
-                    numBytes += sr_bytes_per_vertex(VERTEX_DATA_BYTE, VERTEX_DIMENSION_1);
-                    break;
-
-                case SPECULAR_VERTEX:
-                    numBytes += sr_bytes_per_vertex(VERTEX_DATA_BYTE, VERTEX_DIMENSION_1);
-                    break;
-
-                case ROUGHNESS_VERTEX:
-                    numBytes += sr_bytes_per_vertex(VERTEX_DATA_BYTE, VERTEX_DIMENSION_1);
-                    break;
-
-                case METALLIC_VERTEX:
-                    numBytes += sr_bytes_per_vertex(VERTEX_DATA_BYTE, VERTEX_DIMENSION_1);
                     break;
 
                 case INDEX_VERTEX:
@@ -329,6 +294,9 @@ SR_Dimension sr_dimens_of_vertex(const SR_CommonVertType vertType)
         case TEXTURE_VERTEX:
             return  VERTEX_DIMENSION_2;
 
+        case PACKED_TEXTURE_VERTEX:
+            return  VERTEX_DIMENSION_2;
+
         case COLOR_VERTEX:
             return VERTEX_DIMENSION_4;
 
@@ -358,21 +326,6 @@ SR_Dimension sr_dimens_of_vertex(const SR_CommonVertType vertType)
 
         case BONE_WEIGHT_VERTEX:
             return VERTEX_DIMENSION_4;
-
-        case AMBIENT_VERTEX:
-            return VERTEX_DIMENSION_1;
-
-        case DIFFUSE_VERTEX:
-            return VERTEX_DIMENSION_1;
-
-        case SPECULAR_VERTEX:
-            return VERTEX_DIMENSION_1;
-
-        case ROUGHNESS_VERTEX:
-            return VERTEX_DIMENSION_1;
-
-        case METALLIC_VERTEX:
-            return VERTEX_DIMENSION_1;
 
         case INDEX_VERTEX:
             return VERTEX_DIMENSION_1;
@@ -405,6 +358,9 @@ SR_DataType sr_type_of_vertex(const SR_CommonVertType vertType)
         case TEXTURE_VERTEX:
             return VERTEX_DATA_FLOAT;
 
+        case PACKED_TEXTURE_VERTEX:
+            return VERTEX_DATA_SHORT;
+
         case COLOR_VERTEX:
             return VERTEX_DATA_FLOAT;
 
@@ -432,25 +388,6 @@ SR_DataType sr_type_of_vertex(const SR_CommonVertType vertType)
         case BONE_ID_VERTEX:
             return VERTEX_DATA_INT;
 
-        case BONE_WEIGHT_VERTEX:
-            return VERTEX_DATA_FLOAT;
-
-        case AMBIENT_VERTEX:
-            return VERTEX_DATA_BYTE;
-
-        case DIFFUSE_VERTEX:
-            return VERTEX_DATA_BYTE;
-
-        case SPECULAR_VERTEX:
-            return VERTEX_DATA_BYTE;
-
-        case ROUGHNESS_VERTEX:
-            return VERTEX_DATA_BYTE;
-            break;
-
-        case METALLIC_VERTEX:
-            return VERTEX_DATA_BYTE;
-
         case INDEX_VERTEX:
             return VERTEX_DATA_INT;
 
@@ -477,6 +414,7 @@ const char* const* sr_common_vertex_names() noexcept
     static const char* const names[] = {
         VERT_ATTRIB_NAME_POSITION,
         VERT_ATTRIB_NAME_TEXTURE,
+        VERT_ATTRIB_NAME_PACKED_TEXTURE,
         VERT_ATTRIB_NAME_COLOR,
         VERT_ATTRIB_NAME_NORMAL,
         VERT_ATTRIB_NAME_TANGENT,
@@ -487,11 +425,6 @@ const char* const* sr_common_vertex_names() noexcept
         VERT_ATTRIB_NAME_MODEL_MATRIX,
         VERT_ATTRIB_NAME_BONE_ID,
         VERT_ATTRIB_NAME_BONE_WEIGHT,
-        VERT_ATTRIB_NAME_AMBIENT,
-        VERT_ATTRIB_NAME_DIFFUSE,
-        VERT_ATTRIB_NAME_SPECULAR,
-        VERT_ATTRIB_NAME_ROUGHNESS,
-        VERT_ATTRIB_NAME_METALLIC,
         VERT_ATTRIB_NAME_INDEX,
         VERT_ATTRIB_NAME_BBOX_TRR,
         VERT_ATTRIB_NAME_BBOX_BFL

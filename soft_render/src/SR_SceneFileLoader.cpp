@@ -134,7 +134,11 @@ SR_VaoGroup& SR_VaoGroup::operator=(SR_VaoGroup&& v) noexcept
 SR_SceneLoadOpts sr_default_scene_load_opts() noexcept
 {
     SR_SceneLoadOpts opts;
+    opts.packUvs = false;
     opts.packNormals = false;
+    opts.genFlatNormals = false;
+    opts.genSmoothNormals = true;
+    opts.genTangents = false;
 
     return opts;
 }
@@ -234,7 +238,7 @@ void SR_SceneFilePreload::unload() noexcept
 /*-------------------------------------
  * Load a set of meshes from a file
 -------------------------------------*/
-bool SR_SceneFilePreload::load(const std::string& filename, const SR_SceneLoadOpts& opts) noexcept
+bool SR_SceneFilePreload::load(const std::string& filename, SR_SceneLoadOpts opts) noexcept
 {
     unload();
 
@@ -246,14 +250,32 @@ bool SR_SceneFilePreload::load(const std::string& filename, const SR_SceneLoadOp
     mImporter.reset(new Assimp::Importer);
 
     Assimp::Importer& fileImporter = *mImporter;
-    fileImporter.SetPropertyBool(AI_CONFIG_FAVOUR_SPEED, AI_TRUE);
     fileImporter.SetPropertyInteger(AI_CONFIG_PP_LBW_MAX_WEIGHTS, (int)SR_BONE_MAX_WEIGHTS);
-    //fileImporter.SetPropertyBool(AI_CONFIG_PP_FD_REMOVE, AI_TRUE); // remove degenerate triangles
-    fileImporter.SetPropertyInteger(AI_CONFIG_FAVOUR_SPEED, AI_TRUE);
+    fileImporter.SetPropertyInteger(AI_CONFIG_PP_FD_REMOVE, 1); // remove degenerate triangles
+    fileImporter.SetPropertyInteger(AI_CONFIG_FAVOUR_SPEED, 1);
     //fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, AI_SLM_DEFAULT_MAX_TRIANGLES);
-    //fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, std::numeric_limits<uint8_t>::max());
+    fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, std::numeric_limits<int16_t>::max());
 
-    if (!fileImporter.ReadFile(filename.c_str(), SCENE_FILE_IMPORT_FLAGS))
+    unsigned defaultFlags = SCENE_FILE_IMPORT_FLAGS;
+    if (opts.genTangents)
+    {
+        opts.genSmoothNormals = !(opts.genFlatNormals || opts.genSmoothNormals);
+        defaultFlags |= aiProcess_CalcTangentSpace;
+    }
+
+    if (opts.genFlatNormals)
+    {
+        defaultFlags |= aiProcess_GenNormals;
+    }
+
+    if (opts.genSmoothNormals)
+    {
+        // Ensure we're only using one "normals" flag
+        defaultFlags = (defaultFlags | aiProcess_GenNormals) ^ aiProcess_GenNormals;
+        defaultFlags |= aiProcess_GenSmoothNormals;
+    }
+
+    if (!fileImporter.ReadFile(filename.c_str(), defaultFlags))
     {
         LS_LOG_ERR(
             "\tError: Unable to load the mesh file ", filename,
@@ -338,7 +360,7 @@ const aiScene* SR_SceneFilePreload::preload_mesh_data() noexcept
     for (unsigned meshIter = 0; meshIter < pScene->mNumMeshes; ++meshIter)
     {
         const aiMesh* const pMesh = pScene->mMeshes[meshIter];
-        const SR_CommonVertType inVertType = sr_convert_assimp_verts(pMesh, mLoadOpts.packNormals);
+        const SR_CommonVertType inVertType = sr_convert_assimp_verts(pMesh, mLoadOpts);
         SR_VaoGroup* outMeshMarker = sr_get_matching_marker(inVertType, mVaoGroups);
 
         // Keep track of where in the output VBO a mesh's data should be placed.
@@ -600,7 +622,7 @@ bool SR_SceneFileLoader::load_scene(const aiScene* const pScene, const SR_SceneL
         for (unsigned i = 0; i < pScene->mNumMeshes; ++i)
         {
             const aiMesh* const pMesh = pScene->mMeshes[i];
-            const SR_CommonVertType inVertType = sr_convert_assimp_verts(pMesh, opts.packNormals);
+            const SR_CommonVertType inVertType = sr_convert_assimp_verts(pMesh, opts);
             SR_VaoGroup* outMeshMarker = sr_get_matching_marker(inVertType, tempVaoGroups);
 
             if (!import_bone_data(pMesh, outMeshMarker->baseVert))
@@ -628,6 +650,7 @@ bool SR_SceneFileLoader::load_scene(const aiScene* const pScene, const SR_SceneL
     LS_LOG_MSG(
         "\tDone. Successfully loaded the scene file \"", filename, ".\"",
         "\n\t\tTotal Meshes:     ", sceneData.mMeshes.size(),
+        "\n\t\tTotal Bones:      ", sceneData.mBoneOffsets.size(),
         "\n\t\tTotal Textures:   ", sceneData.mContext.textures().size(),
         "\n\t\tTotal Nodes:      ", sceneData.mNodes.size(),
         "\n\t\tTotal Cameras:    ", sceneData.mCameras.size(),
@@ -988,7 +1011,7 @@ bool SR_SceneFileLoader::import_mesh_data(const aiScene* const pScene, const SR_
     for (unsigned meshId = 0; meshId < pScene->mNumMeshes; ++meshId)
     {
         const aiMesh* const     pMesh       = pScene->mMeshes[meshId];
-        const SR_CommonVertType vertType    = sr_convert_assimp_verts(pMesh, opts.packNormals);
+        const SR_CommonVertType vertType    = sr_convert_assimp_verts(pMesh, opts);
         const size_t            meshGroupId = get_mesh_group_marker(vertType, mPreloader.mVaoGroups);
         SR_VaoGroup&            meshGroup   = tempVboMarks[meshGroupId];
         size_t                  numIndices  = 0;
@@ -1064,7 +1087,7 @@ bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh, unsigned ba
                 {
                     if (iter->second.ids[k] == 0)
                     {
-                        iter->second.ids[k]     = (int32_t)boneId;
+                        iter->second.ids[k]     = (uint32_t)boneId;
                         iter->second.weights[k] = weight;
                         break;
                     }
@@ -1075,7 +1098,7 @@ bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh, unsigned ba
                 // The vertex we're checking does not have any weights
                 // currently associated with it, add one.
                 SR_BoneData newBone;
-                newBone.ids        = math::vec4_t<int32_t>{0, 0, 0, 0};
+                newBone.ids        = math::vec4_t<uint32_t>{0, 0, 0, 0};
                 newBone.weights    = math::vec4_t<float>{0.f, 0.f, 0.f, 0.f};
                 newBone.ids[0]     = (int32_t)boneId;
                 newBone.weights[0] = weight;

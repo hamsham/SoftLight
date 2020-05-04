@@ -91,13 +91,40 @@ struct SR_SceneFileMeta
 -----------------------------------------------------------------------------*/
 struct SR_SceneLoadOpts
 {
+    // UVs are usually stored in two 32-bit floats. Use this flag to compress
+    // UV data into two 16-bit floats.
+    bool packUvs;
+
+    // Vertex normals will be compressed from a math::vec3_t<float> type into
+    // an int32_t type. They can be unpacked using either
+    // "sr_unpack_vertex_vec3()" or "sr_unpack_vertex_vec4()." This option
+    // does nothing if no normals exist or are generated.
     bool packNormals;
+
+    // Use this to generate normals for meshes which don't have them (can be
+    // superseded by genSmoothNormals).
+    bool genFlatNormals;
+
+    // Use this to generate normals for meshes which don't have them
+    // (supersedes genFlatNormals).
+    bool genSmoothNormals;
+
+    // Implies "genSmoothNormals." This will generate tangents and bitangents
+    // for normal mapping.
+    bool genTangents;
 };
 
 
 
 /**
  * @brief Retrieve the default scene loading options.
+ *
+ * @note The following options are set by default:
+ *     packUvs:          FALSE
+ *     packNormals:      FALSE
+ *     genFlatNormals:   FALSE
+ *     genSmoothNormals: TRUE
+ *     genTangents:      FALSE
  *
  * @return A SR_SceneLoadOpts structure, containing standard data-modification
  * options which will affect a scene being loaded.
@@ -207,7 +234,7 @@ class SR_SceneFilePreload
      * @return true if the file was successfully loaded into memory. False
      * if not.
      */
-    bool load(const std::string& filename, const SR_SceneLoadOpts& opts = sr_default_scene_load_opts()) noexcept;
+    bool load(const std::string& filename, SR_SceneLoadOpts opts = sr_default_scene_load_opts()) noexcept;
 
     /**
      * @brief Verify that data loaded successfully.
@@ -247,7 +274,7 @@ class SR_SceneFileLoader
 
     SR_Texture* load_texture_at_path(const std::string& path, SR_ImgFile& imgLoader, int wrapMode) noexcept;
 
-    bool import_mesh_data(const aiScene* const pSceneopts, const SR_SceneLoadOpts& opts) noexcept;
+    bool import_mesh_data(const aiScene* const pScene, const SR_SceneLoadOpts& opts) noexcept;
 
     bool import_bone_data(const aiMesh* const pMesh, unsigned baseVertex) noexcept;
 

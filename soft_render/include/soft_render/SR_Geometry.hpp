@@ -52,7 +52,7 @@ enum SR_BoneInfo : unsigned
 
 struct SR_BoneData
 {
-    ls::math::vec4_t<int32_t> ids;
+    ls::math::vec4_t<uint32_t> ids;
     ls::math::vec4_t<float> weights;
 };
 
@@ -65,31 +65,20 @@ enum SR_CommonVertType : uint32_t
 {
     POSITION_VERTEX         = 0x10000000,
     TEXTURE_VERTEX          = 0x20000000,
-    COLOR_VERTEX            = 0x40000000,
-
-    NORMAL_VERTEX           = 0x80000000,
-    TANGENT_VERTEX          = 0x01000000,
-    BITANGENT_VERTEX        = 0x02000000,
-
-    PACKED_NORMAL_VERTEX    = 0x04000000,
-    PACKED_TANGENT_VERTEX   = 0x08000000,
-    PACKED_BITANGENT_VERTEX = 0x00100000,
-
-    MODEL_MAT_VERTEX        = 0x00200000,
-
-    BONE_ID_VERTEX          = 0x00400000,
-    BONE_WEIGHT_VERTEX      = 0x00800000,
-
-    AMBIENT_VERTEX          = 0x00010000,
-    DIFFUSE_VERTEX          = 0x00020000,
-    SPECULAR_VERTEX         = 0x00040000,
-    ROUGHNESS_VERTEX        = 0x00080000,
-    METALLIC_VERTEX         = 0x00001000,
-
-    INDEX_VERTEX            = 0x00002000,
-
-    BBOX_TRR_VERTEX         = 0x00004000,
-    BBOX_BFL_VERTEX         = 0x00008000,
+    PACKED_TEXTURE_VERTEX   = 0x40000000,
+    COLOR_VERTEX            = 0x80000000,
+    NORMAL_VERTEX           = 0x01000000,
+    TANGENT_VERTEX          = 0x02000000,
+    BITANGENT_VERTEX        = 0x04000000,
+    PACKED_NORMAL_VERTEX    = 0x08000000,
+    PACKED_TANGENT_VERTEX   = 0x00100000,
+    PACKED_BITANGENT_VERTEX = 0x00200000,
+    MODEL_MAT_VERTEX        = 0x00400000,
+    BONE_ID_VERTEX          = 0x00800000,
+    BONE_WEIGHT_VERTEX      = 0x00010000,
+    INDEX_VERTEX            = 0x00020000,
+    BBOX_TRR_VERTEX         = 0x00040000,
+    BBOX_BFL_VERTEX         = 0x00080000,
 
 
     /**
@@ -129,7 +118,10 @@ enum SR_CommonVertType : uint32_t
 
 constexpr SR_CommonVertType SR_COMMON_VERTEX_FLAGS[] = {
     SR_CommonVertType::POSITION_VERTEX,
+
     SR_CommonVertType::TEXTURE_VERTEX,
+    SR_CommonVertType::PACKED_TEXTURE_VERTEX,
+
     SR_CommonVertType::COLOR_VERTEX,
 
     SR_CommonVertType::NORMAL_VERTEX,
@@ -144,12 +136,6 @@ constexpr SR_CommonVertType SR_COMMON_VERTEX_FLAGS[] = {
 
     SR_CommonVertType::BONE_ID_VERTEX,
     SR_CommonVertType::BONE_WEIGHT_VERTEX,
-
-    SR_CommonVertType::AMBIENT_VERTEX,
-    SR_CommonVertType::DIFFUSE_VERTEX,
-    SR_CommonVertType::SPECULAR_VERTEX,
-    SR_CommonVertType::ROUGHNESS_VERTEX,
-    SR_CommonVertType::METALLIC_VERTEX,
 
     SR_CommonVertType::INDEX_VERTEX,
 

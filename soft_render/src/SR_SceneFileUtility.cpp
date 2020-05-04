@@ -44,7 +44,7 @@ SR_RenderMode sr_convert_assimp_draw_mode(const aiMesh* const pMesh) noexcept
 /*-------------------------------------
  * Convert Assimp vertex attributes into internal enumerations
 -------------------------------------*/
-SR_CommonVertType sr_convert_assimp_verts(const aiMesh* const pMesh, bool packNorms) noexcept
+SR_CommonVertType sr_convert_assimp_verts(const aiMesh* const pMesh, const SR_SceneLoadOpts& opts) noexcept
 {
     std::underlying_type<SR_CommonVertType>::type vertTypes = 0;
 
@@ -55,7 +55,7 @@ SR_CommonVertType sr_convert_assimp_verts(const aiMesh* const pMesh, bool packNo
 
     if (pMesh->HasTextureCoords(aiTextureType_NONE))
     {
-        vertTypes |= SR_CommonVertType::TEXTURE_VERTEX;
+        vertTypes |= opts.packUvs ? SR_CommonVertType::PACKED_TEXTURE_VERTEX : SR_CommonVertType::TEXTURE_VERTEX;
     }
 
     if (pMesh->HasVertexColors(0))
@@ -65,14 +65,14 @@ SR_CommonVertType sr_convert_assimp_verts(const aiMesh* const pMesh, bool packNo
 
     if (pMesh->HasNormals())
     {
-        vertTypes |= packNorms ? SR_CommonVertType::PACKED_NORMAL_VERTEX : SR_CommonVertType::NORMAL_VERTEX;
+        vertTypes |= opts.packNormals ? SR_CommonVertType::PACKED_NORMAL_VERTEX : SR_CommonVertType::NORMAL_VERTEX;
     }
 
     if (pMesh->HasTangentsAndBitangents())
     {
-        vertTypes |= packNorms
+        vertTypes |= opts.packNormals
             ? (SR_CommonVertType::PACKED_TANGENT_VERTEX | SR_CommonVertType::PACKED_BITANGENT_VERTEX)
-            : (SR_CommonVertType::TANGENT_VERTEX | SR_CommonVertType::BITANGENT_VERTEX);
+            : (SR_CommonVertType::TANGENT_VERTEX        | SR_CommonVertType::BITANGENT_VERTEX);
     }
 
     if (pMesh->HasBones())
@@ -140,6 +140,26 @@ SR_VaoGroup* sr_get_matching_marker(const SR_CommonVertType inVertType, std::vec
 
 
 /*-------------------------------------
+ * Calculate a portion of vertex data that a glyph should contain (unaligned
+ * vec4 store).
+-------------------------------------*/
+inline char* set_mesh_vertex_data(char* const pVert, const math::vec4& data) noexcept
+{
+    // it seems some vertex configurations may attempt an unaligned store and
+    // crash Clang builds. This store procedure must be explicitly fixed using
+    // _mm_storeu_ps() to avoid crashing.
+    #if defined(LS_ARCH_X86)
+        _mm_storeu_ps(reinterpret_cast<float* const>(pVert), data.simd);
+    #else
+        *reinterpret_cast<math::vec4* const>(pVert) = data;
+    #endif
+
+    return pVert + sizeof(math::vec4);
+}
+
+
+
+/*-------------------------------------
  * Calculate a portion of vertex data that a glyph should contain.
 -------------------------------------*/
 template<typename data_t>
@@ -183,6 +203,25 @@ char* sr_calc_mesh_geometry_uvs(
     const float             uvy   = inUv.y;
 
     return set_mesh_vertex_data(pVbo, math::vec2{uvx, uvy});
+}
+
+
+
+/*-------------------------------------
+ * Convert Assimp UVs to Internal Uvs (packed).
+-------------------------------------*/
+char* sr_calc_mesh_geometry_uvs_packed(
+    const unsigned index,
+    const aiMesh* const pMesh,
+    char* pVbo
+) noexcept
+{
+    const aiVector3D* const inUvs = pMesh->mTextureCoords[aiTextureType_NONE];
+    const aiVector3D&       inUv  = inUvs[index];
+    const math::half&&      uvx   = (math::half)inUv.x;
+    const math::half&&      uvy   = (math::half)inUv.y;
+
+    return set_mesh_vertex_data(pVbo, math::vec2h{uvx, uvy});
 }
 
 
@@ -322,6 +361,11 @@ unsigned sr_upload_mesh_vertices(
         if (vertTypes & SR_CommonVertType::TEXTURE_VERTEX)
         {
             pVboIter = sr_calc_mesh_geometry_uvs(i, pMesh, pVboIter);
+        }
+
+        if (vertTypes & SR_CommonVertType::PACKED_TEXTURE_VERTEX)
+        {
+            pVboIter = sr_calc_mesh_geometry_uvs_packed(i, pMesh, pVboIter);
         }
 
         if (vertTypes & SR_CommonVertType::COLOR_VERTEX)

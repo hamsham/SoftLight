@@ -144,6 +144,34 @@ struct SR_ColorLimits
     }
 };
 
+template <>
+struct SR_ColorLimits<ls::math::half>
+{
+    /**
+    * @brief Determine the minimum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::min(). Floating-point types will return 0.0.
+    */
+    static constexpr ls::math::half min() noexcept
+    {
+        return ls::math::half{0x00u, 0x00u};
+    }
+
+    /**
+    * @brief Determine the maximum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
+    */
+    static constexpr ls::math::half max() noexcept
+    {
+        return ls::math::half{0x7Bu, 0xFFu};
+    }
+};
+
 
 
 /**----------------------------------------------------------------------------
@@ -635,38 +663,38 @@ template <typename color_t, typename other_color_t>
 SR_ColorRGBType<color_t> rgb_cast(const SR_ColorTypeHSV<other_color_t>& inC) noexcept
 {
     const other_color_t c = inC.v * inC.s;
-    const other_color_t x = c * (1.f - ls::math::abs(ls::math::fmod(inC.h/60.f, 2.f) - 1.f));
+    const other_color_t x = c * (other_color_t{1.f} - ls::math::abs(ls::math::fmod(inC.h/other_color_t{60.f}, other_color_t{2.f}) - other_color_t{1.f}));
     const other_color_t m = inC.v - c;
 
     other_color_t tempR;
     other_color_t tempG;
     other_color_t tempB;
 
-    if (inC.h <= 60.f)
+    if (inC.h <= other_color_t{60.f})
     {
         tempR = c;
         tempG = x;
         tempB = 0.f;
     }
-    else if (inC.h <= 120.f)
+    else if (inC.h <= other_color_t{120.f})
     {
         tempR = x;
         tempG = c;
         tempB = 0.f;
     }
-    else if (inC.h <= 180.f)
+    else if (inC.h <= other_color_t{180.f})
     {
         tempR = 0.f;
         tempG = c;
         tempB = x;
     }
-    else if (inC.h <= 240.f)
+    else if (inC.h <= other_color_t{240.f})
     {
         tempR = 0.f;
         tempG = x;
         tempB = c;
     }
-    else if (inC.h <= 300.f)
+    else if (inC.h <= other_color_t{300.f})
     {
         tempR = x;
         tempG = 0.f;
@@ -683,7 +711,7 @@ SR_ColorRGBType<color_t> rgb_cast(const SR_ColorTypeHSV<other_color_t>& inC) noe
     tempG += m;
     tempB += m;
 
-    constexpr other_color_t COLOR_MAX_VAL = SR_ColorLimits<color_t>::max();
+    static const other_color_t COLOR_MAX_VAL = SR_ColorLimits<color_t>::max();
         
     return SR_ColorRGBType<color_t>{
         static_cast<color_t>(tempR * COLOR_MAX_VAL),
@@ -700,39 +728,39 @@ SR_ColorRGBType<color_t> rgb_cast(const SR_ColorTypeHSV<other_color_t>& inC) noe
 template <typename color_t, typename other_color_t>
 SR_ColorRGBType<color_t> rgb_cast(const SR_ColorTypeHSL<other_color_t>& inC) noexcept
 {
-    const other_color_t c = inC.s * (1.f - ls::math::abs(2.f * inC.l - 1.f));
-    const other_color_t x = c * (1.f - ls::math::abs(ls::math::fmod(inC.h/60.f, 2.f) - 1.f));
-    const other_color_t m = inC.l - (c * 0.5f);
+    const other_color_t c = inC.s * (other_color_t{1.f} - ls::math::abs(other_color_t{2.f} * inC.l - other_color_t{1.f}));
+    const other_color_t x = c * (other_color_t{1.f} - ls::math::abs(ls::math::fmod(inC.h/other_color_t{60.f}, other_color_t{2.f}) - other_color_t{1.f}));
+    const other_color_t m = inC.l - (c * other_color_t{0.5f});
     
     other_color_t tempR;
     other_color_t tempG;
     other_color_t tempB;
 
-    if (inC.h <= 60.f)
+    if (inC.h <= other_color_t{60.f})
     {
         tempR = c;
         tempG = x;
         tempB = 0.f;
     }
-    else if (inC.h <= 120.f)
+    else if (inC.h <= other_color_t{120.f})
     {
         tempR = x;
         tempG = c;
         tempB = 0.f;
     }
-    else if (inC.h <= 180.f)
+    else if (inC.h <= other_color_t{180.f})
     {
         tempR = 0.f;
         tempG = c;
         tempB = x;
     }
-    else if (inC.h <= 240.f)
+    else if (inC.h <= other_color_t{240.f})
     {
         tempR = 0.f;
         tempG = x;
         tempB = c;
     }
-    else if (inC.h <= 300.f)
+    else if (inC.h <= other_color_t{300.f})
     {
         tempR = x;
         tempG = 0.f;
@@ -792,19 +820,19 @@ SR_ColorTypeHSV<color_t> hsv_cast(const SR_ColorTypeHSV<other_color_t>& c) noexc
 template <typename color_t, typename other_color_t>
 SR_ColorTypeHSV<color_t> hsv_cast(const SR_ColorRGBType<other_color_t>& c) noexcept
 {
-    static constexpr color_t COLOR_EPSILON = color_t{1.0e-6f};
+    static const color_t COLOR_EPSILON = color_t{1.0e-6f};
     
     // HSV deals with normalized numbers. Integral types won't work until
     // we're ready to return the data.
-    constexpr color_t COLOR_MAX_VAL = SR_ColorLimits<other_color_t>::max();
-    constexpr color_t COLOR_MIN_VAL = SR_ColorLimits<other_color_t>::min();
+    static const color_t COLOR_MAX_VAL = SR_ColorLimits<other_color_t>::max();
+    static const color_t COLOR_MIN_VAL = SR_ColorLimits<other_color_t>::min();
     color_t normR, normG, normB;
 
     if (ls::setup::IsFloat<other_color_t>::value)
     {
-        normR = 0.5f * (static_cast<color_t>(c[0]) + 1.f);
-        normG = 0.5f * (static_cast<color_t>(c[1]) + 1.f);
-        normB = 0.5f * (static_cast<color_t>(c[2]) + 1.f);
+        normR = (color_t)(0.5f * (static_cast<float>(c[0]) + 1.f));
+        normG = (color_t)(0.5f * (static_cast<float>(c[1]) + 1.f));
+        normB = (color_t)(0.5f * (static_cast<float>(c[2]) + 1.f));
     }
     else
     {
@@ -845,7 +873,7 @@ SR_ColorTypeHSV<color_t> hsv_cast(const SR_ColorRGBType<other_color_t>& c) noexc
 
   // This part of the conversion requires a data type with more than 2 bytes.
   // Some values may be valid, others may be truncated/undefined.
-  hue = (hue < 0.f) ? (hue+360.f) : hue;
+  hue = (hue < color_t{0.f}) ? (hue+color_t{360.f}) : hue;
 
   // result
   return SR_ColorTypeHSV<color_t>{hue, delta / maxVal, maxVal};
@@ -878,19 +906,19 @@ SR_ColorTypeHSV<color_t> hsv_cast(const SR_ColorTypeHSL<other_color_t>& c) noexc
 template <typename color_t, typename other_color_t>
 SR_ColorTypeHSL<color_t> hsl_cast(const SR_ColorRGBType<other_color_t>& c) noexcept
 {
-    static constexpr color_t COLOR_EPSILON = color_t{1.0e-6f};
+    static const color_t COLOR_EPSILON = color_t{1.0e-6f};
     
     // HSL deals with normalized numbers. Integral types won't work until
     // we're ready to return the data.
-    constexpr color_t COLOR_MAX_VAL = SR_ColorLimits<other_color_t>::max();
-    constexpr color_t COLOR_MIN_VAL = SR_ColorLimits<other_color_t>::min();
+    static const color_t COLOR_MAX_VAL = SR_ColorLimits<other_color_t>::max();
+    static const color_t COLOR_MIN_VAL = SR_ColorLimits<other_color_t>::min();
     color_t normR, normG, normB;
 
     if (ls::setup::IsFloat<other_color_t>::value)
     {
-        normR = 0.5f * (static_cast<color_t>(c[0]) + 1.f);
-        normG = 0.5f * (static_cast<color_t>(c[1]) + 1.f);
-        normB = 0.5f * (static_cast<color_t>(c[2]) + 1.f);
+        normR = (color_t)(0.5f * (static_cast<float>(c[0]) + 1.f));
+        normG = (color_t)(0.5f * (static_cast<float>(c[1]) + 1.f));
+        normB = (color_t)(0.5f * (static_cast<float>(c[2]) + 1.f));
     }
     else
     {
@@ -927,13 +955,13 @@ SR_ColorTypeHSL<color_t> hsl_cast(const SR_ColorRGBType<other_color_t>& c) noexc
 
     // This part of the conversion requires a data type with more than 2 bytes.
     // Some values may be valid, others may be truncated/undefined.
-    hue = (hue < 0.f) ? (hue+360.f) : hue;
+    hue = (hue < color_t{0.f}) ? (hue+color_t{360.f}) : hue;
 
-    color_t lightness = 0.5f * (maxVal+minVal);
-    color_t saturation = 0.f;
+    color_t lightness = color_t{0.5f} * (maxVal+minVal);
+    color_t saturation = color_t{0.f};
     if (ls::math::abs(maxVal) > COLOR_MIN_VAL)
     {
-        saturation = delta / (1.f - ls::math::abs(2.f * lightness - 1.f));
+        saturation = delta / (color_t{1.f} - ls::math::abs(color_t{2.f} * lightness - color_t{1.f}));
     }
 
     // result

@@ -8,6 +8,7 @@
 #include "lightsky/math/quat_utils.h"
 
 #include "lightsky/utils/Pointer.h"
+#include "lightsky/utils/StringUtils.h"
 #include "lightsky/utils/Time.hpp"
 
 #include "soft_render/SR_Animation.hpp"
@@ -147,10 +148,10 @@ math::vec4 _texture_vert_shader_impl(SR_VertexParam& param)
 {
     const AnimUniforms* pUniforms   = param.pUniforms->as<AnimUniforms>();
     const math::vec3&   vert        = *(param.pVbo->element<const math::vec3>(param.pVao->offset(0, param.vertId)));
-    const math::vec2&   uv          = *(param.pVbo->element<const math::vec2>(param.pVao->offset(1, param.vertId)));
+    const math::vec2h&  uv          = *(param.pVbo->element<const math::vec2h>(param.pVao->offset(1, param.vertId)));
     const math::vec3&   norm        = *(param.pVbo->element<const math::vec3>(param.pVao->offset(2, param.vertId)));
 
-    const math::vec4i&  boneIds     = *(param.pVbo->element<const math::vec4i>(param.pVao->offset(3, param.vertId)));
+    const math::vec4u&  boneIds     = *(param.pVbo->element<const math::vec4u>(param.pVao->offset(3, param.vertId)));
     const math::vec4&   boneWeights = *(param.pVbo->element<const math::vec4>(param.pVao->offset(4,  param.vertId)));
 
     const math::mat4*   pBones      = pUniforms->pBones;
@@ -164,8 +165,8 @@ math::vec4 _texture_vert_shader_impl(SR_VertexParam& param)
     const math::mat4&& modelPos = modelMat * boneTrans;
 
     param.pVaryings[0] = modelPos * math::vec4_cast(vert, 1.f);
-    param.pVaryings[1] = math::vec4_cast(uv, 0.f, 0.f);
-    param.pVaryings[2] = math::normalize(boneTrans * math::vec4_cast(norm, 0.f));
+    param.pVaryings[1] = math::vec4_cast((math::vec2)uv, 0.f, 0.f);
+    param.pVaryings[2] = math::normalize(modelPos * math::vec4_cast(norm, 0.f));
 
     return pUniforms->vpMatrix * modelPos * math::vec4_cast(vert, 1.f);
 }
@@ -428,7 +429,11 @@ utils::Pointer<SR_SceneGraph> create_context()
     assert(retCode == 0);
 
     //retCode = meshLoader.load("testdata/rover/testmesh.dae");
-    retCode = meshLoader.load("testdata/bob/Bob.md5mesh");
+    SR_SceneLoadOpts opts = sr_default_scene_load_opts();
+    opts.packUvs = true;
+    opts.packNormals = false;
+    opts.genSmoothNormals = true;
+    retCode = meshLoader.load("testdata/bob/Bob.md5mesh", opts);
     assert(retCode != 0);
 
     retCode = pGraph->import(meshLoader.data());
@@ -642,8 +647,8 @@ int main()
 
             if (currSeconds >= 0.5f)
             {
-                //std::cout << "MS/F: " << 1000.f*(currSeconds/(float)currFrames) << std::endl;
-                std::cout << "FPS: " << ((float)currFrames/currSeconds) << std::endl;
+                std::cout << "MS/F: " << utils::to_str(1000.f*(currSeconds/(float)currFrames)) << std::endl;
+                //std::cout << "FPS: " << utils::to_str((float)currFrames/currSeconds) << std::endl;
                 currFrames = 0;
                 currSeconds = 0.f;
             }

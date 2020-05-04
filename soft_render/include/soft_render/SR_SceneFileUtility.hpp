@@ -21,6 +21,7 @@
 /*-----------------------------------------------------------------------------
  * Private local functions, structures, and enumerations
 -----------------------------------------------------------------------------*/
+struct SR_SceneLoadOpts;
 struct SR_VaoGroup;
 enum SR_TexWrapMode : uint16_t;
 
@@ -47,10 +48,10 @@ enum : unsigned int
         | aiProcess_FindInvalidData
         | aiProcess_ValidateDataStructure
         | aiProcess_ImproveCacheLocality
-        | aiProcess_TransformUVCoords
+        //| aiProcess_TransformUVCoords
         | aiProcess_GenUVCoords
         | aiProcess_RemoveRedundantMaterials
-        | aiProcess_GenSmoothNormals
+        //| aiProcess_GenSmoothNormals
         //| aiProcess_GenNormals
         | aiProcess_Triangulate // the renderer can only handle triangles
         | 0
@@ -143,7 +144,7 @@ SR_RenderMode sr_convert_assimp_draw_mode(const aiMesh* const pMesh) noexcept;
 /*-------------------------------------
  * Convert Assimp vertex attributes into internal enumerations
 -------------------------------------*/
-SR_CommonVertType sr_convert_assimp_verts(const aiMesh* const pMesh, bool packNorms) noexcept;
+SR_CommonVertType sr_convert_assimp_verts(const aiMesh* const pMesh, const SR_SceneLoadOpts& opts) noexcept;
 
 
 
@@ -184,6 +185,17 @@ char* sr_calc_mesh_geometry_uvs(
 
 
 /*-------------------------------------
+ * Convert Assimp UVs to Internal Uvs (packed).
+-------------------------------------*/
+char* sr_calc_mesh_geometry_uvs_packed(
+    const unsigned index,
+    const aiMesh* const pMesh,
+    char* pVbo
+) noexcept;
+
+
+
+/*-------------------------------------
  * Convert Assimp Colors to Internal Colors.
 -------------------------------------*/
 char* sr_calc_mesh_geometry_colors(
@@ -206,7 +218,7 @@ char* sr_calc_mesh_geometry_norm(
 
 
 /*-------------------------------------
- * Convert Assimp Normals to Internal Normals.
+ * Convert Assimp Normals to Internal Normals (packed).
 -------------------------------------*/
 char* sr_calc_mesh_geometry_norm_packed(
     const unsigned index,
@@ -230,7 +242,7 @@ char* sr_calc_mesh_geometry_tangent(
 
 
 /*-------------------------------------
- * Convert Assimp Tangents & BiTangents to Internal ones.
+ * Convert Assimp Tangents & BiTangents to Internal ones (packed).
  * Add an index for each submesh to the VBO.
 -------------------------------------*/
 char* sr_calc_mesh_geometry_tangent_packed(
