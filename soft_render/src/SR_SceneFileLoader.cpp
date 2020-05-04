@@ -136,6 +136,8 @@ SR_SceneLoadOpts sr_default_scene_load_opts() noexcept
     SR_SceneLoadOpts opts;
     opts.packUvs = false;
     opts.packNormals = false;
+    opts.packBoneIds = false;
+    opts.packBoneWeights = false;
     opts.genFlatNormals = false;
     opts.genSmoothNormals = true;
     opts.genTangents = false;
@@ -625,7 +627,7 @@ bool SR_SceneFileLoader::load_scene(const aiScene* const pScene, const SR_SceneL
             const SR_CommonVertType inVertType = sr_convert_assimp_verts(pMesh, opts);
             SR_VaoGroup* outMeshMarker = sr_get_matching_marker(inVertType, tempVaoGroups);
 
-            if (!import_bone_data(pMesh, outMeshMarker->baseVert))
+            if (!import_bone_data(pMesh, outMeshMarker->baseVert, opts))
             {
                 LS_LOG_ERR("\t\tUnable to import bone data for the mesh ", pMesh->mName.C_Str());
                 return false;
@@ -1051,7 +1053,7 @@ bool SR_SceneFileLoader::import_mesh_data(const aiScene* const pScene, const SR_
  * Use all information from the preprocess step to allocate and import bone
  * information.
 -------------------------------------*/
-bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh, unsigned baseVert) noexcept
+bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh, unsigned baseVert, const SR_SceneLoadOpts& opts) noexcept
 {
     LS_LOG_MSG("\tImporting bones from a file.");
     std::vector<std::string>&                    nodeNames = mPreloader.mSceneData.mNodeNames;
@@ -1083,13 +1085,46 @@ bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh, unsigned ba
             // the first non-zero value available for that vertex
             if (iter != boneData.end())
             {
-                for (uint32_t k = 1; k < SR_BONE_MAX_WEIGHTS; ++k)
+                if (opts.packBoneIds)
                 {
-                    if (iter->second.ids[k] == 0)
+                    for (uint32_t k = 1; k < SR_BONE_MAX_WEIGHTS; ++k)
                     {
-                        iter->second.ids[k]     = (uint32_t)boneId;
-                        iter->second.weights[k] = weight;
-                        break;
+                        if (iter->second.ids16[k] == 0)
+                        {
+                            iter->second.ids16[k] = (uint16_t)boneId;
+
+                            if (opts.packBoneIds)
+                            {
+                                iter->second.weights16[k] = ls::math::half{weight};
+                            }
+                            else
+                            {
+                                iter->second.weights32[k] = weight;
+                            }
+
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    for (uint32_t k = 1; k < SR_BONE_MAX_WEIGHTS; ++k)
+                    {
+                        if (iter->second.ids32[k] == 0)
+                        {
+                            iter->second.ids32[k] = (uint32_t)boneId;
+
+                            if (opts.packBoneIds)
+                            {
+                                iter->second.weights16[k] = ls::math::half{weight};
+                            }
+                            else
+                            {
+                                iter->second.weights32[k] = weight;
+                            }
+
+                            break;
+                        }
                     }
                 }
             }
@@ -1098,11 +1133,29 @@ bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh, unsigned ba
                 // The vertex we're checking does not have any weights
                 // currently associated with it, add one.
                 SR_BoneData newBone;
-                newBone.ids        = math::vec4_t<uint32_t>{0, 0, 0, 0};
-                newBone.weights    = math::vec4_t<float>{0.f, 0.f, 0.f, 0.f};
-                newBone.ids[0]     = (int32_t)boneId;
-                newBone.weights[0] = weight;
-                boneData[vertId]   = newBone;
+                if (opts.packBoneIds)
+                {
+                    newBone.ids16    = math::vec4_t<uint16_t>{0, 0, 0, 0};
+                    newBone.ids16[0] = (int16_t)boneId;
+                }
+                else
+                {
+                    newBone.ids32    = math::vec4_t<uint32_t>{0, 0, 0, 0};
+                    newBone.ids32[0] = (int32_t)boneId;
+                }
+
+                if (opts.packBoneWeights)
+                {
+                    newBone.weights16 = math::vec4_t<math::half>{math::half{0x00, 0x00}};
+                    newBone.weights16[0] = weight;
+                }
+                else
+                {
+                    newBone.weights32 = math::vec4_t<float>{0.f, 0.f, 0.f, 0.f};
+                    newBone.weights32[0] = weight;
+                }
+
+                boneData[vertId] = newBone;
             }
         }
     }

@@ -52,8 +52,17 @@ enum SR_BoneInfo : unsigned
 
 struct SR_BoneData
 {
-    ls::math::vec4_t<uint32_t> ids;
-    ls::math::vec4_t<float> weights;
+    union
+    {
+        ls::math::vec4_t<uint32_t> ids32;
+        ls::math::vec4_t<uint16_t> ids16;
+    };
+
+    union
+    {
+        ls::math::vec4_t<float> weights32;
+        ls::math::vec4_t<ls::math::half> weights16;
+    };
 };
 
 
@@ -63,22 +72,24 @@ struct SR_BoneData
 -------------------------------------*/
 enum SR_CommonVertType : uint32_t
 {
-    POSITION_VERTEX         = 0x10000000,
-    TEXTURE_VERTEX          = 0x20000000,
-    PACKED_TEXTURE_VERTEX   = 0x40000000,
-    COLOR_VERTEX            = 0x80000000,
-    NORMAL_VERTEX           = 0x01000000,
-    TANGENT_VERTEX          = 0x02000000,
-    BITANGENT_VERTEX        = 0x04000000,
-    PACKED_NORMAL_VERTEX    = 0x08000000,
-    PACKED_TANGENT_VERTEX   = 0x00100000,
-    PACKED_BITANGENT_VERTEX = 0x00200000,
-    MODEL_MAT_VERTEX        = 0x00400000,
-    BONE_ID_VERTEX          = 0x00800000,
-    BONE_WEIGHT_VERTEX      = 0x00010000,
-    INDEX_VERTEX            = 0x00020000,
-    BBOX_TRR_VERTEX         = 0x00040000,
-    BBOX_BFL_VERTEX         = 0x00080000,
+    POSITION_VERTEX           = 0x10000000,
+    TEXTURE_VERTEX            = 0x20000000,
+    PACKED_TEXTURE_VERTEX     = 0x40000000,
+    COLOR_VERTEX              = 0x80000000,
+    NORMAL_VERTEX             = 0x01000000,
+    TANGENT_VERTEX            = 0x02000000,
+    BITANGENT_VERTEX          = 0x04000000,
+    PACKED_NORMAL_VERTEX      = 0x08000000,
+    PACKED_TANGENT_VERTEX     = 0x00100000,
+    PACKED_BITANGENT_VERTEX   = 0x00200000,
+    MODEL_MAT_VERTEX          = 0x00400000,
+    BONE_ID_VERTEX            = 0x00800000,
+    PACKED_BONE_ID_VERTEX     = 0x00010000,
+    BONE_WEIGHT_VERTEX        = 0x00020000,
+    PACKED_BONE_WEIGHT_VERTEX = 0x00040000,
+    INDEX_VERTEX              = 0x00080000,
+    BBOX_TRR_VERTEX           = 0x00001000,
+    BBOX_BFL_VERTEX           = 0x00002000,
 
 
     /**
@@ -135,7 +146,9 @@ constexpr SR_CommonVertType SR_COMMON_VERTEX_FLAGS[] = {
     SR_CommonVertType::MODEL_MAT_VERTEX,
 
     SR_CommonVertType::BONE_ID_VERTEX,
+    SR_CommonVertType::PACKED_BONE_ID_VERTEX,
     SR_CommonVertType::BONE_WEIGHT_VERTEX,
+    SR_CommonVertType::PACKED_BONE_WEIGHT_VERTEX,
 
     SR_CommonVertType::INDEX_VERTEX,
 

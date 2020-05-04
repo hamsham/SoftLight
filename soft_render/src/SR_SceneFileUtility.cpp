@@ -77,7 +77,8 @@ SR_CommonVertType sr_convert_assimp_verts(const aiMesh* const pMesh, const SR_Sc
 
     if (pMesh->HasBones())
     {
-        vertTypes |= SR_CommonVertType::BONE_VERTEX;
+        vertTypes |= opts.packBoneIds ? SR_CommonVertType::PACKED_BONE_ID_VERTEX : SR_CommonVertType::BONE_ID_VERTEX;
+        vertTypes |= opts.packBoneWeights ? SR_CommonVertType::PACKED_BONE_WEIGHT_VERTEX : SR_CommonVertType::BONE_WEIGHT_VERTEX;
     }
 
     if (!vertTypes)
@@ -320,18 +321,65 @@ char* sr_calc_mesh_geometry_tangent_packed(
 
 
 /*-------------------------------------
- * Convert Assimp bone IDs & weights to Internal ones.
- * Add an index for each submesh to the VBO.
+ * Convert Assimp bone IDs to Internal ones. Add an index for each submesh to
+ * the VBO.
 -------------------------------------*/
-char* sr_calc_mesh_geometry_bone(
+char* sr_calc_mesh_geometry_bone_id(
     const uint32_t index,
     char* pVbo,
     std::unordered_map<uint32_t, SR_BoneData>& boneData
 ) noexcept
 {
     const SR_BoneData& bone = boneData[index];
-    pVbo = set_mesh_vertex_data(pVbo, bone.ids);
-    return set_mesh_vertex_data(pVbo, bone.weights);
+    return set_mesh_vertex_data(pVbo, bone.ids32);
+}
+
+
+
+/*-------------------------------------
+ * Convert Assimp bone IDs to Internal ones. Add an index for each submesh to
+ * the VBO (16-bits per bone ID).
+-------------------------------------*/
+char* sr_calc_mesh_geometry_bone_id_packed(
+    const uint32_t index,
+    char* pVbo,
+    std::unordered_map<uint32_t, SR_BoneData>& boneData
+) noexcept
+{
+    const SR_BoneData& bone = boneData[index];
+    return set_mesh_vertex_data(pVbo, bone.ids16);
+}
+
+
+
+/*-------------------------------------
+ * Convert Assimp bone weights to Internal ones. Add an index for each submesh
+ * to the VBO.
+-------------------------------------*/
+char* sr_calc_mesh_geometry_bone_weight(
+    const uint32_t index,
+    char* pVbo,
+    std::unordered_map<uint32_t, SR_BoneData>& boneData
+) noexcept
+{
+    const SR_BoneData& bone = boneData[index];
+    return set_mesh_vertex_data(pVbo, bone.weights32);
+}
+
+
+
+/*-------------------------------------
+ * Convert Assimp bone weights to Internal ones. Add an index for each submesh
+ * to the VBO (16-bits per bone weight).
+-------------------------------------*/
+char* sr_calc_mesh_geometry_bone_weight_packed(
+    const uint32_t index,
+    char* pVbo,
+    std::unordered_map<uint32_t, SR_BoneData>& boneData
+) noexcept
+{
+    const SR_BoneData& bone = boneData[index];
+    return set_mesh_vertex_data(pVbo, bone.weights16);
 }
 
 
@@ -403,9 +451,24 @@ unsigned sr_upload_mesh_vertices(
             pVboIter = sr_calc_mesh_geometry_tangent_packed(i, pMesh, pVboIter, SR_CommonVertType::PACKED_BITANGENT_VERTEX);
         }
 
-        if (vertTypes & SR_CommonVertType::BONE_VERTEX)
+        if (vertTypes & SR_CommonVertType::BONE_ID_VERTEX)
         {
-            pVboIter = sr_calc_mesh_geometry_bone((uint32_t)(i+baseVert), pVboIter, boneData);
+            pVboIter = sr_calc_mesh_geometry_bone_id((uint32_t)(i+baseVert), pVboIter, boneData);
+        }
+
+        if (vertTypes & SR_CommonVertType::PACKED_BONE_ID_VERTEX)
+        {
+            pVboIter = sr_calc_mesh_geometry_bone_id_packed((uint32_t)(i+baseVert), pVboIter, boneData);
+        }
+
+        if (vertTypes & SR_CommonVertType::BONE_WEIGHT_VERTEX)
+        {
+            pVboIter = sr_calc_mesh_geometry_bone_weight((uint32_t)(i+baseVert), pVboIter, boneData);
+        }
+
+        if (vertTypes & SR_CommonVertType::PACKED_BONE_WEIGHT_VERTEX)
+        {
+            pVboIter = sr_calc_mesh_geometry_bone_weight_packed((uint32_t)(i+baseVert), pVboIter, boneData);
         }
     }
 

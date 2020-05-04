@@ -75,9 +75,19 @@ constexpr char VERT_ATTRIB_NAME_MODEL_MATRIX[] = "modelMatAttrib";
 constexpr char VERT_ATTRIB_NAME_BONE_ID[] = "boneIdAttrib";
 
 /**
+ * @brief Common name for a vertex attribute containing skeletal bone IDs.
+ */
+constexpr char VERT_ATTRIB_NAME_PACKED_BONE_ID[] = "boneIdAttribP";
+
+/**
  * @brief Common name for a vertex attribute containing skeletal bone weights.
  */
 constexpr char VERT_ATTRIB_NAME_BONE_WEIGHT[] = "boneWeightAttrib";
+
+/**
+ * @brief Common name for a vertex attribute containing skeletal bone weights.
+ */
+constexpr char VERT_ATTRIB_NAME_PACKED_BONE_WEIGHT[] = "boneWeightAttribP";
 
 /**
  * @brief Common name for an instance index vertex component.
@@ -236,12 +246,20 @@ unsigned sr_vertex_attrib_offset(const SR_CommonVertType vertexTypes, const SR_C
                     numBytes += sr_bytes_per_vertex(VERTEX_DATA_FLOAT, VERTEX_DIMENSION_4) * 4;
                     break;
 
-                case BONE_ID_VERTEX: // Maximum of 4 bone IDs per vertex
+                case BONE_ID_VERTEX: // Maximum of 4 32-bit bone IDs per vertex
                     numBytes += sr_bytes_per_vertex(VERTEX_DATA_INT, VERTEX_DIMENSION_4);
+                    break;
+
+                case PACKED_BONE_ID_VERTEX: // Maximum of 4 16-bit bone IDs per vertex
+                    numBytes += sr_bytes_per_vertex(VERTEX_DATA_SHORT, VERTEX_DIMENSION_4);
                     break;
 
                 case BONE_WEIGHT_VERTEX: // Maximum of 4 bone weights per vertex
                     numBytes += sr_bytes_per_vertex(VERTEX_DATA_FLOAT, VERTEX_DIMENSION_4);
+                    break;
+
+                case PACKED_BONE_WEIGHT_VERTEX: // Maximum of 4 16-bit float weights per vertex
+                    numBytes += sr_bytes_per_vertex(VERTEX_DATA_SHORT, VERTEX_DIMENSION_4);
                     break;
 
                 case INDEX_VERTEX:
@@ -263,7 +281,7 @@ unsigned sr_vertex_attrib_offset(const SR_CommonVertType vertexTypes, const SR_C
                     break;
 
                 case BONE_VERTEX:
-                    numBytes += sr_bytes_per_vertex(VERTEX_DATA_BYTE, VERTEX_DIMENSION_1);
+                    numBytes += sr_bytes_per_vertex(VERTEX_DATA_INT, VERTEX_DIMENSION_1);
                     numBytes += sr_bytes_per_vertex(VERTEX_DATA_FLOAT, VERTEX_DIMENSION_1);
                     break;
 
@@ -324,7 +342,13 @@ SR_Dimension sr_dimens_of_vertex(const SR_CommonVertType vertType)
         case BONE_ID_VERTEX:
             return VERTEX_DIMENSION_4;
 
+        case PACKED_BONE_ID_VERTEX:
+            return VERTEX_DIMENSION_4;
+
         case BONE_WEIGHT_VERTEX:
+            return VERTEX_DIMENSION_4;
+
+        case PACKED_BONE_WEIGHT_VERTEX:
             return VERTEX_DIMENSION_4;
 
         case INDEX_VERTEX:
@@ -388,6 +412,15 @@ SR_DataType sr_type_of_vertex(const SR_CommonVertType vertType)
         case BONE_ID_VERTEX:
             return VERTEX_DATA_INT;
 
+        case PACKED_BONE_ID_VERTEX:
+            return VERTEX_DATA_SHORT;
+
+        case BONE_WEIGHT_VERTEX:
+            return VERTEX_DATA_FLOAT;
+
+        case PACKED_BONE_WEIGHT_VERTEX:
+            return VERTEX_DATA_SHORT;
+
         case INDEX_VERTEX:
             return VERTEX_DATA_INT;
 
@@ -424,7 +457,9 @@ const char* const* sr_common_vertex_names() noexcept
         VERT_ATTRIB_NAME_PACKED_BITANGENT,
         VERT_ATTRIB_NAME_MODEL_MATRIX,
         VERT_ATTRIB_NAME_BONE_ID,
+        VERT_ATTRIB_NAME_PACKED_BONE_ID,
         VERT_ATTRIB_NAME_BONE_WEIGHT,
+        VERT_ATTRIB_NAME_PACKED_BONE_WEIGHT,
         VERT_ATTRIB_NAME_INDEX,
         VERT_ATTRIB_NAME_BBOX_TRR,
         VERT_ATTRIB_NAME_BBOX_BFL

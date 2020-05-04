@@ -101,6 +101,12 @@ struct SR_SceneLoadOpts
     // does nothing if no normals exist or are generated.
     bool packNormals;
 
+    // Use 16-bit bone IDs (4 per vertex) rather than 32-bit bone IDs.
+    bool packBoneIds;
+
+    // Use 16-bit floats for bone weights rather than 32-bit floats.
+    bool packBoneWeights;
+
     // Use this to generate normals for meshes which don't have them (can be
     // superseded by genSmoothNormals).
     bool genFlatNormals;
@@ -122,6 +128,8 @@ struct SR_SceneLoadOpts
  * @note The following options are set by default:
  *     packUvs:          FALSE
  *     packNormals:      FALSE
+ *     packBoneIds:      FALSE
+ *     packBoneWeights:  FALSE
  *     genFlatNormals:   FALSE
  *     genSmoothNormals: TRUE
  *     genTangents:      FALSE
@@ -276,7 +284,7 @@ class SR_SceneFileLoader
 
     bool import_mesh_data(const aiScene* const pScene, const SR_SceneLoadOpts& opts) noexcept;
 
-    bool import_bone_data(const aiMesh* const pMesh, unsigned baseVertex) noexcept;
+    bool import_bone_data(const aiMesh* const pMesh, unsigned baseVertex, const SR_SceneLoadOpts& opts) noexcept;
 
     char* upload_mesh_indices(const aiMesh* const pMesh, char* pIbo, const size_t baseIndex, const size_t baseVertex, SR_Mesh& outMesh, size_t& outNumIndices) noexcept;
 

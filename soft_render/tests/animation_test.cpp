@@ -10,6 +10,7 @@
 #include "lightsky/utils/Pointer.h"
 #include "lightsky/utils/StringUtils.h"
 #include "lightsky/utils/Time.hpp"
+#include "lightsky/utils/Tuple.h"
 
 #include "soft_render/SR_Animation.hpp"
 #include "soft_render/SR_AnimationChannel.hpp"
@@ -22,6 +23,7 @@
 #include "soft_render/SR_KeySym.hpp"
 #include "soft_render/SR_Mesh.hpp"
 #include "soft_render/SR_Material.hpp"
+#include "soft_render/SR_PackedVertex.hpp"
 #include "soft_render/SR_RenderWindow.hpp"
 #include "soft_render/SR_Sampler.hpp"
 #include "soft_render/SR_SceneFileLoader.hpp"
@@ -43,11 +45,22 @@
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SR_TEST_MAX_THREADS
-    #define SR_TEST_MAX_THREADS 4
+    #define SR_TEST_MAX_THREADS 14
 #endif /* SR_TEST_MAX_THREADS */
+
+namespace ls
+{
+namespace math
+{
+using vec4s = vec4_t<uint16_t>;
+}
+}
 
 namespace math = ls::math;
 namespace utils = ls::utils;
+
+template <typename... data_t>
+using Tuple = utils::Tuple<data_t...>;
 
 
 
@@ -76,14 +89,15 @@ math::vec4 _normal_vert_shader_impl(SR_VertexParam& param)
 {
     const AnimUniforms* pUniforms = param.pUniforms->as<AnimUniforms>();
 
-    const math::vec3& vert = *param.pVbo->element<const math::vec3>(param.pVao->offset(0, param.vertId));
-    const math::vec3& norm = *param.pVbo->element<const math::vec3>(param.pVao->offset(1, param.vertId));
+    const math::vec4& vert = math::vec4_cast(*param.pVbo->element<const math::vec3>(param.pVao->offset(0, param.vertId)), 1.f);
+    const math::vec4& norm = sr_unpack_vertex_vec4(*param.pVbo->element<const int32_t>(param.pVao->offset(1, param.vertId)));
     const math::mat4&& modelMat = pUniforms->instanceMatrix[param.instanceId] * pUniforms->modelMatrix;
 
-    param.pVaryings[0] = modelMat * math::vec4_cast(vert, 0.f);
-    param.pVaryings[1] = modelMat * math::vec4_cast(norm, 0.f);
+    const math::vec4&& pos = modelMat * vert;
+    param.pVaryings[0] = pos;
+    param.pVaryings[1] = modelMat * norm;
 
-    return pUniforms->vpMatrix * modelMat * math::vec4_cast(vert, 1.f);
+    return pUniforms->vpMatrix * pos;
 }
 
 
@@ -146,15 +160,18 @@ SR_FragmentShader normal_frag_shader()
 --------------------------------------*/
 math::vec4 _texture_vert_shader_impl(SR_VertexParam& param)
 {
+    typedef Tuple<math::vec3, math::vec2h, int32_t, math::vec4s, math::vec4h> Vertex;
+
     const AnimUniforms* pUniforms   = param.pUniforms->as<AnimUniforms>();
-    const math::vec3&   vert        = *(param.pVbo->element<const math::vec3>(param.pVao->offset(0, param.vertId)));
-    const math::vec2h&  uv          = *(param.pVbo->element<const math::vec2h>(param.pVao->offset(1, param.vertId)));
-    const math::vec3&   norm        = *(param.pVbo->element<const math::vec3>(param.pVao->offset(2, param.vertId)));
-
-    const math::vec4u&  boneIds     = *(param.pVbo->element<const math::vec4u>(param.pVao->offset(3, param.vertId)));
-    const math::vec4&   boneWeights = *(param.pVbo->element<const math::vec4>(param.pVao->offset(4,  param.vertId)));
-
     const math::mat4*   pBones      = pUniforms->pBones;
+
+    const Vertex* const v           = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));
+    const math::vec4&&  vert        = math::vec4_cast(v->const_element<0>(), 1.f);
+    const math::vec2h   uv          = v->const_element<1>();
+    const math::vec4&&  norm        = sr_unpack_vertex_vec4(v->const_element<2>());
+    const math::vec4s   boneIds     = v->const_element<3>();
+    const math::vec4&&  boneWeights = (math::vec4)v->const_element<4>();
+
     math::mat4&&        boneTrans   = pBones[boneIds[0]] * boneWeights[0];
 
     boneTrans += pBones[boneIds[1]] * boneWeights[1];
@@ -163,12 +180,13 @@ math::vec4 _texture_vert_shader_impl(SR_VertexParam& param)
 
     const math::mat4&& modelMat = pUniforms->instanceMatrix[param.instanceId] * pUniforms->modelMatrix;
     const math::mat4&& modelPos = modelMat * boneTrans;
+    const math::vec4&& pos = modelPos * vert;
 
-    param.pVaryings[0] = modelPos * math::vec4_cast(vert, 1.f);
+    param.pVaryings[0] = pos;
     param.pVaryings[1] = math::vec4_cast((math::vec2)uv, 0.f, 0.f);
-    param.pVaryings[2] = math::normalize(modelPos * math::vec4_cast(norm, 0.f));
+    param.pVaryings[2] = modelPos * norm;
 
-    return pUniforms->vpMatrix * modelPos * math::vec4_cast(vert, 1.f);
+    return pUniforms->vpMatrix * pos;
 }
 
 
@@ -191,9 +209,9 @@ SR_VertexShader texture_vert_shader()
 bool _texture_frag_shader(SR_FragmentParam& fragParam)
 {
     const AnimUniforms*  pUniforms = fragParam.pUniforms->as<AnimUniforms>();
-    const math::vec4     pos       = fragParam.pVaryings[0];
-    const math::vec4     uv        = fragParam.pVaryings[1];
-    const math::vec4     norm      = fragParam.pVaryings[2];
+    const math::vec4&    pos       = fragParam.pVaryings[0];
+    const math::vec4&    uv        = fragParam.pVaryings[1];
+    const math::vec4&&   norm      = math::normalize(fragParam.pVaryings[2]);
     const SR_Texture*    pTexture  = pUniforms->pTexture;
     const math::vec4     ambient   = {0.1f, 0.1f, 0.1f, 1.f};
     math::vec4           albedo;
@@ -431,7 +449,9 @@ utils::Pointer<SR_SceneGraph> create_context()
     //retCode = meshLoader.load("testdata/rover/testmesh.dae");
     SR_SceneLoadOpts opts = sr_default_scene_load_opts();
     opts.packUvs = true;
-    opts.packNormals = false;
+    opts.packNormals = true;
+    opts.packBoneIds = true;
+    opts.packBoneWeights = true;
     opts.genSmoothNormals = true;
     retCode = meshLoader.load("testdata/bob/Bob.md5mesh", opts);
     assert(retCode != 0);

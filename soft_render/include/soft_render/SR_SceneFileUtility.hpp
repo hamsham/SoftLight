@@ -255,10 +255,46 @@ char* sr_calc_mesh_geometry_tangent_packed(
 
 
 /*-------------------------------------
- * Convert Assimp bone IDs & weights to Internal ones.
- * Add an index for each submesh to the VBO.
+ * Convert Assimp bone IDs to Internal ones. Add an index for each submesh to
+ * the VBO.
 -------------------------------------*/
-char* sr_calc_mesh_geometry_bone(
+char* sr_calc_mesh_geometry_bone_id(
+    const uint32_t index,
+    char* pVbo,
+    std::unordered_map<uint32_t, SR_BoneData>& boneData
+) noexcept;
+
+
+
+/*-------------------------------------
+ * Convert Assimp bone IDs to Internal ones. Add an index for each submesh to
+ * the VBO (16-bits per bone ID).
+-------------------------------------*/
+char* sr_calc_mesh_geometry_bone_id_packed(
+    const uint32_t index,
+    char* pVbo,
+    std::unordered_map<uint32_t, SR_BoneData>& boneData
+) noexcept;
+
+
+
+/*-------------------------------------
+ * Convert Assimp bone weights to Internal ones. Add an index for each submesh
+ * to the VBO.
+-------------------------------------*/
+char* sr_calc_mesh_geometry_bone_weight(
+    const uint32_t index,
+    char* pVbo,
+    std::unordered_map<uint32_t, SR_BoneData>& boneData
+) noexcept;
+
+
+
+/*-------------------------------------
+ * Convert Assimp bone weights to Internal ones. Add an index for each submesh
+ * to the VBO (16-bits per bone weight).
+-------------------------------------*/
+char* sr_calc_mesh_geometry_bone_weight_packed(
     const uint32_t index,
     char* pVbo,
     std::unordered_map<uint32_t, SR_BoneData>& boneData
