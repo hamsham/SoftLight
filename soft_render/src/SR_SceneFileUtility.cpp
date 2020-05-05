@@ -146,14 +146,14 @@ SR_VaoGroup* sr_get_matching_marker(const SR_CommonVertType inVertType, std::vec
 -------------------------------------*/
 inline char* set_mesh_vertex_data(char* const pVert, const math::vec4& data) noexcept
 {
-    // it seems some vertex configurations may attempt an unaligned store and
-    // crash Clang builds. This store procedure must be explicitly fixed using
-    // _mm_storeu_ps() to avoid crashing.
-    #if defined(LS_ARCH_X86)
-        _mm_storeu_ps(reinterpret_cast<float* const>(pVert), data.simd);
-    #else
-        *reinterpret_cast<math::vec4* const>(pVert) = data;
-    #endif
+    // It seems some vertex configurations may attempt an unaligned store and
+    // crash SSE/NEON-optimized builds. This store procedure must be
+    // explicitly fixed using scalar assignments to avoid crashing.
+    float* const pOut = reinterpret_cast<float*>(pVert);
+    pOut[0] = data[0];
+    pOut[1] = data[1];
+    pOut[2] = data[2];
+    pOut[3] = data[3];
 
     return pVert + sizeof(math::vec4);
 }
