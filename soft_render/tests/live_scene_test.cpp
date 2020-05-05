@@ -45,7 +45,7 @@
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SR_TEST_MAX_THREADS
-    #define SR_TEST_MAX_THREADS (ls::math::max<unsigned>(std::thread::hardware_concurrency()-2, 1))
+    #define SR_TEST_MAX_THREADS (ls::math::max<unsigned>(std::thread::hardware_concurrency()-3, 2))
 #endif /* SR_TEST_MAX_THREADS */
 
 #ifndef SR_TEST_USE_PBR
@@ -583,7 +583,7 @@ utils::Pointer<SR_SceneGraph> create_context()
     int retCode = 0;
 
     SR_SceneFileLoader meshLoader;
-    SR_SceneLoadOpts opts;
+    SR_SceneLoadOpts opts = sr_default_scene_load_opts();
     utils::Pointer<SR_SceneGraph> pGraph{new SR_SceneGraph{}};
     SR_Context& context = pGraph->mContext;
     size_t fboId   = context.create_framebuffer();
