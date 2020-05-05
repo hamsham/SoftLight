@@ -45,7 +45,7 @@
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SR_TEST_MAX_THREADS
-    #define SR_TEST_MAX_THREADS (ls::math::max<unsigned>(std::thread::hardware_concurrency()-3, 2))
+    #define SR_TEST_MAX_THREADS (ls::math::max<unsigned>(std::thread::hardware_concurrency(), 3u) - 2u)
 #endif /* SR_TEST_MAX_THREADS */
 
 namespace ls
@@ -420,7 +420,7 @@ utils::Pointer<SR_SceneGraph> create_context()
     size_t depthId = context.create_texture();
 
     retCode = context.num_threads(SR_TEST_MAX_THREADS);
-    assert(retCode == SR_TEST_MAX_THREADS);
+    assert(retCode == (int)SR_TEST_MAX_THREADS);
 
     SR_Texture& tex = context.texture(texId);
     retCode = tex.init(SR_ColorDataType::SR_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
