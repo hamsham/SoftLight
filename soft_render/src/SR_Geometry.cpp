@@ -281,8 +281,8 @@ unsigned sr_vertex_attrib_offset(const SR_CommonVertType vertexTypes, const SR_C
                     break;
 
                 case BONE_VERTEX:
-                    numBytes += sr_bytes_per_vertex(VERTEX_DATA_INT, VERTEX_DIMENSION_1);
-                    numBytes += sr_bytes_per_vertex(VERTEX_DATA_FLOAT, VERTEX_DIMENSION_1);
+                    numBytes += sr_bytes_per_vertex(VERTEX_DATA_INT, VERTEX_DIMENSION_4);
+                    numBytes += sr_bytes_per_vertex(VERTEX_DATA_FLOAT, VERTEX_DIMENSION_4);
                     break;
 
                 case OCCLUSION_VERTEX:
