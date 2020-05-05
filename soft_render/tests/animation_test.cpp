@@ -45,7 +45,7 @@
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SR_TEST_MAX_THREADS
-    #define SR_TEST_MAX_THREADS 14
+    #define SR_TEST_MAX_THREADS (ls::math::max<unsigned>(std::thread::hardware_concurrency()-3, 2))
 #endif /* SR_TEST_MAX_THREADS */
 
 namespace ls
