@@ -36,7 +36,7 @@ enum SR_TexWrapMode : uint16_t;
 enum : unsigned int
 {
     SCENE_FILE_IMPORT_FLAGS = 0
-        | aiProcess_SplitLargeMeshes
+        //| aiProcess_SplitLargeMeshes
         | aiProcess_OptimizeMeshes
         | aiProcess_LimitBoneWeights
         | aiProcess_FindInstances
@@ -48,7 +48,7 @@ enum : unsigned int
         | aiProcess_FindInvalidData
         | aiProcess_ValidateDataStructure
         | aiProcess_ImproveCacheLocality
-        //| aiProcess_TransformUVCoords
+        | aiProcess_TransformUVCoords
         | aiProcess_GenUVCoords
         | aiProcess_RemoveRedundantMaterials
         //| aiProcess_GenSmoothNormals

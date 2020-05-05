@@ -162,7 +162,7 @@ class SR_SceneFilePreload
 
     std::string mBaseFileDir;
 
-    std::vector<SR_VaoGroup> mVaoGroups{};
+    std::vector<SR_VaoGroup> mVaoGroups;
 
     std::unordered_map<std::string, unsigned> mTexPaths;
 
@@ -266,7 +266,7 @@ class SR_SceneFileLoader
 
     // Private functions
   private:
-    bool load_scene(const aiScene* const pScene, const SR_SceneLoadOpts& opts) noexcept;
+    bool load_scene(const aiScene* const pScene, SR_SceneLoadOpts opts) noexcept;
 
     bool allocate_gpu_data() noexcept;
 
@@ -446,7 +446,7 @@ class SR_SceneFileLoader
      *
      * @return true if the file was successfully loaded. False if not.
      */
-    bool load(const std::string& filename, const SR_SceneLoadOpts& opts = sr_default_scene_load_opts()) noexcept;
+    bool load(const std::string& filename, SR_SceneLoadOpts opts = sr_default_scene_load_opts()) noexcept;
 
     /**
      * @brief Import in-memory mesh data, preloaded from a file.

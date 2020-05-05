@@ -253,10 +253,14 @@ bool SR_SceneFilePreload::load(const std::string& filename, SR_SceneLoadOpts opt
 
     Assimp::Importer& fileImporter = *mImporter;
     fileImporter.SetPropertyInteger(AI_CONFIG_PP_LBW_MAX_WEIGHTS, (int)SR_BONE_MAX_WEIGHTS);
-    fileImporter.SetPropertyInteger(AI_CONFIG_PP_FD_REMOVE, 1); // remove degenerate triangles
     fileImporter.SetPropertyInteger(AI_CONFIG_FAVOUR_SPEED, 1);
+    fileImporter.SetPropertyBool(AI_CONFIG_IMPORT_NO_SKELETON_MESHES, AI_TRUE);
+    fileImporter.SetPropertyInteger(AI_CONFIG_PP_ICL_PTCACHE_SIZE, 32);
+
+    //fileImporter.SetPropertyInteger(AI_CONFIG_PP_FD_REMOVE, 1); // remove degenerate triangles
     //fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, AI_SLM_DEFAULT_MAX_TRIANGLES);
-    fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, std::numeric_limits<int16_t>::max());
+    //fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, 0);//std::numeric_limits<int32_t>::max());
+    //fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_VERTEX_LIMIT, 0);//std::numeric_limits<int32_t>::max());
 
     unsigned defaultFlags = SCENE_FILE_IMPORT_FLAGS;
     if (opts.genTangents)
@@ -537,7 +541,7 @@ void SR_SceneFileLoader::unload() noexcept
 /*-------------------------------------
  * Load a set of meshes from a file
 -------------------------------------*/
-bool SR_SceneFileLoader::load(const std::string& filename, const SR_SceneLoadOpts& opts) noexcept
+bool SR_SceneFileLoader::load(const std::string& filename, SR_SceneLoadOpts opts) noexcept
 {
     unload();
 
@@ -574,7 +578,7 @@ bool SR_SceneFileLoader::load(SR_SceneFilePreload&& p) noexcept
 /*-------------------------------------
  * Load a set of meshes from a file
 -------------------------------------*/
-bool SR_SceneFileLoader::load_scene(const aiScene* const pScene, const SR_SceneLoadOpts& opts) noexcept
+bool SR_SceneFileLoader::load_scene(const aiScene* const pScene, SR_SceneLoadOpts opts) noexcept
 {
     const std::string& filename = mPreloader.mFilepath;
     SR_SceneGraph& sceneData = mPreloader.mSceneData;
@@ -670,10 +674,10 @@ bool SR_SceneFileLoader::load_scene(const aiScene* const pScene, const SR_SceneL
 -------------------------------------*/
 bool SR_SceneFileLoader::allocate_gpu_data() noexcept
 {
-    SR_SceneGraph&           sceneData  = mPreloader.mSceneData;
-    std::vector<SR_VaoGroup> vboMarkers = mPreloader.mVaoGroups;
-    SR_SceneFileMeta&        sceneInfo  = mPreloader.mSceneInfo;
-    SR_Context&              renderData = sceneData.mContext;
+    SR_SceneGraph&                  sceneData  = mPreloader.mSceneData;
+    const std::vector<SR_VaoGroup>& vboMarkers = mPreloader.mVaoGroups;
+    SR_SceneFileMeta&               sceneInfo  = mPreloader.mSceneInfo;
+    SR_Context&                     renderData = sceneData.mContext;
 
     SR_VertexBuffer vbo;
     SR_IndexBuffer ibo;
@@ -724,13 +728,13 @@ bool SR_SceneFileLoader::allocate_gpu_data() noexcept
 
     for (unsigned i = 0; i < totalMeshTypes; ++i)
     {
-        SR_VertexArray    vao{};
-        SR_CommonVertType inAttribs          = vertTypes[i];
-        size_t            currentVaoAttribId = 0;
-        SR_VaoGroup&      m                  = vboMarkers[i];
-        const int         numBindings        = math::count_set_bits(inAttribs);
+        SR_VertexArray     vao{};
+        SR_CommonVertType  inAttribs          = vertTypes[i];
+        size_t             currentVaoAttribId = 0;
+        const SR_VaoGroup& m                  = vboMarkers[i];
+        const int          numBindings        = inAttribs ? math::popcnt_i32((int32_t)inAttribs) : 0;//math::count_set_bits(inAttribs);
 
-        if (vao.set_num_bindings(numBindings) != numBindings)
+        if (vao.set_num_bindings((size_t)numBindings) != numBindings)
         {
             LS_LOG_ERR("\t\tFailed to allocate memory for VAO bindings.");
             return false;
@@ -883,10 +887,10 @@ void SR_SceneFileLoader::import_texture_path(
     float inShininess;
     const SR_Texture* pTexture = nullptr;
 
-    for (unsigned i = 0; i < maxTexCount; ++i)
+    for (unsigned i = 0, j = 0; i < maxTexCount; ++i)
     {
-        const unsigned outTexSlot = materialTexOffset+i;
-        if (i + materialTexOffset > maxTexCount)
+        const unsigned outTexSlot = j;
+        if (j > maxTexCount)
         {
             std::cerr << "\t\t\tExceeded material texture count (" << i+materialTexOffset << " > " << maxTexCount << ")." << std::endl;
         }
@@ -924,8 +928,11 @@ void SR_SceneFileLoader::import_texture_path(
             {
                 std::cerr << "\t\t\tFailed to load a texture: " << texPath << std::endl;
                 outMaterial.pTextures[outTexSlot] = nullptr;
+                continue;
             }
         }
+
+        ++j;
     }
 
     if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_COLOR_AMBIENT, inMatColor))
