@@ -44,6 +44,10 @@ namespace utils = ls::utils;
     #define IMAGE_HEIGHT 720
 #endif /* IMAGE_HEIGHT */
 
+#ifndef SR_TEST_MAX_THREADS
+    #define SR_TEST_MAX_THREADS (ls::math::max<unsigned>(std::thread::hardware_concurrency(), 3u) - 2u)
+#endif /* SR_TEST_MAX_THREADS */
+
 
 
 /*-----------------------------------------------------------------------------
@@ -104,38 +108,27 @@ bool _mesh_test_frag_shader(SR_FragmentParam& fragParams)
     const math::vec4&       uv        = fragParams.pVaryings[1];
     const math::vec4&       norm      = math::normalize(fragParams.pVaryings[2]);
     const SR_Texture*       albedo    = pUniforms->pTexture;
-    math::vec4              pixel;
 
     // normalize the texture colors to within (0.f, 1.f)
     math::vec3_t<uint8_t>&& pixel8 = sr_sample_trilinear<SR_ColorRGB8, SR_WrapMode::EDGE>(*albedo, uv[0], uv[1]);
-    math::vec4_t<uint8_t> pixelF{pixel8[0], pixel8[1], pixel8[2], 200};
-    pixel = color_cast<float, uint8_t>(pixelF);
+    math::vec4_t<uint8_t>&& pixelF = math::vec4_cast<uint8_t>(pixel8, 255);
+    math::vec4&&            pixel  = color_cast<float, uint8_t>(pixelF);
 
     // Light direction calculation
     math::vec4&& lightDir = math::normalize(pUniforms->lightPos - pos);
 
     // Diffuse light calculation
     const float lightAngle = math::max(math::dot(lightDir, norm), 0.f);
+
     const math::vec4&& composite = pixel + pUniforms->lightCol * lightAngle;
     const math::vec4&& output = math::clamp(composite, math::vec4{0.f}, math::vec4{1.f});
+
     const int amOdd = ((fragParams.x & 1) == (fragParams.y & 1));
 
-    #if 1
-        constexpr math::mat4 conv{
-             0.25f, 0.5f,  0.25f, 0.f,
-             0.5f,  0.f,  -0.5f,  0.f,
-            -0.25f, 0.5f, -0.25f, 0.f,
-             0.f,   0.f,   0.f,   0.f
-        };
+    SR_ColorYCoCgAf&& pixelYcocg  = ycocg_cast<float>(output);
+    const float       chrominance = amOdd ? pixelYcocg.cg : pixelYcocg.co;
 
-        math::vec4&& pixelYcocg = conv * output;
-        float c = amOdd ? pixelYcocg[2] : pixelYcocg[1];
-        fragParams.pOutputs[0] = math::vec4{pixelYcocg[0], c, 0.f, 0.f};
-    #else
-        SR_ColorYCoCgAf&& pixelYcocg = ycocg_cast<float>(output);
-        float c = amOdd ? pixelYcocg.cg : pixelYcocg.co;
-        fragParams.pOutputs[0] = math::vec4{pixelYcocg.y, c, 0.f, 0.f};
-    #endif
+    fragParams.pOutputs[0] = math::vec4{pixelYcocg.y, chrominance, 0.f, 0.f};
 
     return true;
 }
@@ -183,7 +176,6 @@ SR_VertexShader ycocg_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-#if 1
 inline LS_INLINE float filter_luminance(float a, const math::vec4& ax, const math::vec4& ay) noexcept
 {
     constexpr float THRESH = 10.f/255.f;
@@ -216,13 +208,12 @@ inline LS_INLINE float adjust_chroma(const SR_Texture* tex, uint16_t x, uint16_t
     const math::vec2&& a2 = (math::vec2)tex->texel<math::vec2_t<uint8_t>>(x, y0); //coords + vec2(0.0, 1.0 / 512.0));
     const math::vec2&& a3 = (math::vec2)tex->texel<math::vec2_t<uint8_t>>(x, y1); //coords - vec2(0.0, 1.0 / 512.0));
 
-    const math::vec4 norm{1.f / 254.f};
+    const math::vec4 norm{1.f / 255.f};
     const math::vec4&& ax = norm * math::vec4{a0[0], a1[0], a2[0], a3[0]};
     const math::vec4&& ay = norm * math::vec4{a0[1], a1[1], a2[1], a3[1]};
 
     return filter_luminance(lum, ax, ay);
 }
-#endif
 
 bool _ycocg_frag_shader(SR_FragmentParam& fragParams)
 {
@@ -257,21 +248,7 @@ bool _ycocg_frag_shader(SR_FragmentParam& fragParams)
         cg = temp;
     }
 
-    // multiply by a matrix versus directly convert
-    #if 1
-        constexpr math::mat4 conv{
-            1.f,  1.f, -1.f, 0.f,
-            1.f,  0.f,  1.f, 0.f,
-            1.f, -1.f, -1.f, 0.f,
-            0.f,  0.f,  0.f, 1.f,
-        };
-
-        const math::vec4&& pixelRgb = conv * math::vec4{y, co, cg, 1.f};
-    #else
-        const math::vec4&& pixelRgb = rgba_cast<float>(SR_ColorYCoCgAf{y, co, cg, 1.f});
-    #endif
-
-    fragParams.pOutputs[0] = pixelRgb;
+    fragParams.pOutputs[0] = rgba_cast<float>(SR_ColorYCoCgAf{y, co, cg, 1.f});
 
     return true;
 }
@@ -605,7 +582,7 @@ int main()
 
     timer.start();
 
-    context.num_threads(math::max<unsigned>(1, std::thread::hardware_concurrency()-2));
+    context.num_threads(SR_TEST_MAX_THREADS);
 
     while (!shouldQuit)
     {
