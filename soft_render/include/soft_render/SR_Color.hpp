@@ -1023,7 +1023,7 @@ typedef SR_ColorYCoCgf SR_ColorYCoCg;
  * @brief YcoCg Color Structure with Alpha
  */
 template<typename color_t>
-struct alignas(sizeof(color_t)) SR_ColorTypeYCoCgA
+struct alignas(sizeof(color_t)*4) SR_ColorTypeYCoCgA
 {
     color_t y;
     color_t co;
@@ -1097,13 +1097,28 @@ constexpr SR_ColorTypeYCoCgA<T> ycocg_cast(const SR_ColorRGBAType<T>& p) noexcep
     };
 }
 
+#if defined(LS_ARCH_X86)
+inline SR_ColorTypeYCoCgA<float> ycocg_cast(const SR_ColorRGBAType<float>& p) noexcept
+{
+    const __m128 rgb = _mm_loadu_ps(&p);
+    const __m128 a = _mm_set_ps(1.f,  0.25f, 0.5f,  0.25f);
+    const __m128 b = _mm_set_ps(0.f, -0.5f,  0.f,   0.5f);
+    const __m128 c = _mm_set_ps(0.f, -0.25f, 0.5f, -0.25f);
+    const __m128 ycocg = _mm_fmadd_ps(rgb, c, _mm_fmadd_ps(rgb, b, _mm_mul_ps(rgb, a)));
+
+    SR_ColorTypeYCoCgA<float> ret;
+    _mm_store_ps(&ret.y, ycocg);
+    return ret;
+}
+#endif
+
 
 
 /*-------------------------------------
  * YCoCgA to RGBA
 -------------------------------------*/
 template <typename T>
-constexpr SR_ColorRGBAType<T> rgba_cast(const SR_ColorTypeYCoCgA<T>& p) noexcept
+constexpr SR_ColorRGBAType<T> rgb_cast(const SR_ColorTypeYCoCgA<T>& p) noexcept
 {
     return SR_ColorRGBAType<T>{
         (T)(p.y + p.co + p.cg),

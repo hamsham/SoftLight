@@ -248,7 +248,7 @@ bool _ycocg_frag_shader(SR_FragmentParam& fragParams)
         cg = temp;
     }
 
-    fragParams.pOutputs[0] = rgba_cast<float>(SR_ColorYCoCgAf{y, co, cg, 1.f});
+    fragParams.pOutputs[0] = rgb_cast<float>(SR_ColorYCoCgAf{y, co, cg, 1.f});
 
     return true;
 }
