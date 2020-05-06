@@ -1057,9 +1057,9 @@ template <typename T>
 constexpr SR_ColorTypeYCoCg<T> ycocg_cast(const SR_ColorRGBType<T>& p) noexcept
 {
     return SR_ColorTypeYCoCg<T>{
-        T{p[0]/T{4}) + (p[1]/T{2}) - (p[2]/T{4})},
-        T{p[0]/T{2})               + (p[2]/T{2})},
-        T{(p[0]/T{4}) - (p[1]/T{2}) - (p[2]/T{4})}
+        (T)((p[0]/T{4}) + (p[1]/T{2}) - (p[2]/T{4})),
+        (T)((p[0]/T{2})               + (p[2]/T{2})),
+        (T)((p[0]/T{4}) - (p[1]/T{2}) - (p[2]/T{4}))
     };
 }
 
@@ -1072,9 +1072,9 @@ template <typename T>
 constexpr SR_ColorRGBType<T> rgb_cast(const SR_ColorTypeYCoCg<T>& p) noexcept
 {
     return SR_ColorRGBType<T>{
-        T{p.y + p.co + p.cg},
-        T{p.y        - p.cg},
-        T{p.co - p.y - p.cg},
+        (T)(p.y + p.co + p.cg),
+        (T)(p.y        - p.cg),
+        (T)(p.co - p.y - p.cg),
     };
 }
 
@@ -1090,9 +1090,9 @@ template <typename T>
 constexpr SR_ColorTypeYCoCgA<T> ycocg_cast(const SR_ColorRGBAType<T>& p) noexcept
 {
     return SR_ColorTypeYCoCgA<T>{
-        T{(p[0]/T{4}) + (p[1]/T{2}) - (p[2]/T{4})},
-        T{(p[0]/T{2})               + (p[2]/T{2})},
-        T{(p[0]/T{4}) - (p[1]/T{2}) - (p[2]/T{4})},
+        (T)((p[0]/T{4}) + (p[1]/T{2}) - (p[2]/T{4})),
+        (T)((p[0]/T{2})               + (p[2]/T{2})),
+        (T)((p[0]/T{4}) - (p[1]/T{2}) - (p[2]/T{4})),
         p[3]
     };
 }
@@ -1106,9 +1106,9 @@ template <typename T>
 constexpr SR_ColorRGBAType<T> rgba_cast(const SR_ColorTypeYCoCgA<T>& p) noexcept
 {
     return SR_ColorRGBAType<T>{
-        T{p.y + p.co + p.cg},
-        T{p.y        - p.cg},
-        T{p.co - p.y - p.cg},
+        (T)(p.y + p.co + p.cg),
+        (T)(p.y        - p.cg),
+        (T)(p.co - p.y - p.cg),
         p.a
     };
 }
