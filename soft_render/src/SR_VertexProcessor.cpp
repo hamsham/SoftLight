@@ -496,10 +496,10 @@ void SR_VertexProcessor::flush_bins() const noexcept
         (void)sleepAmt;
     #endif
 
-    // Sort the bins based on their depth.
+    // Depth-sort complex geometry
     if (tileId == mNumThreads-1u)
     {
-        #if !SR_TUNE_HIGH_POLY
+        #if SR_TUNE_COMPLEX_GEOM
         const uint_fast64_t maxElements = math::min<uint64_t>(mBinsUsed->load(std::memory_order_consume), SR_SHADER_MAX_BINNED_PRIMS);
 
         // Blended fragments get sorted back-to-front for correct coloring.
@@ -565,9 +565,9 @@ void SR_VertexProcessor::flush_bins() const noexcept
     while (LS_LIKELY(mFragProcessors->load(std::memory_order_consume) < 0))
     {
         // wait until all fragments are rendered across the other threads.
-        // High-poly models should rely only on _mm_pause() and not sleep
+        // Convex hulls/models should rely only on _mm_pause() and not sleep
         // in a hyper-threaded environment.
-        #if SR_TUNE_HIGH_POLY
+        #if !SR_TUNE_COMPLEX_GEOM
             #if defined(LS_ARCH_X86)
                 _mm_pause();
             #elif defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
