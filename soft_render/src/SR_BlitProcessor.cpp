@@ -16,6 +16,33 @@ namespace math = ls::math;
 /*-----------------------------------------------------------------------------
  * SR_BlitProcessor Class
 -----------------------------------------------------------------------------*/
+template void SR_BlitProcessor::blit_src_r<uint8_t>();
+template void SR_BlitProcessor::blit_src_r<uint16_t>();
+template void SR_BlitProcessor::blit_src_r<uint32_t>();
+template void SR_BlitProcessor::blit_src_r<uint64_t>();
+template void SR_BlitProcessor::blit_src_r<float>();
+template void SR_BlitProcessor::blit_src_r<double>();
+template void SR_BlitProcessor::blit_src_rg<uint8_t>();
+template void SR_BlitProcessor::blit_src_rg<uint16_t>();
+template void SR_BlitProcessor::blit_src_rg<uint32_t>();
+template void SR_BlitProcessor::blit_src_rg<uint64_t>();
+template void SR_BlitProcessor::blit_src_rg<float>();
+template void SR_BlitProcessor::blit_src_rg<double>();
+template void SR_BlitProcessor::blit_src_rgb<uint8_t>();
+template void SR_BlitProcessor::blit_src_rgb<uint16_t>();
+template void SR_BlitProcessor::blit_src_rgb<uint32_t>();
+template void SR_BlitProcessor::blit_src_rgb<uint64_t>();
+template void SR_BlitProcessor::blit_src_rgb<float>();
+template void SR_BlitProcessor::blit_src_rgb<double>();
+template void SR_BlitProcessor::blit_src_rgba<uint8_t>();
+template void SR_BlitProcessor::blit_src_rgba<uint16_t>();
+template void SR_BlitProcessor::blit_src_rgba<uint32_t>();
+template void SR_BlitProcessor::blit_src_rgba<uint64_t>();
+template void SR_BlitProcessor::blit_src_rgba<float>();
+template void SR_BlitProcessor::blit_src_rgba<double>();
+
+
+
 /*-------------------------------------
  * Run the texture blitter
 -------------------------------------*/

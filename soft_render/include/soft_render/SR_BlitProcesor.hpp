@@ -1,6 +1,6 @@
 
-#ifndef SR_BLIT_PROCESOR_HPP
-#define SR_BLIT_PROCESOR_HPP
+#ifndef SR_BLIT_PROCESSOR_HPP
+#define SR_BLIT_PROCESSOR_HPP
 
 #include <cstdint>
 
@@ -580,6 +580,33 @@ void SR_BlitProcessor::blit_src_rgba() noexcept
 
 
 
+extern template void SR_BlitProcessor::blit_src_r<uint8_t>();
+extern template void SR_BlitProcessor::blit_src_r<uint16_t>();
+extern template void SR_BlitProcessor::blit_src_r<uint32_t>();
+extern template void SR_BlitProcessor::blit_src_r<uint64_t>();
+extern template void SR_BlitProcessor::blit_src_r<float>();
+extern template void SR_BlitProcessor::blit_src_r<double>();
+extern template void SR_BlitProcessor::blit_src_rg<uint8_t>();
+extern template void SR_BlitProcessor::blit_src_rg<uint16_t>();
+extern template void SR_BlitProcessor::blit_src_rg<uint32_t>();
+extern template void SR_BlitProcessor::blit_src_rg<uint64_t>();
+extern template void SR_BlitProcessor::blit_src_rg<float>();
+extern template void SR_BlitProcessor::blit_src_rg<double>();
+extern template void SR_BlitProcessor::blit_src_rgb<uint8_t>();
+extern template void SR_BlitProcessor::blit_src_rgb<uint16_t>();
+extern template void SR_BlitProcessor::blit_src_rgb<uint32_t>();
+extern template void SR_BlitProcessor::blit_src_rgb<uint64_t>();
+extern template void SR_BlitProcessor::blit_src_rgb<float>();
+extern template void SR_BlitProcessor::blit_src_rgb<double>();
+extern template void SR_BlitProcessor::blit_src_rgba<uint8_t>();
+extern template void SR_BlitProcessor::blit_src_rgba<uint16_t>();
+extern template void SR_BlitProcessor::blit_src_rgba<uint32_t>();
+extern template void SR_BlitProcessor::blit_src_rgba<uint64_t>();
+extern template void SR_BlitProcessor::blit_src_rgba<float>();
+extern template void SR_BlitProcessor::blit_src_rgba<double>();
+
+
+
 /*-------------------------------------
  * Nearest-neighbor filtering (RGBA)
 -------------------------------------*/
@@ -592,7 +619,6 @@ void SR_BlitProcessor::blit_nearest() noexcept
     const uint_fast32_t inW  = (uint_fast32_t)srcX1 - (uint_fast32_t)srcX0;
     const uint_fast32_t inH  = (uint_fast32_t)srcY1 - (uint_fast32_t)srcY0;
     const uint_fast32_t outW = (uint_fast32_t)dstX1 - (uint_fast32_t)dstX0;
-    //const uint_fast32_t outH = (uint_fast32_t)dstY1 - (uint_fast32_t)dstY0;
 
     const uint_fast32_t totalOutW = mBackBuffer->width();
     const uint_fast32_t totalOutH = mBackBuffer->height();
@@ -601,8 +627,7 @@ void SR_BlitProcessor::blit_nearest() noexcept
     // make use of the CPU prefetcher when iterating pixels along the x-axis
     const uint_fast32_t x0        = ls::math::max<uint_fast32_t>(0u, dstX0);
     const uint_fast32_t x1        = ls::math::min<uint_fast32_t>(totalOutW, x0 + outW);
-    //const uint_fast32_t dstH      = outH / mNumThreads;
-    const uint_fast32_t y0        = dstY0+mThreadId;//sr_scanline_offset(mNumThreads, mThreadId, dstY0);
+    const uint_fast32_t y0        = dstY0+mThreadId;
     const uint_fast32_t y1        = dstY1;
 
     const sr_fixed_type finW      = ls::math::fixed_cast<sr_fixed_type>(inW);
@@ -610,12 +635,10 @@ void SR_BlitProcessor::blit_nearest() noexcept
     const sr_fixed_type foutW     = finW / ls::math::fixed_cast<sr_fixed_type>(totalOutW);
     const sr_fixed_type foutH     = finH / ls::math::fixed_cast<sr_fixed_type>(totalOutH);
 
-    const uint_fast32_t numPixels = (totalOutW*totalOutH) - 1;
-
     for (uint_fast32_t y = y0; y < y1; y += mNumThreads)
     {
         const sr_fixed_type yf   = ls::math::fixed_cast<sr_fixed_type>(y) * foutH;
-        const uint_fast32_t srcY = srcY0 + ls::math::integer_cast<uint_fast32_t>(yf);
+        const uint_fast32_t srcY = srcY1 - (srcY0 + ls::math::integer_cast<uint_fast32_t>(yf)) - 1;
 
         for (uint_fast32_t x = x0; x < x1; ++x)
         {
@@ -623,11 +646,11 @@ void SR_BlitProcessor::blit_nearest() noexcept
             const uint_fast32_t  srcX     = srcX0 + ls::math::integer_cast<uint_fast32_t>(xf);
             const uint_fast32_t  outIndex = x + totalOutW * y;
 
-            blitOp(mTexture, srcX, srcY, pOutBuf, numPixels-outIndex);
+            blitOp(mTexture, srcX, srcY, pOutBuf, outIndex);
         }
     }
 }
 
 
 
-#endif /* SR_BLIT_PROCESOR_HPP */
+#endif /* SR_BLIT_PROCESSOR_HPP */
