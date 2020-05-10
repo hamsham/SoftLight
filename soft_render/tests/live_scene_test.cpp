@@ -510,12 +510,12 @@ void update_cam_position(SR_Transform& camTrans, float tickTime, utils::Pointer<
 
     if (pKeys[SR_KeySymbol::KEY_SYM_d] || pKeys[SR_KeySymbol::KEY_SYM_D])
     {
-        camTrans.move(math::vec3{camSpeed * tickTime, 0.f, 0.f}, false);
+        camTrans.move(math::vec3{-camSpeed * tickTime, 0.f, 0.f}, false);
     }
 
     if (pKeys[SR_KeySymbol::KEY_SYM_a] || pKeys[SR_KeySymbol::KEY_SYM_A])
     {
-        camTrans.move(math::vec3{-camSpeed * tickTime, 0.f, 0.f}, false);
+        camTrans.move(math::vec3{camSpeed * tickTime, 0.f, 0.f}, false);
     }
 }
 
@@ -814,8 +814,8 @@ int main()
                 if (pWindow->is_mouse_captured())
                 {
                     SR_MousePosEvent& mouse = evt.mousePos;
-                    dx = (float)mouse.dx / (float)pWindow->dpi() * 0.05f;
-                    dy = (float)mouse.dy / -(float)pWindow->dpi() * 0.05f;
+                    dx = (float)mouse.dx / (float)pWindow->dpi() * -0.05f;
+                    dy = (float)mouse.dy / (float)pWindow->dpi() * -0.05f;
                     camTrans.rotate(math::vec3{dx, dy, 0.f});
                 }
             }
