@@ -66,27 +66,27 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
         static_assert(SR_SHADER_MAX_VARYING_VECTORS == 4, "Please update the varying interpolator.");
         (void)numVaryings;
 
-        const __m256i* LS_RESTRICT_PTR i0 = reinterpret_cast<const __m256i*>(inVaryings0);
-        const __m256i* LS_RESTRICT_PTR i1 = reinterpret_cast<const __m256i*>(inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS);
-        const __m256i* LS_RESTRICT_PTR i2 = reinterpret_cast<const __m256i*>(inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS * 2);
-        float* const   LS_RESTRICT_PTR o  = reinterpret_cast<float*>(outVaryings);
+        const float* LS_RESTRICT_PTR i0 = reinterpret_cast<const float*>(inVaryings0);
+        const float* LS_RESTRICT_PTR i1 = reinterpret_cast<const float*>(inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS);
+        const float* LS_RESTRICT_PTR i2 = reinterpret_cast<const float*>(inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS * 2);
+        float* const LS_RESTRICT_PTR o  = reinterpret_cast<float*>(outVaryings);
         const __m256 bc  = _mm256_broadcast_ps(reinterpret_cast<const __m128*>(baryCoords));
         const __m256 bc0 = _mm256_permute_ps(bc, 0x00);
         const __m256 bc1 = _mm256_permute_ps(bc, 0x55);
         const __m256 bc2 = _mm256_permute_ps(bc, 0xAA);
 
         {
-            const __m256 a = _mm256_castsi256_ps(_mm256_stream_load_si256(i0));
-            const __m256 b = _mm256_castsi256_ps(_mm256_stream_load_si256(i1));
-            const __m256 c = _mm256_castsi256_ps(_mm256_stream_load_si256(i2));
+            const __m256 a = _mm256_load_ps(i0);
+            const __m256 b = _mm256_load_ps(i1);
+            const __m256 c = _mm256_load_ps(i2);
             const __m256 v0 = _mm256_mul_ps(bc0, a);
             const __m256 v1 = _mm256_mul_ps(bc1, b);
             _mm256_store_ps(o, _mm256_fmadd_ps(bc2, c, _mm256_add_ps(v0, v1)));
         }
         {
-            const __m256 a = _mm256_castsi256_ps(_mm256_stream_load_si256(i0+1));
-            const __m256 b = _mm256_castsi256_ps(_mm256_stream_load_si256(i1+1));
-            const __m256 c = _mm256_castsi256_ps(_mm256_stream_load_si256(i2+1));
+            const __m256 a = _mm256_load_ps(i0+8);
+            const __m256 b = _mm256_load_ps(i1+8);
+            const __m256 c = _mm256_load_ps(i2+8);
             const __m256 v0 = _mm256_mul_ps(bc0, a);
             const __m256 v1 = _mm256_mul_ps(bc1, b);
             _mm256_store_ps(o+8, _mm256_fmadd_ps(bc2, c, _mm256_add_ps(v0, v1)));
