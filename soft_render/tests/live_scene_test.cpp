@@ -328,7 +328,7 @@ bool _texture_frag_shader_spot(SR_FragmentParam& fragParams)
 template <class vec_type = math::vec4>
 inline vec_type fresnel_schlick(float cosTheta, const vec_type& surfaceReflection)
 {
-    return math::fmadd(vec_type{1.f} - surfaceReflection, math::pow(1.f - cosTheta, 5.f), surfaceReflection);
+    return math::fmadd(vec_type{1.f} - surfaceReflection, vec_type{math::pow(1.f - cosTheta, 5.f)}, surfaceReflection);
 }
 
 
