@@ -481,13 +481,30 @@ inline LS_INLINE SR_ClipStatus face_visible(const math::vec4 clipCoords[SR_SHADE
 -------------------------------------*/
 void SR_VertexProcessor::flush_bins() const noexcept
 {
+    SR_FragmentProcessor fragTask{
+        (uint16_t)mThreadId,
+        mRenderMode,
+        (uint32_t)mNumThreads,
+        mBinsUsed[mThreadId],
+        mShader,
+        mFbo,
+        mFragBins + mThreadId * SR_SHADER_MAX_BINNED_PRIMS,
+        mVaryings + mThreadId * SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_QUEUED_FRAGS,
+        mFragQueues + mThreadId
+    };
+
+    if (mHaveHighPoly && mBinsUsed[mThreadId])
+    {
+        fragTask.execute();
+    }
+
     // Sync Point 1 indicates that all triangles have been sorted.
     // Since we only have two sync points for the bins to process, a negative
     // value for mFragProcessors will indicate all threads are ready to process
     // fragments. A zero-value for mFragProcessors indicates we can continue
     // processing vertices.
-    const int_fast64_t   syncPoint1 = -mNumThreads-1;
-    int_fast64_t         tileId     = mFragProcessors->fetch_add(1, std::memory_order_acq_rel);
+    const int_fast64_t syncPoint1 = -(int_fast64_t)mNumThreads-1;
+    int_fast64_t       tileId     = mFragProcessors->fetch_add(1, std::memory_order_acq_rel);
 
     #if defined(LS_OS_UNIX)
         struct timespec sleepAmt;
@@ -496,28 +513,9 @@ void SR_VertexProcessor::flush_bins() const noexcept
         (void)sleepAmt;
     #endif
 
-    // Depth-sort complex geometry
+    // first sync
     if (tileId == mNumThreads-1u)
     {
-        #if SR_TUNE_COMPLEX_GEOM
-        const uint_fast64_t maxElements = math::min<uint64_t>(mBinsUsed->load(std::memory_order_consume), SR_SHADER_MAX_BINNED_PRIMS);
-
-        // Blended fragments get sorted back-to-front for correct coloring.
-        if (mShader->fragment_shader().blend == SR_BLEND_OFF)
-        {
-            ls::utils::sort_quick_iterative<uint32_t>(mBinIds, maxElements, [&](uint32_t a, uint32_t b)->bool {
-                return mFragBins[a] > mFragBins[b];
-            });
-        }
-        else
-        {
-            // Sort opaque objects from front-to-back to fortify depth testing.
-            ls::utils::sort_quick_iterative<uint32_t>(mBinIds, maxElements, [&](uint32_t a, uint32_t b)->bool {
-                return mFragBins[a] < mFragBins[b];
-            });
-        }
-        #endif
-
         // Let all threads know they can process fragments.
         mFragProcessors->store(syncPoint1, std::memory_order_release);
     }
@@ -538,36 +536,34 @@ void SR_VertexProcessor::flush_bins() const noexcept
         }
     }
 
-    SR_FragmentProcessor fragTask{
-        (uint16_t)tileId,
-        mRenderMode,
-        (uint32_t)mNumThreads,
-        math::min<uint64_t>(mBinsUsed->load(std::memory_order_relaxed), SR_SHADER_MAX_BINNED_PRIMS),
-        mShader,
-        mFbo,
-        mBinIds,
-        mFragBins,
-        mVaryings + tileId * SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_QUEUED_FRAGS,
-        mFragQueues + tileId
-    };
+    for (uint32_t t = 0; t < (uint32_t)mNumThreads; ++t)
+    {
+        if (mHaveHighPoly && t == mThreadId)
+        {
+            continue;
+        }
 
-    fragTask.execute();
+        if (!mBinsUsed[t])
+        {
+            continue;
+        }
+
+        fragTask.mNumBins = mBinsUsed[t];
+        fragTask.mBins = mFragBins + t * SR_SHADER_MAX_BINNED_PRIMS;
+        fragTask.execute();
+    }
 
     // Indicate to all threads we can now process more vertices
     if (-2 == mFragProcessors->fetch_add(1, std::memory_order_acq_rel))
     {
-        mBinsUsed->store(0, std::memory_order_release);
         mFragProcessors->store(0, std::memory_order_release);
         return;
     }
-
-    // Wait for the last thread to reset the number of available bins.
-    while (LS_LIKELY(mFragProcessors->load(std::memory_order_consume) < 0))
+    else
     {
-        // wait until all fragments are rendered across the other threads.
-        // Convex hulls/models should rely only on _mm_pause() and not sleep
-        // in a hyper-threaded environment.
-        #if !SR_TUNE_COMPLEX_GEOM
+        // Wait for the last thread to reset the number of available bins.
+        while (LS_LIKELY(mFragProcessors->load(std::memory_order_consume) < 0))
+        {
             #if defined(LS_ARCH_X86)
                 _mm_pause();
             #elif defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
@@ -577,18 +573,10 @@ void SR_VertexProcessor::flush_bins() const noexcept
             #else
                 std::this_thread::yield();
             #endif
-        #else
-            #if defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
-                clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
-            #elif defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
-                nanosleep(&sleepAmt, nullptr);
-            #elif defined(LS_ARCH_X86)
-                _mm_pause();
-            #else
-                std::this_thread::yield();
-            #endif
-        #endif
+        }
     }
+
+    mBinsUsed[mThreadId] = 0;
 }
 
 
@@ -606,7 +594,7 @@ inline void SR_VertexProcessor::push_bin(
 {
     const uint_fast32_t numVaryings = mShader->get_num_varyings();
     unsigned numVerts;
-    std::atomic_uint_fast64_t* const pLocks = mBinsUsed;
+    uint32_t* const pBinCount = mBinsUsed+mThreadId;
 
     const math::vec4& p0 = screenCoords[0];
     const math::vec4& p1 = screenCoords[1];
@@ -659,44 +647,29 @@ inline void SR_VertexProcessor::push_bin(
         return;
     }
 
-    SR_FragmentBin* const pFragBins = mFragBins;
+    SR_FragmentBin* const pFragBins = mFragBins + mThreadId * SR_SHADER_MAX_BINNED_PRIMS;
 
     // Check if the output bin is full
-    uint_fast64_t binId;
-
-    // Attempt to grab a bin index. Flush the bins if they've filled up.
-    while (true)
+    uint32_t binId = *pBinCount;
+    if (LS_UNLIKELY(binId >= SR_SHADER_MAX_BINNED_PRIMS))
     {
-        #if defined(LS_ARCH_X86)
-            _mm_lfence();
-        #endif
+        flush_bins();
+        binId = 0;
 
-        binId = pLocks->fetch_add(1, std::memory_order_acq_rel);
-
-        #if defined(LS_ARCH_X86)
-            _mm_sfence();
-        #endif
-
-        if (LS_UNLIKELY(binId >= SR_SHADER_MAX_BINNED_PRIMS))
-        {
-            flush_bins();
-            continue;
-        }
-
-        break;
+        LS_PREFETCH(pFragBins, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
     }
 
-    // place a triangle into the next available bin
-    mBinIds[binId] = (uint32_t)binId;
+    *pBinCount = binId+1;
 
-    // Copy all per-vertex coordinates and varyings to the fragment bins
-    // which will need the data for interpolation. The perspective-divide
-    // is only used for rendering triangles.
+    // place a triangle into the next available bin
     SR_FragmentBin& bin = pFragBins[binId];
     bin.mScreenCoords[0] = p0;
     bin.mScreenCoords[1] = p1;
     bin.mScreenCoords[2] = p2;
 
+    // Copy all per-vertex coordinates and varyings to the fragment bins
+    // which will need the data for interpolation. The perspective-divide
+    // is only used for rendering triangles.
     if (renderMode == SR_RenderMode::RENDER_MODE_TRIANGLES)
     {
         const float denom = 1.f / ((p0[0]-p2[0])*(p1[1]-p0[1]) - (p0[0]-p1[0])*(p2[1]-p0[1]));
@@ -709,6 +682,8 @@ inline void SR_VertexProcessor::push_bin(
             0.f
         );
     }
+
+    LS_PREFETCH(varyings, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
 
     while (numVerts--)
     {
@@ -1173,21 +1148,21 @@ void SR_VertexProcessor::execute() noexcept
         }
     }
 
+    if (mBinsUsed[mThreadId])
+    {
+        flush_bins();
+    }
+
     mBusyProcessors->fetch_sub(1, std::memory_order_acq_rel);
     while (mBusyProcessors->load(std::memory_order_consume))
     {
-        #if defined(LS_ARCH_X86)
-            _mm_pause();
-        #endif
-
         if (mFragProcessors->load(std::memory_order_consume))
         {
             flush_bins();
         }
-    }
 
-    if (mBinsUsed->load(std::memory_order_consume))
-    {
-        flush_bins();
+        #if defined(LS_ARCH_X86)
+            _mm_pause();
+        #endif
     }
 }

@@ -55,9 +55,7 @@ class SR_ProcessorPool
 
     std::atomic_uint_fast64_t mShadingSemaphore;
 
-    std::atomic_uint_fast64_t mBinsUsed;
-
-    ls::utils::Pointer<uint32_t[], ls::utils::AlignedDeleter> mBinIds;
+    ls::utils::Pointer<uint32_t[], ls::utils::AlignedDeleter> mBinsUsed;
 
     ls::utils::Pointer<SR_FragmentBin[], ls::utils::AlignedDeleter> mFragBins;
 
@@ -140,7 +138,10 @@ inline void SR_ProcessorPool::execute() noexcept
 -------------------------------------*/
 inline void SR_ProcessorPool::clear_fragment_bins() noexcept
 {
-    mBinsUsed.store(0);
+    for (uint16_t t = 0; t < mNumThreads; ++t)
+    {
+        mBinsUsed[t] = 0;
+    }
 }
 
 

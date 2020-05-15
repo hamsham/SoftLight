@@ -7,10 +7,6 @@
 /*-----------------------------------------------------------------------------
  * Vertex Processing Configuration
 -----------------------------------------------------------------------------*/
-#ifndef SR_TUNE_COMPLEX_GEOM
-    #define SR_TUNE_COMPLEX_GEOM 0
-#endif /* SR_TUNE_COMPLEX_GEOM */
-
 #ifndef SR_VERTEX_CACHING_ENABLED
     #define SR_VERTEX_CACHING_ENABLED 0
 

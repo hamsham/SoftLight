@@ -48,7 +48,7 @@ struct SR_VertexProcessor
 {
     // 32 bits
     uint16_t mThreadId;
-    int16_t mNumThreads;
+    uint16_t mNumThreads;
 
     // 64-128 bits
     std::atomic_int_fast64_t* mFragProcessors;
@@ -69,9 +69,9 @@ struct SR_VertexProcessor
     // 32-64 bits
     const SR_Mesh* mMeshes;
 
-    // 64-128 bits
-    std::atomic_uint_fast64_t* mBinsUsed;
-    uint32_t* mBinIds;
+    // 32-64 bits
+    uint32_t* mBinsUsed;
+    uint32_t mHaveHighPoly;
 
     // 96-192 bits
     SR_FragmentBin* mFragBins;

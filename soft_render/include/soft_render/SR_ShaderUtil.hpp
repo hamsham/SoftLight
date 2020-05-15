@@ -196,12 +196,14 @@ enum SR_ShaderLimits
 
     // Maximum number of fragments that get queued before being placed on a
     // framebuffer.
-    SR_SHADER_MAX_QUEUED_FRAGS    = 16384,
+    SR_SHADER_MAX_QUEUED_FRAGS    = 4096,
 
     // Maximum number of vertex groups which get binned before being sent to a
     // fragment processor. About 16 MB (when multiplied by
     // sizeof(SR_FragmentBin)).
-    SR_SHADER_MAX_BINNED_PRIMS    = 8192
+    SR_SHADER_MAX_BINNED_PRIMS    = 1024,
+
+    SR_SHADER_HIGH_POLY_LIMIT     = SR_SHADER_MAX_BINNED_PRIMS * SR_SHADER_MAX_SCREEN_COORDS
 };
 
 
@@ -220,20 +222,8 @@ struct alignas(sizeof(ls::math::vec4)) SR_FragmentBin
     // 4-byte floats * 4-element vector * 3-vectors-per-tri * 4 varyings-per-vertex = 192 bytes
     ls::math::vec4 mVaryings[SR_SHADER_MAX_SCREEN_COORDS * SR_SHADER_MAX_VARYING_VECTORS];
 
-    // 256 bytes = 2048 bits
+    // 288 bytes = 2304 bits
 };
-
-// Comparison operator for sorting blended fragments by depth
-inline LS_INLINE bool operator < (const SR_FragmentBin& a, const SR_FragmentBin& b) noexcept
-{
-    return *reinterpret_cast<const int32_t*>(a.mScreenCoords[0].v+3) < *reinterpret_cast<const int32_t*>(b.mScreenCoords[0].v+3);
-}
-
-// Comparison operator for sorting fragments by depth
-inline LS_INLINE bool operator > (const SR_FragmentBin& a, const SR_FragmentBin& b) noexcept
-{
-    return *reinterpret_cast<const int32_t*>(a.mScreenCoords[0].v+3) > *reinterpret_cast<const int32_t*>(b.mScreenCoords[0].v+3);
-}
 
 
 

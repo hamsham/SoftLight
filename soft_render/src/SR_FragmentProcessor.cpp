@@ -457,7 +457,7 @@ void SR_FragmentProcessor::render_line(
 --------------------------------------*/
 void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const noexcept
 {
-    const SR_FragmentBin* pBin;
+    const SR_FragmentBin* pBin         = mBins;
     SR_FragCoord*         outCoords    = mQueues;
     const int32_t         yOffset      = (uint32_t)mThreadId;
     const int32_t         increment    = (int32_t)mNumProcessors;
@@ -468,10 +468,8 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
     const float fboW = (float)mFbo->width()-1);
     #endif
 
-    for (uint64_t numBinsProcessed = 0; numBinsProcessed < mNumBins; ++numBinsProcessed)
+    for (uint64_t binId = 0; binId < mNumBins; ++binId, ++pBin)
     {
-        pBin = mBins+mBinIds[numBinsProcessed];
-
         uint_fast32_t     numQueuedFrags = 0;
         const math::vec4* pPoints        = pBin->mScreenCoords;
         const math::vec4* bcClipSpace    = pBin->mBarycentricCoords;
@@ -543,6 +541,8 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
                 {
                     numQueuedFrags = 0;
                     flush_fragments(pBin, SR_SHADER_MAX_QUEUED_FRAGS, outCoords);
+
+                    LS_PREFETCH(pBin+1, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
                 }
             }
         }
@@ -562,7 +562,7 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
 --------------------------------------*/
 void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const noexcept
 {
-    const SR_FragmentBin* pBin;
+    const SR_FragmentBin* pBin         = mBins;
     SR_FragCoord*         outCoords    = mQueues;
     const int32_t         yOffset      = (uint32_t)mThreadId;
     const int32_t         increment    = (int32_t)mNumProcessors;
@@ -573,21 +573,13 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
     const float fboW = (float)mFbo->width()-1);
     #endif
 
-    for (uint64_t numBinsProcessed = 0; numBinsProcessed < mNumBins; ++numBinsProcessed)
+    for (uint64_t binId = 0; binId < mNumBins; ++binId, ++pBin)
     {
-        pBin = mBins+mBinIds[numBinsProcessed];
-
         uint_fast32_t     numQueuedFrags = 0;
         const math::vec4* pPoints        = pBin->mScreenCoords;
         const math::vec4* bcClipSpace    = pBin->mBarycentricCoords;
         const math::vec4  depth          {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
         const math::vec4  homogenous     {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
-
-        #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
-            scanline.init(pPoints[0], pPoints[1], pPoints[2], fboW);
-        #else
-            scanline.init(pPoints[0], pPoints[1], pPoints[2]);
-        #endif
 
         #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
             int32_t bboxMinY = (int32_t)math::max(0.f,   math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]));
@@ -599,6 +591,12 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
 
         // Let each thread start rendering at whichever scanline it's assigned to
         bboxMinY += sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
+
+        #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
+            scanline.init(pPoints[0], pPoints[1], pPoints[2], fboW);
+        #else
+            scanline.init(pPoints[0], pPoints[1], pPoints[2]);
+        #endif
 
         for (int32_t y = bboxMinY; y < bboxMaxY; y += increment)
         {
@@ -648,6 +646,8 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
                 {
                     numQueuedFrags = 0;
                     flush_fragments(pBin, SR_SHADER_MAX_QUEUED_FRAGS, outCoords);
+
+                    LS_PREFETCH(pBin+1, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
                 }
             }
         }
@@ -769,9 +769,9 @@ void SR_FragmentProcessor::execute() noexcept
             const int32_t h = mFbo->height();
             const math::vec4_t<int32_t> dimens = sr_subdivide_region<int32_t>(w, h, mNumProcessors, mThreadId);
 
-            for (uint64_t numBinsProcessed = 0; numBinsProcessed < mNumBins; ++numBinsProcessed)
+            for (uint64_t binId = 0; binId < mNumBins; ++binId)
             {
-                render_point(mBinIds[numBinsProcessed], mFbo, dimens);
+                render_point(binId, mFbo, dimens);
             }
             break;
         }
@@ -785,9 +785,9 @@ void SR_FragmentProcessor::execute() noexcept
             const int32_t h = mFbo->height();
             const math::vec4_t<int32_t> dimens = sr_subdivide_region<int32_t>(w, h, mNumProcessors, mThreadId);
 
-            for (uint64_t numBinsProcessed = 0; numBinsProcessed < mNumBins; ++numBinsProcessed)
+            for (uint64_t binId = 0; binId < mNumBins; ++binId)
             {
-                render_line(mBinIds[numBinsProcessed], mFbo, dimens);
+                render_line(binId, mFbo, dimens);
             }
             break;
         }

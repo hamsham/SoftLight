@@ -69,8 +69,7 @@ SR_ProcessorPool::~SR_ProcessorPool() noexcept
 SR_ProcessorPool::SR_ProcessorPool(unsigned numThreads) noexcept :
     mFragSemaphore{0},
     mShadingSemaphore{0},
-    mBinsUsed{0},
-    mBinIds{nullptr},
+    mBinsUsed{nullptr},
     mFragBins{nullptr},
     mVaryings{nullptr},
     mFragQueues{nullptr},
@@ -135,10 +134,7 @@ SR_ProcessorPool& SR_ProcessorPool::operator=(SR_ProcessorPool&& p) noexcept
     mShadingSemaphore.store(p.mShadingSemaphore.load());
     p.mShadingSemaphore.store(0);
 
-    mBinsUsed.store(0, std::memory_order_relaxed);
-    p.mBinsUsed.store(0);
-
-    mBinIds = std::move(p.mBinIds);
+    mBinsUsed = std::move(p.mBinsUsed);
     mFragBins = std::move(p.mFragBins);
     mVaryings = std::move(p.mVaryings);
     mFragQueues = std::move(p.mFragQueues);
@@ -214,9 +210,8 @@ unsigned SR_ProcessorPool::num_threads(unsigned inNumThreads) noexcept
         inNumThreads = 1;
     }
 
-    mBinsUsed.store(0, std::memory_order_relaxed);
-    mBinIds.reset(_aligned_alloc<uint32_t>(SR_SHADER_MAX_BINNED_PRIMS));
-    mFragBins.reset(_aligned_alloc<SR_FragmentBin>(SR_SHADER_MAX_BINNED_PRIMS));
+    mBinsUsed.reset(_aligned_alloc<uint32_t>(inNumThreads));
+    mFragBins.reset(_aligned_alloc<SR_FragmentBin>(inNumThreads * SR_SHADER_MAX_BINNED_PRIMS));
     mVaryings.reset(_aligned_alloc<ls::math::vec4>(inNumThreads * SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_QUEUED_FRAGS));
     mFragQueues.reset(_aligned_alloc<SR_FragCoord>(inNumThreads));
     mThreads.reset(_aligned_alloc<SR_ProcessorPool::Worker*>(inNumThreads));
@@ -258,7 +253,8 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh&
     // Reserve enough space for each thread to contain all triangles
     mFragSemaphore.store(0, std::memory_order_relaxed);
     mShadingSemaphore.store(mNumThreads, std::memory_order_relaxed);
-    mBinsUsed.store(0, std::memory_order_relaxed);
+
+    clear_fragment_bins();
 
     SR_ShaderProcessor task;
     task.mType = SR_VERTEX_SHADER;
@@ -275,8 +271,8 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh&
     vertTask.mNumMeshes      = 1;
     vertTask.mNumInstances   = numInstances;
     vertTask.mMeshes         = &m;
-    vertTask.mBinsUsed       = &mBinsUsed;
-    vertTask.mBinIds         = mBinIds.get();
+    vertTask.mBinsUsed       = mBinsUsed;
+    vertTask.mHaveHighPoly   = (uint32_t)((m.elementEnd - m.elementBegin) > SR_SHADER_HIGH_POLY_LIMIT);
     vertTask.mFragBins       = mFragBins.get();
     vertTask.mVaryings       = mVaryings.get();
     vertTask.mFragQueues     = mFragQueues.get();
@@ -312,7 +308,8 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh*
     // Reserve enough space for each thread to contain all triangles
     mFragSemaphore.store(0, std::memory_order_relaxed);
     mShadingSemaphore.store(mNumThreads, std::memory_order_relaxed);
-    mBinsUsed.store(0, std::memory_order_relaxed);
+
+    clear_fragment_bins();
 
     SR_ShaderProcessor task;
     task.mType = SR_VERTEX_SHADER;
@@ -329,8 +326,8 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh*
     vertTask.mNumMeshes      = numMeshes;
     vertTask.mNumInstances   = 1;
     vertTask.mMeshes         = meshes;
-    vertTask.mBinsUsed       = &mBinsUsed;
-    vertTask.mBinIds         = mBinIds.get();
+    vertTask.mHaveHighPoly   = 1u;
+    vertTask.mBinsUsed       = mBinsUsed;
     vertTask.mFragBins       = mFragBins.get();
     vertTask.mVaryings       = mVaryings.get();
     vertTask.mFragQueues     = mFragQueues.get();
