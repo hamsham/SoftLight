@@ -580,30 +580,33 @@ void SR_BlitProcessor::blit_src_rgba() noexcept
 
 
 
-extern template void SR_BlitProcessor::blit_src_r<uint8_t>();
-extern template void SR_BlitProcessor::blit_src_r<uint16_t>();
-extern template void SR_BlitProcessor::blit_src_r<uint32_t>();
-extern template void SR_BlitProcessor::blit_src_r<uint64_t>();
-extern template void SR_BlitProcessor::blit_src_r<float>();
-extern template void SR_BlitProcessor::blit_src_r<double>();
-extern template void SR_BlitProcessor::blit_src_rg<uint8_t>();
-extern template void SR_BlitProcessor::blit_src_rg<uint16_t>();
-extern template void SR_BlitProcessor::blit_src_rg<uint32_t>();
-extern template void SR_BlitProcessor::blit_src_rg<uint64_t>();
-extern template void SR_BlitProcessor::blit_src_rg<float>();
-extern template void SR_BlitProcessor::blit_src_rg<double>();
-extern template void SR_BlitProcessor::blit_src_rgb<uint8_t>();
-extern template void SR_BlitProcessor::blit_src_rgb<uint16_t>();
-extern template void SR_BlitProcessor::blit_src_rgb<uint32_t>();
-extern template void SR_BlitProcessor::blit_src_rgb<uint64_t>();
-extern template void SR_BlitProcessor::blit_src_rgb<float>();
-extern template void SR_BlitProcessor::blit_src_rgb<double>();
-extern template void SR_BlitProcessor::blit_src_rgba<uint8_t>();
-extern template void SR_BlitProcessor::blit_src_rgba<uint16_t>();
-extern template void SR_BlitProcessor::blit_src_rgba<uint32_t>();
-extern template void SR_BlitProcessor::blit_src_rgba<uint64_t>();
-extern template void SR_BlitProcessor::blit_src_rgba<float>();
-extern template void SR_BlitProcessor::blit_src_rgba<double>();
+// MSVC crashes when generating all blit permutations.
+#if !defined(LS_COMPILER_MSC)
+    extern template void SR_BlitProcessor::blit_src_r<uint8_t>();
+    extern template void SR_BlitProcessor::blit_src_r<uint16_t>();
+    extern template void SR_BlitProcessor::blit_src_r<uint32_t>();
+    extern template void SR_BlitProcessor::blit_src_r<uint64_t>();
+    extern template void SR_BlitProcessor::blit_src_r<float>();
+    extern template void SR_BlitProcessor::blit_src_r<double>();
+    extern template void SR_BlitProcessor::blit_src_rg<uint8_t>();
+    extern template void SR_BlitProcessor::blit_src_rg<uint16_t>();
+    extern template void SR_BlitProcessor::blit_src_rg<uint32_t>();
+    extern template void SR_BlitProcessor::blit_src_rg<uint64_t>();
+    extern template void SR_BlitProcessor::blit_src_rg<float>();
+    extern template void SR_BlitProcessor::blit_src_rg<double>();
+    extern template void SR_BlitProcessor::blit_src_rgb<uint8_t>();
+    extern template void SR_BlitProcessor::blit_src_rgb<uint16_t>();
+    extern template void SR_BlitProcessor::blit_src_rgb<uint32_t>();
+    extern template void SR_BlitProcessor::blit_src_rgb<uint64_t>();
+    extern template void SR_BlitProcessor::blit_src_rgb<float>();
+    extern template void SR_BlitProcessor::blit_src_rgb<double>();
+    extern template void SR_BlitProcessor::blit_src_rgba<uint8_t>();
+    extern template void SR_BlitProcessor::blit_src_rgba<uint16_t>();
+    extern template void SR_BlitProcessor::blit_src_rgba<uint32_t>();
+    extern template void SR_BlitProcessor::blit_src_rgba<uint64_t>();
+    extern template void SR_BlitProcessor::blit_src_rgba<float>();
+    extern template void SR_BlitProcessor::blit_src_rgba<double>();
+#endif
 
 
 
