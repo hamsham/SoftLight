@@ -584,7 +584,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
 /*--------------------------------------
  * Publish a vertex to a fragment thread
 --------------------------------------*/
-template <int renderMode>
+template <int renderMode, int vertCount>
 inline void SR_VertexProcessor::push_bin(
     float fboW,
     float fboH,
@@ -593,7 +593,6 @@ inline void SR_VertexProcessor::push_bin(
 ) const noexcept
 {
     const uint_fast32_t numVaryings = mShader->get_num_varyings();
-    unsigned numVerts;
     uint32_t* const pBinCount = mBinsUsed+mThreadId;
 
     const math::vec4& p0 = screenCoords[0];
@@ -611,7 +610,6 @@ inline void SR_VertexProcessor::push_bin(
     switch (renderMode)
     {
         case RENDER_MODE_POINTS:
-            numVerts = 1;
             bboxMinX = p0[0];
             bboxMaxX = p0[0];
             bboxMinY = p0[1];
@@ -620,7 +618,6 @@ inline void SR_VertexProcessor::push_bin(
 
         case RENDER_MODE_LINES:
             // establish a bounding box to detect overlap with a thread's tiles
-            numVerts = 2;
             bboxMinX = math::min(p0[0], p1[0]);
             bboxMinY = math::min(p0[1], p1[1]);
             bboxMaxX = math::max(p0[0], p1[0]);
@@ -629,7 +626,6 @@ inline void SR_VertexProcessor::push_bin(
 
         case RENDER_MODE_TRIANGLES:
             // establish a bounding box to detect overlap with a thread's tiles
-            numVerts = 3;
             bboxMinX = math::min(p0[0], p1[0], p2[0]);
             bboxMinY = math::min(p0[1], p1[1], p2[1]);
             bboxMaxX = math::max(p0[0], p1[0], p2[0]);
@@ -685,7 +681,7 @@ inline void SR_VertexProcessor::push_bin(
 
     LS_PREFETCH(varyings, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
 
-    while (numVerts--)
+    for (int numVerts = vertCount; numVerts--;)
     {
         const unsigned offset = numVerts * SR_SHADER_MAX_VARYING_VECTORS;
         const math::vec4* pInVar = varyings+offset;
@@ -700,9 +696,9 @@ inline void SR_VertexProcessor::push_bin(
 
 
 
-template void SR_VertexProcessor::push_bin<SR_RenderMode::RENDER_MODE_POINTS>(float, float, math::vec4* const, const math::vec4*) const noexcept;
-template void SR_VertexProcessor::push_bin<SR_RenderMode::RENDER_MODE_LINES>(float, float, math::vec4* const, const math::vec4*) const noexcept;
-template void SR_VertexProcessor::push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES>(float, float, math::vec4* const, const math::vec4*) const noexcept;
+template void SR_VertexProcessor::push_bin<SR_RenderMode::RENDER_MODE_POINTS, 1>(float, float, math::vec4* const, const math::vec4*) const noexcept;
+template void SR_VertexProcessor::push_bin<SR_RenderMode::RENDER_MODE_LINES, 2>(float, float, math::vec4* const, const math::vec4*) const noexcept;
+template void SR_VertexProcessor::push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES, 3>(float, float, math::vec4* const, const math::vec4*) const noexcept;
 
 
 
@@ -858,7 +854,7 @@ void SR_VertexProcessor::clip_and_process_tris(
         _copy_verts(numVarys, newVarys+(j*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(1*SR_SHADER_MAX_VARYING_VECTORS));
         _copy_verts(numVarys, newVarys+(k*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(2*SR_SHADER_MAX_VARYING_VECTORS));
 
-        push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES>(fboW, fboH, tempVerts, tempVarys);
+        push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES, 3>(fboW, fboH, tempVerts, tempVarys);
     }
 }
 
@@ -913,7 +909,7 @@ void SR_VertexProcessor::process_points(const SR_Mesh& m, size_t instanceId) noe
         if (vertCoords[0][3] > 0.f)
         {
             sr_world_to_screen_coords(vertCoords[0], widthScale, heightScale);
-            push_bin<SR_RenderMode::RENDER_MODE_POINTS>(fboW, fboH, vertCoords, pVaryings);
+            push_bin<SR_RenderMode::RENDER_MODE_POINTS, 1>(fboW, fboH, vertCoords, pVaryings);
         }
     }
 }
@@ -983,7 +979,7 @@ void SR_VertexProcessor::process_lines(const SR_Mesh& m, size_t instanceId) noex
             sr_world_to_screen_coords(vertCoords[0], widthScale, heightScale);
             sr_world_to_screen_coords(vertCoords[1], widthScale, heightScale);
 
-            push_bin<SR_RenderMode::RENDER_MODE_LINES>(fboW, fboH, vertCoords, pVaryings);
+            push_bin<SR_RenderMode::RENDER_MODE_LINES, 2>(fboW, fboH, vertCoords, pVaryings);
         }
     }
 }
@@ -1038,15 +1034,15 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
             ptvCache.query_and_update(vertId[1], vertCoords[1], pVaryings + SR_SHADER_MAX_VARYING_VECTORS, numVaryings);
             ptvCache.query_and_update(vertId[2], vertCoords[2], pVaryings + SR_SHADER_MAX_VARYING_VECTORS * 2, numVaryings);
         #else
-            params.vertId    = vertId[0];
+            params.vertId    = vertId.v[0];
             params.pVaryings = pVaryings;
             vertCoords[0]    = shader(params);
 
-            params.vertId    = vertId[1];
+            params.vertId    = vertId.v[1];
             params.pVaryings = pVaryings + SR_SHADER_MAX_VARYING_VECTORS;
             vertCoords[1]    = shader(params);
 
-            params.vertId    = vertId[2];
+            params.vertId    = vertId.v[2];
             params.pVaryings = pVaryings + SR_SHADER_MAX_VARYING_VECTORS * 2;
             vertCoords[2]    = shader(params);
         #endif
@@ -1076,13 +1072,13 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
         #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
             sr_perspective_divide3(vertCoords);
             sr_world_to_screen_coords_divided3(vertCoords, widthScale, heightScale);
-            push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES>(fboW, fboH, vertCoords, pVaryings);
+            push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES, 3>(fboW, fboH, vertCoords, pVaryings);
         #else
             if (visStatus == SR_TRIANGLE_FULLY_VISIBLE)
             {
                 sr_perspective_divide3(vertCoords);
                 sr_world_to_screen_coords_divided3(vertCoords, widthScale, heightScale);
-                push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES>(fboW, fboH, vertCoords, pVaryings);
+                push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES, 3>(fboW, fboH, vertCoords, pVaryings);
             }
             else
             {

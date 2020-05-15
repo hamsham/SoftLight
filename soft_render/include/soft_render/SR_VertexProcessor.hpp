@@ -84,7 +84,7 @@ struct SR_VertexProcessor
 
     void flush_bins() const noexcept;
 
-    template <int renderMode>
+    template <int renderMode, int vertCount>
     void push_bin(
         float fboW,
         float fboH,
@@ -109,13 +109,13 @@ struct SR_VertexProcessor
 
 
 extern template
-void SR_VertexProcessor::push_bin<RENDER_MODE_POINTS>(float, float, ls::math::vec4_t<float>* const, const ls::math::vec4_t<float>*) const noexcept;
+void SR_VertexProcessor::push_bin<RENDER_MODE_POINTS, 1>(float, float, ls::math::vec4_t<float>* const, const ls::math::vec4_t<float>*) const noexcept;
 
 extern template
-void SR_VertexProcessor::push_bin<RENDER_MODE_LINES>(float, float, ls::math::vec4_t<float>* const, const ls::math::vec4_t<float>*) const noexcept;
+void SR_VertexProcessor::push_bin<RENDER_MODE_LINES, 2>(float, float, ls::math::vec4_t<float>* const, const ls::math::vec4_t<float>*) const noexcept;
 
 extern template
-void SR_VertexProcessor::push_bin<RENDER_MODE_TRIANGLES>(float, float, ls::math::vec4_t<float>* const, const ls::math::vec4_t<float>*) const noexcept;
+void SR_VertexProcessor::push_bin<RENDER_MODE_TRIANGLES, 3>(float, float, ls::math::vec4_t<float>* const, const ls::math::vec4_t<float>*) const noexcept;
 
 
 

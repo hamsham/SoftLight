@@ -157,8 +157,9 @@ struct alignas(sizeof(float)*4) SR_ScanlineBounds
             const __m128  b          = _mm_andnot_ps(secondHalf, _mm_set_ss(p10xy * d0 + v0[0]));
             const __m128i hi         = _mm_cvtps_epi32(_mm_or_ps(a, b));
             const __m128i m          = _mm_cmplt_epi32(hi, lo);
+            const __m128i bxMax      = _mm_set1_epi32(bboxMaxX);
 
-            xMin = _mm_cvtsi128_si32(_mm_or_si128(_mm_and_si128(m, hi), _mm_andnot_si128(m, lo)));
+            xMin = _mm_cvtsi128_si32(_mm_min_epi32(bxMax, _mm_max_epi32(_mm_setzero_si128(), _mm_or_si128(_mm_and_si128(m, hi), _mm_andnot_si128(m, lo)))));
             xMax = _mm_cvtsi128_si32(_mm_or_si128(_mm_and_si128(m, lo), _mm_andnot_si128(m, hi)));
         #else
             const float lo         = ls::math::fmadd(p20x, alpha, v0[0]);
@@ -170,9 +171,8 @@ struct alignas(sizeof(float)*4) SR_ScanlineBounds
             xMin = (int32_t)lo;
             xMax = (int32_t)hi;
             sr_sort_minmax(xMin, xMax);
+            xMin = ls::math::clamp(xMin, 0, bboxMaxX);
         #endif
-
-        xMin = ls::math::clamp<int32_t>(xMin, 0, bboxMaxX);
 
         #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
             xMax = ls::math::clamp(xMax, 0, bboxMaxX);
