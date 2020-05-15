@@ -39,6 +39,10 @@
     #define IMAGE_HEIGHT 600
 #endif /* IMAGE_HEIGHT */
 
+#ifndef SR_TEST_MAX_THREADS
+    #define SR_TEST_MAX_THREADS (ls::math::max<unsigned>(std::thread::hardware_concurrency(), 3u) - 2u)
+#endif /* SR_TEST_MAX_THREADS */
+
 //#include "test_common.hpp"
 namespace math = ls::math;
 namespace utils = ls::utils;
@@ -488,7 +492,7 @@ utils::Pointer<SR_SceneGraph> init_volume_context()
     size_t                        texId   = context.create_texture();
     size_t                        depthId = context.create_texture();
 
-    context.num_threads(std::thread::hardware_concurrency());
+    context.num_threads(SR_TEST_MAX_THREADS);
 
     SR_Texture& tex = context.texture(texId);
     retCode = tex.init(SR_ColorDataType::SR_COLOR_RGBA_FLOAT, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
