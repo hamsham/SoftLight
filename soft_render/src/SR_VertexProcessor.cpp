@@ -7,6 +7,10 @@
     #include <time.h> // nanosleep, time_spec
 #endif
 
+#if defined(LS_ARCH_AARCH64)
+    #include <arm_acle.h>
+#endif
+
 #include "lightsky/utils/Assertions.h" // LS_DEBUG_ASSERT
 #include "lightsky/utils/Sort.hpp" // utils::sort_quick
 
@@ -526,6 +530,8 @@ void SR_VertexProcessor::flush_bins() const noexcept
             // Wait until the bins are sorted
             #if defined(LS_ARCH_X86)
                 _mm_pause();
+            #elif defined(LS_ARCH_AARCH64)
+                __yield();
             #elif defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
                 clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
             #elif defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
@@ -566,6 +572,8 @@ void SR_VertexProcessor::flush_bins() const noexcept
         {
             #if defined(LS_ARCH_X86)
                 _mm_pause();
+            #elif defined(LS_ARCH_AARCH64)
+                __yield();
             #elif defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
                 clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
             #elif defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
@@ -1159,6 +1167,8 @@ void SR_VertexProcessor::execute() noexcept
 
         #if defined(LS_ARCH_X86)
             _mm_pause();
+        #elif defined(LS_ARCH_AARCH64)
+            __yield();
         #endif
     }
 }
