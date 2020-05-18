@@ -563,7 +563,6 @@ void SR_VertexProcessor::flush_bins() const noexcept
     if (-2 == mFragProcessors->fetch_add(1, std::memory_order_acq_rel))
     {
         mFragProcessors->store(0, std::memory_order_release);
-        return;
     }
     else
     {
