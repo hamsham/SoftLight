@@ -67,7 +67,6 @@ SR_ProcessorPool::~SR_ProcessorPool() noexcept
  * Constructor
 --------------------------------------*/
 SR_ProcessorPool::SR_ProcessorPool(unsigned numThreads) noexcept :
-    mProcessCond{new std::condition_variable{}},
     mFragSemaphore{0},
     mShadingSemaphore{0},
     mBinsReady{nullptr},
@@ -148,8 +147,6 @@ SR_ProcessorPool& SR_ProcessorPool::operator=(SR_ProcessorPool&& p) noexcept
         mThreads[i] = nullptr;
     }
 
-    mProcessCond = std::move(p.mProcessCond);
-
     mThreads = std::move(p.mThreads);
 
     mNumThreads = p.mNumThreads;
@@ -229,7 +226,7 @@ unsigned SR_ProcessorPool::num_threads(unsigned inNumThreads) noexcept
         }
         else
         {
-            mThreads[i] = new SR_ProcessorPool::ThreadedWorker{*mProcessCond};
+            mThreads[i] = new SR_ProcessorPool::ThreadedWorker{};
         }
     }
 
