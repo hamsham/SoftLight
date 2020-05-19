@@ -3,6 +3,7 @@
 #define SR_PROCESSORPOOL_HPP
 
 #include <atomic>
+#include <condition_variable>
 
 #include "lightsky/utils/Pointer.h" // Pointer, AlignedPointerDeleter
 
@@ -19,7 +20,7 @@ template <class T>
 class Worker;
 
 template <class T>
-class WorkerThread;
+class WorkerThreadShared;
 } // utils namespace
 
 namespace math
@@ -48,9 +49,11 @@ class SR_ProcessorPool
 {
   public:
     typedef ls::utils::Worker<SR_ShaderProcessor> Worker;
-    typedef ls::utils::WorkerThread<SR_ShaderProcessor> ThreadedWorker;
+    typedef ls::utils::WorkerThreadShared<SR_ShaderProcessor> ThreadedWorker;
 
   private:
+    ls::utils::Pointer<std::condition_variable> mProcessCond;
+
     std::atomic_uint_fast64_t mFragSemaphore;
 
     std::atomic_uint_fast64_t mShadingSemaphore;
