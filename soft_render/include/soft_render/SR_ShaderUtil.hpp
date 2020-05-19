@@ -202,8 +202,6 @@ enum SR_ShaderLimits
     // fragment processor. About 16 MB (when multiplied by
     // sizeof(SR_FragmentBin)).
     SR_SHADER_MAX_BINNED_PRIMS    = 1024,
-
-    SR_SHADER_HIGH_POLY_LIMIT     = SR_SHADER_MAX_BINNED_PRIMS * SR_SHADER_MAX_SCREEN_COORDS
 };
 
 

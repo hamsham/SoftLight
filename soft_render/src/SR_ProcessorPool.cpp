@@ -69,6 +69,7 @@ SR_ProcessorPool::~SR_ProcessorPool() noexcept
 SR_ProcessorPool::SR_ProcessorPool(unsigned numThreads) noexcept :
     mFragSemaphore{0},
     mShadingSemaphore{0},
+    mBinsReady{nullptr},
     mBinsUsed{nullptr},
     mFragBins{nullptr},
     mVaryings{nullptr},
@@ -134,6 +135,7 @@ SR_ProcessorPool& SR_ProcessorPool::operator=(SR_ProcessorPool&& p) noexcept
     mShadingSemaphore.store(p.mShadingSemaphore.load());
     p.mShadingSemaphore.store(0);
 
+    mBinsReady = std::move(p.mBinsReady);
     mBinsUsed = std::move(p.mBinsUsed);
     mFragBins = std::move(p.mFragBins);
     mVaryings = std::move(p.mVaryings);
@@ -160,14 +162,10 @@ SR_ProcessorPool& SR_ProcessorPool::operator=(SR_ProcessorPool&& p) noexcept
 -------------------------------------*/
 void SR_ProcessorPool::flush() noexcept
 {
-    for (unsigned threadId = 0; threadId < mNumThreads; ++threadId)
+    for (unsigned threadId = 0; threadId < mNumThreads-1; ++threadId)
     {
         SR_ProcessorPool::Worker* const pWorker = mThreads[threadId];
-
-        if (pWorker->have_pending())
-        {
-            pWorker->flush();
-        }
+        pWorker->flush();
     }
 }
 
@@ -210,6 +208,7 @@ unsigned SR_ProcessorPool::num_threads(unsigned inNumThreads) noexcept
         inNumThreads = 1;
     }
 
+    mBinsReady.reset(_aligned_alloc<std::atomic_int_fast32_t>(inNumThreads));
     mBinsUsed.reset(_aligned_alloc<uint32_t>(inNumThreads));
     mFragBins.reset(_aligned_alloc<SR_FragmentBin>(inNumThreads * SR_SHADER_MAX_BINNED_PRIMS));
     mVaryings.reset(_aligned_alloc<ls::math::vec4>(inNumThreads * SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_QUEUED_FRAGS));
@@ -271,8 +270,8 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh&
     vertTask.mNumMeshes      = 1;
     vertTask.mNumInstances   = numInstances;
     vertTask.mMeshes         = &m;
+    vertTask.mBinsReady      = mBinsReady;
     vertTask.mBinsUsed       = mBinsUsed;
-    vertTask.mHaveHighPoly   = (uint32_t)((m.elementEnd - m.elementBegin) > SR_SHADER_HIGH_POLY_LIMIT);
     vertTask.mFragBins       = mFragBins.get();
     vertTask.mVaryings       = mVaryings.get();
     vertTask.mFragQueues     = mFragQueues.get();
@@ -291,7 +290,7 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh&
     }
 
     flush();
-    vertTask.mThreadId = mNumThreads-1;
+    vertTask.mThreadId = (uint16_t)(mNumThreads-1u);
     vertTask.execute();
 
     // Each thread should now pause except for the main thread.
@@ -326,7 +325,7 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh*
     vertTask.mNumMeshes      = numMeshes;
     vertTask.mNumInstances   = 1;
     vertTask.mMeshes         = meshes;
-    vertTask.mHaveHighPoly   = 1u;
+    vertTask.mBinsReady      = mBinsReady;
     vertTask.mBinsUsed       = mBinsUsed;
     vertTask.mFragBins       = mFragBins.get();
     vertTask.mVaryings       = mVaryings.get();
@@ -346,7 +345,7 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh*
     }
 
     flush();
-    vertTask.mThreadId = mNumThreads-1;
+    vertTask.mThreadId = (uint16_t)(mNumThreads-1u);
     vertTask.execute();
 
     // Each thread should now pause except for the main thread.
@@ -397,7 +396,7 @@ void SR_ProcessorPool::run_blit_processors(
     }
 
     flush();
-    blitter.mThreadId = mNumThreads-1;
+    blitter.mThreadId = (uint16_t)(mNumThreads-1u);
     blitter.execute();
 
     // Each thread should now pause except for the main thread.

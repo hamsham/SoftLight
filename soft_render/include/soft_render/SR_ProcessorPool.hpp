@@ -51,9 +51,11 @@ class SR_ProcessorPool
     typedef ls::utils::WorkerThread<SR_ShaderProcessor> ThreadedWorker;
 
   private:
-    std::atomic_int_fast64_t mFragSemaphore;
+    std::atomic_uint_fast64_t mFragSemaphore;
 
     std::atomic_uint_fast64_t mShadingSemaphore;
+
+    ls::utils::Pointer<std::atomic_int_fast32_t[], ls::utils::AlignedDeleter> mBinsReady;
 
     ls::utils::Pointer<uint32_t[], ls::utils::AlignedDeleter> mBinsUsed;
 
@@ -140,6 +142,7 @@ inline void SR_ProcessorPool::clear_fragment_bins() noexcept
 {
     for (uint16_t t = 0; t < mNumThreads; ++t)
     {
+        mBinsReady[t].store(-1, std::memory_order_release);
         mBinsUsed[t] = 0;
     }
 }

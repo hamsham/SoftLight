@@ -485,8 +485,12 @@ inline LS_INLINE SR_ClipStatus face_visible(const math::vec4 clipCoords[SR_SHADE
 -------------------------------------*/
 void SR_VertexProcessor::flush_bins() const noexcept
 {
+    // Allow the other threads to know this thread is ready for processing
+    const uint_fast64_t tileId = mFragProcessors->fetch_add(1ull, std::memory_order_acq_rel);
+    mBinsReady[tileId].store((int32_t)mThreadId, std::memory_order_release);
+
     SR_FragmentProcessor fragTask{
-        (uint16_t)mThreadId,
+        mThreadId,
         mRenderMode,
         (uint32_t)mNumThreads,
         mBinsUsed[mThreadId],
@@ -497,37 +501,28 @@ void SR_VertexProcessor::flush_bins() const noexcept
         mFragQueues + mThreadId
     };
 
-    if (mHaveHighPoly && mBinsUsed[mThreadId])
+    // Execute the fragment processor if possible
+    if (mBinsUsed[mThreadId])
     {
         fragTask.execute();
     }
 
-    // Sync Point 1 indicates that all triangles have been sorted.
-    // Since we only have two sync points for the bins to process, a negative
-    // value for mFragProcessors will indicate all threads are ready to process
-    // fragments. A zero-value for mFragProcessors indicates we can continue
-    // processing vertices.
-    const int_fast64_t syncPoint1 = -(int_fast64_t)mNumThreads-1;
-    int_fast64_t       tileId     = mFragProcessors->fetch_add(1, std::memory_order_acq_rel);
-
-    #if defined(LS_OS_UNIX)
+    #if defined(LS_OS_UNIX) && !(defined(LS_ARCH_X86) || defined(LS_ARCH_AARCH64))
         struct timespec sleepAmt;
         sleepAmt.tv_sec = 0;
         sleepAmt.tv_nsec = 1;
-        (void)sleepAmt;
     #endif
 
-    // first sync
-    if (tileId == mNumThreads-1u)
+    for (uint32_t t = 0; t < (uint32_t)mNumThreads; ++t)
     {
-        // Let all threads know they can process fragments.
-        mFragProcessors->store(syncPoint1, std::memory_order_release);
-    }
-    else
-    {
-        while (LS_LIKELY(mFragProcessors->load(std::memory_order_consume) > 0))
+        if (mBinsReady[t].load(std::memory_order_consume) == (int32_t)mThreadId)
         {
-            // Wait until the bins are sorted
+            continue;
+        }
+
+        // wait for the next available set of bins
+        while (mBinsReady[t].load(std::memory_order_consume) < 0)
+        {
             #if defined(LS_ARCH_X86)
                 _mm_pause();
             #elif defined(LS_ARCH_AARCH64)
@@ -540,34 +535,35 @@ void SR_VertexProcessor::flush_bins() const noexcept
                 std::this_thread::yield();
             #endif
         }
-    }
 
-    for (uint32_t t = 0; t < (uint32_t)mNumThreads; ++t)
-    {
-        if (mHaveHighPoly && t == mThreadId)
+        uint32_t currentThread = (uint32_t)mBinsReady[t].load(std::memory_order_consume);
+        uint32_t binsUsed = mBinsUsed[currentThread];
+        if (!binsUsed)
         {
             continue;
         }
 
-        if (!mBinsUsed[t])
-        {
-            continue;
-        }
-
-        fragTask.mNumBins = mBinsUsed[t];
-        fragTask.mBins = mFragBins + t * SR_SHADER_MAX_BINNED_PRIMS;
+        fragTask.mNumBins = binsUsed;
+        fragTask.mBins = mFragBins + currentThread * SR_SHADER_MAX_BINNED_PRIMS;
         fragTask.execute();
     }
 
     // Indicate to all threads we can now process more vertices
-    if (-2 == mFragProcessors->fetch_add(1, std::memory_order_acq_rel))
+    const uint_fast64_t syncPoint = (uint_fast64_t)mNumThreads * 2ull - 1ull;
+    if (syncPoint == mFragProcessors->fetch_add(1, std::memory_order_acq_rel))
     {
-        mFragProcessors->store(0, std::memory_order_release);
+        for (uint32_t t = 0; t < (uint32_t)mNumThreads; ++t)
+        {
+            mBinsReady[t].store(-1, std::memory_order_release);
+            mBinsUsed[t] = 0;
+        }
+
+        mFragProcessors->store(0ull, std::memory_order_release);
     }
     else
     {
         // Wait for the last thread to reset the number of available bins.
-        while (LS_LIKELY(mFragProcessors->load(std::memory_order_consume) < 0))
+        while (LS_LIKELY(mFragProcessors->load(std::memory_order_consume) >= (uint_fast64_t)mNumThreads))
         {
             #if defined(LS_ARCH_X86)
                 _mm_pause();
@@ -582,8 +578,6 @@ void SR_VertexProcessor::flush_bins() const noexcept
             #endif
         }
     }
-
-    mBinsUsed[mThreadId] = 0;
 }
 
 
