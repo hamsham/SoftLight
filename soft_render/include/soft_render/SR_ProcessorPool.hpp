@@ -47,7 +47,6 @@ class SR_Texture;
 class SR_ProcessorPool
 {
   public:
-    typedef ls::utils::Worker<SR_ShaderProcessor> Worker;
     typedef ls::utils::WorkerThread<SR_ShaderProcessor> ThreadedWorker;
 
   private:
@@ -65,7 +64,7 @@ class SR_ProcessorPool
 
     ls::utils::Pointer<SR_FragCoord[], ls::utils::AlignedDeleter> mFragQueues;
 
-    ls::utils::Pointer<Worker*[], ls::utils::AlignedDeleter> mThreads;
+    ls::utils::Pointer<ThreadedWorker[], ls::utils::AlignedDeleter> mWorkers;
 
     unsigned mNumThreads;
 
@@ -82,9 +81,9 @@ class SR_ProcessorPool
 
     SR_ProcessorPool& operator=(SR_ProcessorPool&&) noexcept;
 
-    unsigned num_threads() const noexcept;
+    unsigned concurrency() const noexcept;
 
-    unsigned num_threads(unsigned n) noexcept;
+    unsigned concurrency(unsigned n) noexcept;
 
     void flush() noexcept;
 
@@ -117,7 +116,7 @@ class SR_ProcessorPool
 /*--------------------------------------
  * Retrieve the number of threads
 --------------------------------------*/
-inline unsigned SR_ProcessorPool::num_threads() const noexcept
+inline unsigned SR_ProcessorPool::concurrency() const noexcept
 {
     return mNumThreads;
 }

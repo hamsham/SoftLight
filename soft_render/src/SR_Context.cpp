@@ -787,7 +787,7 @@ void SR_Context::blit(
 --------------------------------------*/
 unsigned SR_Context::num_threads() const noexcept
 {
-    return mProcessors.num_threads();
+    return mProcessors.concurrency();
 }
 
 
@@ -797,5 +797,5 @@ unsigned SR_Context::num_threads() const noexcept
 --------------------------------------*/
 unsigned SR_Context::num_threads(unsigned inNumThreads) noexcept
 {
-    return mProcessors.num_threads(inNumThreads);
+    return mProcessors.concurrency(inNumThreads);
 }

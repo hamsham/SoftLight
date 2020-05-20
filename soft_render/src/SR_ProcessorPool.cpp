@@ -54,11 +54,6 @@ static inline data_t* _aligned_alloc(size_t numElements) noexcept
 --------------------------------------*/
 SR_ProcessorPool::~SR_ProcessorPool() noexcept
 {
-    for (unsigned i = 0; i < mNumThreads; ++i)
-    {
-        delete mThreads[i];
-        mThreads[i] = nullptr;
-    }
 }
 
 
@@ -74,10 +69,10 @@ SR_ProcessorPool::SR_ProcessorPool(unsigned numThreads) noexcept :
     mFragBins{nullptr},
     mVaryings{nullptr},
     mFragQueues{nullptr},
-    mThreads{nullptr},
+    mWorkers{nullptr},
     mNumThreads{0}
 {
-    num_threads(numThreads);
+    concurrency(numThreads);
 }
 
 
@@ -107,12 +102,12 @@ SR_ProcessorPool::SR_ProcessorPool(SR_ProcessorPool&& p) noexcept
 --------------------------------------*/
 SR_ProcessorPool& SR_ProcessorPool::operator=(const SR_ProcessorPool& p) noexcept
 {
-    if (this == &p || num_threads() == p.num_threads())
+    if (this == &p || concurrency() == p.concurrency())
     {
         return *this;
     }
 
-    num_threads(p.num_threads());
+    concurrency(p.concurrency());
 
     return *this;
 }
@@ -141,13 +136,12 @@ SR_ProcessorPool& SR_ProcessorPool::operator=(SR_ProcessorPool&& p) noexcept
     mVaryings = std::move(p.mVaryings);
     mFragQueues = std::move(p.mFragQueues);
 
-    for (unsigned i = 0; i < mNumThreads; ++i)
+    for (unsigned i = 0; i < mNumThreads-1u; ++i)
     {
-        delete mThreads[i];
-        mThreads[i] = nullptr;
+        mWorkers[i].~WorkerThread();
     }
 
-    mThreads = std::move(p.mThreads);
+    mWorkers = std::move(p.mWorkers);
 
     mNumThreads = p.mNumThreads;
     p.mNumThreads = 0;
@@ -162,10 +156,9 @@ SR_ProcessorPool& SR_ProcessorPool::operator=(SR_ProcessorPool&& p) noexcept
 -------------------------------------*/
 void SR_ProcessorPool::flush() noexcept
 {
-    for (unsigned threadId = 0; threadId < mNumThreads-1; ++threadId)
+    for (unsigned threadId = 0; threadId < mNumThreads-1u; ++threadId)
     {
-        SR_ProcessorPool::Worker* const pWorker = mThreads[threadId];
-        pWorker->flush();
+        mWorkers[threadId].flush();
     }
 }
 
@@ -177,10 +170,9 @@ void SR_ProcessorPool::flush() noexcept
 void SR_ProcessorPool::wait() noexcept
 {
     // Each thread will pause except for the main thread.
-    for (unsigned threadId = 0; threadId < mNumThreads - 1u; ++threadId)
+    for (unsigned threadId = 0; threadId < mNumThreads-1u; ++threadId)
     {
-        SR_ProcessorPool::Worker* const pWorker = mThreads[threadId];
-        pWorker->wait();
+        mWorkers[threadId].wait();
     }
 }
 
@@ -189,23 +181,22 @@ void SR_ProcessorPool::wait() noexcept
 /*--------------------------------------
  * Set the number of threads
 --------------------------------------*/
-unsigned SR_ProcessorPool::num_threads(unsigned inNumThreads) noexcept
+unsigned SR_ProcessorPool::concurrency(unsigned inNumThreads) noexcept
 {
+    // always use at least the main thread.
+    inNumThreads = ls::math::max<unsigned>(1u, inNumThreads);
+
     if (inNumThreads == mNumThreads)
     {
         return mNumThreads;
     }
 
-    for (unsigned i = 0; i < mNumThreads; ++i)
+    if (mNumThreads)
     {
-        delete mThreads[i];
-        mThreads[i] = nullptr;
-    }
-
-    if (inNumThreads == 0)
-    {
-        // always use at least the main thread.
-        inNumThreads = 1;
+        for (unsigned i = 0; i < mNumThreads - 1; ++i)
+        {
+            mWorkers[i].~WorkerThread();
+        }
     }
 
     mBinsReady.reset(_aligned_alloc<std::atomic_int_fast32_t>(inNumThreads));
@@ -213,22 +204,14 @@ unsigned SR_ProcessorPool::num_threads(unsigned inNumThreads) noexcept
     mFragBins.reset(_aligned_alloc<SR_FragmentBin>(inNumThreads * SR_SHADER_MAX_BINNED_PRIMS));
     mVaryings.reset(_aligned_alloc<ls::math::vec4>(inNumThreads * SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_QUEUED_FRAGS));
     mFragQueues.reset(_aligned_alloc<SR_FragCoord>(inNumThreads));
-    mThreads.reset(_aligned_alloc<SR_ProcessorPool::Worker*>(inNumThreads));
+    mWorkers.reset(inNumThreads > 1 ? _aligned_alloc<SR_ProcessorPool::ThreadedWorker>(inNumThreads - 1) : nullptr);
+
+    for (unsigned i = 0; i < inNumThreads-1u; ++i)
+    {
+        new (mWorkers + i) ThreadedWorker{};
+    }
 
     mNumThreads = inNumThreads;
-
-    for (unsigned i = 0; i < inNumThreads; ++i)
-    {
-        // The last thread is always the main thread
-        if (i == (inNumThreads-1u))
-        {
-            mThreads[i] = new SR_ProcessorPool::Worker{};
-        }
-        else
-        {
-            mThreads[i] = new SR_ProcessorPool::ThreadedWorker{};
-        }
-    }
 
     LS_LOG_MSG(
         "Rendering threads updated:"
@@ -250,9 +233,8 @@ unsigned SR_ProcessorPool::num_threads(unsigned inNumThreads) noexcept
 void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh& m, size_t numInstances, const SR_Shader& s, SR_Framebuffer& fbo) noexcept
 {
     // Reserve enough space for each thread to contain all triangles
-    mFragSemaphore.store(0, std::memory_order_relaxed);
-    mShadingSemaphore.store(mNumThreads, std::memory_order_relaxed);
-
+    mFragSemaphore.store(0);
+    mShadingSemaphore.store(mNumThreads);
     clear_fragment_bins();
 
     SR_ShaderProcessor task;
@@ -284,9 +266,9 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh&
 
         // Busy waiting will be enabled the moment the first flush occurs on each
         // thread.
-        SR_ProcessorPool::Worker* pWorker = mThreads[threadId];
-        pWorker->busy_waiting(false);
-        pWorker->push(task);
+        SR_ProcessorPool::ThreadedWorker& worker = mWorkers[threadId];
+        worker.busy_waiting(false);
+        worker.push(task);
     }
 
     flush();
@@ -295,7 +277,6 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh&
 
     // Each thread should now pause except for the main thread.
     wait();
-    clear_fragment_bins();
 }
 
 
@@ -305,9 +286,8 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh&
 void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh* meshes, size_t numMeshes, const SR_Shader& s, SR_Framebuffer& fbo) noexcept
 {
     // Reserve enough space for each thread to contain all triangles
-    mFragSemaphore.store(0, std::memory_order_relaxed);
-    mShadingSemaphore.store(mNumThreads, std::memory_order_relaxed);
-
+    mFragSemaphore.store(0);
+    mShadingSemaphore.store(mNumThreads);
     clear_fragment_bins();
 
     SR_ShaderProcessor task;
@@ -339,9 +319,9 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh*
 
         // Busy waiting will be enabled the moment the first flush occurs on each
         // thread.
-        SR_ProcessorPool::Worker* pWorker = mThreads[threadId];
-        pWorker->busy_waiting(false);
-        pWorker->push(task);
+        SR_ProcessorPool::ThreadedWorker& worker = mWorkers[threadId];
+        worker.busy_waiting(false);
+        worker.push(task);
     }
 
     flush();
@@ -350,7 +330,6 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh*
 
     // Each thread should now pause except for the main thread.
     wait();
-    clear_fragment_bins();
 }
 
 
@@ -372,35 +351,33 @@ void SR_ProcessorPool::run_blit_processors(
     processor.mType = SR_BLIT_SHADER;
 
     SR_BlitProcessor& blitter = processor.mBlitter;
-    blitter.mThreadId   = 0;
-    blitter.mNumThreads = (uint16_t)mNumThreads;
-    blitter.srcX0       = srcX0;
-    blitter.srcY0       = srcY0;
-    blitter.srcX1       = srcX1;
-    blitter.srcY1       = srcY1;
-    blitter.dstX0       = dstX0;
-    blitter.dstY0       = dstY0;
-    blitter.dstX1       = dstX1;
-    blitter.dstY1       = dstY1;
-    blitter.mTexture    = inTex;
-    blitter.mBackBuffer = outTex;
+    blitter.mThreadId         = 0;
+    blitter.mNumThreads       = (uint16_t)mNumThreads;
+    blitter.srcX0             = srcX0;
+    blitter.srcY0             = srcY0;
+    blitter.srcX1             = srcX1;
+    blitter.srcY1             = srcY1;
+    blitter.dstX0             = dstX0;
+    blitter.dstY0             = dstY0;
+    blitter.dstX1             = dstX1;
+    blitter.dstY1             = dstY1;
+    blitter.mTexture          = inTex;
+    blitter.mBackBuffer       = outTex;
 
     // Process most of the rendering on other threads first.
-    for (uint16_t threadId = 0; threadId < mNumThreads-1; ++threadId)
+    for (uint16_t threadId = 0; threadId < mNumThreads - 1; ++threadId)
     {
         blitter.mThreadId = threadId;
 
-        SR_ProcessorPool::Worker* pWorker = mThreads[threadId];
-        pWorker->busy_waiting(false);
-        pWorker->push(processor);
+        SR_ProcessorPool::ThreadedWorker& worker = mWorkers[threadId];
+        worker.busy_waiting(false);
+        worker.push(processor);
     }
 
     flush();
-    blitter.mThreadId = (uint16_t)(mNumThreads-1u);
+    blitter.mThreadId = (uint16_t)(mNumThreads - 1u);
     blitter.execute();
 
     // Each thread should now pause except for the main thread.
     wait();
-
-    //execute();
 }
