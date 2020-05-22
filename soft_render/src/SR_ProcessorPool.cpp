@@ -208,7 +208,7 @@ unsigned SR_ProcessorPool::concurrency(unsigned inNumThreads) noexcept
 
     for (unsigned i = 0; i < inNumThreads-1u; ++i)
     {
-        new (mWorkers + i) ThreadedWorker{};
+        new (&mWorkers[i]) ThreadedWorker{};
     }
 
     mNumThreads = inNumThreads;
