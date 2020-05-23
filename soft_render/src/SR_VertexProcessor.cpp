@@ -1007,7 +1007,7 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
     const size_t            end         = m.elementEnd;
     const SR_IndexBuffer*   pIbo        = vao.has_index_buffer() ? &mContext->ibo(vao.get_index_buffer()) : nullptr;
 
-    const int usingIndices = m.mode & ((RENDER_MODE_INDEXED_TRIANGLES | RENDER_MODE_INDEXED_TRI_WIRE) ^ (RENDER_MODE_TRIANGLES | RENDER_MODE_TRI_WIRE));
+    const int usingIndices = (m.mode == RENDER_MODE_INDEXED_TRIANGLES) || (m.mode == RENDER_MODE_INDEXED_TRI_WIRE);
 
     SR_VertexParam params;
     params.pUniforms = mShader->mUniforms;

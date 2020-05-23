@@ -44,7 +44,7 @@ struct SR_FragmentProcessor
     // 256 bits
     const SR_Shader* mShader;
     SR_Framebuffer* mFbo;
-    SR_FragmentBin* mBins;
+    const SR_FragmentBin* mBins;
     ls::math::vec4* mVaryings;
     SR_FragCoord* mQueues;
 

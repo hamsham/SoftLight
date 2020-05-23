@@ -358,7 +358,7 @@ void SR_FragmentProcessor::render_line(
     const math::vec4  screenCoord1  = mBins[binId].mScreenCoords[1];
     float             z0            = screenCoord0[2];
     float             z1            = screenCoord1[2];
-    math::vec4* const inVaryings    = mBins[binId].mVaryings;
+    const math::vec4* inVaryings    = mBins[binId].mVaryings;
     math::vec2        clipCoords[2] = {math::vec2_cast(screenCoord0), math::vec2_cast(screenCoord1)};
 
     if (!sr_clip_liang_barsky(clipCoords, dimens))
@@ -465,7 +465,8 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
     SR_ScanlineBounds     scanline;
 
     #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
-    const float fboW = (float)mFbo->width()-1);
+        const float fboW = (float)(mFbo->width()-1);
+        const float fboH = (float)(mFbo->height()-1);
     #endif
 
     for (uint64_t binId = 0; binId < mNumBins; ++binId, ++pBin)
@@ -477,14 +478,8 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
         const math::vec4  homogenous     {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
 
         #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
-            scanline.init(pPoints[0], pPoints[1], pPoints[2], fboW);
-        #else
-            scanline.init(pPoints[0], pPoints[1], pPoints[2]);
-        #endif
-
-        #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
             int32_t bboxMinY = (int32_t)math::max(0.f,   math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]));
-            int32_t bboxMaxY = (int32_t)math::min(mFboH, math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]));
+            int32_t bboxMaxY = (int32_t)math::min(fboH, math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]));
         #else
             int32_t bboxMinY = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
             int32_t bboxMaxY = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
@@ -493,25 +488,30 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
         // Let each thread start rendering at whichever scanline it's assigned to
         bboxMinY += sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
 
+        #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
+            scanline.init(pPoints[0], pPoints[1], pPoints[2], fboW);
+        #else
+            scanline.init(pPoints[0], pPoints[1], pPoints[2]);
+        #endif
+
         for (int32_t y = bboxMinY; y < bboxMaxY; y += increment)
         {
             // calculate the bounds of the current scan-line
-            const float        yf  = (float)y;
-            const math::vec4&& bcY = math::fmadd(bcClipSpace[1], math::vec4{yf, yf, yf, 0.f}, bcClipSpace[2]);
+            const float        yf     = (float)y;
+            const math::vec4&& bcY    = math::fmadd(bcClipSpace[1], math::vec4{yf, yf, yf, 0.f}, bcClipSpace[2]);
+            const float* const pDepth = depthBuffer->texel_pointer<float>(0, y);
 
             // In this rasterizer, we're only rendering the absolute pixels
             // contained within the triangle edges. However this will serve as a
             // guard against any pixels we don't want to render.
-            int32_t xMinMax[2];
-            scanline.step(yf, xMinMax[0], xMinMax[1]);
+            int32_t xMin;
+            int32_t xMax;
+            scanline.step(yf, xMin, xMax);
 
-            const float* const pDepth = depthBuffer->texel_pointer<float>(0, y);
-
-            for (int32_t i = 0, y16 = y << 16; i < 2; ++i)
+            for (int32_t x = xMin, y16 = y << 16; x < xMax; x += xMax-xMin)
             {
                 // calculate barycentric coordinates
-                const uint32_t x = xMinMax[i];
-                const float  xf = (float)xMinMax[i];
+                const float  xf = (float)x;
                 math::vec4&& bc = math::fmadd(bcClipSpace[0], math::vec4{xf, xf, xf, 0.f}, bcY);
                 const float  z  = math::dot(depth, bc);
 
@@ -570,7 +570,8 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
     SR_ScanlineBounds     scanline;
 
     #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
-    const float fboW = (float)mFbo->width()-1);
+        const float fboW = (float)(mFbo->width()-1);
+        const float fboH = (float)(mFbo->height()-1);
     #endif
 
     for (uint64_t binId = 0; binId < mNumBins; ++binId, ++pBin)
@@ -583,7 +584,7 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
 
         #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
             int32_t bboxMinY = (int32_t)math::max(0.f,   math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]));
-            int32_t bboxMaxY = (int32_t)math::min(mFboH, math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]));
+            int32_t bboxMaxY = (int32_t)math::min(fboH, math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]));
         #else
             int32_t bboxMinY = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
             int32_t bboxMaxY = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
@@ -601,8 +602,9 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
         for (int32_t y = bboxMinY; y < bboxMaxY; y += increment)
         {
             // calculate the bounds of the current scan-line
-            const float        yf  = (float)y;
-            const math::vec4&& bcY = math::fmadd(bcClipSpace[1], math::vec4{yf, yf, yf, 0.f}, bcClipSpace[2]);
+            const float        yf     = (float)y;
+            const math::vec4&& bcY    = math::fmadd(bcClipSpace[1], math::vec4{yf, yf, yf, 0.f}, bcClipSpace[2]);
+            const float* const pDepth = depthBuffer->texel_pointer<float>(0, y);
 
             // In this rasterizer, we're only rendering the absolute pixels
             // contained within the triangle edges. However this will serve as a
@@ -610,8 +612,6 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
             int32_t xMin;
             int32_t xMax;
             scanline.step(yf, xMin, xMax);
-
-            const float* const pDepth = depthBuffer->texel_pointer<float>(0, y);
 
             for (int32_t x = xMin, y16 = y << 16; x < xMax; ++x)
             {
@@ -791,6 +791,7 @@ void SR_FragmentProcessor::execute() noexcept
             }
             break;
         }
+
         case RENDER_MODE_TRI_WIRE:
         case RENDER_MODE_INDEXED_TRI_WIRE:
             render_wireframe(mFbo->get_depth_buffer());
