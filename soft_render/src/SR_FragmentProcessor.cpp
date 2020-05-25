@@ -485,7 +485,6 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
             // calculate the bounds of the current scan-line
             const float        yf     = (float)y;
             const math::vec4&& bcY    = math::fmadd(bcClipSpace[1], math::vec4{yf, yf, yf, 0.f}, bcClipSpace[2]);
-            const float* const pDepth = depthBuffer->texel_pointer<float>(0, y);
 
             // In this rasterizer, we're only rendering the absolute pixels
             // contained within the triangle edges. However this will serve as a
@@ -493,6 +492,8 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
             int32_t xMin;
             int32_t xMax;
             scanline.step(yf, xMin, xMax);
+
+            const float* const pDepth = depthBuffer->texel_pointer<float>(0, y);
 
             for (int32_t x = xMin, y16 = y << 16; x < xMax; x += xMax-xMin)
             {
@@ -576,7 +577,6 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
             // calculate the bounds of the current scan-line
             const float        yf     = (float)y;
             const math::vec4&& bcY    = math::fmadd(bcClipSpace[1], math::vec4{yf, yf, yf, 0.f}, bcClipSpace[2]);
-            const float* const pDepth = depthBuffer->texel_pointer<float>(0, y);
 
             // In this rasterizer, we're only rendering the absolute pixels
             // contained within the triangle edges. However this will serve as a
@@ -584,6 +584,8 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
             int32_t xMin;
             int32_t xMax;
             scanline.step(yf, xMin, xMax);
+
+            const float* const pDepth = depthBuffer->texel_pointer<float>(0, y);
 
             for (int32_t x = xMin, y16 = y << 16; x < xMax; ++x)
             {
