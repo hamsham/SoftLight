@@ -644,9 +644,6 @@ inline void SR_VertexProcessor::push_bin(
     {
         flush_bins();
         binId = 0;
-
-        LS_PREFETCH(pFragBins, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
-        LS_PREFETCH(varyings, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
     }
 
     *pBinCount = binId+1;
