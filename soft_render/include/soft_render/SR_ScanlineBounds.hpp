@@ -90,36 +90,6 @@ struct alignas(sizeof(float)*4) SR_ScanlineBounds
     float p10xy;
     float p20x;
 
-    int32_t bboxMaxX;
-
-    inline void LS_INLINE init(ls::math::vec4 p0, ls::math::vec4 p1, ls::math::vec4 p2, const float fboW) noexcept
-    {
-        #if defined(LS_ARCH_X86) || defined(LS_ARCH_ARM)
-            sr_sort_minmax(p0.simd, p1.simd);
-            sr_sort_minmax(p0.simd, p2.simd);
-            sr_sort_minmax(p1.simd, p2.simd);
-        #else
-            if (p0[1] < p1[1]) std::swap(p0, p1);
-            if (p0[1] < p2[1]) std::swap(p0, p2);
-            if (p1[1] < p2[1]) std::swap(p1, p2);
-        #endif
-
-        v0 = ls::math::vec2_cast(p0);
-        v1 = ls::math::vec2_cast(p1);
-
-        p20y = p2[1] - p0[1];
-        p21xy = (p2[0] - p1[0]) / (p2[1] - p1[1]);
-        p10xy = (p1[0] - p0[0]) / (p1[1] - p0[1]);
-        p20x = p2[0] - p0[0];
-
-        #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
-            bboxMinX = (int32_t)ls::math::min(fboW, ls::math::max(0.f,  ls::math::min(p0[0], p1[0], p2[0])));
-            bboxMaxX = (int32_t)ls::math::max(0.f,  ls::math::min(fboW, ls::math::max(p0[0], p1[0], p2[0]))+0.5f);
-        #else
-            bboxMaxX = (int32_t)ls::math::min(fboW, ls::math::max(p0[0], p1[0], p2[0]));
-        #endif
-    }
-
     inline void LS_INLINE init(ls::math::vec4 p0, ls::math::vec4 p1, ls::math::vec4 p2) noexcept
     {
         #if defined(LS_ARCH_X86) || defined(LS_ARCH_ARM)
@@ -139,8 +109,6 @@ struct alignas(sizeof(float)*4) SR_ScanlineBounds
         p21xy = (p2[0] - p1[0]) / (p2[1] - p1[1]);
         p10xy = (p1[0] - p0[0]) / (p1[1] - p0[1]);
         p20x  = p2[0] - p0[0];
-
-        bboxMaxX = (int32_t)ls::math::max(p0[0], p1[0], p2[0]);
     }
 
     inline void LS_INLINE step(const float yf, int32_t& xMin, int32_t& xMax) const noexcept
@@ -157,9 +125,8 @@ struct alignas(sizeof(float)*4) SR_ScanlineBounds
             const __m128  b          = _mm_andnot_ps(secondHalf, _mm_set_ss(p10xy * d0 + v0[0]));
             const __m128i hi         = _mm_cvtps_epi32(_mm_or_ps(a, b));
             const __m128i m          = _mm_cmplt_epi32(hi, lo);
-            const __m128i bxMax      = _mm_set1_epi32(bboxMaxX);
 
-            xMin = _mm_cvtsi128_si32(_mm_min_epi32(bxMax, _mm_max_epi32(_mm_setzero_si128(), _mm_or_si128(_mm_and_si128(m, hi), _mm_andnot_si128(m, lo)))));
+            xMin = _mm_cvtsi128_si32(_mm_or_si128(_mm_and_si128(m, hi), _mm_andnot_si128(m, lo)));
             xMax = _mm_cvtsi128_si32(_mm_or_si128(_mm_and_si128(m, lo), _mm_andnot_si128(m, hi)));
         #else
             const float lo         = ls::math::fmadd(p20x, alpha, v0[0]);
@@ -172,10 +139,6 @@ struct alignas(sizeof(float)*4) SR_ScanlineBounds
             xMax = (int32_t)hi;
             sr_sort_minmax(xMin, xMax);
             xMin = ls::math::clamp(xMin, 0, bboxMaxX);
-        #endif
-
-        #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
-            xMax = ls::math::clamp(xMax, 0, bboxMaxX);
         #endif
     }
 };

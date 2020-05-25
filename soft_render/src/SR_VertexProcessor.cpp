@@ -440,33 +440,25 @@ inline int front_face_visible(const math::vec4* screenCoords) noexcept
 --------------------------------------*/
 inline LS_INLINE SR_ClipStatus face_visible(const math::vec4 clipCoords[SR_SHADER_MAX_WORLD_COORDS]) noexcept
 {
-    #if SR_PRIMITIVE_CLIPPING_ENABLED != 0
-        const float w0p = clipCoords[0][3];
-        const float w1p = clipCoords[1][3];
-        const float w2p = clipCoords[2][3];
+    const float w0p = clipCoords[0][3];
+    const float w1p = clipCoords[1][3];
+    const float w2p = clipCoords[2][3];
 
-        const float w0n = -clipCoords[0][3];
-        const float w1n = -clipCoords[1][3];
-        const float w2n = -clipCoords[2][3];
+    const float w0n = -clipCoords[0][3];
+    const float w1n = -clipCoords[1][3];
+    const float w2n = -clipCoords[2][3];
 
-        if (clipCoords[0] >= w0n && clipCoords[0] <= w0p
-        &&  clipCoords[1] >= w1n && clipCoords[1] <= w1p
-        &&  clipCoords[2] >= w2n && clipCoords[2] <= w2p)
-        {
-            return SR_TRIANGLE_FULLY_VISIBLE;
-        }
+    if (clipCoords[0] >= w0n && clipCoords[0] <= w0p
+    &&  clipCoords[1] >= w1n && clipCoords[1] <= w1p
+    &&  clipCoords[2] >= w2n && clipCoords[2] <= w2p)
+    {
+        return SR_TRIANGLE_FULLY_VISIBLE;
+    }
 
-        if (w0p >= 1.f || w1p >= 1.f || w2p >= 1.f)
-        {
-            return SR_TRIANGLE_PARTIALLY_VISIBLE;
-        }
-    #else
-        if (math::min(clipCoords[0][3], clipCoords[1][3], clipCoords[2][3]) >= 0.f)
-        {
-            // something's visible, but near-plane clipping might say otherwise
-            return SR_TRIANGLE_PARTIALLY_VISIBLE;
-        }
-    #endif /* SR_VERTEX_CLIPPING_ENABLED */
+    if (w0p >= 1.f || w1p >= 1.f || w2p >= 1.f)
+    {
+        return SR_TRIANGLE_PARTIALLY_VISIBLE;
+    }
 
     return SR_TRIANGLE_NOT_VISIBLE;
 }
@@ -744,12 +736,14 @@ void SR_VertexProcessor::clip_and_process_tris(
     math::vec4            tempVarys     [numTempVerts * SR_SHADER_MAX_VARYING_VECTORS];
     math::vec4            newVarys      [numTempVerts * SR_SHADER_MAX_VARYING_VECTORS];
     const math::vec4      clipEdges[]  = {
-        { 0.f,  0.f, -1.f, 1.f},
-        { 0.f, -1.f,  0.f, 1.f},
+        { 1.f,  0.f,  0.f, 1.f},
         {-1.f,  0.f,  0.f, 1.f},
-        { 0.f,  0.f,  1.f, 1.f},
         { 0.f,  1.f,  0.f, 1.f},
-        { 1.f,  0.f,  0.f, 1.f}
+        { 0.f, -1.f,  0.f, 1.f},
+#if SR_Z_CLIPPING_ENABLED
+        { 0.f,  0.f,  1.f, 1.f},
+        { 0.f,  0.f, -1.f, 1.f},
+#endif
     };
 
     const auto _copy_verts = [](int maxVerts, const math::vec4* inVerts, math::vec4* outVerts) noexcept->void
@@ -1070,22 +1064,16 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
             continue;
         }
 
-        #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
+        if (visStatus == SR_TRIANGLE_FULLY_VISIBLE)
+        {
             sr_perspective_divide3(vertCoords);
             sr_world_to_screen_coords_divided3(vertCoords, widthScale, heightScale);
             push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES, 3>(fboW, fboH, vertCoords, pVaryings);
-        #else
-            if (visStatus == SR_TRIANGLE_FULLY_VISIBLE)
-            {
-                sr_perspective_divide3(vertCoords);
-                sr_world_to_screen_coords_divided3(vertCoords, widthScale, heightScale);
-                push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES, 3>(fboW, fboH, vertCoords, pVaryings);
-            }
-            else
-            {
-                clip_and_process_tris(fboW, fboH, vertCoords, pVaryings);
-            }
-        #endif
+        }
+        else
+        {
+            clip_and_process_tris(fboW, fboH, vertCoords, pVaryings);
+        }
     }
 }
 

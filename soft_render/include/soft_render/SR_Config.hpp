@@ -27,8 +27,8 @@
 /*-----------------------------------------------------------------------------
  * Render Pipeline Configuration
 -----------------------------------------------------------------------------*/
-#ifndef SR_PRIMITIVE_CLIPPING_ENABLED
-    #define SR_PRIMITIVE_CLIPPING_ENABLED 1
+#ifndef SR_Z_CLIPPING_ENABLED
+    #define SR_Z_CLIPPING_ENABLED 1
 #endif /* SR_VERTEX_CLIPPING_ENABLED */
 
 #ifndef SR_REVERSED_Z_RENDERING

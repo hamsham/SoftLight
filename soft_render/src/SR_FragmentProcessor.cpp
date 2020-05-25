@@ -464,11 +464,6 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
     const int32_t         depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON;
     SR_ScanlineBounds     scanline;
 
-    #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
-        const float fboW = (float)(mFbo->width()-1);
-        const float fboH = (float)(mFbo->height()-1);
-    #endif
-
     for (uint64_t binId = 0; binId < mNumBins; ++binId, ++pBin)
     {
         uint_fast32_t     numQueuedFrags = 0;
@@ -477,22 +472,13 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
         const math::vec4  depth          {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
         const math::vec4  homogenous     {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
 
-        #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
-            int32_t bboxMinY = (int32_t)math::max(0.f,   math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]));
-            int32_t bboxMaxY = (int32_t)math::min(fboH, math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]));
-        #else
-            int32_t bboxMinY = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
-            int32_t bboxMaxY = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
-        #endif
+        int32_t bboxMinY = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
+        int32_t bboxMaxY = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
 
         // Let each thread start rendering at whichever scanline it's assigned to
         bboxMinY += sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
 
-        #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
-            scanline.init(pPoints[0], pPoints[1], pPoints[2], fboW);
-        #else
-            scanline.init(pPoints[0], pPoints[1], pPoints[2]);
-        #endif
+        scanline.init(pPoints[0], pPoints[1], pPoints[2]);
 
         for (int32_t y = bboxMinY; y < bboxMaxY; y += increment)
         {
@@ -569,11 +555,6 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
     const int32_t         depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON;
     SR_ScanlineBounds     scanline;
 
-    #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
-        const float fboW = (float)(mFbo->width()-1);
-        const float fboH = (float)(mFbo->height()-1);
-    #endif
-
     for (uint64_t binId = 0; binId < mNumBins; ++binId, ++pBin)
     {
         uint_fast32_t     numQueuedFrags = 0;
@@ -582,22 +563,13 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
         const math::vec4  depth          {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
         const math::vec4  homogenous     {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
 
-        #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
-            int32_t bboxMinY = (int32_t)math::max(0.f,   math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]));
-            int32_t bboxMaxY = (int32_t)math::min(fboH, math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]));
-        #else
-            int32_t bboxMinY = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
-            int32_t bboxMaxY = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
-        #endif
+        int32_t bboxMinY = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
+        int32_t bboxMaxY = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
 
         // Let each thread start rendering at whichever scanline it's assigned to
         bboxMinY += sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
 
-        #if SR_PRIMITIVE_CLIPPING_ENABLED == 0
-            scanline.init(pPoints[0], pPoints[1], pPoints[2], fboW);
-        #else
-            scanline.init(pPoints[0], pPoints[1], pPoints[2]);
-        #endif
+        scanline.init(pPoints[0], pPoints[1], pPoints[2]);
 
         for (int32_t y = bboxMinY; y < bboxMaxY; y += increment)
         {
