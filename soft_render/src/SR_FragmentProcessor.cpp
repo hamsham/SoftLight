@@ -642,7 +642,6 @@ void SR_FragmentProcessor::flush_fragments(
     uint_fast32_t         numQueuedFrags,
     const SR_FragCoord*   outCoords) const noexcept
 {
-    LS_PREFETCH(pBin->mVaryings, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_L1);
     const SR_UniformBuffer* pUniforms   = mShader->mUniforms;
     const SR_FragmentShader fragShader  = mShader->mFragShader;
     const uint_fast32_t     numVaryings = fragShader.numVaryings;

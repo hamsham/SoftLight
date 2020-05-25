@@ -646,6 +646,7 @@ inline void SR_VertexProcessor::push_bin(
         binId = 0;
 
         LS_PREFETCH(pFragBins, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
+        LS_PREFETCH(varyings, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
     }
 
     *pBinCount = binId+1;
@@ -671,8 +672,6 @@ inline void SR_VertexProcessor::push_bin(
             0.f
         );
     }
-
-    LS_PREFETCH(varyings, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
 
     for (int numVerts = vertCount; numVerts--;)
     {
@@ -946,9 +945,6 @@ void SR_VertexProcessor::process_lines(const SR_Mesh& m, size_t instanceId) noex
     begin += mThreadId * 2u;
     const size_t step = mNumThreads * 2u;
 
-    LS_PREFETCH(params.pUniforms, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_L1);
-    LS_PREFETCH(pVaryings,        LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_L1);
-
     for (size_t i = begin; i < end; i += step)
     {
         const size_t index0  = i;
@@ -1013,9 +1009,6 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
         SR_PTVCache ptvCache{shader, params};
         const size_t numVaryings = vertShader.numVaryings;
     #endif
-
-    LS_PREFETCH(params.pUniforms, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_L1);
-    //LS_PREFETCH(pVaryings,        LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_L1);
 
     begin += mThreadId * 3u;
     const size_t step = mNumThreads * 3u;
