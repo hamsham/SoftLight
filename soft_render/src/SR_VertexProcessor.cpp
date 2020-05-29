@@ -1074,6 +1074,11 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
 --------------------------------------*/
 void SR_VertexProcessor::execute() noexcept
 {
+    if (mFragProcessors->load(std::memory_order_consume))
+    {
+        flush_bins();
+    }
+
     if (mNumInstances == 1)
     {
         if (mRenderMode & (RENDER_MODE_POINTS | RENDER_MODE_INDEXED_POINTS))

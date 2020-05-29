@@ -576,7 +576,7 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
         {
             // calculate the bounds of the current scan-line
             const float        yf     = (float)y;
-            const math::vec4&& bcY    = math::fmadd(bcClipSpace[1], math::vec4{yf, yf, yf, 0.f}, bcClipSpace[2]);
+            const math::vec4&& bcY    = math::fmadd(bcClipSpace[1], math::vec4{yf}, bcClipSpace[2]);
 
             // In this rasterizer, we're only rendering the absolute pixels
             // contained within the triangle edges. However this will serve as a
@@ -591,7 +591,7 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
             {
                 // calculate barycentric coordinates
                 const float  xf = (float)x;
-                math::vec4&& bc = math::fmadd(bcClipSpace[0], math::vec4{xf, xf, xf, 0.f}, bcY);
+                math::vec4&& bc = math::fmadd(bcClipSpace[0], math::vec4{xf}, bcY);
                 const float  z  = math::dot(depth, bc);
 
                 if (depthTesting)

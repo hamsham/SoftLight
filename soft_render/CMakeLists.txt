@@ -280,31 +280,34 @@ endif()
 
 add_library(${PROJECT_NAME} ${SR_LIB_TYPE} ${SR_LIB_SOURCES} ${SR_LIB_HEADERS})
 
-target_link_libraries(
-    ${PROJECT_NAME}
-    LightSky::Game
-    LightSky::Math
-    LightSky::Utils
-    LightSky::Setup
-    ${ASSIMP_LIBRARIES}
-    ${FREEIMAGE_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}
+    PUBLIC
+        LightSky::Game
+        LightSky::Math
+        LightSky::Utils
+        LightSky::Setup
+        ${ASSIMP_LIBRARIES}
+        ${FREEIMAGE_LIBRARIES}
+)
 
 if (NOT MSVC AND NOT PREFER_COCOA)
-    target_link_libraries(
-        ${PROJECT_NAME}
-        ${XCB_LIBRARY}
-        ${XCB_SHM_LIBRARY}
-        ${X11_XCB_LIBRARY}
-        ${X11_LIBRARIES}
-        pthread)
+    target_link_libraries(${PROJECT_NAME}
+        PUBLIC
+            ${XCB_LIBRARY}
+            ${XCB_SHM_LIBRARY}
+            ${X11_XCB_LIBRARY}
+            ${X11_LIBRARIES}
+            pthread
+    )
 
 elseif (PREFER_COCOA)
-    target_link_libraries(
-        ${PROJECT_NAME}
-        "${APPKIT_LIBRARY}"
-        "${COCOA_LIBRARY}"
-        "${CORE_FOUNDATION_LIBRARY}"
-        "${CORE_GRAPHICS_LIBRARY}")
+    target_link_libraries(${PROJECT_NAME}
+        PUBLIC
+            "${APPKIT_LIBRARY}"
+            "${COCOA_LIBRARY}"
+            "${CORE_FOUNDATION_LIBRARY}"
+            "${CORE_GRAPHICS_LIBRARY}"
+    )
 
 endif()
 
@@ -315,11 +318,20 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${FREEIMAGE_INCLUDE_PATH})
 # Library Installation Setup
 # -------------------------------------
 install(TARGETS ${PROJECT_NAME}
+    EXPORT SoftLight
     RUNTIME DESTINATION bin
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
 )
 install(DIRECTORY include/soft_render DESTINATION include)
+
+install(EXPORT SoftLight
+    FILE SoftLight.cmake
+    DESTINATION lib/cmake
+)
+
+export(EXPORT SoftLight)
+add_library(SoftLight ALIAS ${PROJECT_NAME})
 
 
 

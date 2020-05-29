@@ -64,15 +64,18 @@ SR_ProcessorPool::~SR_ProcessorPool() noexcept
 SR_ProcessorPool::SR_ProcessorPool(unsigned numThreads) noexcept :
     mFragSemaphore{0},
     mShadingSemaphore{0},
-    mBinsReady{nullptr},
-    mBinsUsed{nullptr},
-    mFragBins{nullptr},
-    mVaryings{nullptr},
-    mFragQueues{nullptr},
-    mWorkers{nullptr},
-    mNumThreads{0}
+    mBinsReady{_aligned_alloc<std::atomic_int_fast32_t>(numThreads)},
+    mBinsUsed{_aligned_alloc<uint32_t>(numThreads)},
+    mFragBins{_aligned_alloc<SR_FragmentBin>(numThreads * SR_SHADER_MAX_BINNED_PRIMS)},
+    mVaryings{_aligned_alloc<ls::math::vec4>(numThreads * SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_QUEUED_FRAGS)},
+    mFragQueues{_aligned_alloc<SR_FragCoord>(numThreads)},
+    mWorkers{numThreads > 1 ? _aligned_alloc<SR_ProcessorPool::ThreadedWorker>(numThreads - 1) : nullptr},
+    mNumThreads{numThreads}
 {
-    concurrency(numThreads);
+    for (unsigned i = 0; i < numThreads-1u; ++i)
+    {
+        new (&mWorkers[i]) ThreadedWorker{};
+    }
 }
 
 
@@ -80,9 +83,21 @@ SR_ProcessorPool::SR_ProcessorPool(unsigned numThreads) noexcept :
 /*--------------------------------------
  * Copy Constructor
 --------------------------------------*/
-SR_ProcessorPool::SR_ProcessorPool(const SR_ProcessorPool& p) noexcept
+SR_ProcessorPool::SR_ProcessorPool(const SR_ProcessorPool& p) noexcept :
+    mFragSemaphore{0},
+    mShadingSemaphore{0},
+    mBinsReady{_aligned_alloc<std::atomic_int_fast32_t>(p.mNumThreads)},
+    mBinsUsed{_aligned_alloc<uint32_t>(p.mNumThreads)},
+    mFragBins{_aligned_alloc<SR_FragmentBin>(p.mNumThreads * SR_SHADER_MAX_BINNED_PRIMS)},
+    mVaryings{_aligned_alloc<ls::math::vec4>(p.mNumThreads * SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_QUEUED_FRAGS)},
+    mFragQueues{_aligned_alloc<SR_FragCoord>(p.mNumThreads)},
+    mWorkers{p.mNumThreads > 1 ? _aligned_alloc<SR_ProcessorPool::ThreadedWorker>(p.mNumThreads - 1) : nullptr},
+    mNumThreads{p.mNumThreads}
 {
-    *this = p;
+    for (unsigned i = 0; i < p.mNumThreads-1u; ++i)
+    {
+        new (&mWorkers[i]) ThreadedWorker{};
+    }
 }
 
 
@@ -90,9 +105,18 @@ SR_ProcessorPool::SR_ProcessorPool(const SR_ProcessorPool& p) noexcept
 /*--------------------------------------
  * Move Constructor
 --------------------------------------*/
-SR_ProcessorPool::SR_ProcessorPool(SR_ProcessorPool&& p) noexcept
+SR_ProcessorPool::SR_ProcessorPool(SR_ProcessorPool&& p) noexcept :
+    mFragSemaphore{0},
+    mShadingSemaphore{0},
+    mBinsReady{std::move(p.mBinsReady)},
+    mBinsUsed{std::move(p.mBinsUsed)},
+    mFragBins{std::move(p.mFragBins)},
+    mVaryings{std::move(p.mVaryings)},
+    mFragQueues{std::move(p.mFragQueues)},
+    mWorkers{std::move(p.mWorkers)},
+    mNumThreads{p.mNumThreads}
 {
-    *this = std::move(p);
+    p.mNumThreads = 0;
 }
 
 
@@ -185,11 +209,6 @@ unsigned SR_ProcessorPool::concurrency(unsigned inNumThreads) noexcept
 {
     // always use at least the main thread.
     inNumThreads = ls::math::max<unsigned>(1u, inNumThreads);
-
-    if (inNumThreads == mNumThreads)
-    {
-        return mNumThreads;
-    }
 
     if (mNumThreads)
     {
