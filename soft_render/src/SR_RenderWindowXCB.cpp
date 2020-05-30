@@ -642,7 +642,7 @@ void SR_RenderWindowXCB::update() noexcept
     // loop can't even run.
     if (!mLastEvent && mCaptureMouse)
     {
-        xcb_warp_pointer(mConnection, 0, mWindow, 0, 0, mWidth, mHeight, mWidth / 2, mHeight / 2);
+        xcb_request_check(mConnection, xcb_warp_pointer_checked(mConnection, 0, mWindow, 0, 0, mWidth, mHeight, mWidth / 2, mHeight / 2));
     }
 
     // Make sure keys don't repeat when requested.
