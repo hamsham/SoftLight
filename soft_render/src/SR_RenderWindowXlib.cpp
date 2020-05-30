@@ -646,6 +646,7 @@ void SR_RenderWindowXlib::update() noexcept
                 if (mCaptureMouse)
                 {
                     XWarpPointer(mDisplay, None, mWindow, 0, 0, mWidth, mHeight, mWidth / 2, mHeight / 2);
+                    XSync(mDisplay, False);
                 }
                 break;
             }
@@ -968,8 +969,8 @@ bool SR_RenderWindowXlib::peek_event(SR_WindowEvent* const pEvent) noexcept
                 const int dy = pMotion->y;
                 pEvent->mousePos.dx = (int16_t)(w2 - dx);
                 pEvent->mousePos.dy = (int16_t)(h2 - dy);
-                mMouseX = dx;
-                mMouseY = dy;
+                mMouseX = w2;
+                mMouseY = h2;
             }
             break;
 

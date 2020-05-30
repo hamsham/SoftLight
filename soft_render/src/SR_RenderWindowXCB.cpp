@@ -281,9 +281,7 @@ int SR_RenderWindowXCB::init(unsigned width, unsigned height) noexcept
         0
         | XCB_EVENT_MASK_KEY_PRESS
         | XCB_EVENT_MASK_KEY_RELEASE
-        //| XCB_EVENT_MASK_KEYMAP_STATE
         | XCB_EVENT_MASK_PROPERTY_CHANGE
-        | XCB_EVENT_MASK_RESIZE_REDIRECT
         | XCB_EVENT_MASK_STRUCTURE_NOTIFY
         | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
         | XCB_EVENT_MASK_EXPOSURE
@@ -775,7 +773,6 @@ bool SR_RenderWindowXCB::has_event() const noexcept
 bool SR_RenderWindowXCB::peek_event(SR_WindowEvent* const pEvent) noexcept
 {
     xcb_expose_event_t* pExpose;
-    //xcb_keymap_notify_event_t* pKeyMap;
     xcb_key_press_event_t* pKeyPress;
     xcb_key_release_event_t* pKeyRelease;
     xcb_button_press_event_t* pButtonPress;
@@ -783,7 +780,6 @@ bool SR_RenderWindowXCB::peek_event(SR_WindowEvent* const pEvent) noexcept
     xcb_motion_notify_event_t* pMotion;
     xcb_destroy_notify_event_t* pDestroy;
     xcb_client_message_event_t* pMessage;
-    xcb_resize_request_event_t* pResize;
     xcb_enter_notify_event_t* pEnter;
     xcb_leave_notify_event_t* pLeave;
     xcb_configure_notify_event_t* pConfig;
@@ -959,18 +955,6 @@ bool SR_RenderWindowXCB::peek_event(SR_WindowEvent* const pEvent) noexcept
             }
             break;
 
-        case XCB_RESIZE_REQUEST:
-            pResize = reinterpret_cast<xcb_resize_request_event_t*>(mLastEvent);
-            if (mWidth != (unsigned)pResize->width || mHeight != (unsigned)pResize->height)
-            {
-                pEvent->type = SR_WinEventType::WIN_EVENT_RESIZED;
-                mWidth = (unsigned)pResize->width;
-                mHeight = (unsigned)pResize->height;
-                pEvent->window.width = (uint16_t)pResize->width;
-                pEvent->window.height = (uint16_t)pResize->height;
-            }
-            break;
-
         case XCB_ENTER_NOTIFY:
             pEnter = reinterpret_cast<xcb_enter_notify_event_t*>(mLastEvent);
             pEvent->pNativeWindow = pEnter->event;
@@ -1014,17 +998,18 @@ bool SR_RenderWindowXCB::peek_event(SR_WindowEvent* const pEvent) noexcept
                 mY = pConfig->y;
                 pEvent->window.x = (int16_t)pConfig->x;
                 pEvent->window.y = (int16_t)pConfig->y;
-                break;
             }
-            else if (mWidth != (unsigned)pConfig->width || mHeight != (unsigned)pConfig->height)
+
+            if (mWidth != (unsigned)pConfig->width || mHeight != (unsigned)pConfig->height)
             {
                 pEvent->type = SR_WinEventType::WIN_EVENT_RESIZED;
                 mWidth = (unsigned)pConfig->width;
                 mHeight = (unsigned)pConfig->height;
                 pEvent->window.width = (uint16_t)pConfig->width;
                 pEvent->window.height = (uint16_t)pConfig->height;
-                break;
             }
+
+            break;
 
         default: // unhandled event
             pEvent->type = SR_WinEventType::WIN_EVENT_UNKNOWN;
