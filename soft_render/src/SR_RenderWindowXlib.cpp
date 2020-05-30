@@ -646,7 +646,6 @@ void SR_RenderWindowXlib::update() noexcept
                 if (mCaptureMouse)
                 {
                     XWarpPointer(mDisplay, None, mWindow, 0, 0, mWidth, mHeight, mWidth / 2, mHeight / 2);
-                    XSync(mDisplay, False);
                 }
                 break;
             }
