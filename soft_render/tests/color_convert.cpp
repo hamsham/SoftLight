@@ -46,9 +46,9 @@ void run_tests() noexcept
 -----------------------------------------------------------------------------*/
 int main()
 {
-    run_tests<ls::math::half>();
+    //run_tests<ls::math::half>();
     run_tests<float>();
-    run_tests<double>();
+    //run_tests<double>();
 
     return 0;
 }
