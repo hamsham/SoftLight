@@ -138,7 +138,6 @@ struct alignas(sizeof(float)*4) SR_ScanlineBounds
             xMin = (int32_t)lo;
             xMax = (int32_t)hi;
             sr_sort_minmax(xMin, xMax);
-            xMin = ls::math::clamp(xMin, 0, bboxMaxX);
         #endif
     }
 };
