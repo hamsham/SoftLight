@@ -626,7 +626,7 @@ utils::Pointer<SR_SceneGraph> create_context()
     assert(retCode == 0);
 
     pGraph->mCurrentTransforms[0].scale( math::vec3{20.f});
-    //pGraph->mCurrentTransforms[0].scale(math::vec3{0.125f});
+    //pGraph->mCurrentTransforms[0].scale(math::vec3{0.25f});
 
     pGraph->update();
 
@@ -692,7 +692,7 @@ int main()
 
     SR_Transform camTrans;
     camTrans.set_type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
-    //camTrans.extract_transforms(math::look_at(math::vec3{75.f}, math::vec3{0.f, 10.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
+    //camTrans.extract_transforms(math::look_at(math::vec3{200.f, 150.f, 0.f}, math::vec3{0.f, 100.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
     camTrans.extract_transforms(math::look_at(math::vec3{0.f}, math::vec3{3.f, -5.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
 
     #if SR_REVERSED_Z_RENDERING
