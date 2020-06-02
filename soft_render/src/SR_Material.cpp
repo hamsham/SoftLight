@@ -13,9 +13,9 @@ void sr_reset(SR_Material& m) noexcept
         m.pTextures[i] = nullptr;
     }
 
-    m.ambient = SR_ColorRGBf{1.f, 1.f, 1.f};
-    m.diffuse = SR_ColorRGBf{1.f, 1.f, 1.f};
-    m.specular = SR_ColorRGBf{1.f, 1.f, 1.f};
+    m.ambient = SR_ColorRGBf{0.f, 0.f, 0.f};
+    m.diffuse = SR_ColorRGBf{0.f, 0.f, 0.f};
+    m.specular = SR_ColorRGBf{0.f, 0.f, 0.f};
     m.shininess = 0.f;
 }
 

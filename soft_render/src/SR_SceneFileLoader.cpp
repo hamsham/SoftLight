@@ -615,11 +615,13 @@ bool SR_SceneFileLoader::load_scene(const aiScene* const pScene, SR_SceneLoadOpt
     math::mat4 invGlobalTransform{1.f};
     read_node_hierarchy(pScene, pScene->mRootNode, SCENE_NODE_ROOT_ID, invGlobalTransform);
 
+    /*
     for (const SR_SceneNode n : sceneData.mNodes)
     {
         const size_t nId = n.nodeId;
         LS_LOG_MSG(nId, ' ', sceneData.mCurrentTransforms[nId].mParentId);
     }
+    */
 
     // to properly get the correct match of bones to vertex IDs, we need to
     // ensure the mesh base vertex is applied to all vertices affected by bones
@@ -798,11 +800,11 @@ int SR_SceneFileLoader::import_materials(const aiScene* const pScene) noexcept
     const unsigned numMaterials = pScene->mNumMaterials;
     utils::Pointer<SR_ImgFile> imgLoader{new SR_ImgFile{}};
 
-    std::cout << "\tImporting " << numMaterials << " materials from the imported mesh." << std::endl;
+    LS_LOG_MSG("\tImporting ", numMaterials, " materials from the imported mesh.");
 
     if (!numMaterials)
     {
-        std::cout << "\t\tDone." << std::endl;
+        LS_LOG_MSG("\t\tDone.");
         return 0;
     }
 
@@ -820,7 +822,7 @@ int SR_SceneFileLoader::import_materials(const aiScene* const pScene) noexcept
             import_texture_path(pMaterial, texTypes[j], newMaterial, *imgLoader, loadedTextures);
         }
     }
-    std::cout << "\t\tDone." << std::endl;
+    LS_LOG_MSG("\t\tDone.");
 
     return 0;
 }
@@ -840,43 +842,47 @@ void SR_SceneFileLoader::import_texture_path(
     imgLoader.unload();
 
     const unsigned maxTexCount = math::min<unsigned>(SR_MATERIAL_MAX_TEXTURES, pMaterial->GetTextureCount((aiTextureType)slotType));
-
-    switch (slotType)
-    {
-        case aiTextureType::aiTextureType_DIFFUSE:
-            std::cout << "\t\tLocated " << maxTexCount << " diffuse textures." << std::endl;
-            break;
-
-        case aiTextureType::aiTextureType_HEIGHT:
-            std::cout << "\t\tLocated " << maxTexCount << " height maps." << std::endl;
-            break;
-
-        case aiTextureType::aiTextureType_NORMALS:
-            std::cout << "\t\tLocated " << maxTexCount << " normal maps." << std::endl;
-            break;
-
-        case aiTextureType::aiTextureType_SPECULAR:
-            std::cout << "\t\tLocated " << maxTexCount << " specular maps." << std::endl;
-            break;
-
-        case aiTextureType::aiTextureType_AMBIENT:
-            std::cout << "\t\tLocated " << maxTexCount << " ambient textures." << std::endl;
-            break;
-
-            // TODO: other textures are unsupported at the moment.
-        default:
-            std::cout << "\t\tLocated " << maxTexCount << " miscellaneous textures (" << slotType << ")." << std::endl;
-            break;
-    }
-
-    // Get an offset to the next texture's index within the current material
     unsigned materialTexOffset = 0;
-    for (unsigned i = 0; i < SR_MATERIAL_MAX_TEXTURES; ++i)
+
+    if (maxTexCount)
     {
-        if (outMaterial.pTextures[i] == nullptr)
+        switch (slotType)
         {
-            materialTexOffset = i;
-            break;
+            case aiTextureType::aiTextureType_AMBIENT:
+                materialTexOffset = SR_MATERIAL_TEXTURE_AMBIENT;
+                LS_LOG_MSG("\t\tLocated ", maxTexCount, " ambient textures.");
+                break;
+
+            case aiTextureType::aiTextureType_DIFFUSE:
+                materialTexOffset = SR_MATERIAL_TEXTURE_DIFFUSE;
+                LS_LOG_MSG("\t\tLocated ", maxTexCount, " diffuse textures.");
+                break;
+
+            case aiTextureType::aiTextureType_NORMALS:
+                materialTexOffset = SR_MATERIAL_TEXTURE_NORMAL;
+                LS_LOG_MSG("\t\tLocated ", maxTexCount, " normal maps.");
+                break;
+
+            case aiTextureType::aiTextureType_HEIGHT:
+                materialTexOffset = SR_MATERIAL_TEXTURE_HEIGHT;
+                LS_LOG_MSG("\t\tLocated ", maxTexCount, " height maps.");
+                break;
+
+            case aiTextureType::aiTextureType_SPECULAR:
+                materialTexOffset = SR_MATERIAL_TEXTURE_SPECULAR;
+                LS_LOG_MSG("\t\tLocated ", maxTexCount, " specular maps.");
+                break;
+
+            case aiTextureType::aiTextureType_OPACITY:
+                materialTexOffset = SR_MATERIAL_TEXTURE_OPACITY;
+                LS_LOG_MSG("\t\tLocated ", maxTexCount, " opacity maps.");
+                break;
+
+                // TODO: other textures are unsupported at the moment.
+            default:
+                materialTexOffset = SR_MATERIAL_TEXTURE_MISC0;
+                LS_LOG_MSG("\t\tLocated ", maxTexCount, " miscellaneous textures (", slotType, ").");
+                break;
         }
     }
 
@@ -889,10 +895,26 @@ void SR_SceneFileLoader::import_texture_path(
 
     for (unsigned i = 0, j = 0; i < maxTexCount; ++i)
     {
-        const unsigned outTexSlot = j;
-        if (j > maxTexCount)
+        if (materialTexOffset != SR_MATERIAL_TEXTURE_MISC0 && outMaterial.pTextures[materialTexOffset])
         {
-            std::cerr << "\t\t\tExceeded material texture count (" << i+materialTexOffset << " > " << maxTexCount << ")." << std::endl;
+            materialTexOffset = SR_MATERIAL_TEXTURE_MISC0;
+        }
+
+        if (materialTexOffset == SR_MATERIAL_TEXTURE_MISC0)
+        {
+            for (unsigned k = SR_MATERIAL_TEXTURE_MISC0; k <= SR_MATERIAL_MAX_TEXTURES; ++k)
+            {
+                if (k == SR_MATERIAL_MAX_TEXTURES)
+                {
+                    LS_LOG_ERR("\t\t\tExceeded material texture count (", k, " > ", SR_MATERIAL_MAX_TEXTURES, ").");
+                    return;
+                }
+
+                if (!outMaterial.pTextures[k]) {
+                    materialTexOffset = k;
+                    break;
+                }
+            }
         }
 
         // Assimp won't clear this by default
@@ -900,7 +922,7 @@ void SR_SceneFileLoader::import_texture_path(
 
         if (pMaterial->GetTexture((aiTextureType)slotType, i, &inPath, nullptr, nullptr, nullptr, nullptr, inWrapMode) != aiReturn_SUCCESS)
         {
-            std::cerr << "\t\t\tFailed to locate the texture " << inPath.C_Str() << std::endl;
+            LS_LOG_ERR("\t\t\tFailed to locate the texture ", inPath.C_Str());
             continue;
         }
 
@@ -913,7 +935,8 @@ void SR_SceneFileLoader::import_texture_path(
 
         if (loadedTextures.count(texPath) > 0)
         {
-            outMaterial.pTextures[outTexSlot] = loadedTextures[texPath];
+            outMaterial.pTextures[materialTexOffset] = loadedTextures[texPath];
+            LS_LOG_MSG("\t\t\tAlready loaded texture: ", texPath);
         }
         else
         {
@@ -922,12 +945,12 @@ void SR_SceneFileLoader::import_texture_path(
             if (pTexture != nullptr)
             {
                 loadedTextures[texPath] = pTexture;
-                outMaterial.pTextures[outTexSlot] = pTexture;
+                outMaterial.pTextures[materialTexOffset] = pTexture;
             }
             else
             {
-                std::cerr << "\t\t\tFailed to load a texture: " << texPath << std::endl;
-                outMaterial.pTextures[outTexSlot] = nullptr;
+                LS_LOG_ERR("\t\t\tFailed to load a texture: ", texPath);
+                outMaterial.pTextures[materialTexOffset] = nullptr;
                 continue;
             }
         }
@@ -1062,6 +1085,11 @@ bool SR_SceneFileLoader::import_mesh_data(const aiScene* const pScene, const SR_
 -------------------------------------*/
 bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh, unsigned baseVert, const SR_SceneLoadOpts& opts) noexcept
 {
+    if (!pMesh->mNumBones)
+    {
+        return true;
+    }
+
     LS_LOG_MSG("\tImporting bones from a file.");
     std::vector<std::string>&                    nodeNames = mPreloader.mSceneData.mNodeNames;
     std::unordered_map<uint32_t, SR_BoneData>&   boneData  = mPreloader.mBones;

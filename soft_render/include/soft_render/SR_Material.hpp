@@ -20,8 +20,17 @@ class SR_Texture;
 -----------------------------------------------------------------------------*/
 enum SR_MaterialProperty : uint32_t
 {
-    SR_MATERIAL_INVALID_TEXTURE = (uint32_t)-1,
-    SR_MATERIAL_MAX_TEXTURES = 8
+    SR_MATERIAL_TEXTURE_AMBIENT  = 0,
+    SR_MATERIAL_TEXTURE_DIFFUSE  = 1,
+    SR_MATERIAL_TEXTURE_NORMAL   = 2,
+    SR_MATERIAL_TEXTURE_HEIGHT   = 3,
+    SR_MATERIAL_TEXTURE_SPECULAR = 4,
+    SR_MATERIAL_TEXTURE_OPACITY  = 5,
+    SR_MATERIAL_TEXTURE_MISC0    = 6,
+    SR_MATERIAL_TEXTURE_MISC1    = 7,
+
+    SR_MATERIAL_MAX_TEXTURES     = 8,
+    SR_MATERIAL_INVALID_TEXTURE  = (uint32_t)-1,
 };
 
 
