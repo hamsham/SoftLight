@@ -114,6 +114,57 @@ struct MeshUniforms
 
 
 /*-----------------------------------------------------------------------------
+ * PBR Helper functions
+-----------------------------------------------------------------------------*/
+// Calculate the metallic component of a surface
+template <class vec_type = math::vec4>
+inline vec_type fresnel_schlick(float cosTheta, const vec_type& surfaceReflection)
+{
+    return math::fmadd(vec_type{1.f} - surfaceReflection, vec_type{math::pow(1.f - cosTheta, 5.f)}, surfaceReflection);
+}
+
+
+
+// normal distribution function within a hemisphere
+template <class vec_type = math::vec4>
+inline float distribution_ggx(const vec_type& norm, const vec_type& hemisphere, float roughness)
+{
+    float roughSquared = roughness * roughness;
+    float roughQuad    = roughSquared * roughSquared;
+    float nDotH        = math::max(math::dot(norm, hemisphere), 0.f);
+    float nDotH2       = nDotH * nDotH;
+    float distribution = nDotH2 * (roughQuad - 1.f) + 1.f;
+
+    return nDotH2 / (LS_PI * distribution  * distribution);
+}
+
+
+
+// Determine how a surface's roughness affects how it reflects light
+inline float geometry_schlick_ggx(float normDotView, float roughness)
+{
+    roughness += 1.f;
+    roughness = (roughness*roughness) * 0.125f; // 1/8
+
+    float geometry = normDotView * (1.f - roughness) + roughness;
+    return normDotView / geometry;
+}
+
+
+
+// PBR Geometry function for determining how light bounces off a surface
+template <class vec_type = math::vec4>
+inline float geometry_smith(const vec_type& norm, const vec_type& viewDir, const vec_type& radiance, float roughness)
+{
+    float normDotView = math::max(math::dot(norm, viewDir), 0.f);
+    float normDotRad = math::max(math::dot(norm, radiance), 0.f);
+
+    return geometry_schlick_ggx(normDotView, roughness) * geometry_schlick_ggx(normDotRad, roughness);
+}
+
+
+
+/*-----------------------------------------------------------------------------
  * Shader to display vertices with a position and normal
 -----------------------------------------------------------------------------*/
 /*--------------------------------------
@@ -188,6 +239,76 @@ bool _normal_frag_shader_impl(SR_FragmentParam& fragParams)
 
 
 
+bool _normal_frag_shader_pbr(SR_FragmentParam& fragParams)
+{
+    const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
+    const math::vec4     pos       = fragParams.pVaryings[0];
+    const math::vec4     norm      = math::normalize(fragParams.pVaryings[1]);
+    math::vec4&          output    = fragParams.pOutputs[0];
+
+    // surface model
+    const math::vec4     camPos           = pUniforms->camPos;
+    const math::vec4     viewDir          = math::normalize(camPos - pos);
+    const math::vec4     lightPos         = pUniforms->light.pos;
+    const math::vec4     albedo           = math::vec4{1.f};
+    constexpr float      metallic         = 0.8f;
+    constexpr float      roughness        = 0.025f;
+    constexpr float      ambientIntensity = 0.5f;
+    constexpr float      diffuseIntensity = 50.f;
+
+    // Metallic reflectance at a normal incidence
+    // 0.04f should be close to plastic.
+    const math::vec4   surfaceConstant   = {0.875f, 0.875f, 0.875f, 1.f};
+    const math::vec4&& surfaceReflection = math::mix(surfaceConstant, albedo, metallic);
+
+    math::vec4         lightDir0         = {0.f};
+
+    math::vec4         lightDirN         = lightPos - pos;
+    const float        distance          = math::length(lightDirN);
+    lightDirN                            = lightDirN * math::rcp(distance); // normalize
+    math::vec4         hemisphere        = math::normalize(viewDir + lightDirN);
+    const float        attenuation       = math::rcp(distance);
+    math::vec4         radianceObj       = pUniforms->light.diffuse * attenuation * diffuseIntensity;
+
+    const float        ndf               = distribution_ggx(norm, hemisphere, roughness);
+    const float        geom              = geometry_smith(norm, viewDir, lightDirN, roughness);
+    const math::vec4   fresnel           = fresnel_schlick(math::max(math::dot(hemisphere, viewDir), 0.f), surfaceReflection);
+
+    const math::vec4   brdf              = fresnel * ndf * geom;
+    const float        cookTorrance      = 4.f * math::max(math::dot(norm, viewDir), 0.f) * math::max(math::dot(norm, lightDirN), 0.f) + LS_EPSILON;  // avoid divide-by-0
+    const math::vec4   specular          = brdf * math::rcp(cookTorrance);
+
+    const math::vec4&  specContrib       = fresnel;
+    const math::vec4   refractRatio      = (math::vec4{1.f} - specContrib) * (math::vec4{1.f} - metallic);
+
+    const float normDotLight             = math::max(math::dot(lightDirN, norm), 0.f);
+    lightDir0                            += (refractRatio * albedo * LS_PI_INVERSE + specular) * radianceObj * normDotLight;
+
+    const math::vec4   ambient           = pUniforms->light.ambient * ambientIntensity;
+
+    // Color normalization and light contribution
+    math::vec4 outRGB = albedo * (ambient + lightDir0);
+
+    // Tone mapping
+    //outRGB *= math::rcp(outRGB + math::vec4{1.f, 1.f, 1.f, 0.f});
+
+    // HDR Tone mapping
+    const float exposure = 4.f;
+    outRGB = math::vec4{1.f} - math::exp(-outRGB * exposure);
+    outRGB[3] = 1.f;
+
+    // Gamma correction
+    //const math::vec4 gamma = {1.f / 2.2f};
+    //outRGB = math::clamp(math::pow(outRGB, gamma), math::vec4{0.f}, math::vec4{1.f});
+    //outRGB[3] = 1.f;
+
+    output = outRGB;
+
+    return true;
+}
+
+
+
 SR_FragmentShader normal_frag_shader()
 {
     SR_FragmentShader shader;
@@ -196,7 +317,12 @@ SR_FragmentShader normal_frag_shader()
     shader.blend       = SR_BLEND_OFF;
     shader.depthTest   = SR_DEPTH_TEST_ON;
     shader.depthMask   = SR_DEPTH_MASK_ON;
-    shader.shader      = _normal_frag_shader_impl;
+
+    #if SR_TEST_USE_PBR
+        shader.shader = _normal_frag_shader_pbr;
+    #else
+        shader.shader = _normal_frag_shader_impl;
+    #endif
 
     return shader;
 }
@@ -324,54 +450,6 @@ bool _texture_frag_shader_spot(SR_FragmentParam& fragParams)
 
 
 
-// Calculate the metallic component of a surface
-template <class vec_type = math::vec4>
-inline vec_type fresnel_schlick(float cosTheta, const vec_type& surfaceReflection)
-{
-    return math::fmadd(vec_type{1.f} - surfaceReflection, vec_type{math::pow(1.f - cosTheta, 5.f)}, surfaceReflection);
-}
-
-
-
-// normal distribution function within a hemisphere
-template <class vec_type = math::vec4>
-inline float distribution_ggx(const vec_type& norm, const vec_type& hemisphere, float roughness)
-{
-    float roughSquared = roughness * roughness;
-    float roughQuad    = roughSquared * roughSquared;
-    float nDotH        = math::max(math::dot(norm, hemisphere), 0.f);
-    float nDotH2       = nDotH * nDotH;
-    float distribution = nDotH2 * (roughQuad - 1.f) + 1.f;
-
-    return nDotH2 / (LS_PI * distribution  * distribution);
-}
-
-
-
-// Determine how a surface's roughness affects how it reflects light
-inline float geometry_schlick_ggx(float normDotView, float roughness)
-{
-    roughness += 1.f;
-    roughness = (roughness*roughness) * 0.125f; // 1/8
-
-    float geometry = normDotView * (1.f - roughness) + roughness;
-    return normDotView / geometry;
-}
-
-
-
-// PBR Geometry function for determining how light bounces off a surface
-template <class vec_type = math::vec4>
-inline float geometry_smith(const vec_type& norm, const vec_type& viewDir, const vec_type& radiance, float roughness)
-{
-    float normDotView = math::max(math::dot(norm, viewDir), 0.f);
-    float normDotRad = math::max(math::dot(norm, radiance), 0.f);
-
-    return geometry_schlick_ggx(normDotView, roughness) * geometry_schlick_ggx(normDotRad, roughness);
-}
-
-
-
 bool _texture_frag_shader_pbr(SR_FragmentParam& fragParams)
 {
     const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
@@ -471,9 +549,9 @@ SR_FragmentShader texture_frag_shader()
     shader.depthMask   = SR_DEPTH_MASK_ON;
 
     #if SR_TEST_USE_PBR
-    shader.shader = _texture_frag_shader_pbr;
+        shader.shader = _texture_frag_shader_pbr;
     #else
-    shader.shader = _texture_frag_shader_spot;
+        shader.shader = _texture_frag_shader_spot;
     #endif
 
     return shader;
@@ -640,7 +718,13 @@ utils::Pointer<SR_SceneGraph> create_context()
     MeshUniforms* pUniforms = ubo.as<MeshUniforms>();
 
     pUniforms->light.pos        = math::vec4{30.f, 45.f, 45.f, 1.f};
-    pUniforms->light.ambient    = math::vec4{0.f, 0.f, 0.f, 1.f};//math::vec4{0.125f, 0.125f, 0.125f, 1.f};
+
+    #if SR_TEST_USE_PBR
+    pUniforms->light.ambient    = math::vec4{0.125f, 0.125f, 0.125f, 1.f};
+    #else
+    pUniforms->light.ambient    = math::vec4{0.f, 0.f, 0.f, 1.f};
+    #endif
+
     pUniforms->light.diffuse    = math::vec4{0.5f, 0.5f, 0.5f, 1.f};
     pUniforms->light.spot       = math::vec4{1.f};
     pUniforms->point.constant   = 1.f;
