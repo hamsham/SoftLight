@@ -388,10 +388,10 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
                 continue;
             }
 
-            pUniforms->pTexture = material.pTextures[0];
+            pUniforms->pTexture = material.pTextures[SR_MATERIAL_TEXTURE_DIFFUSE];
 
             // Use the textureless shader if needed
-            const size_t shaderId = (size_t)(material.pTextures[0] == nullptr);
+            const size_t shaderId = (size_t)(material.pTextures[SR_MATERIAL_TEXTURE_DIFFUSE] == nullptr);
             context.draw_instanced(m, 3, shaderId, 0);
         }
     }

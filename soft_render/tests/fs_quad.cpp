@@ -509,7 +509,7 @@ void mesh_test_render(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
             const size_t          nodeMeshId = meshIds[meshId];
             const SR_Mesh&        m          = pGraph->mMeshes[nodeMeshId];
             const SR_Material&    material   = pGraph->mMaterials[m.materialId];
-            pUniforms->pTexture = material.pTextures[0];
+            pUniforms->pTexture = material.pTextures[SR_MATERIAL_TEXTURE_AMBIENT];
 
             // NOTE: Always validate your IDs in production
             const size_t shaderId = 0;

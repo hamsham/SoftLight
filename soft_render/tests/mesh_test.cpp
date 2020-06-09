@@ -8,7 +8,6 @@
 
 #include "lightsky/utils/Time.hpp"
 
-#include "soft_render/SR_Config.hpp"
 #include "soft_render/SR_Context.hpp"
 #include "soft_render/SR_Framebuffer.hpp"
 #include "soft_render/SR_ImgFilePPM.hpp"
@@ -21,8 +20,6 @@
 #include "soft_render/SR_UniformBuffer.hpp"
 #include "soft_render/SR_VertexArray.hpp"
 #include "soft_render/SR_VertexBuffer.hpp"
-
-//#include "test_common.hpp"
 
 namespace math = ls::math;
 namespace utils = ls::utils;
@@ -231,7 +228,7 @@ void mesh_test_render(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
             const size_t          nodeMeshId = meshIds[meshId];
             const SR_Mesh&        m          = pGraph->mMeshes[nodeMeshId];
             const SR_Material&    material   = pGraph->mMaterials[m.materialId];
-            pUniforms->pTexture = material.pTextures[0];
+            pUniforms->pTexture = material.pTextures[SR_MATERIAL_TEXTURE_DIFFUSE];
 
             // NOTE: Always validate your IDs in production
             const size_t shaderId = 0;
