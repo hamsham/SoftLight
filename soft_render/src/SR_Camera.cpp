@@ -201,8 +201,8 @@ bool sr_is_visible(
     float fov) noexcept
 {
     const float      viewAngle = math::tan(fov*0.5f);
-    const math::vec3 c         = camTrans.get_abs_position();
-    const math::mat3 t         = math::mat3{math::transpose(camTrans.get_transform())};
+    const math::vec3 c         = camTrans.absolute_position();
+    const math::mat3 t         = math::mat3{math::transpose(camTrans.transform())};
     const math::vec3 cx        = t[0];
     const math::vec3 cy        = t[1];
     const math::vec3 cz        = -t[2];

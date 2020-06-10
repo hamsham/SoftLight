@@ -220,7 +220,7 @@ void SR_Transform::move(const math::vec3& deltaPos, bool relative) noexcept
 /*-------------------------------------
  * Set the position
 -------------------------------------*/
-void SR_Transform::set_position(const math::vec3& newPos) noexcept
+void SR_Transform::position(const math::vec3& newPos) noexcept
 {
     mPosition = newPos;
     set_dirty();
@@ -231,7 +231,7 @@ void SR_Transform::set_position(const math::vec3& newPos) noexcept
 /*-------------------------------------
  * Get the absolute position
 -------------------------------------*/
-math::vec3 SR_Transform::get_abs_position() const noexcept
+math::vec3 SR_Transform::absolute_position() const noexcept
 {
     if (mType == SR_TRANSFORM_TYPE_MODEL)
     {
@@ -262,7 +262,7 @@ void SR_Transform::scale(const math::vec3& deltaScale) noexcept
 /*-------------------------------------
  * Set the scaling
 -------------------------------------*/
-void SR_Transform::set_scale(const math::vec3& newScale) noexcept
+void SR_Transform::scaling(const math::vec3& newScale) noexcept
 {
     mScaling = newScale;
     set_dirty();
@@ -297,13 +297,13 @@ void SR_Transform::rotate(const math::vec3& amount) noexcept
     || mType == SR_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y)
     {
         const math::quat&& newOrientation = xAxis * mOrientation * yAxis * zAxis;
-        set_orientation(math::normalize(newOrientation));
+        orientation(math::normalize(newOrientation));
     }
     else
     {
         rotate(xAxis * yAxis * zAxis);
+        set_dirty();
     }
-    set_dirty();
 }
 
 
@@ -311,7 +311,7 @@ void SR_Transform::rotate(const math::vec3& amount) noexcept
 /*-------------------------------------
  * Set the orientation
 -------------------------------------*/
-void SR_Transform::set_orientation(const math::quat& newRotation) noexcept
+void SR_Transform::orientation(const math::quat& newRotation) noexcept
 {
     mOrientation = newRotation;
     set_dirty();
@@ -325,14 +325,14 @@ void SR_Transform::set_orientation(const math::quat& newRotation) noexcept
 /*-------------------------------------
  * Apply all transformations to the model matrix
 -------------------------------------*/
-void SR_Transform::apply_transform(bool useSRT) noexcept
+void SR_Transform::apply_transform(bool useRST) noexcept
 {
     if (mType == SR_TRANSFORM_TYPE_VIEW_FPS || mType == SR_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y)
     {
-        useSRT = !useSRT;
+        useRST = !useRST;
     }
 
-    mModelMat = useSRT ? get_srt_matrix() : get_str_matrix();
+    mModelMat = useRST ? get_rst_matrix() : get_str_matrix();
     set_clean();
 }
 
@@ -414,7 +414,7 @@ void SR_Transform::extract_transforms(const math::mat4& newTransform) noexcept
 /*-------------------------------------
  * Generate a SRT matrix for use in *this
 -------------------------------------*/
-math::mat4 SR_Transform::get_srt_matrix() const noexcept
+math::mat4 SR_Transform::get_rst_matrix() const noexcept
 {
     return math::mat4{
         mScaling[0], 0.f, 0.f, 0.f,
@@ -422,19 +422,6 @@ math::mat4 SR_Transform::get_srt_matrix() const noexcept
         0.f, 0.f, mScaling[2], 0.f,
         mPosition[0], mPosition[1], mPosition[2], 1.f
     } * math::quat_to_mat4(mOrientation);
-    /*
-    return math::mat4 {
-        scaling[0], 0.f, 0.f, 0.f,
-        0.f, scaling[1], 0.f, 0.f,
-        0.f, 0.f, scaling[2], 0.f,
-        0.f, 0.f, 0.f, 1.f
-    } * math::mat4{
-        1.f, 0.f, 0.f, 0.f,
-        0.f, 1.f, 0.f, 0.f,
-        0.f, 0.f, 1.f, 0.f,
-        position[0], position[1], position[2], 1.f
-    } * math::quat_to_mat4(orientation);
-    */
 }
 
 
@@ -444,15 +431,10 @@ math::mat4 SR_Transform::get_srt_matrix() const noexcept
 -------------------------------------*/
 math::mat4 SR_Transform::get_str_matrix() const noexcept
 {
-    return math::mat4{
+    return math::quat_to_mat4(mOrientation) * math::mat4{
         mScaling[0], 0.f, 0.f, 0.f,
         0.f, mScaling[1], 0.f, 0.f,
         0.f, 0.f, mScaling[2], 0.f,
-        0.f, 0.f, 0.f, 1.f
-    } * math::quat_to_mat4(mOrientation) * math::mat4{
-        1.f, 0.f, 0.f, 0.f,
-        0.f, 1.f, 0.f, 0.f,
-        0.f, 0.f, 1.f, 0.f,
         mPosition[0], mPosition[1], mPosition[2], 1.f
     };
 }
@@ -465,7 +447,7 @@ math::mat4 SR_Transform::get_str_matrix() const noexcept
 /*-------------------------------------
  * Get the forward direction
 -------------------------------------*/
-math::vec3 SR_Transform::get_forwards_direction() const noexcept
+math::vec3 SR_Transform::forward_direction() const noexcept
 {
     return mType == SR_TRANSFORM_TYPE_MODEL
            ? math::get_z_axis(mOrientation)
@@ -477,7 +459,7 @@ math::vec3 SR_Transform::get_forwards_direction() const noexcept
 /*-------------------------------------
  * Retrieve the camera's up vector
 -------------------------------------*/
-math::vec3 SR_Transform::get_up_direction() const noexcept
+math::vec3 SR_Transform::up_direction() const noexcept
 {
     return mType == SR_TRANSFORM_TYPE_MODEL
            ? math::get_y_axis(mOrientation)
@@ -491,7 +473,7 @@ math::vec3 SR_Transform::get_up_direction() const noexcept
  *
  * TODO: Test this, make sure it's not returning left-handed coordinates
 -------------------------------------*/
-math::vec3 SR_Transform::get_right_direction() const noexcept
+math::vec3 SR_Transform::right_direction() const noexcept
 {
     return mType == SR_TRANSFORM_TYPE_MODEL
            ? math::get_x_axis(mOrientation)
@@ -548,6 +530,6 @@ void SR_Transform::look_at(const math::vec3& eye, const math::vec3& target, cons
     else
     {
         extract_transforms(math::pure_look_at(eye, target, up));
-        set_position(-eye);
+        position(-eye);
     }
 }

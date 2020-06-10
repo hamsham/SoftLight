@@ -576,7 +576,7 @@ int main()
     float              secondsCounter = 0.f;
     float              tickTime       = 0.f;
 
-    viewMatrix.set_type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
+    viewMatrix.type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
     viewMatrix.extract_transforms(math::look_at(math::vec3{10.f, 30.f, 70.f}, math::vec3{0.f, 20.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
     viewMatrix.apply_transform();
 
@@ -644,7 +644,7 @@ int main()
             context.framebuffer(0).clear_depth_buffer();
             //context.framebuffer(1).clear_color_buffers();
             //context.framebuffer(1).clear_depth_buffer();
-            mesh_test_render(pGraph.get(), projMatrix*viewMatrix.get_transform());
+            mesh_test_render(pGraph.get(), projMatrix* viewMatrix.transform());
 
             context.blit(*pRenderBuf, 2);
             pWindow->render(*pRenderBuf);

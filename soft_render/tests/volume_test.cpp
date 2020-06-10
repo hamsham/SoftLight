@@ -566,11 +566,11 @@ void render_volume(SR_SceneGraph* pGraph, const SR_Transform& viewMatrix, const 
 {
     SR_Context&        context   = pGraph->mContext;
     VolumeUniforms*    pUniforms = context.ubo(0).as<VolumeUniforms>();
-    const math::vec3&& camPos    = viewMatrix.get_abs_position();
+    const math::vec3&& camPos    = viewMatrix.absolute_position();
     const math::mat4   modelMat  = math::mat4{1.f};
     pUniforms->spacing           = {1.f, 2.f, 2.f, 1.f};
     pUniforms->camPos            = math::vec4{camPos[0], camPos[1], camPos[2], 0.f};
-    pUniforms->viewMatrix        = viewMatrix.get_transform();
+    pUniforms->viewMatrix        = viewMatrix.transform();
     pUniforms->mvpMatrix         = vpMatrix * modelMat;
 
     context.draw(pGraph->mMeshes.back(), 0, 0);
@@ -643,7 +643,7 @@ int main()
 
     math::mat4 vpMatrix;
     SR_Transform camTrans;
-    camTrans.set_type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
+    camTrans.type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
     camTrans.extract_transforms(math::look_from(math::vec3{-1.25f}, math::vec3{0.f}, math::vec3{0.f, -1.f, 0.f}));
 
     if (shouldQuit)
@@ -773,7 +773,7 @@ int main()
                 const math::mat4&& projMatrix = math::infinite_perspective(viewAngle, (float)pWindow->width() / (float)pWindow->height(), 0.001f);
 
                 pUniforms->viewAngle = viewAngle;
-                vpMatrix = projMatrix * camTrans.get_transform();
+                vpMatrix = projMatrix * camTrans.transform();
             }
 
             if (pWindow->width() != pRenderBuf->width() || pWindow->height() != pRenderBuf->height())

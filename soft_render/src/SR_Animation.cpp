@@ -338,19 +338,19 @@ void SR_Animation::animate(SR_SceneGraph& graph, const SR_AnimPrecision percentD
         if (track.has_position_frame(percentDone))
         {
             const math::vec3&& pos = track.position_frame(percentDone);
-            nodeTransform.set_position(pos);
+            nodeTransform.position(pos);
         }
 
         if (track.has_scale_frame(percentDone))
         {
             const math::vec3&& scl = track.scale_frame(percentDone);
-            nodeTransform.set_scale(scl);
+            nodeTransform.scaling(scl);
         }
 
         if (track.has_rotation_frame(percentDone))
         {
             math::quat&& rot = track.rotation_frame(percentDone);
-            nodeTransform.set_orientation(rot);
+            nodeTransform.orientation(rot);
         }
     }
 }
@@ -385,19 +385,19 @@ void SR_Animation::animate(SR_SceneGraph& graph, const SR_AnimPrecision percentD
         if (track.has_position_frame(percentDone))
         {
             const math::vec3&& pos = track.position_frame(percentDone);
-            nodeTransform.set_position(pos);
+            nodeTransform.position(pos);
         }
 
         if (track.has_scale_frame(percentDone))
         {
             const math::vec3&& scl = track.scale_frame(percentDone);
-            nodeTransform.set_scale(scl);
+            nodeTransform.scaling(scl);
         }
 
         if (track.has_rotation_frame(percentDone))
         {
             math::quat&& rot = track.rotation_frame(percentDone);
-            nodeTransform.set_orientation(rot);
+            nodeTransform.orientation(rot);
         }
     }
 }
@@ -426,17 +426,17 @@ void SR_Animation::init(SR_SceneGraph& graph, const bool atStart) const noexcept
 
         if (track.mPosFrames.valid())
         {
-            nodeTransform.set_position(atStart ? track.mPosFrames.start_data() : track.mPosFrames.end_data());
+            nodeTransform.position(atStart ? track.mPosFrames.start_data() : track.mPosFrames.end_data());
         }
 
         if (track.mScaleFrames.valid())
         {
-            nodeTransform.set_scale(atStart ? track.mScaleFrames.start_data() : track.mScaleFrames.end_data());
+            nodeTransform.scaling(atStart ? track.mScaleFrames.start_data() : track.mScaleFrames.end_data());
         }
 
         if (track.mOrientFrames.valid())
         {
-            nodeTransform.set_orientation(atStart ? track.mOrientFrames.start_data() : track.mOrientFrames.end_data());
+            nodeTransform.orientation(atStart ? track.mOrientFrames.start_data() : track.mOrientFrames.end_data());
         }
     }
 }

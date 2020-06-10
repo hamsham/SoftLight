@@ -483,9 +483,9 @@ utils::Pointer<SR_SceneGraph> create_context()
     tempTrans2.move(math::vec3{-10.f, 0.f, 0.f});
     tempTrans2.apply_transform();
 
-    pUniforms->instanceMatrix[0] = tempTrans0.get_transform();
-    pUniforms->instanceMatrix[1] = tempTrans1.get_transform();
-    pUniforms->instanceMatrix[2] = tempTrans2.get_transform();
+    pUniforms->instanceMatrix[0] = tempTrans0.transform();
+    pUniforms->instanceMatrix[1] = tempTrans1.transform();
+    pUniforms->instanceMatrix[2] = tempTrans2.transform();
 
     size_t texShaderId  = context.create_shader(texVertShader,  texFragShader,  uboId);
     size_t normShaderId = context.create_shader(normVertShader, normFragShader, uboId);
@@ -532,7 +532,7 @@ int main()
     unsigned numThreads = context.num_threads();
 
     SR_Transform camTrans;
-    camTrans.set_type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
+    camTrans.type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
     camTrans.extract_transforms(math::look_at(math::vec3{50.f}, math::vec3{0.f, 0.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
     math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
 
@@ -680,11 +680,11 @@ int main()
                 camTrans.apply_transform();
 
                 AnimUniforms* pUniforms = context.ubo(0).as<AnimUniforms>();
-                const math::vec3 camTransPos = camTrans.get_position();
+                const math::vec3 camTransPos = camTrans.position();
                 pUniforms->camPos = math::vec4_cast(camTransPos, 1.f);
             }
 
-            const math::mat4&& vpMatrix = projMatrix * camTrans.get_transform();
+            const math::mat4&& vpMatrix = projMatrix * camTrans.transform();
 
             update_animations(*pGraph, animPlayer, currentAnimId, -tickTime);
             pGraph->update();

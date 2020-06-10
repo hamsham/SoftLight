@@ -179,7 +179,7 @@ class SR_Transform
      * used to determine what type of transformation *this object
      * represents.
      */
-    SR_TransformType get_type() const noexcept;
+    SR_TransformType type() const noexcept;
 
     /**
      * Set the type of transformation *this object represents.
@@ -195,7 +195,7 @@ class SR_Transform
      * A value from the SR_TransformType enumeration which can be used to
      * determine what type of transformation *this object represents.
      */
-    void set_type(const SR_TransformType inType) noexcept;
+    void type(const SR_TransformType inType) noexcept;
 
     /**
      * @brief Adjust *this transformation object's internal position.
@@ -224,7 +224,7 @@ class SR_Transform
      * A constant reference to a 3D vector which will adjust the internal
      * position of *this in 3D Cartesian space.
      */
-    void set_position(const ls::math::vec3& newPos) noexcept;
+    void position(const ls::math::vec3& newPos) noexcept;
 
     /**
      * @brief Retrieve the current position of *this.
@@ -232,7 +232,7 @@ class SR_Transform
      * @return a reference to a 3D vector, representing the position of a
      * point in 3D Cartesian space.
      */
-    const ls::math::vec3& get_position() const noexcept;
+    const ls::math::vec3& position() const noexcept;
 
     /**
      * @brief Retrieve the current position of *this by extracting the
@@ -242,7 +242,7 @@ class SR_Transform
      * @return a 3D vector, representing the absolute position of a
      * point in 3D Cartesian space since the last internal update.
      */
-    ls::math::vec3 get_abs_position() const noexcept;
+    ls::math::vec3 absolute_position() const noexcept;
 
     /**
      * @brief Adjust *this transformation object's internal size.
@@ -266,7 +266,7 @@ class SR_Transform
      * A constant reference to a 3D vector which will adjust the internal
      * size of *this in 3D Cartesian space.
      */
-    void set_scale(const ls::math::vec3& newScale) noexcept;
+    void scaling(const ls::math::vec3& newScale) noexcept;
 
     /**
      * @brief Retrieve the current scaling of *this.
@@ -274,7 +274,7 @@ class SR_Transform
      * @return a reference to a 3D vector, representing the scale of a
      * point in 3D Cartesian space.
      */
-    const ls::math::vec3& get_scale() const noexcept;
+    const ls::math::vec3& scale() const noexcept;
 
     /**
      * @brief Adjust *this transformation object's internal orientation.
@@ -309,7 +309,7 @@ class SR_Transform
      * A constant reference to a quaternion which will adjust the internal
      * orientation of *this in 3D Cartesian space.
      */
-    void set_orientation(const ls::math::quat& newRotation) noexcept;
+    void orientation(const ls::math::quat& newRotation) noexcept;
 
     /**
      * @brief Retrieve the current orientation of *this.
@@ -317,7 +317,7 @@ class SR_Transform
      * @return a reference to a quaternion, representing the orientation of
      * a point in 3D Cartesian space.
      */
-    const ls::math::quat& get_orientation() const noexcept;
+    const ls::math::quat& orientation() const noexcept;
 
     /**
      * @brief Apply any pending adjustments to the internal model matrix.
@@ -330,7 +330,7 @@ class SR_Transform
      * This method is implicitly called if the internal model matrix has
      * been modified manually.
      */
-    void apply_transform(bool useSRT = true) noexcept;
+    void apply_transform(bool useRST = true) noexcept;
 
     /**
      * @brief Multiply *this by another 4x4 homogenous transformation
@@ -408,22 +408,22 @@ class SR_Transform
      * @return a reference to a 4x4 matrix, representing the position,
      * scale, and orientation of a point in 3D Cartesian space.
      */
-    const ls::math::mat4& get_transform() const noexcept;
+    const ls::math::mat4& transform() const noexcept;
 
     /**
      * @brief Generate a 4x4 homogenous matrix which has been uniformly
-     * scaled, rotated, and positioned.
+     * rotated, scaled, and translated.
      *
      * This is the default transformation mode.
      *
      * @return A 4x4 transformation matrix which can be used for 3D
      * positioning, rotation, and scaling.
      */
-    ls::math::mat4 get_srt_matrix() const noexcept;
+    ls::math::mat4 get_rst_matrix() const noexcept;
 
     /**
      * @brief Generate a 4x4 homogenous matrix which has been uniformly
-     * scaled, positioned, then rotated.
+     * scaled, translated, then rotated.
      *
      * @return A 4x4 transformation matrix which can be used for 3D
      * positioning, rotation, and scaling.
@@ -436,7 +436,7 @@ class SR_Transform
      *
      * @return A 3D unit vector containing the model matrix Z-axis.
      */
-    ls::math::vec3 get_forwards_direction() const noexcept;
+    ls::math::vec3 forward_direction() const noexcept;
 
     /**
      * @brief Retrieve the current upwards direction of the internal model
@@ -444,7 +444,7 @@ class SR_Transform
      *
      * @return A 3D unit vector containing the model matrix Y-axis.
      */
-    ls::math::vec3 get_up_direction() const noexcept;
+    ls::math::vec3 up_direction() const noexcept;
 
     /**
      * @brief Retrieve the current rightwards direction of the internal
@@ -452,7 +452,7 @@ class SR_Transform
      *
      * @return A 3D unit vector containing the model matrix X-axis.
      */
-    ls::math::vec3 get_right_direction() const noexcept;
+    ls::math::vec3 right_direction() const noexcept;
 
     /**
      * @brief Set whether or not the Y axis of the camera should be locked.
@@ -532,7 +532,7 @@ inline void SR_Transform::set_dirty() noexcept
 /*-------------------------------------
  * Get the mType of transformation *this object represents.
 -------------------------------------*/
-inline SR_TransformType SR_Transform::get_type() const noexcept
+inline SR_TransformType SR_Transform::type() const noexcept
 {
     return mType;
 }
@@ -542,7 +542,7 @@ inline SR_TransformType SR_Transform::get_type() const noexcept
 /*-------------------------------------
  * Set the mType of transformation *this object represents.
 -------------------------------------*/
-inline void SR_Transform::set_type(const SR_TransformType inType) noexcept
+inline void SR_Transform::type(const SR_TransformType inType) noexcept
 {
     mType = inType;
 }
@@ -552,7 +552,7 @@ inline void SR_Transform::set_type(const SR_TransformType inType) noexcept
 /*-------------------------------------
  * Get the current position
 -------------------------------------*/
-inline const ls::math::vec3& SR_Transform::get_position() const noexcept
+inline const ls::math::vec3& SR_Transform::position() const noexcept
 {
     return mPosition;
 }
@@ -562,7 +562,7 @@ inline const ls::math::vec3& SR_Transform::get_position() const noexcept
 /*-------------------------------------
  * Get the current scale
 -------------------------------------*/
-inline const ls::math::vec3& SR_Transform::get_scale() const noexcept
+inline const ls::math::vec3& SR_Transform::scale() const noexcept
 {
     return mScaling;
 }
@@ -572,7 +572,7 @@ inline const ls::math::vec3& SR_Transform::get_scale() const noexcept
 /*-------------------------------------
  * Get the current orientation
 -------------------------------------*/
-inline const ls::math::quat& SR_Transform::get_orientation() const noexcept
+inline const ls::math::quat& SR_Transform::orientation() const noexcept
 {
     return mOrientation;
 }
@@ -582,7 +582,7 @@ inline const ls::math::quat& SR_Transform::get_orientation() const noexcept
 /*-------------------------------------
  * Get the current model matrix
 -------------------------------------*/
-inline const ls::math::mat4& SR_Transform::get_transform() const noexcept
+inline const ls::math::mat4& SR_Transform::transform() const noexcept
 {
     return mModelMat;
 }

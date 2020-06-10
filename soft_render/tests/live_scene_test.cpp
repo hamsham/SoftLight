@@ -609,7 +609,7 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
     SR_Plane       planes[6];
 
     const math::mat4 projection = math::perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 1.f, 10.f);
-    const math::mat4 vp2 = projection * camTrans.get_transform();
+    const math::mat4 vp2 = projection * camTrans.transform();
 
     sr_extract_frustum_planes(projection, planes);
 
@@ -775,7 +775,7 @@ int main()
     unsigned numThreads = context.num_threads();
 
     SR_Transform camTrans;
-    camTrans.set_type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
+    camTrans.type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
     //camTrans.extract_transforms(math::look_at(math::vec3{200.f, 150.f, 0.f}, math::vec3{0.f, 100.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
     camTrans.extract_transforms(math::look_at(math::vec3{0.f}, math::vec3{3.f, -5.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
 
@@ -936,13 +936,13 @@ int main()
                 camTrans.apply_transform();
 
                 MeshUniforms* pUniforms = context.ubo(0).as<MeshUniforms>();
-                const math::vec3&& camTransPos = -camTrans.get_position();
+                const math::vec3&& camTransPos = -camTrans.position();
                 pUniforms->camPos = {camTransPos[0], camTransPos[1], camTransPos[2], 1.f};
 
-                const math::mat4& v = camTrans.get_transform();
+                const math::mat4& v = camTrans.transform();
                 pUniforms->spot.direction = math::normalize(math::vec4{v[0][2], v[1][2], v[2][2], 0.f});
             }
-            const math::mat4&& vpMatrix = projMatrix * camTrans.get_transform();
+            const math::mat4&& vpMatrix = projMatrix * camTrans.transform();
 
             pGraph->update();
 

@@ -230,7 +230,7 @@ void SR_SceneGraph::update_node_transform(const size_t transformId) noexcept
     if (doesParentExist)
     {
         SR_Transform& pt = mCurrentTransforms[parentId];
-        t.apply_pre_transform(pt.get_transform());
+        t.apply_pre_transform(pt.transform());
     }
     else
     {
@@ -246,11 +246,11 @@ void SR_SceneGraph::update_node_transform(const size_t transformId) noexcept
         LS_DEBUG_ASSERT(mNodes[parentId].type == NODE_TYPE_BONE || mNodes[parentId].type == NODE_TYPE_EMPTY);
 
         const size_t boneId = mNodes[transformId].dataId;
-        mModelMatrices[transformId] = mInvBoneTransforms[boneId] * t.get_transform() * mBoneOffsets[boneId];
+        mModelMatrices[transformId] = mInvBoneTransforms[boneId] * t.transform() * mBoneOffsets[boneId];
     }
     else
     {
-        mModelMatrices[transformId] = t.get_transform();
+        mModelMatrices[transformId] = t.transform();
     }
 }
 

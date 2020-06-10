@@ -1323,16 +1323,16 @@ void SR_SceneFileLoader::read_node_hierarchy(
 
         pInNode->mTransformation.Decompose(inScale, inRotation, inPos);
 
-        baseTrans.set_position(sr_convert_assimp_vector(inPos));
-        baseTrans.set_scale(sr_convert_assimp_vector(inScale));
-        baseTrans.set_orientation(sr_convert_assimp_quaternion(inRotation));
+        baseTrans.position(sr_convert_assimp_vector(inPos));
+        baseTrans.scaling(sr_convert_assimp_vector(inScale));
+        baseTrans.orientation(sr_convert_assimp_quaternion(inRotation));
 
         // Store the transform as specified by the scene graph hierarchy.
         currTransforms.push_back(baseTrans);
 
         // Store the original, unmodified, unparented transform
         baseTrans.apply_transform();
-        baseTransforms.push_back(baseTrans.get_transform());
+        baseTransforms.push_back(baseTrans.transform());
     }
 
     const size_t camIndex = sr_is_node_type<aiCamera>(pInNode, pScene->mCameras, pScene->mNumCameras);
@@ -1374,10 +1374,10 @@ void SR_SceneFileLoader::read_node_hierarchy(
         // transforms will cause root objects to swap X & Z axes.
         if (parentId != SCENE_NODE_ROOT_ID)
         {
-            nodeTransform.apply_pre_transform(currTransforms[parentId].get_transform());
+            nodeTransform.apply_pre_transform(currTransforms[parentId].transform());
         }
 
-        modelMatrices.push_back(currTransforms.back().get_transform());
+        modelMatrices.push_back(currTransforms.back().transform());
     }
 
     // CYA
@@ -1459,7 +1459,7 @@ void SR_SceneFileLoader::import_camera_node(
 
     // A Transform object must have been added by the parent function
     SR_Transform& camTrans = graph.mCurrentTransforms.back();
-    camTrans.set_type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_FPS); // ASSIMP never specified a default
+    camTrans.type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_FPS); // ASSIMP never specified a default
 
     const aiNode* const pNode = pScene->mRootNode->FindNode(pInCam->mName);
 
@@ -1490,8 +1490,8 @@ void SR_SceneFileLoader::import_camera_node(
     const math::vec3&& finalUp = sr_convert_assimp_vector(inUp);
     camTrans.look_at(finalPos, finalDir, finalUp);
 
-    const math::vec3& camPos = camTrans.get_position();
-    const math::vec3&& camUp = math::vec3{0.f, 1.f, 0.f};//nodeCam.get_up_direction();
+    const math::vec3& camPos = camTrans.position();
+    const math::vec3&& camUp = math::vec3{0.f, 1.f, 0.f};//nodeCam.up_direction();
 
     std::cout
         << "\tLoaded the scene camera " << pInCam->mName.C_Str() << ':'
