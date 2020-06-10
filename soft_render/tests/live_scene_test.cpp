@@ -48,10 +48,6 @@
     #define SR_TEST_MAX_THREADS (ls::math::max<unsigned>(std::thread::hardware_concurrency(), 3u) - 2u)
 #endif /* SR_TEST_MAX_THREADS */
 
-#ifndef SR_TEST_USE_PBR
-    #define SR_TEST_USE_PBR 0
-#endif /* SR_TEST_USE_PBR */
-
 #ifndef SR_BENCHMARK_SCENE
     #define SR_BENCHMARK_SCENE 1
 #endif /* SR_BENCHMARK_SCENE */
@@ -317,12 +313,22 @@ SR_FragmentShader normal_frag_shader()
     shader.blend       = SR_BLEND_OFF;
     shader.depthTest   = SR_DEPTH_TEST_ON;
     shader.depthMask   = SR_DEPTH_MASK_ON;
+    shader.shader      = _normal_frag_shader_impl;
 
-    #if SR_TEST_USE_PBR
-        shader.shader = _normal_frag_shader_pbr;
-    #else
-        shader.shader = _normal_frag_shader_impl;
-    #endif
+    return shader;
+}
+
+
+
+SR_FragmentShader normal_frag_shader_pbr()
+{
+    SR_FragmentShader shader;
+    shader.numVaryings = 2;
+    shader.numOutputs  = 1;
+    shader.blend       = SR_BLEND_OFF;
+    shader.depthTest   = SR_DEPTH_TEST_ON;
+    shader.depthMask   = SR_DEPTH_MASK_ON;
+    shader.shader      = _normal_frag_shader_pbr;
 
     return shader;
 }
@@ -547,12 +553,22 @@ SR_FragmentShader texture_frag_shader()
     shader.blend       = SR_BLEND_OFF;
     shader.depthTest   = SR_DEPTH_TEST_ON;
     shader.depthMask   = SR_DEPTH_MASK_ON;
+    shader.shader      = _texture_frag_shader_spot;
 
-    #if SR_TEST_USE_PBR
-        shader.shader = _texture_frag_shader_pbr;
-    #else
-        shader.shader = _texture_frag_shader_spot;
-    #endif
+    return shader;
+}
+
+
+
+SR_FragmentShader texture_frag_shader_pbr()
+{
+    SR_FragmentShader shader;
+    shader.numVaryings = 3;
+    shader.numOutputs  = 1;
+    shader.blend       = SR_BLEND_OFF;
+    shader.depthTest   = SR_DEPTH_TEST_ON;
+    shader.depthMask   = SR_DEPTH_MASK_ON;
+    shader.shader      = _texture_frag_shader_pbr;
 
     return shader;
 }
@@ -602,7 +618,7 @@ void update_cam_position(SR_Transform& camTrans, float tickTime, utils::Pointer<
 /*-------------------------------------
  * Render the Scene
 -------------------------------------*/
-void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspect, float fov, const SR_Transform& camTrans)
+void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, const SR_Transform& camTrans, bool usePbr)
 {
     SR_Context&    context   = pGraph->mContext;
     MeshUniforms*  pUniforms = context.ubo(0).as<MeshUniforms>();
@@ -612,10 +628,6 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
     const math::mat4 vp2 = projection * camTrans.transform();
 
     sr_extract_frustum_planes(projection, planes);
-
-    (void)aspect;
-    (void)fov;
-    (void)camTrans;
 
     for (SR_SceneNode& n : pGraph->mNodes)
     {
@@ -638,10 +650,20 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, float aspec
             const SR_BoundingBox& box        = pGraph->mMeshBounds[nodeMeshId];
             const SR_Material&    material   = pGraph->mMaterials[m.materialId];
 
-            pUniforms->pTexture = material.pTextures[0];
+            if (!(m.mode & SR_RenderMode::RENDER_MODE_TRIANGLES))
+            {
+                continue;
+            }
+
+            pUniforms->pTexture = material.pTextures[SR_MATERIAL_TEXTURE_AMBIENT];
 
             // Use the textureless shader if needed
-            const size_t shaderId = (size_t)(material.pTextures[0] == nullptr);
+            size_t shaderId = (size_t)(material.pTextures[SR_MATERIAL_TEXTURE_AMBIENT] == nullptr);
+
+            if (usePbr)
+            {
+                shaderId += 2;
+            }
 
             if (sr_is_visible(box, vp2 * modelMat, planes))
             {
@@ -708,23 +730,19 @@ utils::Pointer<SR_SceneGraph> create_context()
 
     pGraph->update();
 
-    const SR_VertexShader&&   normVertShader = normal_vert_shader();
-    const SR_FragmentShader&& normFragShader = normal_frag_shader();
-    const SR_VertexShader&&   texVertShader  = texture_vert_shader();
-    const SR_FragmentShader&& texFragShader  = texture_frag_shader();
+    const SR_VertexShader&&   normVertShader    = normal_vert_shader();
+    const SR_VertexShader&&   texVertShader     = texture_vert_shader();
+    const SR_FragmentShader&& normFragShader    = normal_frag_shader();
+    const SR_FragmentShader&& texFragShader     = texture_frag_shader();
+    const SR_FragmentShader&& normFragShaderPbr = normal_frag_shader_pbr();
+    const SR_FragmentShader&& texFragShaderPbr  = texture_frag_shader_pbr();
 
     size_t uboId = context.create_ubo();
     SR_UniformBuffer& ubo = context.ubo(uboId);
     MeshUniforms* pUniforms = ubo.as<MeshUniforms>();
 
     pUniforms->light.pos        = math::vec4{30.f, 45.f, 45.f, 1.f};
-
-    #if SR_TEST_USE_PBR
-    pUniforms->light.ambient    = math::vec4{0.125f, 0.125f, 0.125f, 1.f};
-    #else
     pUniforms->light.ambient    = math::vec4{0.f, 0.f, 0.f, 1.f};
-    #endif
-
     pUniforms->light.diffuse    = math::vec4{0.5f, 0.5f, 0.5f, 1.f};
     pUniforms->light.spot       = math::vec4{1.f};
     pUniforms->point.constant   = 1.f;
@@ -734,13 +752,19 @@ utils::Pointer<SR_SceneGraph> create_context()
     pUniforms->spot.outerCutoff = std::cos(LS_DEG2RAD(6.5f));
     pUniforms->spot.epsilon     = pUniforms->spot.outerCutoff / pUniforms->spot.innerCutoff;
 
-    size_t texShaderId  = context.create_shader(texVertShader,  texFragShader,  uboId);
-    size_t normShaderId = context.create_shader(normVertShader, normFragShader, uboId);
+    size_t texShaderId     = context.create_shader(texVertShader,  texFragShader,     uboId);
+    size_t normShaderId    = context.create_shader(normVertShader, normFragShader,    uboId);
+    size_t texShaderPbrId  = context.create_shader(texVertShader,  texFragShaderPbr,  uboId);
+    size_t normShaderPbrId = context.create_shader(normVertShader, normFragShaderPbr, uboId);
 
     assert(texShaderId == 0);
     assert(normShaderId == 1);
+    assert(texShaderPbrId == 2);
+    assert(normShaderPbrId == 3);
     (void)texShaderId;
     (void)normShaderId;
+    (void)texShaderPbrId;
+    (void)normShaderPbrId;
     (void)retCode;
 
     return pGraph;
@@ -771,7 +795,7 @@ int main()
     float totalSeconds = 0.f;
     float dx = 0.f;
     float dy = 0.f;
-
+    bool usePbr = false;
     unsigned numThreads = context.num_threads();
 
     SR_Transform camTrans;
@@ -879,6 +903,11 @@ int main()
                         std::cout << "Mouse Capture: " << pWindow->is_mouse_captured() << std::endl;
                         break;
 
+                    case SR_KeySymbol::KEY_SYM_F2:
+                        usePbr = !usePbr;
+                        std::cout << "PBR Rendering: " << usePbr << std::endl;
+                        break;
+
                     case SR_KeySymbol::KEY_SYM_ESCAPE:
                         std::cout << "Escape button pressed. Exiting." << std::endl;
                         shouldQuit = true;
@@ -936,8 +965,9 @@ int main()
                 camTrans.apply_transform();
 
                 MeshUniforms* pUniforms = context.ubo(0).as<MeshUniforms>();
-                const math::vec3&& camTransPos = -camTrans.position();
-                pUniforms->camPos = {camTransPos[0], camTransPos[1], camTransPos[2], 1.f};
+                //const math::vec3&& camTransPos = -camTrans.position();
+                //pUniforms->camPos = {camTransPos[0], camTransPos[1], camTransPos[2], 1.f};
+                pUniforms->camPos = math::vec4_cast(camTrans.absolute_position(), 1.f);
 
                 const math::mat4& v = camTrans.transform();
                 pUniforms->spot.direction = math::normalize(math::vec4{v[0][2], v[1][2], v[2][2], 0.f});
@@ -954,7 +984,7 @@ int main()
                 context.framebuffer(0).clear_depth_buffer(1.f);
             #endif
 
-            render_scene(pGraph.get(), vpMatrix, ((float)pRenderBuf->width() / (float)pWindow->height()), LS_DEG2RAD(60.f), camTrans);
+            render_scene(pGraph.get(), vpMatrix, camTrans, usePbr);
 
             context.blit(*pRenderBuf, 0);
             pWindow->render(*pRenderBuf);
