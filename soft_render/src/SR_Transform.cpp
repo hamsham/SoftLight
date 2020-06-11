@@ -235,7 +235,7 @@ math::vec3 SR_Transform::absolute_position() const noexcept
 {
     if (mType == SR_TRANSFORM_TYPE_MODEL)
     {
-        math::vec3{mModelMat[3][0], mModelMat[3][1], mModelMat[3][2]};
+        return math::vec3{mModelMat[3][0], mModelMat[3][1], mModelMat[3][2]};
     }
 
     const math::mat3&& rotationMat = math::mat3{mModelMat};
