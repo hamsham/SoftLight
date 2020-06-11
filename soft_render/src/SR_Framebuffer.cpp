@@ -157,110 +157,67 @@ inline void assign_alpha_pixel(
         SR_ColorRType<float> r;
     } s{rgba}, d{color_cast<float, typename color_type::value_type>(*reinterpret_cast<SR_ColorRGBAType<ConvertedType>*>(outTexel))};
 
+    switch (color_type::num_components())
+    {
+        case 1:
+            d.rgba = math::vec4{d.r.r, 0.f, 0.f, 0.f};
+            break;
+
+        case 2:
+            d.rgba = math::vec4_cast<float>(d.rg, 0.f, 0.f);
+            break;
+
+        case 3:
+            d.rgba = math::vec4_cast<float>(d.rgb, 0.f);
+            break;
+
+        default:
+            break;
+    }
+
     // This method of blending uses premultiplied alpha. I will need to support
     // configurable blend modes later.
+    const float srcAlpha = rgba[3];
+    const float modulation = 1.f - rgba[3];
+
     if (blendMode == SR_BLEND_ALPHA)
     {
-        const float srcAlpha = rgba[3];
-        const float modulation = 1.f - srcAlpha;
         const float dstAlpha = d.rgba[3];
-
-        switch (color_type::num_components())
-        {
-            case 4:
-                d.rgba[3] = srcAlpha + dstAlpha * modulation;
-                d.rgb = ((s.rgb*srcAlpha) + (d.rgb*dstAlpha*modulation)) * math::rcp(d.rgba[3]);
-                *reinterpret_cast<SR_ColorRGBAType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rgba);
-                break;
-
-            case 3:
-                d.rgb = (s.rgb*srcAlpha) + (d.rgb*modulation);
-                *reinterpret_cast<SR_ColorRGBType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rgb);
-                break;
-
-            case 2:
-                d.rg = (s.rg*srcAlpha) + (d.rg*modulation);
-                *reinterpret_cast<SR_ColorRGType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rg);
-                break;
-
-            case 1:
-                d.r.r = (s.r.r*srcAlpha) + (d.r.r*modulation);
-                *reinterpret_cast<SR_ColorRType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.r);
-                break;
-        }
+        d.rgba[3] = srcAlpha + dstAlpha * modulation;
+        d.rgb = ((s.rgb*srcAlpha) + (d.rgb*dstAlpha*modulation)) * math::rcp(d.rgba[3]);
     }
     else if (blendMode == SR_BLEND_PREMULTIPLED_ALPHA)
     {
-        const float srcAlpha = 1.f - rgba[3];
-        d.rgba = s.rgba + (d.rgba * srcAlpha);
-
-        switch (color_type::num_components())
-        {
-            case 4:
-                *reinterpret_cast<SR_ColorRGBAType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rgba);
-                break;
-
-            case 3:
-                *reinterpret_cast<SR_ColorRGBType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rgb);
-                break;
-
-            case 2:
-                *reinterpret_cast<SR_ColorRGType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rg);
-                break;
-
-            case 1:
-                *reinterpret_cast<SR_ColorRType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.r);
-                break;
-        }
+        d.rgba = s.rgba + (d.rgba * modulation);
     }
     else if (blendMode == SR_BLEND_ADDITIVE)
     {
-        const float srcAlpha = rgba[3];
         d.rgba = (s.rgba*srcAlpha) + d.rgba;
-
-        switch (color_type::num_components())
-        {
-            case 4:
-                *reinterpret_cast<SR_ColorRGBAType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rgba);
-                break;
-
-            case 3:
-                *reinterpret_cast<SR_ColorRGBType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rgb);
-                break;
-
-            case 2:
-                *reinterpret_cast<SR_ColorRGType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rg);
-                break;
-
-            case 1:
-                *reinterpret_cast<SR_ColorRType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.r);
-                break;
-        }
     }
     else if (blendMode == SR_BLEND_SCREEN)
     {
-        const float srcAlpha = rgba[3];
-        const float modulation = 1.f - srcAlpha;
         d.rgba = (s.rgba*srcAlpha) + (d.rgba*modulation);
+    }
 
-        switch (color_type::num_components())
-        {
-            case 4:
-                *reinterpret_cast<SR_ColorRGBAType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rgba);
-                break;
+    d.rgba = math::clamp(d.rgba, math::vec4{0.f, 0.f, 0.f, 0.f}, math::vec4{1.f, 1.f, 1.f, 1.f});
 
-            case 3:
-                *reinterpret_cast<SR_ColorRGBType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rgb);
-                break;
+    switch (color_type::num_components())
+    {
+        case 4:
+            *reinterpret_cast<SR_ColorRGBAType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rgba);
+            break;
 
-            case 2:
-                *reinterpret_cast<SR_ColorRGType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rg);
-                break;
+        case 3:
+            *reinterpret_cast<SR_ColorRGBType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rgb);
+            break;
 
-            case 1:
-                *reinterpret_cast<SR_ColorRType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.r);
-                break;
-        }
+        case 2:
+            *reinterpret_cast<SR_ColorRGType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rg);
+            break;
+
+        case 1:
+            *reinterpret_cast<SR_ColorRType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.r);
+            break;
     }
 }
 

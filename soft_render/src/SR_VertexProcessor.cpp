@@ -478,11 +478,13 @@ inline LS_INLINE SR_ClipStatus face_visible(const math::vec4 clipCoords[SR_SHADE
 void SR_VertexProcessor::flush_bins() const noexcept
 {
     // Allow the other threads to know this thread is ready for processing
+    const bool noBlending = mShader->mFragShader.blend == SR_BLEND_OFF;
+
     const uint_fast64_t tileId = mFragProcessors->fetch_add(1ull, std::memory_order_acq_rel);
-    mBinsReady[tileId].store((int32_t)mThreadId, std::memory_order_release);
+    mBinsReady[mThreadId].store((int32_t)mThreadId, std::memory_order_release);
 
     SR_FragmentProcessor fragTask{
-        mThreadId,
+        (uint16_t)tileId,
         mRenderMode,
         (uint32_t)mNumThreads,
         mBinsUsed[mThreadId],
@@ -494,7 +496,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
     };
 
     // Execute the fragment processor if possible
-    if (mBinsUsed[mThreadId])
+    if (noBlending && mBinsUsed[mThreadId])
     {
         fragTask.execute();
     }
@@ -507,7 +509,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
 
     for (uint32_t t = 0; t < (uint32_t)mNumThreads; ++t)
     {
-        if (mBinsReady[t].load(std::memory_order_consume) == (int32_t)mThreadId)
+        if (noBlending && mBinsReady[t].load(std::memory_order_consume) == (int32_t)mThreadId)
         {
             continue;
         }

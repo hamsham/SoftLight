@@ -118,9 +118,9 @@ SR_FragmentShader mesh_test_frag_shader()
     SR_FragmentShader shader;
     shader.numVaryings = 3;
     shader.numOutputs  = 1;
-    shader.blend       = SR_BLEND_OFF;//ALPHA;
+    shader.blend       = SR_BLEND_PREMULTIPLED_ALPHA;
     shader.depthTest   = SR_DEPTH_TEST_ON;
-    shader.depthMask   = SR_DEPTH_MASK_ON;
+    shader.depthMask   = SR_DEPTH_MASK_OFF;
     shader.shader      = _mesh_test_frag_shader;
 
     return shader;
