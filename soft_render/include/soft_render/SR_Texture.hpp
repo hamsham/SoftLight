@@ -57,7 +57,7 @@ enum SR_TexelOrder
  *
  * This class encodes textures using a Z-ordered curve.
 -----------------------------------------------------------------------------*/
-class SR_Texture
+class alignas(sizeof(uint32_t)*4) SR_Texture
 {
   public:
     typedef ls::math::long_medp_t fixed_type;
@@ -75,7 +75,7 @@ class SR_Texture
 
     uint16_t mBytesPerTexel; // 2 bytes
 
-    uint32_t mNumChannels;
+    uint32_t mNumChannels; // 4 bytes
 
     char* mTexels; // 4-8 bytes
 
