@@ -5,6 +5,7 @@
 #include "lightsky/math/vec3.h"
 #include "lightsky/math/vec4.h"
 #include "lightsky/math/vec_utils.h"
+#include "lightsky/math/mat4.h"
 
 
 
@@ -125,6 +126,18 @@ class SR_BoundingBox
     const ls::math::vec4& max_point() const noexcept;
 
     /**
+     * Get the maximum extent of this bounding box.
+     *
+     * @param m
+     * A model matrix which can be used to return a pre-translated maximum
+     * point.
+     *
+     * @return The max point of this bounding box with regards to a
+     * transformation.
+     */
+    ls::math::vec4 max_point(const ls::math::mat4& m) const noexcept;
+
+    /**
      * Set the minimum extent of this bounding box.
      *
      * @param A constant reference to a point that will be used as the min
@@ -146,6 +159,18 @@ class SR_BoundingBox
      * @return A constant reference to the min point of this bounding box.
      */
     const ls::math::vec4& min_point() const noexcept;
+
+    /**
+     * Get the minimum extent of this bounding box.
+     *
+     * @param m
+     * A model matrix which can be used to return a pre-translated minimum
+     * point.
+     *
+     * @return The min point of this bounding box with regards to a
+     * transformation.
+     */
+    ls::math::vec4 min_point(const ls::math::mat4& m) const noexcept;
 
     /**
      * Reset the bounds of this bounding box to their default values.
@@ -293,6 +318,18 @@ inline void SR_BoundingBox::max_point(const ls::math::vec4& v) noexcept
 /*-------------------------------------
     Get the max point of this bounding box.
 -------------------------------------*/
+inline ls::math::vec4 SR_BoundingBox::max_point(const ls::math::mat4& m) const noexcept
+{
+    const ls::math::vec4& extMax = m * mMaxPoint;
+    const ls::math::vec4& extMin = m * mMinPoint;
+    return ls::math::max(extMax, extMin);
+}
+
+
+
+/*-------------------------------------
+    Get the max point of this bounding box.
+-------------------------------------*/
 inline const ls::math::vec4& SR_BoundingBox::max_point() const noexcept
 {
     return mMaxPoint;
@@ -326,6 +363,18 @@ inline void SR_BoundingBox::min_point(const ls::math::vec4& v) noexcept
 inline const ls::math::vec4& SR_BoundingBox::min_point() const noexcept
 {
     return mMinPoint;
+}
+
+
+
+/*-------------------------------------
+    Get the min point of this bounding box.
+-------------------------------------*/
+inline ls::math::vec4 SR_BoundingBox::min_point(const ls::math::mat4& m) const noexcept
+{
+    const ls::math::vec4& extMax = m * mMaxPoint;
+    const ls::math::vec4& extMin = m * mMinPoint;
+    return ls::math::min(extMax, extMin);
 }
 
 
