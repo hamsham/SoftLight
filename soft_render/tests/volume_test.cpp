@@ -537,9 +537,9 @@ utils::Pointer<SR_SceneGraph> init_volume_context()
     SR_UniformBuffer& ubo = context.ubo(uboId);
     VolumeUniforms* pUniforms = ubo.as<VolumeUniforms>();
 
-    pUniforms->pCubeMap = context.textures()[2];
-    pUniforms->pOpacityMap = context.textures()[3];
-    pUniforms->pColorMap = context.textures()[4];
+    pUniforms->pCubeMap = &context.texture(2);
+    pUniforms->pOpacityMap = &context.texture(3);
+    pUniforms->pColorMap = &context.texture(4);
 
     size_t volShaderId = context.create_shader(volVertShader, volFragShader, uboId);
     assert(volShaderId == 0);
