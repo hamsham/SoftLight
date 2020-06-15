@@ -34,7 +34,7 @@ class SR_Context
   private:
     std::vector<SR_VertexArray> mVaos;
 
-    std::vector<SR_Texture> mTextures;
+    std::vector<SR_Texture*> mTextures;
 
     std::vector<SR_Framebuffer> mFbos;
 
@@ -77,7 +77,7 @@ class SR_Context
     /*
      *
      */
-    const std::vector<SR_Texture>& textures() const;
+    const std::vector<SR_Texture*>& textures() const;
 
     const SR_Texture& texture(std::size_t index) const;
 

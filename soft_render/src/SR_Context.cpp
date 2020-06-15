@@ -49,14 +49,21 @@ SR_Context::SR_Context() noexcept :
 -------------------------------------*/
 SR_Context::SR_Context(const SR_Context& c) noexcept :
     mVaos{c.mVaos},
-    mTextures{c.mTextures},
+    mTextures{},
     mFbos{c.mFbos},
     mVbos{c.mVbos},
     mIbos{c.mIbos},
     mUniforms{c.mUniforms},
     mShaders{c.mShaders},
     mProcessors{c.mProcessors}
-{}
+{
+    mTextures.reserve(c.mTextures.size());
+
+    for (SR_Texture* pTex : c.mTextures)
+    {
+        mTextures.push_back(new SR_Texture{*pTex});
+    }
+}
 
 
 
@@ -84,12 +91,25 @@ SR_Context& SR_Context::operator=(const SR_Context& c) noexcept
     if (this != &c)
     {
         mVaos       = c.mVaos;
-        mTextures   = c.mTextures;
         mFbos       = c.mFbos;
         mVbos       = c.mVbos;
         mIbos       = c.mIbos;
         mUniforms   = c.mUniforms;
         mShaders    = c.mShaders;
+
+        for (SR_Texture* pTex : mTextures)
+        {
+            delete pTex;
+        }
+
+        mTextures.clear();
+        mTextures.reserve(c.mTextures.size());
+
+        for (SR_Texture* pTex : c.mTextures)
+        {
+            mTextures.push_back(new SR_Texture{*pTex});
+        }
+
         mProcessors = c.mProcessors;
     }
 
@@ -174,7 +194,7 @@ void SR_Context::destroy_vao(std::size_t index)
 /*-------------------------------------
  *
 -------------------------------------*/
-const std::vector<SR_Texture>& SR_Context::textures() const
+const std::vector<SR_Texture*>& SR_Context::textures() const
 {
     return mTextures;
 }
@@ -186,7 +206,7 @@ const std::vector<SR_Texture>& SR_Context::textures() const
 -------------------------------------*/
 const SR_Texture& SR_Context::texture(std::size_t index) const
 {
-    return mTextures[index];
+    return *mTextures[index];
 }
 
 
@@ -196,7 +216,7 @@ const SR_Texture& SR_Context::texture(std::size_t index) const
 -------------------------------------*/
 SR_Texture& SR_Context::texture(std::size_t index)
 {
-    return mTextures[index];
+    return *mTextures[index];
 }
 
 
@@ -206,7 +226,7 @@ SR_Texture& SR_Context::texture(std::size_t index)
 -------------------------------------*/
 std::size_t SR_Context::create_texture()
 {
-    mTextures.emplace_back(SR_Texture{});
+    mTextures.emplace_back(new SR_Texture{});
     return mTextures.size() - 1;
 }
 
@@ -217,7 +237,7 @@ std::size_t SR_Context::create_texture()
 -------------------------------------*/
 void SR_Context::destroy_texture(std::size_t index)
 {
-    mTextures[index];
+    delete mTextures[index];
     mTextures.erase(mTextures.begin() + index);
 }
 
@@ -542,6 +562,10 @@ void SR_Context::terminate()
     mVaos.clear();
     mVaos.shrink_to_fit();
 
+    for (SR_Texture* pTex : mTextures)
+    {
+        delete pTex;
+    }
     mTextures.clear();
     mTextures.shrink_to_fit();
 
@@ -568,7 +592,7 @@ void SR_Context::terminate()
 void SR_Context::import(SR_Context&& inContext) noexcept
 {
     std::vector<SR_VertexArray>&  inVaos     = inContext.mVaos;
-    std::vector<SR_Texture>&      inTextures = inContext.mTextures;
+    std::vector<SR_Texture*>&     inTextures = inContext.mTextures;
     std::vector<SR_Framebuffer>&  inFbos     = inContext.mFbos;
     std::vector<SR_VertexBuffer>& inVbos     = inContext.mVbos;
     std::vector<SR_IndexBuffer>&  inIbos     = inContext.mIbos;
@@ -642,8 +666,8 @@ void SR_Context::draw_instanced(const SR_Mesh& m, size_t numInstances, size_t sh
 -------------------------------------*/
 void SR_Context::blit(size_t outTextureId, size_t inTextureId) noexcept
 {
-    SR_Texture*    pOut  = mTextures.data() + outTextureId;
-    SR_Texture*    pIn   = mTextures.data() + inTextureId;
+    SR_Texture*    pOut  = mTextures[outTextureId];
+    SR_Texture*    pIn   = mTextures[inTextureId];
     const uint16_t srcX0 = 0;
     const uint16_t srcY0 = 0;
     const uint16_t srcX1 = pIn->width();
@@ -654,8 +678,8 @@ void SR_Context::blit(size_t outTextureId, size_t inTextureId) noexcept
     const uint16_t dstY1 = pOut->height();
 
     mProcessors.run_blit_processors(
-        pIn,
-        pOut,
+        mTextures[inTextureId],
+        mTextures[outTextureId],
         srcX0,
         srcY0,
         srcX1,
@@ -684,8 +708,8 @@ void SR_Context::blit(
     uint16_t dstY1) noexcept
 {
     mProcessors.run_blit_processors(
-        mTextures.data() + inTextureId,
-        mTextures.data() + outTextureId,
+        mTextures[inTextureId],
+        mTextures[outTextureId],
         srcX0,
         srcY0,
         srcX1,
@@ -703,7 +727,7 @@ void SR_Context::blit(
 -------------------------------------*/
 void SR_Context::blit(SR_WindowBuffer& buffer, size_t textureId) noexcept
 {
-    SR_Texture*    pTex  = mTextures.data() + textureId;
+    SR_Texture*    pTex  = mTextures[textureId];
     const uint16_t srcX0 = 0;
     const uint16_t srcY0 = 0;
     const uint16_t srcX1 = pTex->width();
@@ -714,7 +738,7 @@ void SR_Context::blit(SR_WindowBuffer& buffer, size_t textureId) noexcept
     const uint16_t dstY1 = buffer.height();
 
     mProcessors.run_blit_processors(
-        pTex,
+        mTextures[textureId],
         &(buffer.mTexture),
         srcX0,
         srcY0,
@@ -744,7 +768,7 @@ void SR_Context::blit(
     uint16_t dstY1) noexcept
 {
     mProcessors.run_blit_processors(
-        mTextures.data() + textureId,
+        mTextures[textureId],
         &(buffer.mTexture),
         srcX0,
         srcY0,
