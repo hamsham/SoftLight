@@ -13,9 +13,9 @@ void sr_reset(SR_Material& m) noexcept
         m.pTextures[i] = nullptr;
     }
 
-    m.ambient = SR_ColorRGBf{0.f, 0.f, 0.f};
-    m.diffuse = SR_ColorRGBf{0.f, 0.f, 0.f};
-    m.specular = SR_ColorRGBf{0.f, 0.f, 0.f};
+    m.ambient = SR_ColorRGBAf{0.f, 0.f, 0.f, 1.f};
+    m.diffuse = SR_ColorRGBAf{0.f, 0.f, 0.f, 1.f};
+    m.specular = SR_ColorRGBAf{0.f, 0.f, 0.f, 1.f};
     m.shininess = 0.f;
 }
 
@@ -45,12 +45,15 @@ SR_MaterialStatus validate(const SR_Material& m) noexcept
     if (m.ambient[0] < 0.f
     || m.ambient[1] < 0.f
     || m.ambient[2] < 0.f
+    || m.ambient[3] < 0.f
     || m.diffuse[0] < 0.f
     || m.diffuse[1] < 0.f
     || m.diffuse[2] < 0.f
+    || m.diffuse[3] < 0.f
     || m.specular[0] < 0.f
     || m.specular[1] < 0.f
     || m.specular[2] < 0.f
+    || m.specular[3] < 0.f
     || m.shininess < 0.f)
     {
         return SR_MATERIAL_STATUS_VALUE_UNDERFLOW;
@@ -59,12 +62,15 @@ SR_MaterialStatus validate(const SR_Material& m) noexcept
     if (m.ambient[0] > 1.f
     || m.ambient[1] > 1.f
     || m.ambient[2] > 1.f
+    || m.ambient[3] > 1.f
     || m.diffuse[0] > 1.f
     || m.diffuse[1] > 1.f
     || m.diffuse[2] > 1.f
+    || m.diffuse[3] > 1.f
     || m.specular[0] > 1.f
     || m.specular[1] > 1.f
     || m.specular[2] > 1.f
+    || m.specular[3] > 1.f
     || m.shininess > 1.f)
     {
         return SR_MATERIAL_STATUS_VALUE_OVERFLOW;

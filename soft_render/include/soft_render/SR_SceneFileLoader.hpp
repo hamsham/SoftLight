@@ -13,6 +13,7 @@
 
 #include "soft_render/SR_AnimationProperty.hpp" // SR_AnimPrecision
 #include "soft_render/SR_Geometry.hpp"
+#include "soft_render/SR_Material.hpp"
 #include "soft_render/SR_SceneGraph.hpp"
 
 
@@ -275,7 +276,7 @@ class SR_SceneFileLoader
     void import_texture_path(
         const aiMaterial* const pMaterial,
         const int slotType,
-        SR_Material& outMaterial,
+        const SR_Texture* pTextures[SR_MaterialProperty::SR_MATERIAL_MAX_TEXTURES],
         SR_ImgFile& imgLoader,
         std::unordered_map<std::string, const SR_Texture*>& loadedTextures
     ) noexcept;

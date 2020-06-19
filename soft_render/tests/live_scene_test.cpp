@@ -89,7 +89,7 @@ struct SpotLight
     float outerCutoff;
     float innerCutoff;
     float epsilon;
-    float padding;
+    float shininess;
 };
 
 
@@ -660,6 +660,10 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, const SR_Tr
             // Use the textureless shader if needed
             size_t shaderId = (size_t)(material.pTextures[SR_MATERIAL_TEXTURE_AMBIENT] == nullptr);
 
+            pUniforms->light.ambient  = material.ambient;
+            pUniforms->light.diffuse  = material.diffuse;
+            pUniforms->spot.shininess = material.shininess;
+
             if (usePbr)
             {
                 shaderId += 2;
@@ -751,6 +755,7 @@ utils::Pointer<SR_SceneGraph> create_context()
     pUniforms->spot.innerCutoff = std::cos(LS_DEG2RAD(13.f));
     pUniforms->spot.outerCutoff = std::cos(LS_DEG2RAD(6.5f));
     pUniforms->spot.epsilon     = pUniforms->spot.outerCutoff / pUniforms->spot.innerCutoff;
+    pUniforms->spot.shininess   = 1.f;
 
     size_t texShaderId     = context.create_shader(texVertShader,  texFragShader,     uboId);
     size_t normShaderId    = context.create_shader(normVertShader, normFragShader,    uboId);

@@ -16,7 +16,6 @@
 #include "soft_render/SR_Camera.hpp"
 #include "soft_render/SR_ImgFile.hpp"
 #include "soft_render/SR_IndexBuffer.hpp"
-#include "soft_render/SR_Material.hpp"
 #include "soft_render/SR_SceneFileLoader.hpp"
 #include "soft_render/SR_SceneFileUtility.hpp"
 #include "soft_render/SR_Texture.hpp"
@@ -819,7 +818,50 @@ int SR_SceneFileLoader::import_materials(const aiScene* const pScene) noexcept
 
         for (unsigned j = 0; j < LS_ARRAY_SIZE(texTypes); ++j)
         {
-            import_texture_path(pMaterial, texTypes[j], newMaterial, *imgLoader, loadedTextures);
+            import_texture_path(pMaterial, texTypes[j], newMaterial.pTextures, *imgLoader, loadedTextures);
+        }
+
+        aiColor3D inMatColor;
+        float inTransparent = 1.f;
+        float inShininess = 0.f;
+
+        if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_COLOR_TRANSPARENT, inMatColor))
+        {
+            LS_LOG_MSG("\t\t\tUsing transparent material: ", inMatColor.r, ", ", inMatColor.g, ", ", inMatColor.b);
+            inTransparent = (float)math::min(inMatColor.r, inMatColor.g, inMatColor.b);
+        }
+
+        if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_COLOR_AMBIENT, inMatColor))
+        {
+            LS_LOG_MSG("\t\t\tUsing ambient material: ", inMatColor.r, ", ", inMatColor.g, ", ", inMatColor.b);
+            newMaterial.ambient[0] = inMatColor.r;
+            newMaterial.ambient[1] = inMatColor.g;
+            newMaterial.ambient[2] = inMatColor.b;
+            newMaterial.ambient[3] = inTransparent;
+        }
+
+        if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, inMatColor))
+        {
+            LS_LOG_MSG("\t\t\tUsing diffuse material: ", inMatColor.r, ", ", inMatColor.g, ", ", inMatColor.b);
+            newMaterial.diffuse[0] = inMatColor.r;
+            newMaterial.diffuse[1] = inMatColor.g;
+            newMaterial.diffuse[2] = inMatColor.b;
+            newMaterial.diffuse[3] = inTransparent;
+        }
+
+        if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_COLOR_SPECULAR, inMatColor))
+        {
+            LS_LOG_MSG("\t\t\tUsing specular material: ", inMatColor.r, ", ", inMatColor.g, ", ", inMatColor.b);
+            newMaterial.specular[0] = inMatColor.r;
+            newMaterial.specular[1] = inMatColor.g;
+            newMaterial.specular[2] = inMatColor.b;
+            newMaterial.specular[3] = inTransparent;
+        }
+
+        if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_SHININESS, inShininess))
+        {
+            LS_LOG_MSG("\t\t\tLoading shininess: ", inShininess);
+            newMaterial.shininess = inShininess;
         }
     }
     LS_LOG_MSG("\t\tDone.");
@@ -834,7 +876,7 @@ int SR_SceneFileLoader::import_materials(const aiScene* const pScene) noexcept
 void SR_SceneFileLoader::import_texture_path(
     const aiMaterial* const pMaterial,
     const int slotType,
-    SR_Material& outMaterial,
+    const SR_Texture* pTextures[SR_MaterialProperty::SR_MATERIAL_MAX_TEXTURES],
     SR_ImgFile& imgLoader,
     std::unordered_map<std::string, const SR_Texture*>& loadedTextures
 ) noexcept
@@ -889,17 +931,17 @@ void SR_SceneFileLoader::import_texture_path(
     // iterate
     aiString inPath;
     aiTextureMapMode inWrapMode[3] = {aiTextureMapMode::aiTextureMapMode_Wrap};
-    aiColor3D inMatColor;
-    float inShininess;
     const SR_Texture* pTexture = nullptr;
 
     for (unsigned i = 0, j = 0; i < maxTexCount; ++i)
     {
-        if (materialTexOffset != SR_MATERIAL_TEXTURE_MISC0 && outMaterial.pTextures[materialTexOffset])
+        if (materialTexOffset != SR_MATERIAL_TEXTURE_MISC0 && pTextures[materialTexOffset])
         {
             materialTexOffset = SR_MATERIAL_TEXTURE_MISC0;
         }
 
+        // SR_MATERIAL_TEXTURE_MISC0 is used as an offset. Here we check if
+        // a texture slot at SR_MATERIAL_TEXTURE_MISC0+N is available.
         if (materialTexOffset == SR_MATERIAL_TEXTURE_MISC0)
         {
             for (unsigned k = SR_MATERIAL_TEXTURE_MISC0; k <= SR_MATERIAL_MAX_TEXTURES; ++k)
@@ -910,7 +952,7 @@ void SR_SceneFileLoader::import_texture_path(
                     return;
                 }
 
-                if (!outMaterial.pTextures[k]) {
+                if (!pTextures[k]) {
                     materialTexOffset = k;
                     break;
                 }
@@ -935,7 +977,7 @@ void SR_SceneFileLoader::import_texture_path(
 
         if (loadedTextures.count(texPath) > 0)
         {
-            outMaterial.pTextures[materialTexOffset] = loadedTextures[texPath];
+            pTextures[materialTexOffset] = loadedTextures[texPath];
             LS_LOG_MSG("\t\t\tAlready loaded texture: ", texPath);
         }
         else
@@ -945,43 +987,17 @@ void SR_SceneFileLoader::import_texture_path(
             if (pTexture != nullptr)
             {
                 loadedTextures[texPath] = pTexture;
-                outMaterial.pTextures[materialTexOffset] = pTexture;
+                pTextures[materialTexOffset] = pTexture;
             }
             else
             {
                 LS_LOG_ERR("\t\t\tFailed to load a texture: ", texPath);
-                outMaterial.pTextures[materialTexOffset] = nullptr;
+                pTextures[materialTexOffset] = nullptr;
                 continue;
             }
         }
 
         ++j;
-    }
-
-    if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_COLOR_AMBIENT, inMatColor))
-    {
-        outMaterial.ambient[0] = inMatColor.r;
-        outMaterial.ambient[1] = inMatColor.g;
-        outMaterial.ambient[2] = inMatColor.b;
-    }
-
-    if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, inMatColor))
-    {
-        outMaterial.diffuse[0] = inMatColor.r;
-        outMaterial.diffuse[1] = inMatColor.g;
-        outMaterial.diffuse[2] = inMatColor.b;
-    }
-
-    if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_COLOR_SPECULAR, inMatColor))
-    {
-        outMaterial.specular[0] = inMatColor.r;
-        outMaterial.specular[1] = inMatColor.g;
-        outMaterial.specular[2] = inMatColor.b;
-    }
-
-    if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_SHININESS, inShininess))
-    {
-        outMaterial.shininess = inShininess;
     }
 }
 

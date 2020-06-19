@@ -56,9 +56,9 @@ struct SR_Material
 {
     const SR_Texture* pTextures[SR_MaterialProperty::SR_MATERIAL_MAX_TEXTURES];
 
-    SR_ColorRGBf ambient;
-    SR_ColorRGBf diffuse;
-    SR_ColorRGBf specular;
+    SR_ColorRGBAf ambient;
+    SR_ColorRGBAf diffuse;
+    SR_ColorRGBAf specular;
     float shininess;
 };
 
