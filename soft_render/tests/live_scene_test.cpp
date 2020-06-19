@@ -49,8 +49,12 @@
 #endif /* SR_TEST_MAX_THREADS */
 
 #ifndef SR_BENCHMARK_SCENE
-    #define SR_BENCHMARK_SCENE 1
+    #define SR_BENCHMARK_SCENE 0
 #endif /* SR_BENCHMARK_SCENE */
+
+#ifndef SR_TEST_BUMP_MAPS
+    #define SR_TEST_BUMP_MAPS 0
+#endif /* SR_TEST_BUMP_MAPS */
 
 namespace math = ls::math;
 namespace utils = ls::utils;
@@ -97,6 +101,10 @@ struct SpotLight
 struct MeshUniforms
 {
     const SR_Texture* pTexture;
+
+#if SR_TEST_BUMP_MAPS
+    const SR_Texture* pBump;
+#endif
 
     math::vec4 camPos;
     Light light;
@@ -157,6 +165,27 @@ inline float geometry_smith(const vec_type& norm, const vec_type& viewDir, const
 
     return geometry_schlick_ggx(normDotView, roughness) * geometry_schlick_ggx(normDotRad, roughness);
 }
+
+
+
+/*-----------------------------------------------------------------------------
+ * Bump Mapping Helper functions
+-----------------------------------------------------------------------------*/
+#if SR_TEST_BUMP_MAPS
+inline LS_INLINE math::vec4 bumped_normal(const SR_Texture* bumpMap, const math::vec4& uv) noexcept
+{
+    const float stepX = 1.f / (float)bumpMap->width();
+    const float stepY = 1.f / (float)bumpMap->height();
+
+    math::vec4_t<uint8_t> b;
+    b[0] = sr_sample_nearest<SR_ColorRType<uint8_t>, SR_WrapMode::REPEAT>(*bumpMap, uv[0],       uv[1]).r;
+    b[1] = sr_sample_nearest<SR_ColorRType<uint8_t>, SR_WrapMode::REPEAT>(*bumpMap, uv[0]+stepX, uv[1]).r;
+    b[2] = sr_sample_nearest<SR_ColorRType<uint8_t>, SR_WrapMode::REPEAT>(*bumpMap, uv[0],       uv[1]+stepY).r;
+    b[3] = 0;
+
+    return color_cast<float, uint8_t>(b) * 2.f - 1.f;
+}
+#endif
 
 
 
@@ -381,7 +410,7 @@ bool _texture_frag_shader_spot(SR_FragmentParam& fragParams)
     const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
     const math::vec4&    pos       = fragParams.pVaryings[0];
     const math::vec4&    uv        = fragParams.pVaryings[1];
-    const math::vec4&    norm      = math::normalize(fragParams.pVaryings[2]);
+    math::vec4&&         norm      = math::normalize(fragParams.pVaryings[2]);
     const SR_Texture*    albedo    = pUniforms->pTexture;
     float                attenuation;
     math::vec4           pixel;
@@ -403,6 +432,15 @@ bool _texture_frag_shader_spot(SR_FragmentParam& fragParams)
     {
         pixel = color_cast<float, uint8_t>(sr_sample_nearest<math::vec4_t<uint8_t>, SR_WrapMode::REPEAT>(*albedo, uv[0], uv[1]));
     }
+
+    #if SR_TEST_BUMP_MAPS
+        const SR_Texture* bumpMap = pUniforms->pBump;
+        if (bumpMap)
+        {
+            const math::vec4&& bumpedNorm = bumped_normal(bumpMap, uv);
+            norm = math::normalize(norm * bumpedNorm);
+        }
+    #endif
 
     // Light direction calculation
     math::vec4&& lightDir  = pUniforms->camPos - pos;
@@ -461,7 +499,7 @@ bool _texture_frag_shader_pbr(SR_FragmentParam& fragParams)
     const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
     const math::vec4     pos       = fragParams.pVaryings[0];
     const math::vec4     uv        = fragParams.pVaryings[1];
-    const math::vec4     norm      = math::normalize(fragParams.pVaryings[2]);
+    math::vec4&&         norm      = math::normalize(fragParams.pVaryings[2]);
     math::vec4&          output    = fragParams.pOutputs[0];
     const SR_Texture*    pTexture  = pUniforms->pTexture;
     math::vec4           pixel;
@@ -478,6 +516,15 @@ bool _texture_frag_shader_pbr(SR_FragmentParam& fragParams)
         const math::vec4_t<uint8_t>&& pixelF = sr_sample_nearest<math::vec4_t<uint8_t>, SR_WrapMode::REPEAT>(*pTexture, uv[0], uv[1]);
         pixel = color_cast<float, uint8_t>(pixelF);
     }
+
+    #if SR_TEST_BUMP_MAPS
+        const SR_Texture* bumpMap = pUniforms->pBump;
+        if (bumpMap)
+        {
+            const math::vec4&& bumpedNorm = bumped_normal(bumpMap, uv);
+            norm = math::normalize(norm * bumpedNorm);
+        }
+    #endif
 
     // gamma correction
     pixel = math::pow(pixel, math::vec4{2.2f});
@@ -657,6 +704,10 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, const SR_Tr
 
             pUniforms->pTexture = material.pTextures[SR_MATERIAL_TEXTURE_AMBIENT];
 
+            #if SR_TEST_BUMP_MAPS
+                pUniforms->pBump = material.pTextures[SR_MATERIAL_TEXTURE_HEIGHT];
+            #endif
+
             // Use the textureless shader if needed
             size_t shaderId = (size_t)(material.pTextures[SR_MATERIAL_TEXTURE_AMBIENT] == nullptr);
 
@@ -805,8 +856,8 @@ int main()
 
     SR_Transform camTrans;
     camTrans.type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
-    //camTrans.extract_transforms(math::look_at(math::vec3{200.f, 150.f, 0.f}, math::vec3{0.f, 100.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
     camTrans.extract_transforms(math::look_at(math::vec3{0.f}, math::vec3{3.f, -5.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
+    //camTrans.extract_transforms(math::look_at(math::vec3{200.f, 150.f, 0.f}, math::vec3{0.f, 100.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
 
     #if SR_REVERSED_Z_RENDERING
         math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
