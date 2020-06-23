@@ -72,7 +72,6 @@ struct Light
     math::vec4 pos;
     math::vec4 ambient;
     math::vec4 diffuse;
-    math::vec4 spot;
 };
 
 
@@ -83,17 +82,6 @@ struct PointLight
     float linear;
     float quadratic;
     float padding;
-};
-
-
-
-struct SpotLight
-{
-    math::vec4 direction;
-    float outerCutoff;
-    float innerCutoff;
-    float epsilon;
-    float shininess;
 };
 
 
@@ -109,7 +97,6 @@ struct MeshUniforms
     math::vec4 camPos;
     Light light;
     PointLight point;
-    SpotLight spot;
 
     math::mat4 modelMatrix;
     math::mat4 mvpMatrix;
@@ -230,34 +217,54 @@ SR_VertexShader normal_vert_shader()
 --------------------------------------*/
 bool _normal_frag_shader_impl(SR_FragmentParam& fragParams)
 {
-    const MeshUniforms* pUniforms = fragParams.pUniforms->as<MeshUniforms>();
-    const math::vec4&   pos       = fragParams.pVaryings[0];
-    const math::vec4&&  norm      = math::normalize(fragParams.pVaryings[1]);
-    math::vec4&         output    = fragParams.pOutputs[0];
+    const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
+    const math::vec4&    pos       = fragParams.pVaryings[0];
+    math::vec4&&         norm      = math::normalize(fragParams.pVaryings[1]);
+    float                attenuation;
+    math::vec4           diffuse;
+    float                specular;
 
+    constexpr float diffuseMultiplier = 4.f;
+    constexpr float specularity = 0.5f;
+    constexpr float shininess = 50.f;
 
     // Light direction calculation
-    math::vec4&& lightDir  = pUniforms->camPos - pos;
+    const Light& l         = pUniforms->light;
+    math::vec4&& lightDir  = l.pos - pos;
     const float  lightDist = math::length(lightDir);
 
     // normalize
-    lightDir *= math::rcp(lightDist);
+    lightDir = lightDir * math::rcp(lightDist);
 
-    const Light&        l             = pUniforms->light;
-    const math::vec4&   ambient       = l.ambient;
-    const float         lightAngle    = math::max(math::dot(lightDir, norm), 0.f);
-    const float         constant      = pUniforms->point.constant;
-    const float         linear        = pUniforms->point.linear;
-    const float         quadratic     = pUniforms->point.quadratic;
-    const float         attenuation   = math::rcp(constant + (linear*lightDist) + (quadratic*lightDist*lightDist));
-    const math::vec4&&  diffuse       = l.diffuse * (lightAngle * attenuation);
+    const math::vec4 ambient = l.ambient;
 
-    const SpotLight&    s             = pUniforms->spot;
-    const float         theta         = math::dot(lightDir, s.direction);
-    const float         spotIntensity = math::smoothstep(s.innerCutoff, s.outerCutoff, theta);
-    const math::vec4&&  specular      = ambient + diffuse + (l.spot * (spotIntensity * attenuation));
+    // Diffuse light calculation
+    {
+        const PointLight& p    = pUniforms->point;
+        const float lightAngle = math::max(math::dot(lightDir, norm), 0.f);
+        const float constant   = p.constant;
+        const float linear     = p.linear;
+        const float quadratic  = p.quadratic;
 
-    output = math::min(specular, math::vec4{1.f});
+        attenuation = math::rcp(constant + (linear * lightDist) + (quadratic * lightDist * lightDist));
+        diffuse     = l.diffuse * (lightAngle * attenuation) * diffuseMultiplier;
+    }
+
+    // specular reflection calculation
+    {
+        const math::vec4&  eyeVec     = math::normalize(pUniforms->camPos - pos);
+        const math::vec4&& halfVec    = math::normalize(lightDir + eyeVec);
+        const float        reflectDir = math::max(math::dot(norm, halfVec), 0.f);
+
+        specular = specularity * math::pow(reflectDir, shininess);
+    }
+
+    // output composition
+    {
+        const math::vec4&& accumulation = math::min(diffuse+specular+ambient, math::vec4{1.f});
+
+        fragParams.pOutputs[0] = accumulation;
+    }
 
     return true;
 }
@@ -415,10 +422,9 @@ bool _texture_frag_shader_spot(SR_FragmentParam& fragParams)
     float                attenuation;
     math::vec4           pixel;
     math::vec4           diffuse;
-    math::vec4           spot;
     float                specular;
 
-    constexpr float diffuseMultiplier = 2.f;
+    constexpr float diffuseMultiplier = 4.f;
     constexpr float specularity = 0.5f;
     constexpr float shininess = 50.f;
 
@@ -433,6 +439,9 @@ bool _texture_frag_shader_spot(SR_FragmentParam& fragParams)
         pixel = color_cast<float, uint8_t>(sr_sample_nearest<math::vec4_t<uint8_t>, SR_WrapMode::REPEAT>(*albedo, uv[0], uv[1]));
     }
 
+    // gamma corection
+    pixel = math::pow(pixel, math::vec4{2.2f});
+
     #if SR_TEST_BUMP_MAPS
         const SR_Texture* bumpMap = pUniforms->pBump;
         if (bumpMap)
@@ -443,13 +452,13 @@ bool _texture_frag_shader_spot(SR_FragmentParam& fragParams)
     #endif
 
     // Light direction calculation
-    math::vec4&& lightDir  = pUniforms->camPos - pos;
+    const Light& l         = pUniforms->light;
+    math::vec4&& lightDir  = l.pos - pos;
     const float  lightDist = math::length(lightDir);
 
     // normalize
     lightDir = lightDir * math::rcp(lightDist);
 
-    const Light&     l       = pUniforms->light;
     const math::vec4 ambient = l.ambient;
 
     // Diffuse light calculation
@@ -464,27 +473,18 @@ bool _texture_frag_shader_spot(SR_FragmentParam& fragParams)
         diffuse     = l.diffuse * (lightAngle * attenuation) * diffuseMultiplier;
     }
 
-    // Spot light calculation
-    {
-        const SpotLight& s        = pUniforms->spot;
-        const float theta         = math::dot(lightDir, s.direction);
-        const float spotIntensity = math::smoothstep(s.innerCutoff, s.outerCutoff, theta);
-
-        spot = l.spot * (spotIntensity * attenuation) * s.epsilon;
-    }
-
     // specular reflection calculation
     {
-        const math::vec4&& eyeVec     = pUniforms->camPos - pos;
-        const math::vec4&& halfVec    = math::normalize((-l.pos-pos) + eyeVec);
-        const float        reflectDir = math::max(math::dot(halfVec, norm), 0.f);
+        const math::vec4&  eyeVec     = math::normalize(pUniforms->camPos - pos);
+        const math::vec4&& halfVec    = math::normalize(lightDir + eyeVec);
+        const float        reflectDir = math::max(math::dot(norm, halfVec), 0.f);
 
         specular = specularity * math::pow(reflectDir, shininess);
     }
 
     // output composition
     {
-        const math::vec4&& accumulation = math::min(diffuse+spot+specular+ambient, math::vec4{1.f});
+        const math::vec4&& accumulation = math::min(diffuse+specular+ambient, math::vec4{1.f});
 
         fragParams.pOutputs[0] = pixel * accumulation;
     }
@@ -713,7 +713,6 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, const SR_Tr
 
             pUniforms->light.ambient  = material.ambient;
             pUniforms->light.diffuse  = material.diffuse;
-            pUniforms->spot.shininess = material.shininess;
 
             if (usePbr)
             {
@@ -799,14 +798,9 @@ utils::Pointer<SR_SceneGraph> create_context()
     pUniforms->light.pos        = math::vec4{30.f, 45.f, 45.f, 1.f};
     pUniforms->light.ambient    = math::vec4{0.f, 0.f, 0.f, 1.f};
     pUniforms->light.diffuse    = math::vec4{0.5f, 0.5f, 0.5f, 1.f};
-    pUniforms->light.spot       = math::vec4{1.f};
     pUniforms->point.constant   = 1.f;
     pUniforms->point.linear     = 0.009f;
     pUniforms->point.quadratic  = 0.00018f;
-    pUniforms->spot.innerCutoff = std::cos(LS_DEG2RAD(13.f));
-    pUniforms->spot.outerCutoff = std::cos(LS_DEG2RAD(6.5f));
-    pUniforms->spot.epsilon     = pUniforms->spot.outerCutoff / pUniforms->spot.innerCutoff;
-    pUniforms->spot.shininess   = 1.f;
 
     size_t texShaderId     = context.create_shader(texVertShader,  texFragShader,     uboId);
     size_t normShaderId    = context.create_shader(normVertShader, normFragShader,    uboId);
@@ -1021,12 +1015,7 @@ int main()
                 camTrans.apply_transform();
 
                 MeshUniforms* pUniforms = context.ubo(0).as<MeshUniforms>();
-                //const math::vec3&& camTransPos = -camTrans.position();
-                //pUniforms->camPos = {camTransPos[0], camTransPos[1], camTransPos[2], 1.f};
                 pUniforms->camPos = math::vec4_cast(camTrans.absolute_position(), 1.f);
-
-                const math::mat4& v = camTrans.transform();
-                pUniforms->spot.direction = math::normalize(math::vec4{v[0][2], v[1][2], v[2][2], 0.f});
             }
             const math::mat4&& vpMatrix = projMatrix * camTrans.transform();
 
