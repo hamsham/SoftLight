@@ -741,7 +741,7 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
                     ++numQueuedFrags;
                 }
 
-                if (numQueuedFrags >= SR_SHADER_MAX_QUEUED_FRAGS-4)
+                if (numQueuedFrags > SR_SHADER_MAX_QUEUED_FRAGS-4)
                 {
                     flush_fragments(pBin, numQueuedFrags, outCoords);
                     numQueuedFrags = 0;
@@ -897,8 +897,8 @@ void SR_FragmentProcessor::execute() noexcept
         case RENDER_MODE_INDEXED_TRIANGLES:
             // Triangles assign scan-lines per thread for rasterization.
             // There's No need to subdivide the output framebuffer
-            render_triangle(mFbo->get_depth_buffer());
-            //render_triangle_simd(mFbo->get_depth_buffer());
+            //render_triangle(mFbo->get_depth_buffer());
+            render_triangle_simd(mFbo->get_depth_buffer());
             break;
     }
 }
