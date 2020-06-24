@@ -745,7 +745,7 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
                 {
                     flush_fragments(pBin, numQueuedFrags, outCoords);
                     numQueuedFrags = 0;
-                    LS_PREFETCH(pBin+1, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
+                    LS_PREFETCH(pDepth+4, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
                 }
             }
         }
@@ -897,8 +897,8 @@ void SR_FragmentProcessor::execute() noexcept
         case RENDER_MODE_INDEXED_TRIANGLES:
             // Triangles assign scan-lines per thread for rasterization.
             // There's No need to subdivide the output framebuffer
-            //render_triangle(mFbo->get_depth_buffer());
-            render_triangle_simd(mFbo->get_depth_buffer());
+            render_triangle(mFbo->get_depth_buffer());
+            //render_triangle_simd(mFbo->get_depth_buffer());
             break;
     }
 }
