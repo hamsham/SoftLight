@@ -1,8 +1,10 @@
 
 #include "lightsky/setup/Api.h" // LS_IMPERATIVE
 
+#include "lightsky/math/bits.h"
 #include "lightsky/math/fixed.h"
 #include "lightsky/math/vec_utils.h"
+#include "lightsky/math/mat_utils.h"
 
 #include "soft_render/SR_Config.hpp"
 #include "soft_render/SR_FragmentProcessor.hpp"
@@ -493,7 +495,7 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
             int32_t xMax;
             scanline.step(yf, xMin, xMax);
 
-            const float* const pDepth = depthBuffer->texel_pointer<float>(0, y);
+            const float* const pDepth = depthBuffer->row_pointer<float>(y);
 
             for (int32_t x = xMin, y16 = y << 16; x < xMax; x += xMax-xMin)
             {
@@ -585,28 +587,27 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
             int32_t xMax;
             scanline.step(yf, xMin, xMax);
 
-            const float* const pDepth = depthBuffer->texel_pointer<float>(0, y);
+            int32_t x = xMin;
+            float xf = (float)x;
 
-            for (int32_t x = xMin, y16 = y << 16; x < xMax; ++x)
+            const float* const pDepth = depthBuffer->row_pointer<float>(y);
+
+            for (int32_t y16 = y << 16; x < xMax; ++x, xf += 1.f)
             {
                 // calculate barycentric coordinates
-                const float  xf = (float)x;
-                math::vec4&& bc = math::fmadd(bcClipSpace[0], math::vec4{xf}, bcY);
-                const float  z  = math::dot(depth, bc);
+                math::vec4&& bc          = math::fmadd(bcClipSpace[0], math::vec4{xf}, bcY);
+                const float  z           = math::dot(depth, bc);
+                const float  depthTexels = pDepth[x];
 
-                if (depthTesting)
+                #if SR_REVERSED_Z_RENDERING
+                    const int_fast32_t&& depthTest = math::sign_mask(z - depthTexels) & -depthTesting;
+                #else
+                    const int_fast32_t&& depthTest = math::sign_mask(depthTexels - z) & -depthTesting;
+                #endif
+
+                if (LS_UNLIKELY(depthTest))
                 {
-                    #if SR_REVERSED_Z_RENDERING
-                        if (z < pDepth[x])
-                        {
-                            continue;
-                        }
-                    #else
-                        if (z > pDepth[x])
-                        {
-                            continue;
-                        }
-                    #endif
+                    continue;
                 }
 
                 // perspective correction
@@ -620,8 +621,6 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
                 {
                     numQueuedFrags = 0;
                     flush_fragments(pBin, SR_SHADER_MAX_QUEUED_FRAGS, outCoords);
-
-                    LS_PREFETCH(pBin+1, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
                 }
             }
         }
@@ -631,6 +630,131 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
         {
             flush_fragments(pBin, numQueuedFrags, outCoords);
         }
+
+        LS_PREFETCH(pBin+1, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
+    }
+}
+
+
+
+/*-------------------------------------
+ * Render a triangle using 4 elements at a time
+-------------------------------------*/
+void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) const noexcept
+{
+    const SR_FragmentBin* pBin         = mBins;
+    SR_FragCoord*         outCoords    = mQueues;
+    const int32_t         yOffset      = (uint32_t)mThreadId;
+    const int32_t         increment    = (int32_t)mNumProcessors;
+    const int32_t         depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON;
+    SR_ScanlineBounds     scanline;
+
+    for (uint64_t binId = 0; binId < mNumBins; ++binId, ++pBin)
+    {
+        uint_fast32_t     numQueuedFrags = 0;
+        const math::vec4* pPoints        = pBin->mScreenCoords;
+        const math::vec4* bcClipSpace    = pBin->mBarycentricCoords;
+        const math::vec4  depth          {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
+        const math::vec4  homogenous     {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
+
+        int32_t bboxMinY = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
+        int32_t bboxMaxY = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
+
+        // Let each thread start rendering at whichever scanline it's assigned to
+        bboxMinY += sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
+
+        scanline.init(pPoints[0], pPoints[1], pPoints[2]);
+
+        for (int32_t y = bboxMinY; y < bboxMaxY; y += increment)
+        {
+            // calculate the bounds of the current scan-line
+            const float yf = (float)y;
+            const math::vec4&& bcY = math::fmadd(bcClipSpace[1], math::vec4{yf}, bcClipSpace[2]);
+
+            // In this rasterizer, we're only rendering the absolute pixels
+            // contained within the triangle edges. However this will serve as a
+            // guard against any pixels we don't want to render.
+            int32_t xMin;
+            int32_t xMax;
+            scanline.step(yf, xMin, xMax);
+
+            math::vec4&& xf = math::vec4{0.f, 1.f, 2.f, 3.f} + (float)xMin;
+            math::vec4i&& x4 = math::vec4i{0, 1, 2, 3} + xMin;
+
+            // I'm pretty sure Z-ordering has been ruled out at this point.
+            const float* pDepth = depthBuffer->row_pointer<float>((uintptr_t)y) + xMin;
+
+            //for (uint16_t y16 = (uint16_t)y; x[0] <= xMax;)
+            for (uint32_t y16 = (uint32_t)(y << 16); x4[0] < xMax; x4 += 4, pDepth += 4, xf += 4.f)
+            {
+                // calculate barycentric coordinates and perform a depth test
+                math::mat4&&       bc         = math::outer(xf, bcClipSpace[0]) + bcY;
+                const math::vec4&& z          = depth * bc;
+                const math::vec4& depthTexels = *reinterpret_cast<const math::vec4*>(pDepth);
+
+                #if SR_REVERSED_Z_RENDERING
+                    const int32_t&& depthTest = math::sign_mask(z - depthTexels) & -depthTesting;
+                #else
+                    const int32_t&& depthTest = math::sign_mask(depthTexels - z) & -depthTesting;
+                #endif
+
+                //const int_fast32_t end    = math::min<int_fast32_t>(xMax - x, -(depthTest != 0x0F) & 4);
+                const math::vec4&& persp4 = math::rcp(homogenous * bc);
+                bc[0] = (bc[0] * homogenous) * persp4[0];
+                bc[1] = (bc[1] * homogenous) * persp4[1];
+                bc[2] = (bc[2] * homogenous) * persp4[2];
+                bc[3] = (bc[3] * homogenous) * persp4[3];
+
+                if (x4[0] < xMax && !(depthTest & 0x01))
+                {
+                    // perspective correction
+                    outCoords->bc[numQueuedFrags]   = bc[0];
+                    outCoords->xyzw[numQueuedFrags] = math::vec4{xf[0], yf, z[0], persp4[0]};
+                    outCoords->xy[numQueuedFrags]   = (uint32_t)((0xFFFF & (x4[0])) | y16);
+                    ++numQueuedFrags;
+                }
+
+                if (x4[1] < xMax && !(depthTest & 0x02))
+                {
+                    // perspective correction
+                    outCoords->bc[numQueuedFrags]   = bc[1];
+                    outCoords->xyzw[numQueuedFrags] = math::vec4{xf[1], yf, z[1], persp4[1]};
+                    outCoords->xy[numQueuedFrags]   = (uint32_t)((0xFFFF & (x4[1])) | y16);
+                    ++numQueuedFrags;
+                }
+
+                if (x4[2] < xMax && !(depthTest & 0x04))
+                {
+                    // perspective correction
+                    outCoords->bc[numQueuedFrags]   = bc[2];
+                    outCoords->xyzw[numQueuedFrags] = math::vec4{xf[2], yf, z[2], persp4[2]};
+                    outCoords->xy[numQueuedFrags]   = (uint32_t)((0xFFFF & (x4[2])) | y16);
+                    ++numQueuedFrags;
+                }
+
+                if (x4[3] < xMax && !(depthTest & 0x08))
+                {
+                    // perspective correction
+                    outCoords->bc[numQueuedFrags]   = bc[3];
+                    outCoords->xyzw[numQueuedFrags] = math::vec4{xf[3], yf, z[3], persp4[3]};
+                    outCoords->xy[numQueuedFrags]   = (uint32_t)((0xFFFF & (x4[3])) | y16);
+                    ++numQueuedFrags;
+                }
+
+                if (numQueuedFrags >= SR_SHADER_MAX_QUEUED_FRAGS-4)
+                {
+                    flush_fragments(pBin, numQueuedFrags, outCoords);
+                    numQueuedFrags = 0;
+                }
+            }
+        }
+
+        if (numQueuedFrags)
+        {
+            flush_fragments(pBin, numQueuedFrags, outCoords);
+        }
+
+        LS_PREFETCH(pBin+1, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
     }
 }
 
@@ -775,6 +899,7 @@ void SR_FragmentProcessor::execute() noexcept
             // Triangles assign scan-lines per thread for rasterization.
             // There's No need to subdivide the output framebuffer
             render_triangle(mFbo->get_depth_buffer());
+            //render_triangle_simd(mFbo->get_depth_buffer());
             break;
     }
 }
