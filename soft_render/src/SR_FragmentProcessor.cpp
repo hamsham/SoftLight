@@ -688,9 +688,10 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
             for (uint32_t y16 = (uint32_t)(y << 16); x4[0] < xMax; x4 += 4, pDepth += 4, xf += 4.f)
             {
                 // calculate barycentric coordinates and perform a depth test
-                math::mat4&&       bc         = math::outer(xf, bcClipSpace[0]) + bcY;
-                const math::vec4&& z          = depth * bc;
-                const math::vec4& depthTexels = *reinterpret_cast<const math::vec4*>(pDepth);
+                const math::vec4   depthTexels = *reinterpret_cast<const math::vec4*>(pDepth);
+                math::mat4&&       bc          = math::outer(xf, bcClipSpace[0]) + bcY;
+                const math::vec4&& z           = depth * bc;
+                const math::vec4&& persp4      = math::rcp(homogenous * bc);
 
                 #if SR_REVERSED_Z_RENDERING
                     const int32_t&& depthTest = math::sign_mask(z - depthTexels) & -depthTesting;
@@ -698,8 +699,6 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
                     const int32_t&& depthTest = math::sign_mask(depthTexels - z) & -depthTesting;
                 #endif
 
-                //const int_fast32_t end    = math::min<int_fast32_t>(xMax - x, -(depthTest != 0x0F) & 4);
-                const math::vec4&& persp4 = math::rcp(homogenous * bc);
                 bc[0] = (bc[0] * homogenous) * persp4[0];
                 bc[1] = (bc[1] * homogenous) * persp4[1];
                 bc[2] = (bc[2] * homogenous) * persp4[2];
@@ -897,8 +896,8 @@ void SR_FragmentProcessor::execute() noexcept
         case RENDER_MODE_INDEXED_TRIANGLES:
             // Triangles assign scan-lines per thread for rasterization.
             // There's No need to subdivide the output framebuffer
-            //render_triangle(mFbo->get_depth_buffer());
-            render_triangle_simd(mFbo->get_depth_buffer());
+            render_triangle(mFbo->get_depth_buffer());
+            //render_triangle_simd(mFbo->get_depth_buffer());
             break;
     }
 }
