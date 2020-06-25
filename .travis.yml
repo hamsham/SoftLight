@@ -4,22 +4,45 @@ language: cpp
 
 jobs:
   include:
-    - os: osx
-      osx_image: xcode11.6
+    - os: linux
+      dist: bionic
       arch: amd64
-      compiler:
-        - clang
-        - gcc
+      compiler: gcc
 
     - os: linux
       dist: bionic
-      arch:
-        - amd64
-        - arm64
-        - ppc64le
-      compiler:
-        - gcc
-        - clang
+      arch: amd64
+      compiler: clang
+
+    - os: linux
+      dist: bionic
+      arch: arm64
+      compiler: gcc
+
+    - os: linux
+      dist: bionic
+      arch: arm64
+      compiler: clang
+
+    - os: linux
+      dist: bionic
+      arch: ppc64le
+      compiler: gcc
+
+    - os: linux
+      dist: bionic
+      arch: ppc64le
+      compiler: clang
+
+    - os: osx
+      osx_image: xcode11.6
+      arch: amd64
+      compiler: clang
+
+    - os: osx
+      osx_image: xcode11.6
+      arch: amd64
+      compiler: gcc
 
     - os: windows
       compiler: clang
