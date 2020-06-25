@@ -47,8 +47,8 @@ jobs:
     - os: windows
       compiler: gcc
 
-    - os: windows
-      compiler: clang
+#    - os: windows
+#      compiler: clang
 
 
 
@@ -141,7 +141,7 @@ before_script:
         cmake .. -G'Unix Makefiles'
     else
         if [[ "$TRAVIS_COMPILER" = "gcc" ]]; then
-            $msys2 cmake .. -G'Unix Makefiles'
+            $msys2 cmake .. -G'Unix Makefiles' -D"CMAKE_MAKE_PROGRAM:PATH=/C/tools/msys64/mingw64/bin/$MAKE"
         else
             cmake ..
         fi
