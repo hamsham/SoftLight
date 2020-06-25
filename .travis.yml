@@ -1,19 +1,29 @@
 language: cpp
 
 
-os:
-  - osx
-  - linux
-  - windows
 
+jobs:
+  include:
+    - os: osx
+      osx_image: xcode11.6
+      arch: amd64
+      compiler:
+        - clang
+        - gcc
 
-compiler:
-  - gcc
-  - clang
+    - os: linux
+      dist: bionic
+      arch:
+        - amd64
+        - arm64
+        - ppc64le
+      compiler:
+        - gcc
+        - clang
 
+    - os: windows
+      compiler: clang
 
-dist: bionic
-osx_image: xcode11.2
 
 
 addons:
