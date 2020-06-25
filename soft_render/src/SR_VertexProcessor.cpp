@@ -1147,7 +1147,7 @@ void SR_VertexProcessor::execute() noexcept
 
         #if defined(LS_ARCH_X86)
             _mm_pause();
-        #elif defined(LS_ARCH_AARCH64)
+        #elif defined(LS_COMPILER_CLANG) && defined(LS_ARCH_AARCH64)
             __yield();
         #endif
     }
