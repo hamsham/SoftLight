@@ -71,6 +71,7 @@ stage Configure:
 
 stage Build:
   script:
+    - cd build
     - cmake --build . --config Release
 
 stages:
