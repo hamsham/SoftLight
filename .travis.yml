@@ -57,17 +57,15 @@ branches:
     - master
 
 
-stage Checkout:
-  before_script:
-    - git checkout master
-    - git submodule init
-    - git submodule foreach git checkout master
+before_script:
+  - git checkout master
+  - git submodule init
+  - git submodule foreach git checkout master
+  - mkdir build
+  - cd build
+  - if [[ "$TRAVIS_OS_NAME" != "windows" ]]; then cmake .. -G'Unix Makefiles'; else cmake ..; fi
 
-stage Build:
-  before_script:
-    - mkdir build
-    - cd build
-    - if [[ "$TRAVIS_OS_NAME" != "windows" ]]; then cmake .. -G'Unix Makefiles'; else cmake ..; fi
 
-  script:
-    - cmake --build . --config Release
+script:
+  cmake --build . --config Release
+
