@@ -1,18 +1,19 @@
 
-#include "lightsky/setup/Macros.h"
+#include <thread> // std::this_thread::yield()
 
+#include "lightsky/setup/Compiler.h"
+#include "lightsky/setup/Macros.h"
 #include "lightsky/setup/OS.h"
 
 #ifdef LS_OS_UNIX
     #include <time.h> // nanosleep, time_spec
 #endif
 
-#if defined(LS_ARCH_AARCH64)
+#if defined(LS_COMPILER_CLANG) && defined(LS_ARCH_AARCH64)
     #include <arm_acle.h>
 #endif
 
 #include "lightsky/utils/Assertions.h" // LS_DEBUG_ASSERT
-#include "lightsky/utils/Sort.hpp" // utils::sort_quick
 
 #include "lightsky/math/mat_utils.h"
 
@@ -519,7 +520,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
         {
             #if defined(LS_ARCH_X86)
                 _mm_pause();
-            #elif defined(LS_ARCH_AARCH64)
+            #elif defined(LS_COMPILER_CLANG) && defined(LS_ARCH_AARCH64)
                 __yield();
             #elif defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
                 clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
