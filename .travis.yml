@@ -4,46 +4,46 @@ language: cpp
 
 jobs:
   include:
-    - os: linux
-      dist: bionic
-      arch: amd64
-      compiler: gcc
-
-    - os: linux
-      dist: bionic
-      arch: amd64
-      compiler: clang
-
-    - os: linux
-      dist: bionic
-      arch: arm64
-      compiler: gcc
-
-    - os: linux
-      dist: bionic
-      arch: arm64
-      compiler: clang
-
-    - os: linux
-      dist: bionic
-      arch: ppc64le
-      compiler: gcc
-
-    - os: linux
-      dist: bionic
-      arch: ppc64le
-      compiler: clang
-
-    - os: osx
-      osx_image: xcode11.6
-      arch: amd64
-      compiler: clang
-
-    - os: osx
-      osx_image: xcode11.6
-      arch: amd64
-      compiler: gcc
-
+#    - os: linux
+#      dist: bionic
+#      arch: amd64
+#      compiler: gcc
+#
+#    - os: linux
+#      dist: bionic
+#      arch: amd64
+#      compiler: clang
+#
+#    - os: linux
+#      dist: bionic
+#      arch: arm64
+#      compiler: gcc
+#
+#    - os: linux
+#      dist: bionic
+#      arch: arm64
+#      compiler: clang
+#
+#    - os: linux
+#      dist: bionic
+#      arch: ppc64le
+#      compiler: gcc
+#
+#    - os: linux
+#      dist: bionic
+#      arch: ppc64le
+#      compiler: clang
+#
+#    - os: osx
+#      osx_image: xcode11.6
+#      arch: amd64
+#      compiler: clang
+#
+#    - os: osx
+#      osx_image: xcode11.6
+#      arch: amd64
+#      compiler: gcc
+#
     - os: windows
       compiler: gcc
 
@@ -96,6 +96,7 @@ before_install:
         $msys2 pacman --sync --noconfirm --needed mingw-w64-x86_64-toolchain
         ## Install more MSYS2 packages from https://packages.msys2.org/base here
         taskkill //IM gpg-agent.exe //F  # https://travis-ci.community/t/4967
+        $msys2 pacman -S --noconfirm --needed cmake
         export PATH=/C/tools/msys64/mingw64/bin:$PATH
         export MAKE=mingw32-make  # so that Autotools can find it
         ;;
@@ -135,7 +136,16 @@ before_script:
   - git submodule foreach git checkout master
   - mkdir build
   - cd build
-  - if [[ "$TRAVIS_OS_NAME" = "windows" ]] && [[ "$TRAVIS_COMPILER" != "gcc" ]]; then cmake ..; else cmake .. -G'Unix Makefiles'; fi
+  - |-
+    if [[ "$TRAVIS_OS_NAME" != "windows" ]]; then
+        cmake .. -G'Unix Makefiles'
+    else
+        if [[ "$TRAVIS_COMPILER" = "gcc" ]]; then
+            $msys2 cmake .. -G'Unix Makefiles'
+        else
+            cmake ..
+        fi
+    fi
 
 
 
