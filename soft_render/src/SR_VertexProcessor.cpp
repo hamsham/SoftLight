@@ -502,10 +502,11 @@ void SR_VertexProcessor::flush_bins() const noexcept
         fragTask.execute();
     }
 
-    #if defined(LS_OS_UNIX) && !(defined(LS_ARCH_X86) || defined(LS_ARCH_AARCH64))
+    #if defined(LS_OS_UNIX) && !defined(LS_ARCH_X86)
         struct timespec sleepAmt;
         sleepAmt.tv_sec = 0;
         sleepAmt.tv_nsec = 1;
+        (void)sleepAmt;
     #endif
 
     for (uint32_t t = 0; t < (uint32_t)mNumThreads; ++t)
@@ -562,7 +563,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
         {
             #if defined(LS_ARCH_X86)
                 _mm_pause();
-            #elif defined(LS_ARCH_AARCH64)
+            #elif defined(LS_COMPILER_CLANG) && defined(LS_ARCH_AARCH64)
                 __yield();
             #elif defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
                 clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
