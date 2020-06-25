@@ -141,7 +141,7 @@ before_script:
         cmake .. -G'Unix Makefiles'
     else
         if [[ "$TRAVIS_COMPILER" = "gcc" ]]; then
-            $msys2 cmake .. -G'Unix Makefiles' -D"CMAKE_MAKE_PROGRAM:PATH=/C/tools/msys64/mingw64/bin/$MAKE"
+            cmake .. -G'Unix Makefiles' -D"CMAKE_MAKE_PROGRAM:PATH=/C/tools/msys64/mingw64/bin/mingw32-make"
         else
             cmake ..
         fi
