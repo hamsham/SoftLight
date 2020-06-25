@@ -63,18 +63,11 @@ stage Checkout:
     - git submodule init
     - git submodule foreach git checkout master
 
-stage Configure:
+stage Build:
   before_script:
     - mkdir build
     - cd build
     - if [[ "$TRAVIS_OS_NAME" != "windows" ]]; then cmake .. -G'Unix Makefiles'; else cmake ..; fi
 
-stage Build:
   script:
-    - cd build
     - cmake --build . --config Release
-
-stages:
-  - Checkout
-  - Configure
-  - Build
