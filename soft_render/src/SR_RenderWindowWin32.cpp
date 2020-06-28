@@ -1046,6 +1046,7 @@ unsigned SR_RenderWindowWin32::dpi() const noexcept
 
     const float displayInches = (float)GetDeviceCaps(winDc, HORZRES) * 25.4;
     const float widthMM = (float)GetDeviceCaps(winDc, HORZSIZE);
+    ReleaseDC(mHwnd, winDc);
 
     return (unsigned)(displayInches / widthMM + 0.5f); // round before truncate
 }
