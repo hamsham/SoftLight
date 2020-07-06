@@ -64,15 +64,6 @@ namespace math
 {
 using vec4s = vec4_t<uint16_t>;
 }
-
-namespace utils
-{
-template <typename data_t>
-using AlignedPointer = Pointer<data_t, AlignedDeleter>;
-
-template <typename data_t>
-using AlignedArray = Pointer<data_t[], AlignedDeleter>;
-}
 }
 
 namespace math = ls::math;
@@ -90,7 +81,7 @@ struct AnimUniforms
 {
     const SR_Texture* pTexture;
     size_t            instanceId;
-    utils::AlignedArray<math::mat4> instanceMatrix;
+    utils::UniqueAlignedArray<math::mat4> instanceMatrix;
     math::mat4        modelMatrix;
     math::mat4        vpMatrix;
     math::vec4        camPos;
@@ -337,7 +328,7 @@ utils::Pointer<SR_SceneGraph> create_context()
 
     size_t uboId = context.create_ubo();
     AnimUniforms* pUniforms = context.ubo(0).as<AnimUniforms>();
-    pUniforms->instanceMatrix.reset((math::mat4*)utils::aligned_malloc(sizeof(math::mat4) * MAX_INSTANCES));
+    pUniforms->instanceMatrix = utils::make_unique_aligned_array<math::mat4>(MAX_INSTANCES);
 
     for (size_t z = 0; z < MAX_INSTANCES_Z; ++z)
     {
