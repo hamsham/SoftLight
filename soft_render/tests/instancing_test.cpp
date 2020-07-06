@@ -64,6 +64,15 @@ namespace math
 {
 using vec4s = vec4_t<uint16_t>;
 }
+
+namespace utils
+{
+template <typename data_t>
+using AlignedPointer = Pointer<data_t, AlignedDeleter>;
+
+template <typename data_t>
+using AlignedArray = Pointer<data_t[], AlignedDeleter>;
+}
 }
 
 namespace math = ls::math;
@@ -81,10 +90,10 @@ struct AnimUniforms
 {
     const SR_Texture* pTexture;
     size_t            instanceId;
+    utils::AlignedArray<math::mat4> instanceMatrix;
     math::mat4        modelMatrix;
     math::mat4        vpMatrix;
     math::vec4        camPos;
-    utils::Pointer<math::mat4[]> instanceMatrix;
 };
 
 
@@ -102,18 +111,19 @@ math::vec4 _texture_vert_shader_impl(SR_VertexParam& param)
 
     const AnimUniforms* pUniforms   = param.pUniforms->as<AnimUniforms>();
     const Vertex* const v           = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));
-    const math::vec4    vert        = math::vec4_cast(v->const_element<0>(), 1.f);
-    const math::vec2    uv          = v->const_element<1>();
-    const math::vec4    norm        = math::vec4_cast(v->const_element<2>(), 0.f);
+    const math::vec4&&  vert        = math::vec4_cast(v->const_element<0>(), 1.f);
+    const math::vec4&&  uv          = math::vec4_cast(v->const_element<1>(), 0.f, 0.f);
+    const math::vec4&&  norm        = math::vec4_cast(v->const_element<2>(), 0.f);
 
     const size_t       instanceId  = pUniforms->instanceId == SCENE_NODE_ROOT_ID ? param.instanceId : pUniforms->instanceId;
     const math::mat4&  instanceMat = pUniforms->instanceMatrix[instanceId];
-    const math::mat4&  modelMat    = instanceMat * pUniforms->modelMatrix;
+    const math::mat4&& modelMat    = instanceMat * pUniforms->modelMatrix;
     const math::vec4&& pos         = modelMat * vert;
+    const math::vec4&& n           = modelMat * norm;
 
     param.pVaryings[0] = pos;
-    param.pVaryings[1] = math::vec4_cast(uv, 0.f, 0.f);
-    param.pVaryings[2] = modelMat * norm;
+    param.pVaryings[1] = uv;
+    param.pVaryings[2] = n;
 
     return pUniforms->vpMatrix * pos;
 }
@@ -327,7 +337,7 @@ utils::Pointer<SR_SceneGraph> create_context()
 
     size_t uboId = context.create_ubo();
     AnimUniforms* pUniforms = context.ubo(0).as<AnimUniforms>();
-    pUniforms->instanceMatrix.reset(new math::mat4[MAX_INSTANCES]);
+    pUniforms->instanceMatrix.reset((math::mat4*)utils::aligned_malloc(sizeof(math::mat4) * MAX_INSTANCES));
 
     for (size_t z = 0; z < MAX_INSTANCES_Z; ++z)
     {
