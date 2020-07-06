@@ -314,7 +314,7 @@ utils::Pointer<SR_SceneGraph> create_context()
     opts.packUvs = false;
     opts.packNormals = false;
     opts.genSmoothNormals = true;
-    retCode = meshLoader.load("testdata/heart/heart.obj");
+    retCode = meshLoader.load("testdata/heart/heart.obj", opts);
     assert(retCode != 0);
 
     retCode = pGraph->import(meshLoader.data());
