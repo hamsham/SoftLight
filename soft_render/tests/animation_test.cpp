@@ -74,81 +74,7 @@ struct AnimUniforms
     math::mat4        modelMatrix;
     math::mat4        vpMatrix;
     math::vec4        camPos;
-    math::mat4        instanceMatrix[3]; // 3 instances in this demo
 };
-
-
-
-/*-----------------------------------------------------------------------------
- * Shader to display vertices with a position and normal
------------------------------------------------------------------------------*/
-/*--------------------------------------
- * Vertex Shader
---------------------------------------*/
-math::vec4 _normal_vert_shader_impl(SR_VertexParam& param)
-{
-    const AnimUniforms* pUniforms = param.pUniforms->as<AnimUniforms>();
-
-    const math::vec4& vert = math::vec4_cast(*param.pVbo->element<const math::vec3>(param.pVao->offset(0, param.vertId)), 1.f);
-    const math::vec4& norm = sr_unpack_vertex_vec4(*param.pVbo->element<const int32_t>(param.pVao->offset(1, param.vertId)));
-    const math::mat4&& modelMat = pUniforms->instanceMatrix[param.instanceId] * pUniforms->modelMatrix;
-
-    const math::vec4&& pos = modelMat * vert;
-    param.pVaryings[0] = pos;
-    param.pVaryings[1] = modelMat * norm;
-
-    return pUniforms->vpMatrix * pos;
-}
-
-
-
-SR_VertexShader normal_vert_shader()
-{
-    SR_VertexShader shader;
-    shader.numVaryings = 2;
-    shader.cullMode    = SR_CULL_BACK_FACE;
-    shader.shader      = _normal_vert_shader_impl;
-
-    return shader;
-}
-
-
-
-/*--------------------------------------
- * Fragment Shader
---------------------------------------*/
-bool _normal_frag_shader_impl(SR_FragmentParam& fragParam)
-{
-    const AnimUniforms* pUniforms     = fragParam.pUniforms->as<AnimUniforms>();
-    const math::vec4    pos           = fragParam.pVaryings[0];
-    const math::vec4    norm          = math::normalize(fragParam.pVaryings[1]);
-
-    const math::vec4 ambient = {0.1f, 0.1f, 0.1f, 1.f};
-
-    // Light direction calculation
-    math::vec4          lightDir   = math::normalize(pUniforms->camPos - pos);
-    const float         lightAngle = 0.5f * math::dot(-lightDir, norm) + 0.5f;
-    const math::vec4&&  diffuse    = math::vec4{1.f} * lightAngle;
-
-    fragParam.pOutputs[0] = math::min(ambient+diffuse, math::vec4{1.f});
-
-    return true;
-}
-
-
-
-SR_FragmentShader normal_frag_shader()
-{
-    SR_FragmentShader shader;
-    shader.numVaryings = 2;
-    shader.numOutputs  = 1;
-    shader.blend       = SR_BLEND_OFF;
-    shader.depthTest   = SR_DEPTH_TEST_ON;
-    shader.depthMask   = SR_DEPTH_MASK_ON;
-    shader.shader      = _normal_frag_shader_impl;
-
-    return shader;
-}
 
 
 
@@ -172,14 +98,13 @@ math::vec4 _texture_vert_shader_impl(SR_VertexParam& param)
     const math::vec4s   boneIds     = v->const_element<3>();
     const math::vec4&&  boneWeights = (math::vec4)v->const_element<4>();
 
-    math::mat4&&        boneTrans   = pBones[boneIds[0]] * boneWeights[0];
+    math::mat4&& boneTrans =
+        (pBones[boneIds[0]] * boneWeights[0]) +
+        (pBones[boneIds[1]] * boneWeights[1]) +
+        (pBones[boneIds[2]] * boneWeights[2]) +
+        (pBones[boneIds[3]] * boneWeights[3]);
 
-    boneTrans += pBones[boneIds[1]] * boneWeights[1];
-    boneTrans += pBones[boneIds[2]] * boneWeights[2];
-    boneTrans += pBones[boneIds[3]] * boneWeights[3];
-
-    const math::mat4&& modelMat = pUniforms->instanceMatrix[param.instanceId] * pUniforms->modelMatrix;
-    const math::mat4&& modelPos = modelMat * boneTrans;
+    const math::mat4&& modelPos = pUniforms->modelMatrix * boneTrans;
     const math::vec4&& pos = modelPos * vert;
 
     param.pVaryings[0] = pos;
@@ -219,13 +144,13 @@ bool _texture_frag_shader(SR_FragmentParam& fragParam)
     // normalize the texture colors to within (0.f, 1.f)
     if (pTexture->channels() == 3)
     {
-        const math::vec3_t<uint8_t>&& pixel8 = sr_sample_nearest<math::vec3_t<uint8_t>, SR_WrapMode::REPEAT>(*pTexture, uv[0], uv[1]);
+        const math::vec3_t<uint8_t>&& pixel8 = sr_sample_bilinear<math::vec3_t<uint8_t>, SR_WrapMode::REPEAT>(*pTexture, uv[0], uv[1]);
         const math::vec4_t<uint8_t>&& pixelF = math::vec4_cast<uint8_t>(pixel8, 255);
         albedo = color_cast<float, uint8_t>(pixelF);
     }
     else
     {
-        const math::vec4_t<uint8_t>&& pixelF = sr_sample_nearest<math::vec4_t<uint8_t>, SR_WrapMode::REPEAT>(*pTexture, uv[0], uv[1]);
+        const math::vec4_t<uint8_t>&& pixelF = sr_sample_bilinear<math::vec4_t<uint8_t>, SR_WrapMode::REPEAT>(*pTexture, uv[0], uv[1]);
         albedo = color_cast<float, uint8_t>(pixelF);
     }
 
@@ -318,7 +243,7 @@ void update_animations(SR_SceneGraph& graph, SR_AnimationPlayer& animPlayer, uns
 -------------------------------------*/
 void update_cam_position(SR_Transform& camTrans, float tickTime, utils::Pointer<bool[]>& pKeys)
 {
-    const float camSpeed = 10.f;
+    const float camSpeed = 50.f;
 
     if (pKeys[SR_KeySymbol::KEY_SYM_w] || pKeys[SR_KeySymbol::KEY_SYM_W])
     {
@@ -389,10 +314,7 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
             }
 
             pUniforms->pTexture = material.pTextures[SR_MATERIAL_TEXTURE_DIFFUSE];
-
-            // Use the textureless shader if needed
-            const size_t shaderId = (size_t)(material.pTextures[SR_MATERIAL_TEXTURE_DIFFUSE] == nullptr);
-            context.draw_instanced(m, 3, shaderId, 0);
+            context.draw(m, 0, 0);
         }
     }
 }
@@ -405,12 +327,6 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
 utils::Pointer<SR_SceneGraph> create_context()
 {
     int retCode = 0;
-
-    #ifdef LS_ARCH_X86
-    _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
-    _mm_setcsr(_mm_getcsr() | 0x8040); // denormals-are-zero
-    #endif
-
 
     SR_SceneFileLoader meshLoader;
     utils::Pointer<SR_SceneGraph> pGraph{new SR_SceneGraph{}};
@@ -459,43 +375,21 @@ utils::Pointer<SR_SceneGraph> create_context()
     retCode = pGraph->import(meshLoader.data());
     assert(retCode == 0);
 
+    SR_Transform& tempTrans = pGraph->mCurrentTransforms[0];
+    tempTrans.rotate(math::vec3{0.f, 0.f, LS_PI});
     pGraph->update();
 
-    const SR_VertexShader&&   normVertShader = normal_vert_shader();
-    const SR_FragmentShader&& normFragShader = normal_frag_shader();
     const SR_VertexShader&&   texVertShader  = texture_vert_shader();
     const SR_FragmentShader&& texFragShader  = texture_frag_shader();
 
     size_t uboId = context.create_ubo();
-    AnimUniforms* pUniforms = context.ubo(0).as<AnimUniforms>();
-    SR_Transform tempTrans0, tempTrans1, tempTrans2;
-
-    tempTrans0.scale(math::vec3{0.5f});
-    tempTrans0.rotate(math::vec3{0.f, -LS_PI_OVER_2, -LS_PI_OVER_2});
-    //tempTrans0.move(math::vec3{10.f, 0.f, 0.f});
-    tempTrans0.apply_transform();
-
-    tempTrans1.scale(math::vec3{2.f});
-    tempTrans1.move(math::vec3{0.f, -LS_PI_OVER_3, 0.f});
-    tempTrans1.apply_transform();
-
-    tempTrans2.rotate(math::vec3{-LS_PI_OVER_4, 0.f, 0.f});
-    tempTrans2.move(math::vec3{-10.f, 0.f, 0.f});
-    tempTrans2.apply_transform();
-
-    pUniforms->instanceMatrix[0] = tempTrans0.transform();
-    pUniforms->instanceMatrix[1] = tempTrans1.transform();
-    pUniforms->instanceMatrix[2] = tempTrans2.transform();
+    assert(uboId == 0);
 
     size_t texShaderId  = context.create_shader(texVertShader,  texFragShader,  uboId);
-    size_t normShaderId = context.create_shader(normVertShader, normFragShader, uboId);
-
     assert(texShaderId == 0);
-    assert(normShaderId == 1);
     (void)texShaderId;
-    (void)normShaderId;
-    (void)retCode;
 
+    (void)retCode;
     return pGraph;
 }
 
@@ -533,7 +427,7 @@ int main()
 
     SR_Transform camTrans;
     camTrans.type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
-    camTrans.extract_transforms(math::look_at(math::vec3{50.f}, math::vec3{0.f, 0.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
+    camTrans.extract_transforms(math::look_at(math::vec3{75.f, 25.f, 25.f}, math::vec3{0.f, 30.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
     math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
 
     if (shouldQuit)
@@ -681,7 +575,7 @@ int main()
 
                 AnimUniforms* pUniforms = context.ubo(0).as<AnimUniforms>();
                 const math::vec3 camTransPos = camTrans.position();
-                pUniforms->camPos = math::vec4_cast(camTransPos, 1.f);
+                pUniforms->camPos = math::vec4_cast(-camTransPos, 1.f);
             }
 
             const math::mat4&& vpMatrix = projMatrix * camTrans.transform();
