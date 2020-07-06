@@ -124,7 +124,9 @@ Check out the below screenshots to see what else it can do!
 
 ![Physically Based Rendering, 104 FPS, 14 Threads, Ryzen 1800X](https://github.com/hamsham/SoftLight/blob/master/examples/softlight_pbr.png)
 
-![Scene Graph Animations](https://github.com/hamsham/SoftLight/blob/master/examples/softlight_anims.png)
+![Skeletal Animations](https://github.com/hamsham/SoftLight/blob/master/examples/softlight_anims.png)
+
+![Mesh Instancing, ~280 FPS, 14 Threads, Ryzen 1800X](https://github.com/hamsham/SoftLight/blob/master/examples/softlight_instancing.png)
 
 ![Volume Rendering, ~9 FPS, 16 Threads, Ryzen 1800X](https://github.com/hamsham/SoftLight/blob/master/examples/softlight_volumes.png)
 
