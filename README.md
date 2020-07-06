@@ -115,7 +115,12 @@ examples include:
  instancing by pressing the `F2` key.
  * Skinning and animation (`animation_test.cpp`).
  * Large indoor environment rendering (`live_scene_test.cpp`): Press the `F1`
- Key to capture the mouse and explore the environment using the WASD keys.
+ Key to capture the mouse and explore the environment using the WASD keys. You
+ can also toggle PBR-based rendering with the `F2` key as well as change the
+ number of threads used for rendering by using the up/down arrow keys.
+ * Full-screen quad rendering (`fs_quad.cpp`). Render to an offscreen [Compact
+ YCoCg Framebuffer](http://jcgt.org/published/0001/01/02/) then reconstruct
+ the image in a second render pass.
  * Volumetric voxel rendering (`volume_test.cpp`).
 
 Check out the below screenshots to see what else it can do!
