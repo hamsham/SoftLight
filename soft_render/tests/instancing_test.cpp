@@ -42,20 +42,20 @@
     #define SR_TEST_MAX_THREADS (ls::math::max<unsigned>(std::thread::hardware_concurrency(), 3u) - 2u)
 #endif /* SR_TEST_MAX_THREADS */
 
-#ifndef MAX_INSTANCES_X
-    #define MAX_INSTANCES_X 5
+#ifndef DEFAULT_INSTANCES_X
+    #define DEFAULT_INSTANCES_X 5
 #endif
 
-#ifndef MAX_INSTANCES_Y
-    #define MAX_INSTANCES_Y 5
+#ifndef DEFAULT_INSTANCES_Y
+    #define DEFAULT_INSTANCES_Y 5
 #endif
 
-#ifndef MAX_INSTANCES_Z
-    #define MAX_INSTANCES_Z 5
+#ifndef DEFAULT_INSTANCES_Z
+    #define DEFAULT_INSTANCES_Z 5
 #endif
 
-#ifndef MAX_INSTANCES
-    #define MAX_INSTANCES (MAX_INSTANCES_X*MAX_INSTANCES_Y*MAX_INSTANCES_Z)
+#ifndef DEFAULT_INSTANCES
+    #define DEFAULT_INSTANCES (DEFAULT_INSTANCES_X*DEFAULT_INSTANCES_Y*DEFAULT_INSTANCES_Z)
 #endif
 
 namespace ls
@@ -224,7 +224,7 @@ void update_cam_position(SR_Transform& camTrans, float tickTime, utils::Pointer<
 /*-------------------------------------
  * Render the Scene
 -------------------------------------*/
-void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, bool useInstancing)
+void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, bool useInstancing, size_t maxInstances)
 {
     SR_Context& context = pGraph->mContext;
     AnimUniforms* pUniforms = context.ubo(0).as<AnimUniforms>();
@@ -254,15 +254,46 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, bool useIns
             if (useInstancing)
             {
                 pUniforms->instanceId = SCENE_NODE_ROOT_ID;
-                context.draw_instanced(m, MAX_INSTANCES, 0, 0);
+                context.draw_instanced(m, maxInstances, 0, 0);
             }
             else
             {
-                for (size_t i = MAX_INSTANCES; i--;)
+                for (size_t i = maxInstances; i--;)
                 {
                     pUniforms->instanceId = i;
                     context.draw(m, 0, 0);
                 }
+            }
+        }
+    }
+}
+
+
+
+/*-----------------------------------------------------------------------------
+ * Update the number of instances
+-----------------------------------------------------------------------------*/
+void update_instance_count(utils::Pointer<SR_SceneGraph>& pGraph, size_t instancesX, size_t instancesY, size_t instancesZ)
+{
+    SR_Context& context = pGraph->mContext;
+    AnimUniforms* pUniforms = context.ubo(0).as<AnimUniforms>();
+
+    size_t instanceCount = instancesX * instancesY * instancesZ;
+    pUniforms->instanceMatrix = utils::make_unique_aligned_array<math::mat4>(instanceCount);
+
+    for (size_t z = 0; z < instancesZ; ++z)
+    {
+        for (size_t y = 0; y < instancesY; ++y)
+        {
+            for (size_t x = 0; x < instancesX; ++x)
+            {
+                SR_Transform tempTrans;
+                tempTrans.scale(0.125f);
+                tempTrans.position(math::vec3{(float)x, (float)y, (float)z} * 25.f);
+                tempTrans.apply_transform();
+
+                const size_t index = x + (instancesX * y + (instancesX * instancesY * z));
+                pUniforms->instanceMatrix[index] = tempTrans.transform();
             }
         }
     }
@@ -327,25 +358,8 @@ utils::Pointer<SR_SceneGraph> create_context()
     const SR_FragmentShader&& texFragShader  = texture_frag_shader();
 
     size_t uboId = context.create_ubo();
-    AnimUniforms* pUniforms = context.ubo(0).as<AnimUniforms>();
-    pUniforms->instanceMatrix = utils::make_unique_aligned_array<math::mat4>(MAX_INSTANCES);
-
-    for (size_t z = 0; z < MAX_INSTANCES_Z; ++z)
-    {
-        for (size_t y = 0; y < MAX_INSTANCES_Y; ++y)
-        {
-            for (size_t x = 0; x < MAX_INSTANCES_X; ++x)
-            {
-                SR_Transform tempTrans;
-                tempTrans.scale(0.125f);
-                tempTrans.position(math::vec3{(float)x, (float)y, (float)z} * 25.f);
-                tempTrans.apply_transform();
-
-                const size_t index = x + (MAX_INSTANCES_X * y + (MAX_INSTANCES_X * MAX_INSTANCES_Y * z));
-                pUniforms->instanceMatrix[index] = tempTrans.transform();
-            }
-        }
-    }
+    assert(uboId == 0);
+    update_instance_count(pGraph, DEFAULT_INSTANCES_X, DEFAULT_INSTANCES_Y, DEFAULT_INSTANCES_Z);
 
     size_t texShaderId  = context.create_shader(texVertShader,  texFragShader,  uboId);
     assert(texShaderId == 0);
@@ -381,11 +395,14 @@ int main()
     float dx = 0.f;
     float dy = 0.f;
     bool useInstancing = true;
+    unsigned instancesX = DEFAULT_INSTANCES_X;
+    unsigned instancesY = DEFAULT_INSTANCES_Y;
+    unsigned instancesZ = DEFAULT_INSTANCES_Z;
     unsigned numThreads = context.num_threads();
 
     SR_Transform camTrans;
     camTrans.type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
-    const math::vec3&& viewPos = math::vec3{(float)MAX_INSTANCES_X, (float)MAX_INSTANCES_Y, (float)MAX_INSTANCES_Z} * 30.f;
+    math::vec3 viewPos = math::vec3{(float)instancesX, (float)instancesY, (float)instancesZ} * 30.f;
     camTrans.extract_transforms(math::look_at(viewPos, math::vec3{0.f, 0.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
     math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
 
@@ -488,6 +505,26 @@ int main()
                         std::cout << "Instancing State: " << useInstancing << std::endl;
                         break;
 
+                    case SR_KeySymbol::KEY_SYM_1:
+                        instancesX = math::max<size_t>(1, instancesX-1);
+                        instancesY = math::max<size_t>(1, instancesY-1);
+                        instancesZ = math::max<size_t>(1, instancesZ-1);
+                        update_instance_count(pGraph, instancesX, instancesY, instancesZ);
+                        viewPos = math::vec3{(float)instancesX, (float)instancesY, (float)instancesZ} * 30.f;
+                        camTrans.extract_transforms(math::look_at(viewPos, math::vec3{0.f, 0.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
+                        std::cout << "Instance count decreased to (" << instancesX << 'x' << instancesY << 'x' << instancesZ << ") = " << instancesX*instancesY*instancesZ << std::endl;
+                        break;
+
+                    case SR_KeySymbol::KEY_SYM_2:
+                        instancesX = math::min<size_t>(std::numeric_limits<size_t>::max(), instancesX+1);
+                        instancesY = math::min<size_t>(std::numeric_limits<size_t>::max(), instancesY+1);
+                        instancesZ = math::min<size_t>(std::numeric_limits<size_t>::max(), instancesZ+1);
+                        update_instance_count(pGraph, instancesX, instancesY, instancesZ);
+                        viewPos = math::vec3{(float)instancesX, (float)instancesY, (float)instancesZ} * 30.f;
+                        camTrans.extract_transforms(math::look_at(viewPos, math::vec3{0.f, 0.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
+                        std::cout << "Instance count decreased to (" << instancesX << 'x' << instancesY << 'x' << instancesZ << ") = " << instancesX*instancesY*instancesZ << std::endl;
+                        break;
+
                     case SR_KeySymbol::KEY_SYM_ESCAPE:
                         std::cout << "Escape button pressed. Exiting." << std::endl;
                         shouldQuit = true;
@@ -541,7 +578,7 @@ int main()
                 pUniforms->camPos = math::vec4_cast(camTransPos, 1.f);
             }
 
-            for (size_t i = MAX_INSTANCES; i--;) {
+            for (size_t i = instancesX*instancesY*instancesZ; i--;) {
                 pUniforms->instanceMatrix[i] = math::rotate(pUniforms->instanceMatrix[i], math::vec3{0.f, 1.f, 0.f}, tickTime);
             }
 
@@ -551,7 +588,7 @@ int main()
             context.framebuffer(0).clear_depth_buffer();
             const math::mat4&& vpMatrix = projMatrix * camTrans.transform();
 
-            render_scene(pGraph.get(), vpMatrix, useInstancing);
+            render_scene(pGraph.get(), vpMatrix, useInstancing, instancesX*instancesY*instancesZ);
             context.blit(*pRenderBuf, 0);
             pWindow->render(*pRenderBuf);
         }
