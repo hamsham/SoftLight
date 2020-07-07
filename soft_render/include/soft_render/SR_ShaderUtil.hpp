@@ -149,7 +149,7 @@ inline ls::math::vec4_t<data_t> sr_subdivide_region(
  * Output to store the final vertex (exclusive) to process for the current
  * thread.
  */
-template <size_t vertsPerPrim, bool lastThreadProcessesLess = false>
+template <size_t vertsPerPrim, bool lastThreadProcessesLess = true>
 inline void sr_calc_indexed_parition(size_t totalVerts, size_t numThreads, size_t threadId, size_t& outBegin, size_t& outEnd) noexcept
 {
     size_t totalPrims = totalVerts / vertsPerPrim;
@@ -180,6 +180,42 @@ inline void sr_calc_indexed_parition(size_t totalVerts, size_t numThreads, size_
 
     outBegin = beg;
     outEnd = end < totalVerts ? end : totalVerts;
+}
+
+/**
+ * @brief Calculate a shader processor's start/end positions
+ *
+ * @tparam vertsPerPrim
+ * The number of vertices which specify a primitive (i.e. 2 for lines, 3 for
+ * triangles).
+ *
+ * @param totalVerts
+ * The total number of vertices to be processed.
+ *
+ * @param numThreads
+ * The number of threads available to process vertices.
+ *
+ * @param threadId
+ * The current thread index.
+ *
+ * @param outBegin
+ * Output to store the beginning vertex (inclusive) to process for the current
+ * thread.
+ *
+ * @param outEnd
+ * Output to store the final vertex (exclusive) to process for the current
+ * thread.
+ */
+template <size_t vertsPerPrim>
+void sr_calc_indexed_parition2(size_t count, size_t numThreads, size_t threadId, size_t& outBegin, size_t& outEnd)
+{
+    const size_t totalRange  = (count / numThreads);
+    const size_t threadRange = totalRange + (vertsPerPrim - (totalRange % 3));
+    const size_t begin       = threadRange * threadId;
+    const size_t end         = begin + threadRange;
+
+    outBegin = begin;
+    outEnd   = end < count ? end : count;
 }
 
 

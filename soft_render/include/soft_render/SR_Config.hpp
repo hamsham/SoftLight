@@ -9,19 +9,13 @@
 -----------------------------------------------------------------------------*/
 #ifndef SR_VERTEX_CACHING_ENABLED
     #define SR_VERTEX_CACHING_ENABLED 0
-
-    #if SR_VERTEX_CACHING_ENABLED
-        #ifndef SR_VERTEX_CACHE_TYPE_LRU
-            #define SR_VERTEX_CACHE_TYPE_LRU 0
-        #endif /* SR_VERTEX_CACHE_TYPE_LRU */
-
-        #ifndef SR_VERTEX_CACHE_SIZE
-            #define SR_VERTEX_CACHE_SIZE 32
-        #endif /* SR_VERTEX_CACHE_SIZE */
-
-    #endif /* SR_VERTEX_CACHING_ENABLED */
 #endif /* SR_VERTEX_CACHING_ENABLED */
 
+#if SR_VERTEX_CACHING_ENABLED
+    #ifndef SR_VERTEX_CACHE_SIZE
+        #define SR_VERTEX_CACHE_SIZE 64
+    #endif /* SR_VERTEX_CACHE_SIZE */
+#endif /* SR_VERTEX_CACHING_ENABLED */
 
 
 /*-----------------------------------------------------------------------------

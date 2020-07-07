@@ -40,5 +40,30 @@ int main()
     std::cout << "End Chunk Size: " << endChunkSize << std::endl;
     std::cout << "End Prim Count: " << endChunkSize/vertsPerPrim << std::endl;
 
+    std::cout << "-------------------------------------------------------------------------------" << std::endl;
+
+    for (size_t i = 0; i < numThreads; ++i)
+    {
+        sr_calc_indexed_parition2<vertsPerPrim>(totalVerts, numThreads, i, start, end);
+        endChunkSize = (end == start) ? endChunkSize : end-start;
+
+        std::cout << i << ": " << start << '-' << end << std::endl;
+
+        for (size_t j = 0; start < end; ++start, ++j)
+        {
+            std::cout << "\t" << j << ": " << start << std::endl;
+        }
+    }
+
+    sr_calc_indexed_parition2<vertsPerPrim>(totalVerts, numThreads, 0, start, end);
+    stdChunkSize = end;
+
+    std::cout << "Total Threads:  " << numThreads   << std::endl;
+    std::cout << "Array Size:     " << totalVerts   << std::endl;
+    std::cout << "Std Chunk Size: " << stdChunkSize << std::endl;
+    std::cout << "Std Prim Count: " << stdChunkSize/vertsPerPrim << std::endl;
+    std::cout << "End Chunk Size: " << endChunkSize << std::endl;
+    std::cout << "End Prim Count: " << endChunkSize/vertsPerPrim << std::endl;
+
     return 0;
 }

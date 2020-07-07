@@ -5,6 +5,8 @@
 #include "lightsky/setup/Macros.h"
 #include "lightsky/setup/OS.h"
 
+#include "lightsky/utils/Log.h"
+
 #ifdef LS_OS_UNIX
     #include <time.h> // nanosleep, time_spec
 #endif
@@ -50,123 +52,74 @@ class SR_PTVCache
 
     static constexpr size_t PTV_CACHE_MISS = ~(size_t)0;
 
-    size_t lruIndices[PTV_CACHE_SIZE];
+    alignas(sizeof(math::vec4)) size_t mIndices[PTV_CACHE_SIZE];
 
-    #if SR_VERTEX_CACHE_TYPE_LRU
-    long long lruCounts[PTV_CACHE_SIZE];
-    #endif
+    SR_VertexParam& mParam;
 
-    math::vec4 lruVertices[PTV_CACHE_SIZE];
+    ls::math::vec4_t<float> (*mShader)(SR_VertexParam&);
 
-    math::vec4 lruVaryings[PTV_CACHE_SIZE][SR_SHADER_MAX_VARYING_VECTORS];
+    math::vec4 mVertices[PTV_CACHE_SIZE];
 
-    SR_VertexParam lruParam;
+    math::vec4 mVaryings[PTV_CACHE_SIZE][SR_SHADER_MAX_VARYING_VECTORS];
 
-    ls::math::vec4_t<float> (*shader)(SR_VertexParam&);
-
-    SR_PTVCache(const SR_PTVCache&) = delete;
-    SR_PTVCache(SR_PTVCache&&) = delete;
+    SR_PTVCache(const SR_PTVCache&)            = delete;
+    SR_PTVCache(SR_PTVCache&&)                 = delete;
     SR_PTVCache& operator=(const SR_PTVCache&) = delete;
-    SR_PTVCache& operator=(SR_PTVCache&&) = delete;
+    SR_PTVCache& operator=(SR_PTVCache&&)      = delete;
 
-    SR_PTVCache(ls::math::vec4_t<float> (*pShader)(SR_VertexParam&), const SR_VertexParam& inParam) noexcept
+    SR_PTVCache(ls::math::vec4_t<float> (*pShader)(SR_VertexParam&), SR_VertexParam& inParam) noexcept :
+        mIndices{},
+        mParam{inParam},
+        mShader{pShader},
+        mVertices{},
+        mVaryings{}
     {
-        for (size_t& index : lruIndices)
+        for (size_t& index : mIndices)
         {
             index = PTV_CACHE_MISS;
         }
-
-        #if SR_VERTEX_CACHE_TYPE_LRU
-            for (long long& count : lruCounts)
-            {
-                count = -1;
-            }
-        #endif
-
-        lruParam = inParam;
-        shader = pShader;
     }
-
-    #if SR_VERTEX_CACHE_TYPE_LRU
-    inline void query_and_update(size_t key, math::vec4& outVert, math::vec4* outVaryings, size_t numVaryings) noexcept
-    {
-        size_t ret = PTV_CACHE_MISS;
-        size_t cacheIndex = 0;
-        long long maxCount = 0;
-
-        for (size_t i = PTV_CACHE_SIZE; i--;)
-        {
-            if (maxCount > lruCounts[i])
-            {
-                maxCount = lruCounts[i];
-                cacheIndex = i;
-            }
-
-            if (lruIndices[i] == key)
-            {
-                ret = key;
-                lruCounts[i] = 0;
-                outVert = lruVertices[i];
-
-                for (size_t v = numVaryings; v--;)
-                {
-                    outVaryings[v] = lruVaryings[i][v];
-                }
-            }
-            else
-            {
-                if (lruCounts[i] >= 0)
-                {
-                    ++lruCounts[i];
-                }
-            }
-        }
-
-        if (ret == PTV_CACHE_MISS)
-        {
-            lruIndices[cacheIndex] = key;
-            lruCounts[cacheIndex] = 0;
-            lruParam.vertId = key;
-            lruParam.pVaryings = outVaryings[cacheIndex];
-            outVert = lruVertices[cacheIndex] = shader(lruParam);
-
-            for (size_t v = numVaryings; v--;)
-            {
-                lruVaryings[cacheIndex][v] = outVaryings[v];
-            }
-        }
-    }
-
-    #else // SR_VERTEX_CACHE_TYPE_LRU
 
     inline void query_and_update(size_t key, math::vec4& outVert, math::vec4* outVaryings, size_t numVaryings) noexcept
     {
-        size_t i = key & (PTV_CACHE_SIZE-1);
+        size_t i = key % PTV_CACHE_SIZE;
+        (void)numVaryings;
 
-        if (lruIndices[i] == key)
+        LS_PREFETCH(mVertices+i, LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_NONTEMPORAL);
+        LS_PREFETCH(mVaryings+i, LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_NONTEMPORAL);
+
+        if (mIndices[i] == key)
         {
-            outVert = lruVertices[i];
+            outVert = mVertices[i];
 
-            for (size_t v = numVaryings; v--;)
-            {
-                outVaryings[v] = lruVaryings[i][v];
-            }
+            #ifndef LS_ARCH_X86
+                *reinterpret_cast<math::mat4*>(outVaryings) = *reinterpret_cast<const math::mat4*>(mVaryings[i]->v);
+            #else
+                _mm_store_ps(reinterpret_cast<float*>(outVaryings+0), _mm_load_ps(reinterpret_cast<float*>(mVaryings[i]+0)));
+                _mm_store_ps(reinterpret_cast<float*>(outVaryings+1), _mm_load_ps(reinterpret_cast<float*>(mVaryings[i]+1)));
+                _mm_store_ps(reinterpret_cast<float*>(outVaryings+2), _mm_load_ps(reinterpret_cast<float*>(mVaryings[i]+2)));
+                _mm_store_ps(reinterpret_cast<float*>(outVaryings+3), _mm_load_ps(reinterpret_cast<float*>(mVaryings[i]+3)));
+            #endif
 
             return;
         }
-
-        lruIndices[i] = key;
-        lruParam.vertId = key;
-        lruParam.pVaryings = outVaryings;
-        outVert = lruVertices[i] = shader(lruParam);
-
-        for (size_t v = numVaryings; v--;)
+        else
         {
-            lruVaryings[i][v] = outVaryings[v];
+            mIndices[i] = key;
+            mParam.vertId = key;
+            mParam.pVaryings = outVaryings;
+            outVert = mVertices[i] = mShader(mParam);
+
+            #ifndef LS_ARCH_X86
+                *reinterpret_cast<math::mat4*>(mVaryings[i]->v) = *reinterpret_cast<const math::mat4*>(outVaryings);
+            #else
+                _mm_store_ps(reinterpret_cast<float*>(mVaryings[i]+0), _mm_load_ps(reinterpret_cast<float*>(outVaryings+0)));
+                _mm_store_ps(reinterpret_cast<float*>(mVaryings[i]+1), _mm_load_ps(reinterpret_cast<float*>(outVaryings+1)));
+                _mm_store_ps(reinterpret_cast<float*>(mVaryings[i]+2), _mm_load_ps(reinterpret_cast<float*>(outVaryings+2)));
+                _mm_store_ps(reinterpret_cast<float*>(mVaryings[i]+3), _mm_load_ps(reinterpret_cast<float*>(outVaryings+3)));
+            #endif
         }
     }
-
-    #endif // SR_VERTEX_CACHE_TYPE_LRU
 };
 
 #endif // SR_VERTEX_CACHING_ENABLED
@@ -863,32 +816,38 @@ void SR_VertexProcessor::process_points(const SR_Mesh& m, size_t instanceId) noe
     alignas(alignof(math::vec4)) math::vec4 vertCoords[SR_SHADER_MAX_SCREEN_COORDS];
     alignas(alignof(math::vec4)) math::vec4 pVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS];
 
-    const SR_VertexShader   vertShader  = mShader->mVertShader;
-    const auto              shader      = vertShader.shader;
-    const SR_VertexArray&   vao         = mContext->vao(m.vaoId);
-    const float             fboW        = (float)mFbo->width();
-    const float             fboH        = (float)mFbo->height();
-    const float             widthScale  = fboW * 0.5f;
-    const float             heightScale = fboH * 0.5f;
-    size_t                  begin       = m.elementBegin;
-    const size_t            end         = m.elementEnd;
-    const SR_IndexBuffer*   pIbo        = vao.has_index_buffer() ? &mContext->ibo(vao.get_index_buffer()) : nullptr;
-
-    const bool usingIndices = m.mode == RENDER_MODE_INDEXED_POINTS;
+    const SR_VertexShader   vertShader   = mShader->mVertShader;
+    const auto              shader       = vertShader.shader;
+    const SR_VertexArray&   vao          = mContext->vao(m.vaoId);
+    const float             fboW         = (float)mFbo->width();
+    const float             fboH         = (float)mFbo->height();
+    const float             widthScale   = fboW * 0.5f;
+    const float             heightScale  = fboH * 0.5f;
+    const SR_IndexBuffer*   pIbo         = vao.has_index_buffer() ? &mContext->ibo(vao.get_index_buffer()) : nullptr;
+    const bool              usingIndices = m.mode == RENDER_MODE_INDEXED_POINTS;
 
     SR_VertexParam params;
-    params.pUniforms = mShader->mUniforms;
+    params.pUniforms  = mShader->mUniforms;
     params.instanceId = instanceId;
-    params.pVao = &vao;
-    params.pVbo = &mContext->vbo(vao.get_vertex_buffer());
+    params.pVao       = &vao;
+    params.pVbo       = &mContext->vbo(vao.get_vertex_buffer());
 
     #if SR_VERTEX_CACHING_ENABLED
+        size_t begin;
+        size_t end;
+        constexpr size_t step = 1;
+
+        sr_calc_indexed_parition<1>(m.elementEnd-m.elementBegin, mNumThreads, mThreadId, begin, end);
+        begin += m.elementBegin;
+        end += m.elementBegin;
+
         SR_PTVCache ptvCache{shader, params};
         const size_t numVaryings = vertShader.numVaryings;
+    #else
+        const size_t begin = m.elementBegin + mThreadId;
+        const size_t end   = m.elementEnd;
+        const size_t step  = mNumThreads;
     #endif
-
-    begin += mThreadId;
-    const size_t step = mNumThreads;
 
     for (size_t i = begin; i < end; i += step)
     {
@@ -919,32 +878,38 @@ void SR_VertexProcessor::process_lines(const SR_Mesh& m, size_t instanceId) noex
     alignas(alignof(math::vec4)) math::vec4 vertCoords[SR_SHADER_MAX_SCREEN_COORDS] = {};
     alignas(alignof(math::vec4)) math::vec4 pVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS] = {};
 
-    const SR_VertexShader   vertShader  = mShader->mVertShader;
-    const auto              shader      = vertShader.shader;
-    const SR_VertexArray&   vao         = mContext->vao(m.vaoId);
-    const float             fboW        = (float)mFbo->width();
-    const float             fboH        = (float)mFbo->height();
-    const float             widthScale  = fboW * 0.5f;
-    const float             heightScale = fboH * 0.5f;
-    size_t                  begin       = m.elementBegin;
-    const size_t            end         = m.elementEnd;
-    const SR_IndexBuffer*   pIbo        = vao.has_index_buffer() ? &mContext->ibo(vao.get_index_buffer()) : nullptr;
-
-    const bool usingIndices = m.mode == RENDER_MODE_INDEXED_LINES;
+    const SR_VertexShader   vertShader   = mShader->mVertShader;
+    const auto              shader       = vertShader.shader;
+    const SR_VertexArray&   vao          = mContext->vao(m.vaoId);
+    const float             fboW         = (float)mFbo->width();
+    const float             fboH         = (float)mFbo->height();
+    const float             widthScale   = fboW * 0.5f;
+    const float             heightScale  = fboH * 0.5f;
+    const SR_IndexBuffer*   pIbo         = vao.has_index_buffer() ? &mContext->ibo(vao.get_index_buffer()) : nullptr;
+    const bool              usingIndices = m.mode == RENDER_MODE_INDEXED_LINES;
 
     SR_VertexParam params;
-    params.pUniforms = mShader->mUniforms;
+    params.pUniforms  = mShader->mUniforms;
     params.instanceId = instanceId;
-    params.pVao = &vao;
-    params.pVbo = &mContext->vbo(vao.get_vertex_buffer());
+    params.pVao       = &vao;
+    params.pVbo       = &mContext->vbo(vao.get_vertex_buffer());
 
     #if SR_VERTEX_CACHING_ENABLED
+        size_t begin;
+        size_t end;
+        constexpr size_t step = 2;
+
+        sr_calc_indexed_parition<2>(m.elementEnd-m.elementBegin, mNumThreads, mThreadId, begin, end);
+        begin += m.elementBegin;
+        end += m.elementBegin;
+
         SR_PTVCache ptvCache{shader, params};
         const size_t numVaryings = vertShader.numVaryings;
+    #else
+        const size_t begin = m.elementBegin + mThreadId * 2u;
+        const size_t end   = m.elementEnd;
+        const size_t step  = mNumThreads * 2u;
     #endif
-
-    begin += mThreadId * 2u;
-    const size_t step = mNumThreads * 2u;
 
     for (size_t i = begin; i < end; i += step)
     {
@@ -986,33 +951,39 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
     alignas(alignof(math::vec4)) math::vec4 vertCoords[SR_SHADER_MAX_SCREEN_COORDS];
     alignas(alignof(math::vec4)) math::vec4 pVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS];
 
-    const SR_VertexShader   vertShader  = mShader->mVertShader;
-    const SR_CullMode       cullMode    = vertShader.cullMode;
-    const auto              shader      = vertShader.shader;
-    const SR_VertexArray&   vao         = mContext->vao(m.vaoId);
-    const float             fboW        = (float)mFbo->width();
-    const float             fboH        = (float)mFbo->height();
-    const float             widthScale  = fboW * 0.5f;
-    const float             heightScale = fboH * 0.5f;
-    size_t                  begin       = m.elementBegin;
-    const size_t            end         = m.elementEnd;
-    const SR_IndexBuffer*   pIbo        = vao.has_index_buffer() ? &mContext->ibo(vao.get_index_buffer()) : nullptr;
-
-    const int usingIndices = (m.mode == RENDER_MODE_INDEXED_TRIANGLES) || (m.mode == RENDER_MODE_INDEXED_TRI_WIRE);
+    const SR_VertexShader   vertShader   = mShader->mVertShader;
+    const SR_CullMode       cullMode     = vertShader.cullMode;
+    const auto              shader       = vertShader.shader;
+    const SR_VertexArray&   vao          = mContext->vao(m.vaoId);
+    const float             fboW         = (float)mFbo->width();
+    const float             fboH         = (float)mFbo->height();
+    const float             widthScale   = fboW * 0.5f;
+    const float             heightScale  = fboH * 0.5f;
+    const SR_IndexBuffer*   pIbo         = vao.has_index_buffer() ? &mContext->ibo(vao.get_index_buffer()) : nullptr;
+    const int               usingIndices = (m.mode == RENDER_MODE_INDEXED_TRIANGLES) || (m.mode == RENDER_MODE_INDEXED_TRI_WIRE);
 
     SR_VertexParam params;
-    params.pUniforms = mShader->mUniforms;
+    params.pUniforms  = mShader->mUniforms;
     params.instanceId = instanceId;
-    params.pVao = &vao;
-    params.pVbo = &mContext->vbo(vao.get_vertex_buffer());
+    params.pVao       = &vao;
+    params.pVbo       = &mContext->vbo(vao.get_vertex_buffer());
 
     #if SR_VERTEX_CACHING_ENABLED
+        size_t begin;
+        size_t end;
+        constexpr size_t step = 3;
+
+        sr_calc_indexed_parition<3>(m.elementEnd-m.elementBegin, mNumThreads, mThreadId, begin, end);
+        begin += m.elementBegin;
+        end += m.elementBegin;
+
         SR_PTVCache ptvCache{shader, params};
         const size_t numVaryings = vertShader.numVaryings;
+    #else
+        const size_t begin = m.elementBegin + mThreadId * 3u;
+        const size_t end   = m.elementEnd;
+        const size_t step  = mNumThreads * 3u;
     #endif
-
-    begin += mThreadId * 3u;
-    const size_t step = mNumThreads * 3u;
 
     for (size_t i = begin; i < end; i += step)
     {
