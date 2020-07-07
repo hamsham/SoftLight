@@ -228,6 +228,13 @@ bool _ycocg_frag_shader(SR_FragmentParam& fragParams)
     float y = pixel0[0];
     float co, cg;
 
+    // early-out for black pixels
+    if (y == 0.f)
+    {
+        fragParams.pOutputs[0] = math::vec4{0.f, 0.f, 0.f, 1.f};
+        return true;
+    }
+
     if (pUniforms->edgeFilter)
     {
         co = pixel0[1];
