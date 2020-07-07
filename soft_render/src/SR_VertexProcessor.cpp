@@ -85,9 +85,6 @@ class SR_PTVCache
         size_t i = key % PTV_CACHE_SIZE;
         (void)numVaryings;
 
-        LS_PREFETCH(mVertices+i, LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_NONTEMPORAL);
-        LS_PREFETCH(mVaryings+i, LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_NONTEMPORAL);
-
         if (mIndices[i] == key)
         {
             outVert = mVertices[i];
@@ -837,7 +834,7 @@ void SR_VertexProcessor::process_points(const SR_Mesh& m, size_t instanceId) noe
         size_t end;
         constexpr size_t step = 1;
 
-        sr_calc_indexed_parition<1>(m.elementEnd-m.elementBegin, mNumThreads, mThreadId, begin, end);
+        sr_calc_indexed_parition2<1>(m.elementEnd-m.elementBegin, mNumThreads, mThreadId, begin, end);
         begin += m.elementBegin;
         end += m.elementBegin;
 
@@ -899,7 +896,7 @@ void SR_VertexProcessor::process_lines(const SR_Mesh& m, size_t instanceId) noex
         size_t end;
         constexpr size_t step = 2;
 
-        sr_calc_indexed_parition<2>(m.elementEnd-m.elementBegin, mNumThreads, mThreadId, begin, end);
+        sr_calc_indexed_parition2<2>(m.elementEnd-m.elementBegin, mNumThreads, mThreadId, begin, end);
         begin += m.elementBegin;
         end += m.elementBegin;
 
@@ -973,7 +970,7 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
         size_t end;
         constexpr size_t step = 3;
 
-        sr_calc_indexed_parition<3>(m.elementEnd-m.elementBegin, mNumThreads, mThreadId, begin, end);
+        sr_calc_indexed_parition2<3>(m.elementEnd-m.elementBegin, mNumThreads, mThreadId, begin, end);
         begin += m.elementBegin;
         end += m.elementBegin;
 
