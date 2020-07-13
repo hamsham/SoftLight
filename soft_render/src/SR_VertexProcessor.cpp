@@ -373,27 +373,59 @@ inline int front_face_visible(const math::vec4& p0, const math::vec4& p1, const 
 --------------------------------------*/
 inline LS_INLINE SR_ClipStatus face_visible(const math::vec4& clip0, const math::vec4& clip1, const math::vec4& clip2) noexcept
 {
-    const float w0p = clip0[3];
-    const float w1p = clip1[3];
-    const float w2p = clip2[3];
+    #if !defined(LS_ARCH_X86)
+        const math::vec4 w0p = clip0[3];
+        const math::vec4 w1p = clip1[3];
+        const math::vec4 w2p = clip2[3];
 
-    const float w0n = -clip0[3];
-    const float w1n = -clip1[3];
-    const float w2n = -clip2[3];
+        const math::vec4 w1n = -clip1[3];
+        const math::vec4 w0n = -clip0[3];
+        const math::vec4 w2n = -clip2[3];
 
-    if (clip0 >= w0n && clip0 <= w0p
-    &&  clip1 >= w1n && clip1 <= w1p
-    &&  clip2 >= w2n && clip2 <= w2p)
-    {
-        return SR_TRIANGLE_FULLY_VISIBLE;
-    }
+        int vis = SR_TRIANGLE_FULLY_VISIBLE & -(
+            clip0 <= w0p &&
+            clip1 <= w1p &&
+            clip2 <= w2p &&
+            clip0 >= w0n &&
+            clip1 >= w1n &&
+            clip2 >= w2n
+        );
 
-    if (w0p >= 1.f || w1p >= 1.f || w2p >= 1.f)
-    {
-        return SR_TRIANGLE_PARTIALLY_VISIBLE;
-    }
+        int part = SR_TRIANGLE_PARTIALLY_VISIBLE & -(w0p >= 1.f || w1p >= 1.f || w2p >= 1.f);
 
-    return SR_TRIANGLE_NOT_VISIBLE;
+        return (SR_ClipStatus)(vis | part);
+    #else
+        const __m128 w0n = _mm_xor_ps(_mm_set1_ps(-0.f), _mm_permute_ps(clip0.simd, 0xFF));
+        const __m128 w1n = _mm_xor_ps(_mm_set1_ps(-0.f), _mm_permute_ps(clip1.simd, 0xFF));
+        const __m128 w2n = _mm_xor_ps(_mm_set1_ps(-0.f), _mm_permute_ps(clip2.simd, 0xFF));
+
+        const __m128 ge0 = _mm_cmpge_ps(clip0.simd, w0n);
+        const __m128 ge1 = _mm_cmpge_ps(clip1.simd, w1n);
+        const __m128 ge2 = _mm_cmpge_ps(clip2.simd, w2n);
+
+        const __m128 w0p = _mm_permute_ps(clip0.simd, 0xFF);
+        const __m128 w1p = _mm_permute_ps(clip1.simd, 0xFF);
+        const __m128 w2p = _mm_permute_ps(clip2.simd, 0xFF);
+
+        const __m128 le0 = _mm_cmple_ps(clip0.simd, w0p);
+        const __m128 le1 = _mm_cmple_ps(clip1.simd, w1p);
+        const __m128 le2 = _mm_cmple_ps(clip2.simd, w2p);
+
+        const __m128 geW = _mm_and_ps(ge2, _mm_and_ps(ge1, ge0));
+        const __m128 leW = _mm_and_ps(le2, _mm_and_ps(le1, le0));
+
+        const __m128 part0 = _mm_cmpge_ps(w0p, _mm_set1_ps(1.f));
+        const __m128 part1 = _mm_cmpge_ps(w1p, _mm_set1_ps(1.f));
+        const __m128 part2 = _mm_cmpge_ps(w2p, _mm_set1_ps(1.f));
+
+        const __m128 vis  = _mm_and_ps(geW, leW);
+        const __m128 part = _mm_or_ps(part2, _mm_or_ps(part1, part0));
+
+        const int visI = SR_TRIANGLE_FULLY_VISIBLE & -(_mm_movemask_ps(vis) == 0x0F);
+        const int partI = SR_TRIANGLE_PARTIALLY_VISIBLE & -(_mm_movemask_ps(part) == 0x0F);
+
+        return (SR_ClipStatus)(visI | partI);
+    #endif
 }
 
 

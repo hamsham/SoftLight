@@ -34,9 +34,9 @@ class SR_Shader; // SR_Shader.hpp
 -----------------------------------------------------------------------------*/
 enum SR_ClipStatus
 {
-    SR_TRIANGLE_NOT_VISIBLE,
-    SR_TRIANGLE_PARTIALLY_VISIBLE,
-    SR_TRIANGLE_FULLY_VISIBLE
+    SR_TRIANGLE_NOT_VISIBLE       = 0x00,
+    SR_TRIANGLE_PARTIALLY_VISIBLE = 0x01,
+    SR_TRIANGLE_FULLY_VISIBLE     = 0x03,
 };
 
 
