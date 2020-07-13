@@ -125,15 +125,15 @@ inline LS_INLINE math::vec4 sr_perspective_divide(const math::vec4& v) noexcept
 inline LS_INLINE void sr_perspective_divide3(math::vec4& v0, math::vec4& v1, math::vec4& v2) noexcept
 {
     #if !defined(LS_ARCH_X86)
-        const math::vec4&& wInv0 = math::rcp(v0.vert[3]);
-        const math::vec4&& wInv1 = math::rcp(v1.vert[3]);
-        const math::vec4&& wInv2 = math::rcp(v2.vert[3]);
-        const math::vec4&& vMul0 = v0.vert * wInv0;
-        const math::vec4&& vMul1 = v1.vert * wInv1;
-        const math::vec4&& vMul2 = v2.vert * wInv2;
-        v0.vert = {vMul0[0], vMul0[1], vMul0[2], wInv0[0]};
-        v1.vert = {vMul1[0], vMul1[1], vMul1[2], wInv1[0]};
-        v2.vert = {vMul2[0], vMul2[1], vMul2[2], wInv2[0]};
+        const math::vec4&& wInv0 = math::rcp(v0[3]);
+        const math::vec4&& wInv1 = math::rcp(v1[3]);
+        const math::vec4&& wInv2 = math::rcp(v2[3]);
+        const math::vec4&& vMul0 = v0 * wInv0;
+        const math::vec4&& vMul1 = v1 * wInv1;
+        const math::vec4&& vMul2 = v2 * wInv2;
+        v0 = {vMul0[0], vMul0[1], vMul0[2], wInv0[0]};
+        v1 = {vMul1[0], vMul1[1], vMul1[2], wInv1[0]};
+        v2 = {vMul2[0], vMul2[1], vMul2[2], wInv2[0]};
     #else
         const __m128 p0    = _mm_load_ps(reinterpret_cast<const float*>(&v0));
         const __m128 wInv0 = _mm_rcp_ps(_mm_permute_ps(p0, 0xFF));
@@ -183,14 +183,14 @@ inline LS_INLINE void sr_world_to_screen_coords_divided(math::vec4& v, const flo
 inline LS_INLINE void sr_world_to_screen_coords_divided3(math::vec4& p0, math::vec4& p1, math::vec4& p2, const float widthScale, const float heightScale) noexcept
 {
     #if !defined(LS_ARCH_X86)
-        p0.vert[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  p0.vert[0], widthScale)));
-        p0.vert[1] = math::max(0.f, math::floor(math::fmadd(heightScale, p0.vert[1], heightScale)));
+        p0[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  p0[0], widthScale)));
+        p0[1] = math::max(0.f, math::floor(math::fmadd(heightScale, p0[1], heightScale)));
 
-        p1.vert[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  p1.vert[0], widthScale)));
-        p1.vert[1] = math::max(0.f, math::floor(math::fmadd(heightScale, p1.vert[1], heightScale)));
+        p1[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  p1[0], widthScale)));
+        p1[1] = math::max(0.f, math::floor(math::fmadd(heightScale, p1[1], heightScale)));
 
-        p2.vert[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  p2.vert[0], widthScale)));
-        p2.vert[1] = math::max(0.f, math::floor(math::fmadd(heightScale, p2.vert[1], heightScale)));
+        p2[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  p2[0], widthScale)));
+        p2[1] = math::max(0.f, math::floor(math::fmadd(heightScale, p2[1], heightScale)));
         //v = math::fmadd(math::vec4{widthScale, heightScale, 1.f, 1.f}, v, math::vec4{widthScale, heightScale, 0.f, 0.f});
     #else
 
