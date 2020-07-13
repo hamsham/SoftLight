@@ -254,12 +254,13 @@ bool SR_SceneFilePreload::load(const std::string& filename, SR_SceneLoadOpts opt
     fileImporter.SetPropertyInteger(AI_CONFIG_PP_LBW_MAX_WEIGHTS, (int)SR_BONE_MAX_WEIGHTS);
     fileImporter.SetPropertyInteger(AI_CONFIG_FAVOUR_SPEED, 1);
     fileImporter.SetPropertyBool(AI_CONFIG_IMPORT_NO_SKELETON_MESHES, AI_TRUE);
-    fileImporter.SetPropertyInteger(AI_CONFIG_PP_ICL_PTCACHE_SIZE, 32);
+    //fileImporter.SetPropertyInteger(AI_CONFIG_PP_ICL_PTCACHE_SIZE, 32);
 
-    //fileImporter.SetPropertyInteger(AI_CONFIG_PP_FD_REMOVE, 1); // remove degenerate triangles
+    fileImporter.SetPropertyInteger(AI_CONFIG_PP_FD_REMOVE, 1); // remove degenerate triangles
+    fileImporter.SetPropertyBool(AI_CONFIG_PP_FD_CHECKAREA, AI_FALSE); // During degenerate removal, don't remove small triangles
     //fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, AI_SLM_DEFAULT_MAX_TRIANGLES);
-    //fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, 0);//std::numeric_limits<int32_t>::max());
-    //fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_VERTEX_LIMIT, 0);//std::numeric_limits<int32_t>::max());
+    fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, std::numeric_limits<int32_t>::max());
+    //fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_VERTEX_LIMIT, std::numeric_limits<uint16_t>::max());
 
     unsigned defaultFlags = SCENE_FILE_IMPORT_FLAGS;
     if (opts.genTangents)

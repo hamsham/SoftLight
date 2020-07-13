@@ -48,9 +48,11 @@ namespace
 class SR_PTVCache
 {
   public:
-    static constexpr size_t PTV_CACHE_SIZE = SR_VERTEX_CACHE_SIZE;
-
-    static constexpr size_t PTV_CACHE_MISS = ~(size_t)0;
+    enum : size_t
+    {
+        PTV_CACHE_SIZE = SR_VERTEX_CACHE_SIZE,
+        PTV_CACHE_MISS = ~(size_t)0,
+    };
 
     alignas(sizeof(math::vec4)) size_t mIndices[PTV_CACHE_SIZE];
 
@@ -58,9 +60,7 @@ class SR_PTVCache
 
     ls::math::vec4_t<float> (*mShader)(SR_VertexParam&);
 
-    math::vec4 mVertices[PTV_CACHE_SIZE];
-
-    math::vec4 mVaryings[PTV_CACHE_SIZE][SR_SHADER_MAX_VARYING_VECTORS];
+    alignas(sizeof(math::vec4)) SR_TransformedVert mVertices[PTV_CACHE_SIZE];
 
     SR_PTVCache(const SR_PTVCache&)            = delete;
     SR_PTVCache(SR_PTVCache&&)                 = delete;
@@ -71,8 +71,7 @@ class SR_PTVCache
         mIndices{},
         mParam{inParam},
         mShader{pShader},
-        mVertices{},
-        mVaryings{}
+        mVertices{}
     {
         for (size_t& index : mIndices)
         {
@@ -80,42 +79,20 @@ class SR_PTVCache
         }
     }
 
-    inline void query_and_update(size_t key, math::vec4& outVert, math::vec4* outVaryings, size_t numVaryings) noexcept
+    inline SR_TransformedVert* query_and_update(size_t key, size_t numVaryings) noexcept
     {
         size_t i = key % PTV_CACHE_SIZE;
         (void)numVaryings;
 
-        if (mIndices[i] == key)
-        {
-            outVert = mVertices[i];
-
-            #ifndef LS_ARCH_X86
-                *reinterpret_cast<math::mat4*>(outVaryings) = *reinterpret_cast<const math::mat4*>(mVaryings[i]->v);
-            #else
-                _mm_store_ps(reinterpret_cast<float*>(outVaryings+0), _mm_load_ps(reinterpret_cast<float*>(mVaryings[i]+0)));
-                _mm_store_ps(reinterpret_cast<float*>(outVaryings+1), _mm_load_ps(reinterpret_cast<float*>(mVaryings[i]+1)));
-                _mm_store_ps(reinterpret_cast<float*>(outVaryings+2), _mm_load_ps(reinterpret_cast<float*>(mVaryings[i]+2)));
-                _mm_store_ps(reinterpret_cast<float*>(outVaryings+3), _mm_load_ps(reinterpret_cast<float*>(mVaryings[i]+3)));
-            #endif
-
-            return;
-        }
-        else
+        if (LS_UNLIKELY(mIndices[i] != key))
         {
             mIndices[i] = key;
             mParam.vertId = key;
-            mParam.pVaryings = outVaryings;
-            outVert = mVertices[i] = mShader(mParam);
-
-            #ifndef LS_ARCH_X86
-                *reinterpret_cast<math::mat4*>(mVaryings[i]->v) = *reinterpret_cast<const math::mat4*>(outVaryings);
-            #else
-                _mm_store_ps(reinterpret_cast<float*>(mVaryings[i]+0), _mm_load_ps(reinterpret_cast<float*>(outVaryings+0)));
-                _mm_store_ps(reinterpret_cast<float*>(mVaryings[i]+1), _mm_load_ps(reinterpret_cast<float*>(outVaryings+1)));
-                _mm_store_ps(reinterpret_cast<float*>(mVaryings[i]+2), _mm_load_ps(reinterpret_cast<float*>(outVaryings+2)));
-                _mm_store_ps(reinterpret_cast<float*>(mVaryings[i]+3), _mm_load_ps(reinterpret_cast<float*>(outVaryings+3)));
-            #endif
+            mParam.pVaryings = mVertices[i].varyings;
+            mVertices[i].vert = mShader(mParam);
         }
+
+        return mVertices+i;
     }
 };
 
@@ -126,15 +103,16 @@ class SR_PTVCache
 /*--------------------------------------
  * Convert world coordinates to screen coordinates (temporary until NDC clipping is added)
 --------------------------------------*/
-inline LS_INLINE math::vec4 sr_perspective_divide(const math::vec4 v) noexcept
+inline LS_INLINE math::vec4 sr_perspective_divide(const math::vec4& v) noexcept
 {
     #if !defined(LS_ARCH_X86)
         const math::vec4&& wInv = math::rcp(math::vec4{v[3]});
         const math::vec4&& vMul = v * wInv;
         return math::vec4{vMul[0], vMul[1], vMul[2], wInv[0]};
     #else
-        const __m128 wInv = _mm_rcp_ps(_mm_set1_ps(v[3]));
-        const __m128 vMul = _mm_mul_ps(v.simd, wInv);
+        const __m128 p    = _mm_load_ps(reinterpret_cast<const float*>(&v));
+        const __m128 wInv = _mm_rcp_ps(_mm_permute_ps(p, 0xFF));
+        const __m128 vMul = _mm_mul_ps(p, wInv);
         return math::vec4{_mm_blend_ps(wInv, vMul, 0x07)};
     #endif
 }
@@ -144,30 +122,33 @@ inline LS_INLINE math::vec4 sr_perspective_divide(const math::vec4 v) noexcept
 /*--------------------------------------
  * Convert world coordinates to screen coordinates (temporary until NDC clipping is added)
 --------------------------------------*/
-inline LS_INLINE void sr_perspective_divide3(math::vec4* v) noexcept
+inline LS_INLINE void sr_perspective_divide3(math::vec4& v0, math::vec4& v1, math::vec4& v2) noexcept
 {
     #if !defined(LS_ARCH_X86)
-        const math::vec4&& wInv0 = math::rcp(math::vec4{v[0][3]});
-        const math::vec4&& wInv1 = math::rcp(math::vec4{v[1][3]});
-        const math::vec4&& wInv2 = math::rcp(math::vec4{v[2][3]});
-        const math::vec4&& vMul0 = v[0] * wInv0;
-        const math::vec4&& vMul1 = v[1] * wInv1;
-        const math::vec4&& vMul2 = v[2] * wInv2;
-        v[0] = {vMul0[0], vMul0[1], vMul0[2], wInv0[0]};
-        v[1] = {vMul1[0], vMul1[1], vMul1[2], wInv1[0]};
-        v[2] = {vMul2[0], vMul2[1], vMul2[2], wInv2[0]};
+        const math::vec4&& wInv0 = math::rcp(v0.vert[3]);
+        const math::vec4&& wInv1 = math::rcp(v1.vert[3]);
+        const math::vec4&& wInv2 = math::rcp(v2.vert[3]);
+        const math::vec4&& vMul0 = v0.vert * wInv0;
+        const math::vec4&& vMul1 = v1.vert * wInv1;
+        const math::vec4&& vMul2 = v2.vert * wInv2;
+        v0.vert = {vMul0[0], vMul0[1], vMul0[2], wInv0[0]};
+        v1.vert = {vMul1[0], vMul1[1], vMul1[2], wInv1[0]};
+        v2.vert = {vMul2[0], vMul2[1], vMul2[2], wInv2[0]};
     #else
-        const __m128 wInv0 = _mm_rcp_ps(_mm_load1_ps(reinterpret_cast<const float*>(v)+3));
-        const __m128 wInv1 = _mm_rcp_ps(_mm_load1_ps(reinterpret_cast<const float*>(v)+7));
-        const __m128 wInv2 = _mm_rcp_ps(_mm_load1_ps(reinterpret_cast<const float*>(v)+11));
+        const __m128 p0    = _mm_load_ps(reinterpret_cast<const float*>(&v0));
+        const __m128 wInv0 = _mm_rcp_ps(_mm_permute_ps(p0, 0xFF));
+        const __m128 vMul0 = _mm_mul_ps(p0, wInv0);
+        _mm_store_ps(reinterpret_cast<float*>(&v0), _mm_blend_ps(wInv0, vMul0, 0x07));
 
-        const __m128 vMul0 = _mm_mul_ps(v[0].simd, wInv0);
-        const __m128 vMul1 = _mm_mul_ps(v[1].simd, wInv1);
-        const __m128 vMul2 = _mm_mul_ps(v[2].simd, wInv2);
+        const __m128 p1    = _mm_load_ps(reinterpret_cast<const float*>(&v1));
+        const __m128 wInv1 = _mm_rcp_ps(_mm_permute_ps(p1, 0xFF));
+        const __m128 vMul1 = _mm_mul_ps(p1, wInv1);
+        _mm_store_ps(reinterpret_cast<float*>(&v1), _mm_blend_ps(wInv1, vMul1, 0x07));
 
-        _mm_store_ps(reinterpret_cast<float*>(v+0), _mm_blend_ps(wInv0, vMul0, 0x07));
-        _mm_store_ps(reinterpret_cast<float*>(v+1), _mm_blend_ps(wInv1, vMul1, 0x07));
-        _mm_store_ps(reinterpret_cast<float*>(v+2), _mm_blend_ps(wInv2, vMul2, 0x07));
+        const __m128 p2    = _mm_load_ps(reinterpret_cast<const float*>(&v2));
+        const __m128 wInv2 = _mm_rcp_ps(_mm_permute_ps(p2, 0xFF));
+        const __m128 vMul2 = _mm_mul_ps(p2, wInv2);
+        _mm_store_ps(reinterpret_cast<float*>(&v2), _mm_blend_ps(wInv2, vMul2, 0x07));
     #endif
 }
 
@@ -183,12 +164,14 @@ inline LS_INLINE void sr_world_to_screen_coords_divided(math::vec4& v, const flo
         v[1] = math::max(0.f, math::floor(math::fmadd(heightScale, v[1], heightScale)));
         //v = math::fmadd(math::vec4{widthScale, heightScale, 1.f, 1.f}, v, math::vec4{widthScale, heightScale, 0.f, 0.f});
     #else
+        const __m128 p   = _mm_load_ps(reinterpret_cast<const float*>(&v));
         const __m128 wh0 = _mm_set_ps(0.f, 0.f, heightScale, widthScale);
         const __m128 wh1 = _mm_set_ps(1.f, 1.f, heightScale, widthScale);
 
-        __m128 scl = _mm_fmadd_ps(wh1, v.simd, wh0);
+
+        __m128 scl = _mm_fmadd_ps(wh1, p, wh0);
         scl = _mm_max_ps(_mm_floor_ps(scl), _mm_setzero_ps());
-        v.simd = _mm_blend_ps(scl, v.simd, 0x0C);
+        _mm_stream_ps(reinterpret_cast<float*>(&v), _mm_blend_ps(scl, p, 0x0C));
     #endif
 }
 
@@ -197,38 +180,37 @@ inline LS_INLINE void sr_world_to_screen_coords_divided(math::vec4& v, const flo
 /*--------------------------------------
  * Convert world coordinates to screen coordinates (temporary until NDC clipping is added)
 --------------------------------------*/
-inline LS_INLINE void sr_world_to_screen_coords_divided3(math::vec4* v, const float widthScale, const float heightScale) noexcept
+inline LS_INLINE void sr_world_to_screen_coords_divided3(math::vec4& p0, math::vec4& p1, math::vec4& p2, const float widthScale, const float heightScale) noexcept
 {
     #if !defined(LS_ARCH_X86)
-        v[0][0] = math::max(0.f, math::floor(math::fmadd(widthScale,  v[0][0], widthScale)));
-        v[0][1] = math::max(0.f, math::floor(math::fmadd(heightScale, v[0][1], heightScale)));
+        p0.vert[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  p0.vert[0], widthScale)));
+        p0.vert[1] = math::max(0.f, math::floor(math::fmadd(heightScale, p0.vert[1], heightScale)));
 
-        v[1][0] = math::max(0.f, math::floor(math::fmadd(widthScale,  v[1][0], widthScale)));
-        v[1][1] = math::max(0.f, math::floor(math::fmadd(heightScale, v[1][1], heightScale)));
+        p1.vert[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  p1.vert[0], widthScale)));
+        p1.vert[1] = math::max(0.f, math::floor(math::fmadd(heightScale, p1.vert[1], heightScale)));
 
-        v[2][0] = math::max(0.f, math::floor(math::fmadd(widthScale,  v[2][0], widthScale)));
-        v[2][1] = math::max(0.f, math::floor(math::fmadd(heightScale, v[2][1], heightScale)));
+        p2.vert[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  p2.vert[0], widthScale)));
+        p2.vert[1] = math::max(0.f, math::floor(math::fmadd(heightScale, p2.vert[1], heightScale)));
         //v = math::fmadd(math::vec4{widthScale, heightScale, 1.f, 1.f}, v, math::vec4{widthScale, heightScale, 0.f, 0.f});
     #else
 
         const __m128 wh0 = _mm_set_ps(0.f, 0.f, heightScale, widthScale);
         const __m128 wh1 = _mm_set_ps(1.f, 1.f, heightScale, widthScale);
 
-        const __m128 v0 = _mm_load_ps(reinterpret_cast<float*>(v+0));
-        const __m128 v1 = _mm_load_ps(reinterpret_cast<float*>(v+1));
-        const __m128 v2 = _mm_load_ps(reinterpret_cast<float*>(v+2));
-
+        const __m128 v0 = _mm_load_ps(reinterpret_cast<float*>(&p0));
         __m128 scl0 = _mm_fmadd_ps(wh1, v0, wh0);
-        __m128 scl1 = _mm_fmadd_ps(wh1, v1, wh0);
-        __m128 scl2 = _mm_fmadd_ps(wh1, v2, wh0);
-
         scl0 = _mm_max_ps(_mm_floor_ps(scl0), _mm_setzero_ps());
-        scl1 = _mm_max_ps(_mm_floor_ps(scl1), _mm_setzero_ps());
-        scl2 = _mm_max_ps(_mm_floor_ps(scl2), _mm_setzero_ps());
+        _mm_store_ps(reinterpret_cast<float*>(&p0), _mm_blend_ps(scl0, v0, 0x0C));
 
-        _mm_store_ps(reinterpret_cast<float*>(v+0), _mm_blend_ps(scl0, v0, 0x0C));
-        _mm_store_ps(reinterpret_cast<float*>(v+1), _mm_blend_ps(scl1, v1, 0x0C));
-        _mm_store_ps(reinterpret_cast<float*>(v+2), _mm_blend_ps(scl2, v2, 0x0C));
+        const __m128 v1 = _mm_load_ps(reinterpret_cast<float*>(&p1));
+        __m128 scl1 = _mm_fmadd_ps(wh1, v1, wh0);
+        scl1 = _mm_max_ps(_mm_floor_ps(scl1), _mm_setzero_ps());
+        _mm_store_ps(reinterpret_cast<float*>(&p1), _mm_blend_ps(scl1, v1, 0x0C));
+
+        const __m128 v2 = _mm_load_ps(reinterpret_cast<float*>(&p2));
+        __m128 scl2 = _mm_fmadd_ps(wh1, v2, wh0);
+        scl2 = _mm_max_ps(_mm_floor_ps(scl2), _mm_setzero_ps());
+        _mm_store_ps(reinterpret_cast<float*>(&p2), _mm_blend_ps(scl2, v2, 0x0C));
     #endif
 }
 
@@ -303,29 +285,29 @@ inline LS_INLINE math::vec3_t<size_t> get_next_vertex3(const SR_IndexBuffer* pIb
 /*--------------------------------------
  * Cull backfaces of a triangle
 --------------------------------------*/
-inline int back_face_visible(const math::vec4* screenCoords) noexcept
+inline int back_face_visible(const math::vec4& p0, const math::vec4& p1, const math::vec4& p2) noexcept
 {
     //return (0.f >= math::dot(math::vec4{0.f, 0.f, 1.f, 1.f}, math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0])));
 
     #if !defined(LS_ARCH_X86)
         const math::mat3 det{
-            math::vec3{screenCoords[0][0], screenCoords[0][1], screenCoords[0][3]},
-            math::vec3{screenCoords[1][0], screenCoords[1][1], screenCoords[1][3]},
-            math::vec3{screenCoords[2][0], screenCoords[2][1], screenCoords[2][3]}
+            math::vec3{p0[0], p0[1], p0[3]},
+            math::vec3{p1[0], p1[1], p1[3]},
+            math::vec3{p2[0], p2[1], p2[3]}
         };
         return (0.f > math::determinant(det));
     #else
         // Swap the z and w components for each vector. Z will be discarded later
-        const __m128 col4 = _mm_blend_ps(_mm_permute_ps(screenCoords[0].simd, 0xB4), _mm_setzero_ps(), 0x08);
+        const __m128 col4 = _mm_blend_ps(_mm_permute_ps(p0.simd, 0xB4), _mm_setzero_ps(), 0x08);
 
         constexpr int shuffleMask120 = 0x8D; // indices: <base> + (2, 0, 3, 1): 10001101
         constexpr int shuffleMask201 = 0x93; // indices: <base> + (2, 1, 0, 3): 10010011
 
-        const __m128 col2 = _mm_permute_ps(screenCoords[1].simd, shuffleMask201);
-        const __m128 col3 = _mm_mul_ps(col2, _mm_permute_ps(screenCoords[2].simd, shuffleMask120));
+        const __m128 col2 = _mm_permute_ps(p1.simd, shuffleMask201);
+        const __m128 col3 = _mm_mul_ps(col2, _mm_permute_ps(p2.simd, shuffleMask120));
 
-        const __m128 col0 = _mm_permute_ps(screenCoords[1].simd, shuffleMask120);
-        const __m128 col1 = _mm_mul_ps(col0, _mm_permute_ps(screenCoords[2].simd, shuffleMask201));
+        const __m128 col0 = _mm_permute_ps(p1.simd, shuffleMask120);
+        const __m128 col1 = _mm_mul_ps(col0, _mm_permute_ps(p2.simd, shuffleMask201));
 
         const __m128 sub0 = _mm_sub_ps(col1, col3);
 
@@ -337,7 +319,7 @@ inline int back_face_visible(const math::vec4* screenCoords) noexcept
         const __m128 swap = _mm_add_ps(mul2, _mm_movehl_ps(mul2, mul2));
         const __m128 sum  = _mm_add_ps(swap, _mm_permute_ps(swap, 1));
 
-        return 0.f > _mm_cvtss_f32(sum);
+        return _mm_cvtsi128_si32(_mm_castps_si128(_mm_cmpgt_ps(_mm_setzero_ps(), sum)));
     #endif
 }
 
@@ -346,29 +328,29 @@ inline int back_face_visible(const math::vec4* screenCoords) noexcept
 /*--------------------------------------
  * Cull frontfaces of a triangle
 --------------------------------------*/
-inline int front_face_visible(const math::vec4* screenCoords) noexcept
+inline int front_face_visible(const math::vec4& p0, const math::vec4& p1, const math::vec4& p2) noexcept
 {
     //return (0.f >= math::dot(math::vec4{0.f, 0.f, 1.f, 1.f}, math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0])));
 
     #if !defined(LS_ARCH_X86)
         const math::mat3 det{
-            math::vec3{screenCoords[0][0], screenCoords[0][1], screenCoords[0][3]},
-            math::vec3{screenCoords[1][0], screenCoords[1][1], screenCoords[1][3]},
-            math::vec3{screenCoords[2][0], screenCoords[2][1], screenCoords[2][3]}
+            math::vec3{p0[0], p0[1], p0[3]},
+            math::vec3{p1[0], p1[1], p1[3]},
+            math::vec3{p2[0], p2[1], p2[3]}
         };
-        return (0.f < math::determinant(det));
+        return (0.f > math::determinant(det));
     #else
         // Swap the z and w components for each vector. Z will be discarded later
-        const __m128 col4 = _mm_blend_ps(_mm_permute_ps(screenCoords[0].simd, 0xB4), _mm_setzero_ps(), 0x08);
+        const __m128 col4 = _mm_blend_ps(_mm_permute_ps(p0.simd, 0xB4), _mm_setzero_ps(), 0x08);
 
         constexpr int shuffleMask120 = 0x8D; // indices: <base> + (2, 0, 3, 1): 10001101
         constexpr int shuffleMask201 = 0x93; // indices: <base> + (2, 1, 0, 3): 10010011
 
-        const __m128 col2 = _mm_permute_ps(screenCoords[1].simd, shuffleMask201);
-        const __m128 col3 = _mm_mul_ps(col2, _mm_permute_ps(screenCoords[2].simd, shuffleMask120));
+        const __m128 col2 = _mm_permute_ps(p1.simd, shuffleMask201);
+        const __m128 col3 = _mm_mul_ps(col2, _mm_permute_ps(p2.simd, shuffleMask120));
 
-        const __m128 col0 = _mm_permute_ps(screenCoords[1].simd, shuffleMask120);
-        const __m128 col1 = _mm_mul_ps(col0, _mm_permute_ps(screenCoords[2].simd, shuffleMask201));
+        const __m128 col0 = _mm_permute_ps(p1.simd, shuffleMask120);
+        const __m128 col1 = _mm_mul_ps(col0, _mm_permute_ps(p2.simd, shuffleMask201));
 
         const __m128 sub0 = _mm_sub_ps(col1, col3);
 
@@ -380,7 +362,7 @@ inline int front_face_visible(const math::vec4* screenCoords) noexcept
         const __m128 swap = _mm_add_ps(mul2, _mm_movehl_ps(mul2, mul2));
         const __m128 sum  = _mm_add_ps(swap, _mm_permute_ps(swap, 1));
 
-        return 0.f < _mm_cvtss_f32(sum);
+        return _mm_cvtsi128_si32(_mm_castps_si128(_mm_cmplt_ps(_mm_setzero_ps(), sum)));
     #endif
 }
 
@@ -389,19 +371,19 @@ inline int front_face_visible(const math::vec4* screenCoords) noexcept
 /*--------------------------------------
  * Cull only triangle outside of the screen
 --------------------------------------*/
-inline LS_INLINE SR_ClipStatus face_visible(const math::vec4 clipCoords[SR_SHADER_MAX_WORLD_COORDS]) noexcept
+inline LS_INLINE SR_ClipStatus face_visible(const math::vec4& clip0, const math::vec4& clip1, const math::vec4& clip2) noexcept
 {
-    const float w0p = clipCoords[0][3];
-    const float w1p = clipCoords[1][3];
-    const float w2p = clipCoords[2][3];
+    const float w0p = clip0[3];
+    const float w1p = clip1[3];
+    const float w2p = clip2[3];
 
-    const float w0n = -clipCoords[0][3];
-    const float w1n = -clipCoords[1][3];
-    const float w2n = -clipCoords[2][3];
+    const float w0n = -clip0[3];
+    const float w1n = -clip1[3];
+    const float w2n = -clip2[3];
 
-    if (clipCoords[0] >= w0n && clipCoords[0] <= w0p
-    &&  clipCoords[1] >= w1n && clipCoords[1] <= w1p
-    &&  clipCoords[2] >= w2n && clipCoords[2] <= w2p)
+    if (clip0 >= w0n && clip0 <= w0p
+    &&  clip1 >= w1n && clip1 <= w1p
+    &&  clip2 >= w2n && clip2 <= w2p)
     {
         return SR_TRIANGLE_FULLY_VISIBLE;
     }
@@ -532,19 +514,20 @@ void SR_VertexProcessor::flush_bins() const noexcept
  * Publish a vertex to a fragment thread
 --------------------------------------*/
 template <int renderMode, int vertCount>
-inline void SR_VertexProcessor::push_bin(
+void SR_VertexProcessor::push_bin(
     float fboW,
     float fboH,
-    math::vec4* const screenCoords,
-    const math::vec4* varyings
+    const SR_TransformedVert& a,
+    const SR_TransformedVert& b,
+    const SR_TransformedVert& c
 ) const noexcept
 {
     const uint_fast32_t numVaryings = mShader->get_num_varyings();
     uint32_t* const pBinCount = mBinsUsed+mThreadId;
 
-    const math::vec4& p0 = screenCoords[0];
-    const math::vec4& p1 = screenCoords[1];
-    const math::vec4& p2 = screenCoords[2];
+    const math::vec4& p0 = a.vert;
+    const math::vec4& p1 = b.vert;
+    const math::vec4& p2 = c.vert;
     float bboxMinX;
     float bboxMinY;
     float bboxMaxX;
@@ -624,24 +607,62 @@ inline void SR_VertexProcessor::push_bin(
         );
     }
 
-    for (int numVerts = vertCount; numVerts--;)
+    unsigned i;
+    const math::vec4* pInVar;
+    math::vec4* pOutVar;
+    switch (vertCount)
     {
-        const unsigned offset = numVerts * SR_SHADER_MAX_VARYING_VECTORS;
-        const math::vec4* pInVar = varyings+offset;
-        math::vec4* pOutVar = bin.mVaryings+offset;
+        case 3:
+            pInVar = c.varyings;
+            pOutVar = bin.mVaryings + 2 * SR_SHADER_MAX_VARYING_VECTORS;
+            for (i = numVaryings; i--;)
+            {
+                *pOutVar++ = *pInVar++;
+            }
 
-        for (unsigned i = numVaryings; i--;)
-        {
-            *pOutVar++ = *pInVar++;
-        }
+        case 2:
+            pInVar = b.varyings;
+            pOutVar = bin.mVaryings + 1 * SR_SHADER_MAX_VARYING_VECTORS;
+            for (i = numVaryings; i--;)
+            {
+                *pOutVar++ = *pInVar++;
+            }
+
+        case 1:
+            pInVar = a.varyings;
+            pOutVar = bin.mVaryings + 0 * SR_SHADER_MAX_VARYING_VECTORS;
+            for (i = numVaryings; i--;)
+            {
+                *pOutVar++ = *pInVar++;
+            }
     }
 }
 
 
 
-template void SR_VertexProcessor::push_bin<SR_RenderMode::RENDER_MODE_POINTS, 1>(float, float, math::vec4* const, const math::vec4*) const noexcept;
-template void SR_VertexProcessor::push_bin<SR_RenderMode::RENDER_MODE_LINES, 2>(float, float, math::vec4* const, const math::vec4*) const noexcept;
-template void SR_VertexProcessor::push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES, 3>(float, float, math::vec4* const, const math::vec4*) const noexcept;
+template void SR_VertexProcessor::push_bin<RENDER_MODE_POINTS, 1>(
+    float,
+    float,
+    const SR_TransformedVert&,
+    const SR_TransformedVert&,
+    const SR_TransformedVert&
+) const noexcept;
+
+template void SR_VertexProcessor::push_bin<RENDER_MODE_LINES, 2>(
+    float,
+    float,
+    const SR_TransformedVert&,
+    const SR_TransformedVert&,
+    const SR_TransformedVert&
+) const noexcept;
+
+template void SR_VertexProcessor::push_bin<RENDER_MODE_TRIANGLES, 3>(
+    float,
+    float,
+    const SR_TransformedVert&,
+    const SR_TransformedVert&,
+    const SR_TransformedVert&
+) const noexcept;
 
 
 
@@ -672,8 +693,9 @@ template void SR_VertexProcessor::push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES,
 void SR_VertexProcessor::clip_and_process_tris(
     float fboW,
     float fboH,
-    ls::math::vec4 vertCoords[SR_SHADER_MAX_SCREEN_COORDS],
-    ls::math::vec4 pVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS]) noexcept
+    const SR_TransformedVert& a,
+    const SR_TransformedVert& b,
+    const SR_TransformedVert& c) noexcept
 {
     const SR_VertexShader vertShader    = mShader->mVertShader;
     const unsigned        numVarys      = (unsigned)vertShader.numVaryings;
@@ -715,10 +737,14 @@ void SR_VertexProcessor::clip_and_process_tris(
         }
     };
 
-    _copy_verts(3, vertCoords, newVerts);
-    _copy_verts(numVarys, pVaryings, newVarys);
-    _copy_verts(numVarys, pVaryings+SR_SHADER_MAX_VARYING_VECTORS, newVarys+SR_SHADER_MAX_VARYING_VECTORS);
-    _copy_verts(numVarys, pVaryings+SR_SHADER_MAX_VARYING_VECTORS*2, newVarys+SR_SHADER_MAX_VARYING_VECTORS*2);
+    newVerts[0] = a.vert;
+    _copy_verts(numVarys, a.varyings, newVarys + 0 * SR_SHADER_MAX_VARYING_VECTORS);
+
+    newVerts[1] = b.vert;
+    _copy_verts(numVarys, b.varyings, newVarys + 1 * SR_SHADER_MAX_VARYING_VECTORS);
+
+    newVerts[2] = c.vert;
+    _copy_verts(numVarys, c.varyings, newVarys + 2 * SR_SHADER_MAX_VARYING_VECTORS);
 
     for (const math::vec4& edge : clipEdges)
     {
@@ -785,21 +811,22 @@ void SR_VertexProcessor::clip_and_process_tris(
         sr_world_to_screen_coords_divided(newVerts[i], widthScale, heightScale);
     }
 
-    tempVerts[0] = newVerts[0];
-    _copy_verts(numVarys, newVarys, tempVarys);
+    SR_TransformedVert p0, p1, p2;
+    p0.vert = newVerts[0];
+    _copy_verts(numVarys, newVarys, p0.varyings);
 
     for (unsigned i = numTotalVerts-2; i--;)
     {
         const unsigned j = i+1;
         const unsigned k = i+2;
 
-        tempVerts[1] = newVerts[j];
-        tempVerts[2] = newVerts[k];
+        p1.vert = newVerts[j];
+        _copy_verts(numVarys, newVarys+(j*SR_SHADER_MAX_VARYING_VECTORS), p1.varyings);
 
-        _copy_verts(numVarys, newVarys+(j*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(1*SR_SHADER_MAX_VARYING_VECTORS));
-        _copy_verts(numVarys, newVarys+(k*SR_SHADER_MAX_VARYING_VECTORS), tempVarys+(2*SR_SHADER_MAX_VARYING_VECTORS));
+        p2.vert = newVerts[k];
+        _copy_verts(numVarys, newVarys+(k*SR_SHADER_MAX_VARYING_VECTORS), p2.varyings);
 
-        push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES, 3>(fboW, fboH, tempVerts, tempVarys);
+        push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES, 3>(fboW, fboH, p0, p1, p2);
     }
 }
 
@@ -810,9 +837,7 @@ void SR_VertexProcessor::clip_and_process_tris(
 --------------------------------------*/
 void SR_VertexProcessor::process_points(const SR_Mesh& m, size_t instanceId) noexcept
 {
-    alignas(alignof(math::vec4)) math::vec4 vertCoords[SR_SHADER_MAX_SCREEN_COORDS];
-    alignas(alignof(math::vec4)) math::vec4 pVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS];
-
+    SR_TransformedVert      pVert0;
     const SR_VertexShader   vertShader   = mShader->mVertShader;
     const auto              shader       = vertShader.shader;
     const SR_VertexArray&   vao          = mContext->vao(m.vaoId);
@@ -834,7 +859,7 @@ void SR_VertexProcessor::process_points(const SR_Mesh& m, size_t instanceId) noe
         size_t end;
         constexpr size_t step = 1;
 
-        sr_calc_indexed_parition2<1>(m.elementEnd-m.elementBegin, mNumThreads, mThreadId, begin, end);
+        sr_calc_indexed_parition<1>(m.elementEnd-m.elementBegin, mNumThreads, mThreadId, begin, end);
         begin += m.elementBegin;
         end += m.elementBegin;
 
@@ -850,17 +875,17 @@ void SR_VertexProcessor::process_points(const SR_Mesh& m, size_t instanceId) noe
     {
         #if SR_VERTEX_CACHING_ENABLED
             const size_t vertId = usingIndices ? get_next_vertex(pIbo, i) : i;
-            ptvCache.query_and_update(vertId, vertCoords[0], pVaryings, numVaryings);
+            pVert0 = *ptvCache.query_and_update(vertId, numVaryings);
         #else
             params.vertId    = usingIndices ? get_next_vertex(pIbo, i) : i;
-            params.pVaryings = pVaryings;
-            vertCoords[0]    = shader(params);
+            params.pVaryings = pVert0.varyings;
+            pVert0.vert      = shader(params);
         #endif
 
-        if (vertCoords[0][3] > 0.f)
+        if (pVert0.vert[3] > 0.f)
         {
-            sr_world_to_screen_coords(vertCoords[0], widthScale, heightScale);
-            push_bin<SR_RenderMode::RENDER_MODE_POINTS, 1>(fboW, fboH, vertCoords, pVaryings);
+            sr_world_to_screen_coords(pVert0.vert, widthScale, heightScale);
+            push_bin<SR_RenderMode::RENDER_MODE_POINTS, 1>(fboW, fboH, pVert0, pVert0, pVert0);
         }
     }
 }
@@ -872,9 +897,8 @@ void SR_VertexProcessor::process_points(const SR_Mesh& m, size_t instanceId) noe
 --------------------------------------*/
 void SR_VertexProcessor::process_lines(const SR_Mesh& m, size_t instanceId) noexcept
 {
-    alignas(alignof(math::vec4)) math::vec4 vertCoords[SR_SHADER_MAX_SCREEN_COORDS] = {};
-    alignas(alignof(math::vec4)) math::vec4 pVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS] = {};
-
+    SR_TransformedVert      pVert0;
+    SR_TransformedVert      pVert1;
     const SR_VertexShader   vertShader   = mShader->mVertShader;
     const auto              shader       = vertShader.shader;
     const SR_VertexArray&   vao          = mContext->vao(m.vaoId);
@@ -896,7 +920,7 @@ void SR_VertexProcessor::process_lines(const SR_Mesh& m, size_t instanceId) noex
         size_t end;
         constexpr size_t step = 2;
 
-        sr_calc_indexed_parition2<2>(m.elementEnd-m.elementBegin, mNumThreads, mThreadId, begin, end);
+        sr_calc_indexed_parition<2>(m.elementEnd-m.elementBegin, mNumThreads, mThreadId, begin, end);
         begin += m.elementBegin;
         end += m.elementBegin;
 
@@ -916,24 +940,24 @@ void SR_VertexProcessor::process_lines(const SR_Mesh& m, size_t instanceId) noex
         #if SR_VERTEX_CACHING_ENABLED
             const size_t vertId0 = usingIndices ? get_next_vertex(pIbo, index0) : index0;
             const size_t vertId1 = usingIndices ? get_next_vertex(pIbo, index1) : index1;
-            ptvCache.query_and_update(vertId0, vertCoords[0], pVaryings, numVaryings);
-            ptvCache.query_and_update(vertId1, vertCoords[1], pVaryings + SR_SHADER_MAX_VARYING_VECTORS, numVaryings);
+            pVert0 = *ptvCache.query_and_update(vertId0, numVaryings);
+            pVert1 = *ptvCache.query_and_update(vertId1, numVaryings);
         #else
             params.vertId    = usingIndices ? get_next_vertex(pIbo, index0) : index0;
-            params.pVaryings = pVaryings;
-            vertCoords[0]    = shader(params);
+            params.pVaryings = pVert0.varyings;
+            pVert0.vert      = shader(params);
 
             params.vertId    = usingIndices ? get_next_vertex(pIbo, index1) : index1;
-            params.pVaryings = pVaryings + SR_SHADER_MAX_VARYING_VECTORS;
-            vertCoords[1]    = shader(params);
+            params.pVaryings = pVert1.varyings;
+            pVert1.vert      = shader(params);
         #endif
 
-        if (vertCoords[0][3] >= 0.f && vertCoords[1][3] >= 0.f)
+        if (pVert0.vert[3] >= 0.f && pVert1.vert[3] >= 0.f)
         {
-            sr_world_to_screen_coords(vertCoords[0], widthScale, heightScale);
-            sr_world_to_screen_coords(vertCoords[1], widthScale, heightScale);
+            sr_world_to_screen_coords(pVert0.vert, widthScale, heightScale);
+            sr_world_to_screen_coords(pVert1.vert, widthScale, heightScale);
 
-            push_bin<SR_RenderMode::RENDER_MODE_LINES, 2>(fboW, fboH, vertCoords, pVaryings);
+            push_bin<SR_RenderMode::RENDER_MODE_LINES, 2>(fboW, fboH, pVert0, pVert1, pVert1);
         }
     }
 }
@@ -945,9 +969,9 @@ void SR_VertexProcessor::process_lines(const SR_Mesh& m, size_t instanceId) noex
 --------------------------------------*/
 void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexcept
 {
-    alignas(alignof(math::vec4)) math::vec4 vertCoords[SR_SHADER_MAX_SCREEN_COORDS];
-    alignas(alignof(math::vec4)) math::vec4 pVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS];
-
+    SR_TransformedVert      pVert0;
+    SR_TransformedVert      pVert1;
+    SR_TransformedVert      pVert2;
     const SR_VertexShader   vertShader   = mShader->mVertShader;
     const SR_CullMode       cullMode     = vertShader.cullMode;
     const auto              shader       = vertShader.shader;
@@ -987,40 +1011,40 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
         const math::vec3_t<size_t>&& vertId = usingIndices ? get_next_vertex3(pIbo, i) : math::vec3_t<size_t>{i, i+1, i+2};
 
         #if SR_VERTEX_CACHING_ENABLED
-            ptvCache.query_and_update(vertId[0], vertCoords[0], pVaryings, numVaryings);
-            ptvCache.query_and_update(vertId[1], vertCoords[1], pVaryings + SR_SHADER_MAX_VARYING_VECTORS, numVaryings);
-            ptvCache.query_and_update(vertId[2], vertCoords[2], pVaryings + SR_SHADER_MAX_VARYING_VECTORS * 2, numVaryings);
+            pVert0 = *ptvCache.query_and_update(vertId[0], numVaryings);
+            pVert1 = *ptvCache.query_and_update(vertId[1], numVaryings);
+            pVert2 = *ptvCache.query_and_update(vertId[2], numVaryings);
         #else
             params.vertId    = vertId.v[0];
-            params.pVaryings = pVaryings;
-            vertCoords[0]    = shader(params);
+            params.pVaryings = pVert0.varyings;
+            pVert0.vert      = shader(params);
 
             params.vertId    = vertId.v[1];
-            params.pVaryings = pVaryings + SR_SHADER_MAX_VARYING_VECTORS;
-            vertCoords[1]    = shader(params);
+            params.pVaryings = pVert1.varyings;
+            pVert1.vert      = shader(params);
 
             params.vertId    = vertId.v[2];
-            params.pVaryings = pVaryings + SR_SHADER_MAX_VARYING_VECTORS * 2;
-            vertCoords[2]    = shader(params);
+            params.pVaryings = pVert2.varyings;
+            pVert2.vert      = shader(params);
         #endif
 
         if (cullMode == SR_CULL_BACK_FACE)
         {
-            if (back_face_visible(vertCoords))
+            if (back_face_visible(pVert0.vert, pVert1.vert, pVert2.vert))
             {
                 continue;
             }
         }
         else if (cullMode == SR_CULL_FRONT_FACE)
         {
-            if (front_face_visible(vertCoords))
+            if (front_face_visible(pVert0.vert, pVert1.vert, pVert2.vert))
             {
                 continue;
             }
         }
 
         // Clip-space culling
-        const SR_ClipStatus visStatus = face_visible(vertCoords);
+        const SR_ClipStatus visStatus = face_visible(pVert0.vert, pVert1.vert, pVert2.vert);
         if (visStatus == SR_TRIANGLE_NOT_VISIBLE)
         {
             continue;
@@ -1028,13 +1052,13 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
 
         if (visStatus == SR_TRIANGLE_FULLY_VISIBLE)
         {
-            sr_perspective_divide3(vertCoords);
-            sr_world_to_screen_coords_divided3(vertCoords, widthScale, heightScale);
-            push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES, 3>(fboW, fboH, vertCoords, pVaryings);
+            sr_perspective_divide3(pVert0.vert, pVert1.vert, pVert2.vert);
+            sr_world_to_screen_coords_divided3(pVert0.vert, pVert1.vert, pVert2.vert, widthScale, heightScale);
+            push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES, 3>(fboW, fboH, pVert0, pVert1, pVert2);
         }
         else
         {
-            clip_and_process_tris(fboW, fboH, vertCoords, pVaryings);
+            clip_and_process_tris(fboW, fboH, pVert0, pVert1, pVert2);
         }
     }
 }

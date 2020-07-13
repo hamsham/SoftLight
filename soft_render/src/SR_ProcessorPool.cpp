@@ -1,6 +1,7 @@
 
 #include <utility> // std::move()
 
+#include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Log.h"
 #include "lightsky/utils/WorkerThread.hpp"
 
@@ -54,6 +55,10 @@ static inline data_t* _aligned_alloc(size_t numElements) noexcept
 --------------------------------------*/
 SR_ProcessorPool::~SR_ProcessorPool() noexcept
 {
+    for (unsigned i = 0; i < mNumThreads - 1; ++i)
+    {
+        mWorkers[i].~WorkerThread();
+    }
 }
 
 
@@ -72,6 +77,8 @@ SR_ProcessorPool::SR_ProcessorPool(unsigned numThreads) noexcept :
     mWorkers{numThreads > 1 ? _aligned_alloc<SR_ProcessorPool::ThreadedWorker>(numThreads - 1) : nullptr},
     mNumThreads{numThreads}
 {
+    LS_ASSERT(numThreads > 0);
+
     for (unsigned i = 0; i < numThreads-1u; ++i)
     {
         new (&mWorkers[i]) ThreadedWorker{};
@@ -210,12 +217,9 @@ unsigned SR_ProcessorPool::concurrency(unsigned inNumThreads) noexcept
     // always use at least the main thread.
     inNumThreads = ls::math::max<unsigned>(1u, inNumThreads);
 
-    if (mNumThreads)
+    for (unsigned i = 0; i < mNumThreads - 1; ++i)
     {
-        for (unsigned i = 0; i < mNumThreads - 1; ++i)
-        {
-            mWorkers[i].~WorkerThread();
-        }
+        mWorkers[i].~WorkerThread();
     }
 
     mBinsReady.reset(_aligned_alloc<std::atomic_int_fast32_t>(inNumThreads));

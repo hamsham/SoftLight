@@ -41,6 +41,14 @@ enum SR_ClipStatus
 
 
 
+struct alignas(sizeof(ls::math::vec4)) SR_TransformedVert
+{
+    ls::math::vec4 vert;
+    ls::math::vec4 varyings[SR_SHADER_MAX_VARYING_VECTORS];
+};
+
+
+
 /*-----------------------------------------------------------------------------
  * Encapsulation of vertex processing on another thread.
 -----------------------------------------------------------------------------*/
@@ -88,15 +96,18 @@ struct SR_VertexProcessor
     void push_bin(
         float fboW,
         float fboH,
-        ls::math::vec4_t<float>* const screenCoords,
-        const ls::math::vec4_t<float>* varyings
+        const SR_TransformedVert& a,
+        const SR_TransformedVert& b,
+        const SR_TransformedVert& c
     ) const noexcept;
 
     void clip_and_process_tris(
         float fboW,
         float fboH,
-        ls::math::vec4_t<float> vertCoords[SR_SHADER_MAX_SCREEN_COORDS],
-        ls::math::vec4_t<float> pVaryings[SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_SCREEN_COORDS]) noexcept;
+        const SR_TransformedVert& a,
+        const SR_TransformedVert& b,
+        const SR_TransformedVert& c
+    ) noexcept;
 
     void process_points(const SR_Mesh& m, size_t instanceId) noexcept;
 
@@ -108,16 +119,33 @@ struct SR_VertexProcessor
 };
 
 
-extern template
-void SR_VertexProcessor::push_bin<RENDER_MODE_POINTS, 1>(float, float, ls::math::vec4_t<float>* const, const ls::math::vec4_t<float>*) const noexcept;
 
 extern template
-void SR_VertexProcessor::push_bin<RENDER_MODE_LINES, 2>(float, float, ls::math::vec4_t<float>* const, const ls::math::vec4_t<float>*) const noexcept;
+void SR_VertexProcessor::push_bin<RENDER_MODE_POINTS, 1>(
+    float,
+    float,
+    const SR_TransformedVert&,
+    const SR_TransformedVert&,
+    const SR_TransformedVert&
+) const noexcept;
 
 extern template
-void SR_VertexProcessor::push_bin<RENDER_MODE_TRIANGLES, 3>(float, float, ls::math::vec4_t<float>* const, const ls::math::vec4_t<float>*) const noexcept;
+void SR_VertexProcessor::push_bin<RENDER_MODE_LINES, 2>(
+    float,
+    float,
+    const SR_TransformedVert&,
+    const SR_TransformedVert&,
+    const SR_TransformedVert&
+) const noexcept;
 
-
+extern template
+void SR_VertexProcessor::push_bin<RENDER_MODE_TRIANGLES, 3>(
+    float,
+    float,
+    const SR_TransformedVert&,
+    const SR_TransformedVert&,
+    const SR_TransformedVert&
+) const noexcept;
 
 
 
