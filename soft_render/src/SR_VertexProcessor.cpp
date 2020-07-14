@@ -373,28 +373,7 @@ inline int front_face_visible(const math::vec4& p0, const math::vec4& p1, const 
 --------------------------------------*/
 inline LS_INLINE SR_ClipStatus face_visible(const math::vec4& clip0, const math::vec4& clip1, const math::vec4& clip2) noexcept
 {
-    #if !defined(LS_ARCH_X86)
-        const math::vec4 w0p = clip0[3];
-        const math::vec4 w1p = clip1[3];
-        const math::vec4 w2p = clip2[3];
-
-        const math::vec4 w1n = -clip1[3];
-        const math::vec4 w0n = -clip0[3];
-        const math::vec4 w2n = -clip2[3];
-
-        int vis = SR_TRIANGLE_FULLY_VISIBLE & -(
-            clip0 <= w0p &&
-            clip1 <= w1p &&
-            clip2 <= w2p &&
-            clip0 >= w0n &&
-            clip1 >= w1n &&
-            clip2 >= w2n
-        );
-
-        int part = SR_TRIANGLE_PARTIALLY_VISIBLE & -(w0p >= 1.f || w1p >= 1.f || w2p >= 1.f);
-
-        return (SR_ClipStatus)(vis | part);
-    #else
+    #if defined(LS_ARCH_X86)
         const __m128 w0n = _mm_xor_ps(_mm_set1_ps(-0.f), _mm_permute_ps(clip0.simd, 0xFF));
         const __m128 w1n = _mm_xor_ps(_mm_set1_ps(-0.f), _mm_permute_ps(clip1.simd, 0xFF));
         const __m128 w2n = _mm_xor_ps(_mm_set1_ps(-0.f), _mm_permute_ps(clip2.simd, 0xFF));
@@ -425,6 +404,48 @@ inline LS_INLINE SR_ClipStatus face_visible(const math::vec4& clip0, const math:
         const int partI = SR_TRIANGLE_PARTIALLY_VISIBLE & -(_mm_movemask_ps(part) == 0x0F);
 
         return (SR_ClipStatus)(visI | partI);
+    #elif defined(LS_ARCH_ARM)
+        const float32x4_t w0p = vdupq_lane_f32(vget_high_f32(clip0.simd), 1);
+        const float32x4_t w1p = vdupq_lane_f32(vget_high_f32(clip1.simd), 1);
+        const float32x4_t w2p = vdupq_lane_f32(vget_high_f32(clip2.simd), 1);
+
+        const uint32x4_t le0  = vcaleq_f32(clip0.simd, w0p);
+        const uint32x4_t le1  = vcaleq_f32(clip1.simd, w1p);
+        const uint32x4_t le2  = vcaleq_f32(clip2.simd, w2p);
+
+        const uint32x4_t vis = vandq_u32(le2, vandq_u32(le1, le0));
+        const uint32x2_t vis2 = vand_u32(vget_low_u32(vis), vget_high_u32(vis));
+        const unsigned   visI = SR_TRIANGLE_FULLY_VISIBLE & vget_lane_u32(vis2, 0) & vget_lane_u32(vis2, 1);
+
+        const uint32x4_t part0 = vcgeq_f32(w0p, vdupq_n_f32(1.f));
+        const uint32x4_t part1 = vcgeq_f32(w1p, vdupq_n_f32(1.f));
+        const uint32x4_t part2 = vcgeq_f32(w2p, vdupq_n_f32(1.f));
+        const uint32x4_t part  = vorrq_u32(part2, vorrq_u32(part1, part0));
+        const uint32x2_t parts = vand_u32(vget_low_u32(part), vget_high_u32(part));
+        const unsigned   partI = SR_TRIANGLE_PARTIALLY_VISIBLE & vget_lane_u32(parts, 0) & vget_lane_u32(parts, 1);
+
+        return (SR_ClipStatus)(visI | partI);
+    #else
+        const math::vec4 w0p = clip0[3];
+        const math::vec4 w1p = clip1[3];
+        const math::vec4 w2p = clip2[3];
+
+        const math::vec4 w1n = -clip1[3];
+        const math::vec4 w0n = -clip0[3];
+        const math::vec4 w2n = -clip2[3];
+
+        int vis = SR_TRIANGLE_FULLY_VISIBLE & -(
+            clip0 <= w0p &&
+            clip1 <= w1p &&
+            clip2 <= w2p &&
+            clip0 >= w0n &&
+            clip1 >= w1n &&
+            clip2 >= w2n
+        );
+
+        int part = SR_TRIANGLE_PARTIALLY_VISIBLE & -(w0p >= 1.f || w1p >= 1.f || w2p >= 1.f);
+
+        return (SR_ClipStatus)(vis | part);
     #endif
 }
 
