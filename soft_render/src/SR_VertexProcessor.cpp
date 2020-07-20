@@ -339,7 +339,7 @@ inline LS_INLINE float face_determinant(const math::vec4& p0, const math::vec4& 
         const __m128 swap = _mm_add_ps(mul2, _mm_movehl_ps(mul2, mul2));
         const __m128 sum  = _mm_add_ps(swap, _mm_permute_ps(swap, 1));
 
-        return _mm_cvtsi128_si32(sum);
+        return _mm_cvtss_f32(sum);
 
     #elif defined(LS_ARCH_ARM) // based on the AVX implementation
         const float32x4_t col4 = vcombine_f32(vget_low_f32(p0.simd), vrev64_f32(vget_high_f32(p0.simd)));
@@ -350,7 +350,7 @@ inline LS_INLINE float face_determinant(const math::vec4& p0, const math::vec4& 
         const uint32x4_t z2_201 = vextq_u32(vreinterpretq_u32_f32(p2.simd), vreinterpretq_u32_f32(p2.simd), 3);
         const float32x4_t col1 = vmulq_f32(col0, vreinterpretq_f32_u32(z2_201));
 
-        const uint32x4_t col2 = vreinterpretq_f32_u32(vextq_u32(vreinterpretq_u32_f32(p1.simd), vreinterpretq_u32_f32(p1.simd), 3));
+        const float32x4_t col2 = vreinterpretq_f32_u32(vextq_u32(vreinterpretq_u32_f32(p1.simd), vreinterpretq_u32_f32(p1.simd), 3));
 
         const float32x2x2_t z2_120 = vzip_f32(vget_low_f32(p2.simd), vget_high_f32(p2.simd));
         const float32x4_t sub0 = vmlsq_f32(col1, col2, vcombine_f32(z2_120.val[1], z2_120.val[0]));
