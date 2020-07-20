@@ -236,7 +236,7 @@ enum SR_ShaderLimits
 
     // Maximum number of vertex groups which get binned before being sent to a
     // fragment processor.
-    SR_SHADER_MAX_BINNED_PRIMS    = 1000,
+    SR_SHADER_MAX_BINNED_PRIMS    = 1024,
 };
 
 
