@@ -555,7 +555,7 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
     SR_FragCoord*         outCoords    = mQueues;
     const int32_t         yOffset      = (uint32_t)mThreadId;
     const int32_t         increment    = (int32_t)mNumProcessors;
-    const int32_t         depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON;
+    const int32_t         depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_OFF;
     SR_ScanlineBounds     scanline;
 
     for (uint64_t binId = 0; binId < mNumBins; ++binId, ++pBin)
@@ -600,12 +600,12 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
                 const float  depthTexels = pDepth[x];
 
                 #if SR_REVERSED_Z_RENDERING
-                    const int_fast32_t&& depthTest = math::sign_mask(z - depthTexels) & -depthTesting;
+                    const int_fast32_t&& depthTest = math::sign_mask(depthTexels - z) | depthTesting;
                 #else
-                    const int_fast32_t&& depthTest = math::sign_mask(depthTexels - z) & -depthTesting;
+                    const int_fast32_t&& depthTest = math::sign_mask(z - depthTexels) | depthTesting;
                 #endif
 
-                if (LS_UNLIKELY(depthTest))
+                if (LS_UNLIKELY(!depthTest))
                 {
                     continue;
                 }
@@ -614,7 +614,7 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
                 float persp = math::rcp(math::dot(bc, homogenous));
                 outCoords->bc[numQueuedFrags]   = (bc * homogenous) * persp;
                 outCoords->xyzw[numQueuedFrags] = math::vec4{xf, yf, z, persp};
-                outCoords->xy[numQueuedFrags]   = (uint32_t)((0xFFFF & x) | y16);
+                outCoords->xy[numQueuedFrags]   = (uint32_t)(x | y16);
                 ++numQueuedFrags;
 
                 if (numQueuedFrags == SR_SHADER_MAX_QUEUED_FRAGS)
@@ -646,7 +646,7 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
     SR_FragCoord*         outCoords    = mQueues;
     const int32_t         yOffset      = (uint32_t)mThreadId;
     const int32_t         increment    = (int32_t)mNumProcessors;
-    const int32_t         depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON;
+    const int32_t         depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_OFF) & 0x0F;
     SR_ScanlineBounds     scanline;
 
     for (uint64_t binId = 0; binId < mNumBins; ++binId, ++pBin)
@@ -678,73 +678,61 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
             int32_t xMax;
             scanline.step(yf, xMin, xMax);
 
-            math::vec4&& xf = math::vec4{0.f, 1.f, 2.f, 3.f} + (float)xMin;
-            math::vec4i&& x4 = math::vec4i{0, 1, 2, 3} + xMin;
+            math::vec4&&       xf     = math::vec4{0.f, 1.f, 2.f, 3.f} + (float)xMin;
+            math::vec4i&&      x4     = math::vec4i{0, 1, 2, 3} + xMin;
+            const math::vec4&& xMaxf  = math::vec4{(float)xMax};
+            const float*       pDepth = depthBuffer->row_pointer<float>((uintptr_t)y) + xMin;
 
-            // I'm pretty sure Z-ordering has been ruled out at this point.
-            const float* pDepth = depthBuffer->row_pointer<float>((uintptr_t)y) + xMin;
-
-            //for (uint16_t y16 = (uint16_t)y; x[0] <= xMax;)
-            for (uint32_t y16 = (uint32_t)(y << 16); x4[0] < xMax; x4 += 4, pDepth += 4, xf += 4.f)
+            for (int32_t y16 = y << 16; x4[0] < xMax; pDepth += 4, x4 += 4, xf += 4.f)
             {
                 // calculate barycentric coordinates and perform a depth test
-                const math::vec4   depthTexels = *reinterpret_cast<const math::vec4*>(pDepth);
-                math::mat4&&       bc          = math::outer(xf, bcClipSpace[0]) + bcY;
-                const math::vec4&& z           = depth * bc;
-                const math::vec4&& persp4      = math::rcp(homogenous * bc);
+                math::mat4&&       bc     = math::outer(xf, bcClipSpace[0]) + bcY;
+                const math::vec4&& z      = depth * bc;
+                const int32_t      xBound = math::sign_mask(xf-xMaxf);
 
                 #if SR_REVERSED_Z_RENDERING
-                    const int32_t&& depthTest = math::sign_mask(z - depthTexels) & -depthTesting;
+                    const int32_t depthTest = xBound & (math::sign_mask(math::vec4{pDepth[0], pDepth[1], pDepth[2], pDepth[3]}-z) | depthTesting);
                 #else
-                    const int32_t&& depthTest = math::sign_mask(depthTexels - z) & -depthTesting;
+                    const int32_t depthTest = xBound & (math::sign_mask(z-math::vec4{pDepth[0], pDepth[1], pDepth[2], pDepth[3]}) | depthTesting);
                 #endif
 
+                if (LS_UNLIKELY(!depthTest))
+                {
+                    continue;
+                }
+
+                uint_fast32_t shifts0 = numQueuedFrags;
+                uint_fast32_t shifts1 = math::popcnt_u32(depthTest & 0x01) + shifts0;
+                uint_fast32_t shifts2 = math::popcnt_u32(depthTest & 0x02) + shifts1;
+                uint_fast32_t shifts3 = math::popcnt_u32(depthTest & 0x04) + shifts2;
+                uint_fast64_t shifts  = math::popcnt_u32(depthTest & 0x08) + shifts3;
+
+                const math::vec4&& persp4 = math::rcp(homogenous * bc);
                 bc[0] = (bc[0] * homogenous) * persp4[0];
                 bc[1] = (bc[1] * homogenous) * persp4[1];
                 bc[2] = (bc[2] * homogenous) * persp4[2];
                 bc[3] = (bc[3] * homogenous) * persp4[3];
 
-                if (x4[0] < xMax && !(depthTest & 0x01))
-                {
-                    // perspective correction
-                    outCoords->bc[numQueuedFrags]   = bc[0];
-                    outCoords->xyzw[numQueuedFrags] = math::vec4{xf[0], yf, z[0], persp4[0]};
-                    outCoords->xy[numQueuedFrags]   = (uint32_t)((0xFFFF & (x4[0])) | y16);
-                    ++numQueuedFrags;
-                }
+                outCoords->bc[shifts0] = bc[0];
+                outCoords->bc[shifts1] = bc[1];
+                outCoords->bc[shifts2] = bc[2];
+                outCoords->bc[shifts3] = bc[3];
 
-                if (x4[1] < xMax && !(depthTest & 0x02))
-                {
-                    // perspective correction
-                    outCoords->bc[numQueuedFrags]   = bc[1];
-                    outCoords->xyzw[numQueuedFrags] = math::vec4{xf[1], yf, z[1], persp4[1]};
-                    outCoords->xy[numQueuedFrags]   = (uint32_t)((0xFFFF & (x4[1])) | y16);
-                    ++numQueuedFrags;
-                }
+                outCoords->xyzw[shifts0] = math::vec4{xf[0], yf, z[0], persp4[0]};
+                outCoords->xyzw[shifts1] = math::vec4{xf[1], yf, z[1], persp4[1]};
+                outCoords->xyzw[shifts2] = math::vec4{xf[2], yf, z[2], persp4[2]};
+                outCoords->xyzw[shifts3] = math::vec4{xf[3], yf, z[3], persp4[3]};
 
-                if (x4[2] < xMax && !(depthTest & 0x04))
-                {
-                    // perspective correction
-                    outCoords->bc[numQueuedFrags]   = bc[2];
-                    outCoords->xyzw[numQueuedFrags] = math::vec4{xf[2], yf, z[2], persp4[2]};
-                    outCoords->xy[numQueuedFrags]   = (uint32_t)((0xFFFF & (x4[2])) | y16);
-                    ++numQueuedFrags;
-                }
+                outCoords->xy[shifts0]   = (uint32_t)(x4[0] | y16);
+                outCoords->xy[shifts1]   = (uint32_t)(x4[1] | y16);
+                outCoords->xy[shifts2]   = (uint32_t)(x4[2] | y16);
+                outCoords->xy[shifts3]   = (uint32_t)(x4[3] | y16);
 
-                if (x4[3] < xMax && !(depthTest & 0x08))
-                {
-                    // perspective correction
-                    outCoords->bc[numQueuedFrags]   = bc[3];
-                    outCoords->xyzw[numQueuedFrags] = math::vec4{xf[3], yf, z[3], persp4[3]};
-                    outCoords->xy[numQueuedFrags]   = (uint32_t)((0xFFFF & (x4[3])) | y16);
-                    ++numQueuedFrags;
-                }
-
+                numQueuedFrags = shifts;
                 if (numQueuedFrags > SR_SHADER_MAX_QUEUED_FRAGS-4)
                 {
                     flush_fragments(pBin, numQueuedFrags, outCoords);
                     numQueuedFrags = 0;
-                    LS_PREFETCH(pDepth+4, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
                 }
             }
         }
