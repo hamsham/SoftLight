@@ -105,15 +105,23 @@ class SR_PTVCache
 --------------------------------------*/
 inline LS_INLINE math::vec4 sr_perspective_divide(const math::vec4& v) noexcept
 {
-    #if !defined(LS_ARCH_X86)
-        const math::vec4&& wInv = math::rcp(math::vec4{v[3]});
-        const math::vec4&& vMul = v * wInv;
-        return math::vec4{vMul[0], vMul[1], vMul[2], wInv[0]};
-    #else
+    #if defined(LS_ARCH_X86)
         const __m128 p    = _mm_load_ps(reinterpret_cast<const float*>(&v));
         const __m128 wInv = _mm_rcp_ps(_mm_permute_ps(p, 0xFF));
         const __m128 vMul = _mm_mul_ps(p, wInv);
         return math::vec4{_mm_blend_ps(wInv, vMul, 0x07)};
+
+    #elif defined(LS_ARCH_ARM)
+        const float32x4_t w = vdupq_lane_f32(vget_high_f32(v.simd), 1);
+        const float32x4_t wInv = vrecpeq_f32(w);
+        const float32x4_t vMul = vmulq_f32(v.simd, vmulq_f32(vrecpsq_f32(w, wInv), wInv));
+        return math::vec4{vsetq_lane_f32(vgetq_lane_f32(wInv, 3), vMul, 3)};
+
+    #else
+        const math::vec4&& wInv = math::rcp(math::vec4{v[3]});
+        const math::vec4&& vMul = v * wInv;
+        return math::vec4{vMul[0], vMul[1], vMul[2], wInv[0]};
+
     #endif
 }
 
@@ -124,17 +132,7 @@ inline LS_INLINE math::vec4 sr_perspective_divide(const math::vec4& v) noexcept
 --------------------------------------*/
 inline LS_INLINE void sr_perspective_divide3(math::vec4& v0, math::vec4& v1, math::vec4& v2) noexcept
 {
-    #if !defined(LS_ARCH_X86)
-        const math::vec4&& wInv0 = math::rcp(v0[3]);
-        const math::vec4&& wInv1 = math::rcp(v1[3]);
-        const math::vec4&& wInv2 = math::rcp(v2[3]);
-        const math::vec4&& vMul0 = v0 * wInv0;
-        const math::vec4&& vMul1 = v1 * wInv1;
-        const math::vec4&& vMul2 = v2 * wInv2;
-        v0 = {vMul0[0], vMul0[1], vMul0[2], wInv0[0]};
-        v1 = {vMul1[0], vMul1[1], vMul1[2], wInv1[0]};
-        v2 = {vMul2[0], vMul2[1], vMul2[2], wInv2[0]};
-    #else
+    #if defined(LS_ARCH_X86)
         const __m128 p0    = _mm_load_ps(reinterpret_cast<const float*>(&v0));
         const __m128 wInv0 = _mm_rcp_ps(_mm_permute_ps(p0, 0xFF));
         const __m128 vMul0 = _mm_mul_ps(p0, wInv0);
@@ -149,6 +147,34 @@ inline LS_INLINE void sr_perspective_divide3(math::vec4& v0, math::vec4& v1, mat
         const __m128 wInv2 = _mm_rcp_ps(_mm_permute_ps(p2, 0xFF));
         const __m128 vMul2 = _mm_mul_ps(p2, wInv2);
         _mm_store_ps(reinterpret_cast<float*>(&v2), _mm_blend_ps(wInv2, vMul2, 0x07));
+
+    #elif defined(LS_ARCH_ARM)
+        const float32x4_t w0 = vdupq_lane_f32(vget_high_f32(v0.simd), 1);
+        const float32x4_t wInv0 = vrecpeq_f32(w0);
+        const float32x4_t vMul0 = vmulq_f32(v0.simd, vmulq_f32(vrecpsq_f32(w0, wInv0), wInv0));
+        v0.simd = vsetq_lane_f32(vgetq_lane_f32(wInv0, 3), vMul0, 3);
+
+        const float32x4_t w1 = vdupq_lane_f32(vget_high_f32(v1.simd), 1);
+        const float32x4_t wInv1 = vrecpeq_f32(w1);
+        const float32x4_t vMul1 = vmulq_f32(v1.simd, vmulq_f32(vrecpsq_f32(w1, wInv1), wInv1));
+        v1.simd = vsetq_lane_f32(vgetq_lane_f32(wInv1, 3), vMul1, 3);
+
+        const float32x4_t w2 = vdupq_lane_f32(vget_high_f32(v2.simd), 1);
+        const float32x4_t wInv2 = vrecpeq_f32(w2);
+        const float32x4_t vMul2 = vmulq_f32(v2.simd, vmulq_f32(vrecpsq_f32(w2, wInv2), wInv2));
+        v2.simd = vsetq_lane_f32(vgetq_lane_f32(wInv2, 3), vMul2, 3);
+
+    #else
+        const math::vec4&& wInv0 = math::rcp(v0[3]);
+        const math::vec4&& wInv1 = math::rcp(v1[3]);
+        const math::vec4&& wInv2 = math::rcp(v2[3]);
+        const math::vec4&& vMul0 = v0 * wInv0;
+        const math::vec4&& vMul1 = v1 * wInv1;
+        const math::vec4&& vMul2 = v2 * wInv2;
+        v0 = {vMul0[0], vMul0[1], vMul0[2], wInv0[0]};
+        v1 = {vMul1[0], vMul1[1], vMul1[2], wInv1[0]};
+        v2 = {vMul2[0], vMul2[1], vMul2[2], wInv2[0]};
+
     #endif
 }
 
@@ -221,7 +247,7 @@ inline LS_INLINE void sr_world_to_screen_coords_divided3(math::vec4& p0, math::v
 --------------------------------------*/
 inline LS_INLINE void sr_world_to_screen_coords(math::vec4& v, const float widthScale, const float heightScale) noexcept
 {
-    const float wInv = 1.f / v.v[3];
+    const float wInv = math::rcp(v.v[3]);
     math::vec4&& temp = v * wInv;
 
     temp[0] = widthScale  + temp[0] * widthScale;
@@ -283,20 +309,14 @@ inline LS_INLINE math::vec3_t<size_t> get_next_vertex3(const SR_IndexBuffer* pIb
 
 
 /*--------------------------------------
- * Cull backfaces of a triangle
+ * Triangle determinants for backface culling
 --------------------------------------*/
-inline int back_face_visible(const math::vec4& p0, const math::vec4& p1, const math::vec4& p2) noexcept
+inline LS_INLINE float face_determinant(const math::vec4& p0, const math::vec4& p1, const math::vec4& p2) noexcept
 {
-    //return (0.f >= math::dot(math::vec4{0.f, 0.f, 1.f, 1.f}, math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0])));
+    // 3D homogeneous determinant of the 3 vertices of a triangle. The
+    // Z-component of each 3D vertex is replaced by the 4D W-component.
 
-    #if !defined(LS_ARCH_X86)
-        const math::mat3 det{
-            math::vec3{p0[0], p0[1], p0[3]},
-            math::vec3{p1[0], p1[1], p1[3]},
-            math::vec3{p2[0], p2[1], p2[3]}
-        };
-        return (0.f > math::determinant(det));
-    #else
+    #if defined(LS_ARCH_X86)
         // Swap the z and w components for each vector. Z will be discarded later
         const __m128 col4 = _mm_blend_ps(_mm_permute_ps(p0.simd, 0xB4), _mm_setzero_ps(), 0x08);
 
@@ -319,50 +339,54 @@ inline int back_face_visible(const math::vec4& p0, const math::vec4& p1, const m
         const __m128 swap = _mm_add_ps(mul2, _mm_movehl_ps(mul2, mul2));
         const __m128 sum  = _mm_add_ps(swap, _mm_permute_ps(swap, 1));
 
-        return _mm_cvtsi128_si32(_mm_castps_si128(_mm_cmpgt_ps(_mm_setzero_ps(), sum)));
-    #endif
-}
+        return _mm_cvtsi128_si32(sum);
 
+    #elif defined(LS_ARCH_ARM) // based on the AVX implementation
+        const float32x4_t col4 = vcombine_f32(vget_low_f32(p0.simd), vrev64_f32(vget_high_f32(p0.simd)));
 
+        const float32x2x2_t z1_120 = vzip_f32(vget_low_f32(p1.simd), vget_high_f32(p1.simd));
+        const float32x4_t col0 = vcombine_f32(z1_120.val[1], z1_120.val[0]);
 
-/*--------------------------------------
- * Cull frontfaces of a triangle
---------------------------------------*/
-inline int front_face_visible(const math::vec4& p0, const math::vec4& p1, const math::vec4& p2) noexcept
-{
-    //return (0.f >= math::dot(math::vec4{0.f, 0.f, 1.f, 1.f}, math::cross(screenCoords[1]-screenCoords[0], screenCoords[2]-screenCoords[0])));
+        const uint32x4_t z2_201 = vextq_u32(vreinterpretq_u32_f32(p2.simd), vreinterpretq_u32_f32(p2.simd), 3);
+        const float32x4_t col1 = vmulq_f32(col0, vreinterpretq_f32_u32(z2_201));
 
-    #if !defined(LS_ARCH_X86)
+        const uint32x4_t col2 = vreinterpretq_f32_u32(vextq_u32(vreinterpretq_u32_f32(p1.simd), vreinterpretq_u32_f32(p1.simd), 3));
+
+        const float32x2x2_t z2_120 = vzip_f32(vget_low_f32(p2.simd), vget_high_f32(p2.simd));
+        const float32x4_t sub0 = vmlsq_f32(col1, col2, vcombine_f32(z2_120.val[1], z2_120.val[0]));
+
+        // perform a dot product to get the determinant
+        const float32x4_t mul2 = vmulq_f32(sub0, col4);
+
+        #if defined(LS_ARCH_AARCH64)
+            return vaddvq_f32(mul2);
+        #else
+            const float32x2_t swap = vadd_f32(vget_high_f32(mul2), vget_low_f32(mul2));
+            const float32x2_t sum = vpadd_f32(swap, swap);
+            return vget_lane_f32(sum, 0);
+        #endif
+
+    #elif 1
         const math::mat3 det{
             math::vec3{p0[0], p0[1], p0[3]},
             math::vec3{p1[0], p1[1], p1[3]},
             math::vec3{p2[0], p2[1], p2[3]}
         };
-        return (0.f > math::determinant(det));
+        return math::determinant(det);
+
     #else
-        // Swap the z and w components for each vector. Z will be discarded later
-        const __m128 col4 = _mm_blend_ps(_mm_permute_ps(p0.simd, 0xB4), _mm_setzero_ps(), 0x08);
+        // Alternative algorithm (requires division):
+        // Get the normalized homogeneous normal of a triangle and determine
+        // if the normal's Z-component is towards, or away from, the camera's
+        // Z component.
+        const math::vec4&& v0 = p0 / p0[3];
+        const math::vec4&& v1 = p1 / p1[3];
+        const math::vec4&& v2 = p2 / p2[3];
+        const math::vec4&& cx = math::cross(v1-v0, v2-v0);
 
-        constexpr int shuffleMask120 = 0x8D; // indices: <base> + (2, 0, 3, 1): 10001101
-        constexpr int shuffleMask201 = 0x93; // indices: <base> + (2, 1, 0, 3): 10010011
+        // Z-component of the triangle normal
+        return cx[2];
 
-        const __m128 col2 = _mm_permute_ps(p1.simd, shuffleMask201);
-        const __m128 col3 = _mm_mul_ps(col2, _mm_permute_ps(p2.simd, shuffleMask120));
-
-        const __m128 col0 = _mm_permute_ps(p1.simd, shuffleMask120);
-        const __m128 col1 = _mm_mul_ps(col0, _mm_permute_ps(p2.simd, shuffleMask201));
-
-        const __m128 sub0 = _mm_sub_ps(col1, col3);
-
-        // Remove the Z component which was shuffled earlier
-        const __m128 mul2 = _mm_mul_ps(sub0, col4);
-
-        // horizontal add: swap the words of each vector, add, then swap each
-        // half of the vectors and perform a final add.
-        const __m128 swap = _mm_add_ps(mul2, _mm_movehl_ps(mul2, mul2));
-        const __m128 sum  = _mm_add_ps(swap, _mm_permute_ps(swap, 1));
-
-        return _mm_cvtsi128_si32(_mm_castps_si128(_mm_cmplt_ps(_mm_setzero_ps(), sum)));
     #endif
 }
 
@@ -1081,16 +1105,12 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
             pVert2.vert      = shader(params);
         #endif
 
-        if (cullMode == SR_CULL_BACK_FACE)
+        if (cullMode != SR_CULL_OFF)
         {
-            if (back_face_visible(pVert0.vert, pVert1.vert, pVert2.vert))
-            {
-                continue;
-            }
-        }
-        else if (cullMode == SR_CULL_FRONT_FACE)
-        {
-            if (front_face_visible(pVert0.vert, pVert1.vert, pVert2.vert))
+            const float det = face_determinant(pVert0.vert, pVert1.vert, pVert2.vert);
+
+            if ((cullMode == SR_CULL_BACK_FACE && det < 0.f)
+            || (cullMode == SR_CULL_FRONT_FACE && det > 0.f))
             {
                 continue;
             }
