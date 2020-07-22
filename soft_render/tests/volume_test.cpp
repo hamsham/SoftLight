@@ -40,7 +40,7 @@
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SR_TEST_MAX_THREADS
-    #define SR_TEST_MAX_THREADS (ls::math::max<unsigned>(std::thread::hardware_concurrency(), 3u) - 2u)
+    #define SR_TEST_MAX_THREADS (ls::math::max<unsigned>(std::thread::hardware_concurrency(), 2u) - 1u)
 #endif /* SR_TEST_MAX_THREADS */
 
 //#include "test_common.hpp"
