@@ -64,8 +64,9 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
     const math::vec4* LS_RESTRICT_PTR inVaryings0,
     math::vec4*       LS_RESTRICT_PTR outVaryings) noexcept
 {
+    static_assert(SR_SHADER_MAX_VARYING_VECTORS == 4, "Please update the varying interpolator.");
+
     #if defined(LS_ARCH_X86)
-        static_assert(SR_SHADER_MAX_VARYING_VECTORS == 4, "Please update the varying interpolator.");
         (void)numVaryings;
 
         const float* LS_RESTRICT_PTR i0 = reinterpret_cast<const float*>(inVaryings0);
@@ -94,35 +95,22 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
             _mm256_store_ps(o+8, _mm256_fmadd_ps(bc2, c, _mm256_add_ps(v0, v1)));
         }
 
-    #elif defined(LS_ARCH_AARCH64)
-        const math::vec4* inVaryings1  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
-        const math::vec4* inVaryings2  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS * 2;
-
-        const float32x4_t bc  = vld1q_f32(baryCoords);
-
-        for (uint_fast32_t i = numVaryings; i--;)
-        {
-            const float32x4_t v0 = vmulq_laneq_f32(    vld1q_f32(reinterpret_cast<const float*>(inVaryings0++)), bc, 0);
-            const float32x4_t v1 = vfmaq_laneq_f32(v0, vld1q_f32(reinterpret_cast<const float*>(inVaryings1++)), bc, 1);
-            const float32x4_t v2 = vfmaq_laneq_f32(v1, vld1q_f32(reinterpret_cast<const float*>(inVaryings2++)), bc, 2);
-
-            vst1q_f32(reinterpret_cast<float*>(outVaryings++), v2);
-        }
     #elif defined(LS_ARCH_ARM)
         const math::vec4* inVaryings1  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
         const math::vec4* inVaryings2  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS * 2;
 
-        const float32x4_t bc  = vld1q_f32(baryCoords);
-        const float32x4_t bc0 = vdupq_lane_f32(vget_low_f32(bc),  0);
-        const float32x4_t bc1 = vdupq_lane_f32(vget_low_f32(bc),  1);
-        const float32x4_t bc2 = vdupq_lane_f32(vget_high_f32(bc), 0);
+        const float32x4_t bc0 = vld1q_dup_f32(baryCoords+0);
+        const float32x4_t bc1 = vld1q_dup_f32(baryCoords+1);
+        const float32x4_t bc2 = vld1q_dup_f32(baryCoords+2);
 
         for (uint_fast32_t i = numVaryings; i--;)
         {
-            const float32x4_t v0 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings0++)), bc0);
-            const float32x4_t v1 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings1++)), bc1);
-            vst1q_f32(reinterpret_cast<float*>(outVaryings++), vaddq_f32(vaddq_f32(v0, v1), vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings2++)), bc2)));
+            const float32x4_t v0 = vmulq_f32(    vld1q_f32(reinterpret_cast<const float*>(inVaryings0++)), bc0);
+            const float32x4_t v1 = vmlaq_f32(v0, vld1q_f32(reinterpret_cast<const float*>(inVaryings1++)), bc1);
+            const float32x4_t v2 = vmlaq_f32(v1, vld1q_f32(reinterpret_cast<const float*>(inVaryings2++)), bc2);
+            vst1q_f32(reinterpret_cast<float*>(outVaryings++), v2);
         }
+
     #else
         const math::vec4* inVaryings1 = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
         const math::vec4* inVaryings2 = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS * 2;
