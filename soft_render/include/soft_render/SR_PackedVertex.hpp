@@ -71,11 +71,11 @@ struct alignas(sizeof(int32_t)) SR_PackedVertex_2_10_10_10
             const __m128i extended = _mm_srav_epi32(shifted, _mm_set_epi32(30, 22, 22, 22));
             return ls::math::vec4{_mm_mul_ps(_mm_cvtepi32_ps(extended), _mm_set1_ps(1.f/511.f))};
         #elif defined(LS_ARCH_ARM)
-            constexpr int32_t leftShifts[4]  = {22, 12, 2, 0};
-            constexpr int32_t rightShifts[4] = {-22, -22, -22, -30};
+            const int32x4_t leftShifts{22, 12, 2, 0};
+            const int32x4_t rightShifts{-22, -22, -22, -30};
             const int32x4_t elems    = vmovq_n_s32(*reinterpret_cast<const int32_t*>(this));
-            const int32x4_t shifted  = vshlq_s32(elems, vld1q_s32(leftShifts));
-            const int32x4_t extended = vshlq_s32(shifted, vld1q_s32(rightShifts));
+            const int32x4_t shifted  = vshlq_s32(elems, leftShifts);
+            const int32x4_t extended = vshlq_s32(shifted, rightShifts);
             return ls::math::vec4{vmulq_f32(vcvtq_f32_s32(extended), vdupq_n_f32(1.f/511.f))};
         #else
             return ls::math::vec4{(float)x, (float)y, (float)z, 0.f} * ls::math::vec4{1.f / 511.f, 1.f / 511.f, 1.f / 511.f, 0.f};

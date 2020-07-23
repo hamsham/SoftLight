@@ -696,15 +696,10 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
                 uint_fast64_t shifts  = math::popcnt_u32(depthTest & 0x08) + shifts3;
 
                 const math::vec4&& persp4 = math::rcp(homogenous * bc);
-                bc[0] = (bc[0] * homogenous) * persp4[0];
-                bc[1] = (bc[1] * homogenous) * persp4[1];
-                bc[2] = (bc[2] * homogenous) * persp4[2];
-                bc[3] = (bc[3] * homogenous) * persp4[3];
-
-                outCoords->bc[shifts0] = bc[0];
-                outCoords->bc[shifts1] = bc[1];
-                outCoords->bc[shifts2] = bc[2];
-                outCoords->bc[shifts3] = bc[3];
+                outCoords->bc[shifts0] = (bc[0] * homogenous) * persp4[0];
+                outCoords->bc[shifts1] = (bc[1] * homogenous) * persp4[1];
+                outCoords->bc[shifts2] = (bc[2] * homogenous) * persp4[2];
+                outCoords->bc[shifts3] = (bc[3] * homogenous) * persp4[3];
 
                 outCoords->xyzw[shifts0] = math::vec4{xf[0], yf, z[0], persp4[0]};
                 outCoords->xyzw[shifts1] = math::vec4{xf[1], yf, z[1], persp4[1]};

@@ -1114,13 +1114,10 @@ inline SR_ColorTypeYCoCgA<float> ycocg_cast(const SR_ColorRGBAType<float>& p) no
 #elif defined(LS_ARCH_ARM)
 inline SR_ColorTypeYCoCgA<float> ycocg_cast(const SR_ColorRGBAType<float>& p) noexcept
 {
-    constexpr float av[4] = {1.f,  0.25f, 0.5f,  0.25f};
-    constexpr float bv[4] = {0.f, -0.5f,  0.f,   0.5f};
-    constexpr float cv[4] = {0.f, -0.25f, 0.5f, -0.25f};
+    constexpr float32x4_t a{1.f,  0.25f, 0.5f,  0.25f};
+    constexpr float32x4_t b{0.f, -0.5f,  0.f,   0.5f};
+    constexpr float32x4_t c{0.f, -0.25f, 0.5f, -0.25f};
 
-    const float32x4_t a = vld1q_f32(av);
-    const float32x4_t b = vld1q_f32(bv);
-    const float32x4_t c = vld1q_f32(cv);
     const float32x4_t ycocg = vmlaq_f32(vmlaq_f32(vmulq_f32(p.simd, a), p.simd, b), p.simd, c);
 
     SR_ColorTypeYCoCgA<float> ret;
