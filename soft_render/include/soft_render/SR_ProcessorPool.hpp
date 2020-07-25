@@ -29,6 +29,8 @@ union vec4_t;
 } // math namespace
 } // ls namespace
 
+struct SR_BinCounter;
+struct SR_BinCounterAtomic;
 class SR_Context;
 struct SR_FragCoord;
 struct SR_FragmentBin;
@@ -54,9 +56,9 @@ class SR_ProcessorPool
 
     std::atomic_uint_fast64_t mShadingSemaphore;
 
-    ls::utils::Pointer<std::atomic_int_fast32_t[], ls::utils::AlignedDeleter> mBinsReady;
+    ls::utils::Pointer<SR_BinCounterAtomic[], ls::utils::AlignedDeleter> mBinsReady;
 
-    ls::utils::Pointer<uint32_t[], ls::utils::AlignedDeleter> mBinsUsed;
+    ls::utils::Pointer<SR_BinCounter[], ls::utils::AlignedDeleter> mBinsUsed;
 
     ls::utils::Pointer<SR_FragmentBin[], ls::utils::AlignedDeleter> mFragBins;
 
@@ -130,20 +132,6 @@ inline void SR_ProcessorPool::execute() noexcept
 {
     this->flush();
     this->wait();
-}
-
-
-
-/*-------------------------------------
- * Remove all bins from potential processing
--------------------------------------*/
-inline void SR_ProcessorPool::clear_fragment_bins() noexcept
-{
-    for (uint16_t t = 0; t < mNumThreads; ++t)
-    {
-        mBinsReady[t].store(-1, std::memory_order_release);
-        mBinsUsed[t] = 0;
-    }
 }
 
 

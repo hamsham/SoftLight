@@ -69,8 +69,8 @@ SR_ProcessorPool::~SR_ProcessorPool() noexcept
 SR_ProcessorPool::SR_ProcessorPool(unsigned numThreads) noexcept :
     mFragSemaphore{0},
     mShadingSemaphore{0},
-    mBinsReady{_aligned_alloc<std::atomic_int_fast32_t>(numThreads)},
-    mBinsUsed{_aligned_alloc<uint32_t>(numThreads)},
+    mBinsReady{_aligned_alloc<SR_BinCounterAtomic>(numThreads)},
+    mBinsUsed{_aligned_alloc<SR_BinCounter>(numThreads)},
     mFragBins{_aligned_alloc<SR_FragmentBin>(numThreads * SR_SHADER_MAX_BINNED_PRIMS)},
     mVaryings{_aligned_alloc<ls::math::vec4>(numThreads * SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_QUEUED_FRAGS)},
     mFragQueues{_aligned_alloc<SR_FragCoord>(numThreads)},
@@ -83,6 +83,8 @@ SR_ProcessorPool::SR_ProcessorPool(unsigned numThreads) noexcept :
     {
         new (&mWorkers[i]) ThreadedWorker{};
     }
+
+    clear_fragment_bins();
 }
 
 
@@ -93,8 +95,8 @@ SR_ProcessorPool::SR_ProcessorPool(unsigned numThreads) noexcept :
 SR_ProcessorPool::SR_ProcessorPool(const SR_ProcessorPool& p) noexcept :
     mFragSemaphore{0},
     mShadingSemaphore{0},
-    mBinsReady{_aligned_alloc<std::atomic_int_fast32_t>(p.mNumThreads)},
-    mBinsUsed{_aligned_alloc<uint32_t>(p.mNumThreads)},
+    mBinsReady{_aligned_alloc<SR_BinCounterAtomic>(p.mNumThreads)},
+    mBinsUsed{_aligned_alloc<SR_BinCounter>(p.mNumThreads)},
     mFragBins{_aligned_alloc<SR_FragmentBin>(p.mNumThreads * SR_SHADER_MAX_BINNED_PRIMS)},
     mVaryings{_aligned_alloc<ls::math::vec4>(p.mNumThreads * SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_QUEUED_FRAGS)},
     mFragQueues{_aligned_alloc<SR_FragCoord>(p.mNumThreads)},
@@ -105,6 +107,8 @@ SR_ProcessorPool::SR_ProcessorPool(const SR_ProcessorPool& p) noexcept :
     {
         new (&mWorkers[i]) ThreadedWorker{};
     }
+
+    clear_fragment_bins();
 }
 
 
@@ -222,8 +226,8 @@ unsigned SR_ProcessorPool::concurrency(unsigned inNumThreads) noexcept
         mWorkers[i].~WorkerThread();
     }
 
-    mBinsReady.reset(_aligned_alloc<std::atomic_int_fast32_t>(inNumThreads));
-    mBinsUsed.reset(_aligned_alloc<uint32_t>(inNumThreads));
+    mBinsReady.reset(_aligned_alloc<SR_BinCounterAtomic>(inNumThreads));
+    mBinsUsed.reset(_aligned_alloc<SR_BinCounter>(inNumThreads));
     mFragBins.reset(_aligned_alloc<SR_FragmentBin>(inNumThreads * SR_SHADER_MAX_BINNED_PRIMS));
     mVaryings.reset(_aligned_alloc<ls::math::vec4>(inNumThreads * SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_QUEUED_FRAGS));
     mFragQueues.reset(_aligned_alloc<SR_FragCoord>(inNumThreads));
@@ -234,6 +238,7 @@ unsigned SR_ProcessorPool::concurrency(unsigned inNumThreads) noexcept
         new (&mWorkers[i]) ThreadedWorker{};
     }
 
+    clear_fragment_bins();
     mNumThreads = inNumThreads;
 
     LS_LOG_MSG(
@@ -353,6 +358,20 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh*
 
     // Each thread should now pause except for the main thread.
     wait();
+}
+
+
+
+/*-------------------------------------
+ * Remove all bins from potential processing
+-------------------------------------*/
+void SR_ProcessorPool::clear_fragment_bins() noexcept
+{
+    for (uint16_t t = 0; t < mNumThreads; ++t)
+    {
+        mBinsReady[t].count.store(-1, std::memory_order_release);
+        mBinsUsed[t].count = 0;
+    }
 }
 
 

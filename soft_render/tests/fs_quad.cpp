@@ -123,7 +123,7 @@ bool _mesh_test_frag_shader(SR_FragmentParam& fragParams)
     const math::vec4&& composite = pixel + pUniforms->lightCol * lightAngle;
     const math::vec4&& output = math::clamp(composite, math::vec4{0.f}, math::vec4{1.f});
 
-    const int amOdd = ((fragParams.x & 1) == (fragParams.y & 1));
+    const int amOdd = ((fragParams.coord.x & 1) == (fragParams.coord.y & 1));
 
     SR_ColorYCoCgAf&& pixelYcocg  = ycocg_cast<float>(output);
     const float       chrominance = amOdd ? pixelYcocg.cg : pixelYcocg.co;
@@ -219,8 +219,8 @@ bool _ycocg_frag_shader(SR_FragmentParam& fragParams)
 {
     const MeshTestUniforms* pUniforms = fragParams.pUniforms->as<MeshTestUniforms>();
     const SR_Texture*       albedo    = pUniforms->pTexture;
-    const uint16_t          x0        = fragParams.x;
-    const uint16_t          y0        = fragParams.y;
+    const uint16_t          x0        = fragParams.coord.x;
+    const uint16_t          y0        = fragParams.coord.y;
     const bool              amOdd     = ((x0 & 1) == (y0 & 1));
     constexpr float         norm255   = 1.f / 255.f;
     const math::vec2&&      pixel0    = (math::vec2)albedo->texel<math::vec2_t<uint8_t>>(x0, y0) * norm255;

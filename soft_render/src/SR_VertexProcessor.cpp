@@ -482,13 +482,13 @@ void SR_VertexProcessor::flush_bins() const noexcept
     const bool noBlending = mShader->mFragShader.blend == SR_BLEND_OFF;
 
     const uint_fast64_t tileId = mFragProcessors->fetch_add(1ull, std::memory_order_acq_rel);
-    mBinsReady[mThreadId].store((int32_t)mThreadId, std::memory_order_release);
+    mBinsReady[mThreadId].count.store((int32_t)mThreadId, std::memory_order_release);
 
     SR_FragmentProcessor fragTask{
         (uint16_t)tileId,
         mRenderMode,
         (uint32_t)mNumThreads,
-        mBinsUsed[mThreadId],
+        mBinsUsed[mThreadId].count,
         mShader,
         mFbo,
         mFragBins + mThreadId * SR_SHADER_MAX_BINNED_PRIMS,
@@ -497,7 +497,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
     };
 
     // Execute the fragment processor if possible
-    if (noBlending && mBinsUsed[mThreadId])
+    if (noBlending && mBinsUsed[mThreadId].count)
     {
         fragTask.execute();
     }
@@ -511,13 +511,13 @@ void SR_VertexProcessor::flush_bins() const noexcept
 
     for (uint32_t t = 0; t < (uint32_t)mNumThreads; ++t)
     {
-        if (noBlending && mBinsReady[t].load(std::memory_order_consume) == (int32_t)mThreadId)
+        if (noBlending && mBinsReady[t].count.load(std::memory_order_consume) == (int32_t)mThreadId)
         {
             continue;
         }
 
         // wait for the next available set of bins
-        while (mBinsReady[t].load(std::memory_order_consume) < 0)
+        while (mBinsReady[t].count.load(std::memory_order_consume) < 0)
         {
             #if defined(LS_ARCH_X86)
                 _mm_pause();
@@ -532,8 +532,8 @@ void SR_VertexProcessor::flush_bins() const noexcept
             #endif
         }
 
-        uint32_t currentThread = (uint32_t)mBinsReady[t].load(std::memory_order_consume);
-        uint32_t binsUsed = mBinsUsed[currentThread];
+        uint32_t currentThread = (uint32_t)mBinsReady[t].count.load(std::memory_order_consume);
+        uint32_t binsUsed = mBinsUsed[currentThread].count;
         if (!binsUsed)
         {
             continue;
@@ -550,8 +550,8 @@ void SR_VertexProcessor::flush_bins() const noexcept
     {
         for (uint32_t t = 0; t < (uint32_t)mNumThreads; ++t)
         {
-            mBinsReady[t].store(-1, std::memory_order_release);
-            mBinsUsed[t] = 0;
+            mBinsReady[t].count.store(-1, std::memory_order_release);
+            mBinsUsed[t].count = 0;
         }
 
         mFragProcessors->store(0ull, std::memory_order_release);
@@ -591,7 +591,7 @@ void SR_VertexProcessor::push_bin(
 ) const noexcept
 {
     const uint_fast32_t numVaryings = mShader->get_num_varyings();
-    uint32_t* const pBinCount = mBinsUsed+mThreadId;
+    SR_BinCounter* const pBinCount = mBinsUsed+mThreadId;
 
     const math::vec4& p0 = a.vert;
     const math::vec4& p1 = b.vert;
@@ -644,14 +644,14 @@ void SR_VertexProcessor::push_bin(
     SR_FragmentBin* const pFragBins = mFragBins + mThreadId * SR_SHADER_MAX_BINNED_PRIMS;
 
     // Check if the output bin is full
-    uint32_t binId = *pBinCount;
+    uint32_t binId = pBinCount->count;
     if (LS_UNLIKELY(binId >= SR_SHADER_MAX_BINNED_PRIMS))
     {
         flush_bins();
         binId = 0;
     }
 
-    *pBinCount = binId+1;
+    pBinCount->count = binId+1;
 
     // place a triangle into the next available bin
     SR_FragmentBin& bin = pFragBins[binId];
@@ -1188,7 +1188,7 @@ void SR_VertexProcessor::execute() noexcept
         }
     }
 
-    if (mBinsUsed[mThreadId])
+    if (mBinsUsed[mThreadId].count)
     {
         flush_bins();
     }

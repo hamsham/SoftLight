@@ -121,13 +121,9 @@ enum SR_DepthTest : uint8_t
 -------------------------------------*/
 struct SR_FragmentParam
 {
-    alignas(sizeof(ls::math::vec4)) ls::math::vec4 fragCoord;
-
-    alignas(sizeof(uint16_t)) uint16_t x;
-    alignas(sizeof(uint16_t)) uint16_t y;
-
+    SR_FragCoordXYZ         coord;
     const SR_UniformBuffer* pUniforms;
-    ls::math::vec4* pVaryings;
+    ls::math::vec4*         pVaryings;
 
     alignas(sizeof(ls::math::vec4)) ls::math::vec4 pOutputs[SR_SHADER_MAX_FRAG_OUTPUTS];
 };

@@ -147,11 +147,10 @@ inline math::vec4 calc_normal(const SR_Texture* tex, const math::vec4& p, float 
 bool _volume_frag_shader(SR_FragmentParam& fragParam)
 {
     constexpr float       step      = 1.f / 256.f;
-    const math::vec4      fragCoord = fragParam.fragCoord;
 
     const VolumeUniforms* pUniforms = fragParam.pUniforms->as<VolumeUniforms>();
     const float           focalLen  = math::rcp<float>(math::tan(pUniforms->viewAngle * 0.5f));
-    const math::vec2&&    winDimens = math::vec2{fragCoord[0], fragCoord[1]} * math::rcp(pUniforms->windowSize);
+    const math::vec2&&    winDimens = (math::vec2)math::vec2i{fragParam.coord.x, fragParam.coord.y} * math::rcp(pUniforms->windowSize);
     const SR_Texture*     volumeTex = pUniforms->pCubeMap;
     const SR_Texture*     alphaTex  = pUniforms->pOpacityMap;
     const SR_Texture*     colorTex  = pUniforms->pColorMap;

@@ -263,22 +263,18 @@ struct alignas(sizeof(ls::math::vec4)) SR_FragmentBin
 /*-----------------------------------------------------------------------------
  * Helper structure to put a pixel on the screen
 -----------------------------------------------------------------------------*/
-struct alignas(sizeof(uint32_t)) SR_FragCoordXY
+struct alignas(sizeof(uint32_t)) SR_FragCoordXYZ
 {
     uint16_t x;
     uint16_t y;
+    float depth;
 };
 
 struct SR_FragCoord
 {
     ls::math::vec4 bc[SR_SHADER_MAX_QUEUED_FRAGS]; // 32*4
-    ls::math::vec4 xyzw[SR_SHADER_MAX_QUEUED_FRAGS]; // 32*4
 
-    union
-    {
-        SR_FragCoordXY coord[SR_SHADER_MAX_QUEUED_FRAGS];
-        uint32_t       xy[SR_SHADER_MAX_QUEUED_FRAGS]; // 32-bit bitmask of x & y
-    };
+    SR_FragCoordXYZ coord[SR_SHADER_MAX_QUEUED_FRAGS];
     // 256 bits / 32 bytes
 };
 
