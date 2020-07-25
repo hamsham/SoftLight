@@ -21,8 +21,12 @@ namespace ls
     } // end math namespace
 } // end ls namespace
 
+template <typename data_t>
 struct SR_BinCounter;
+
+template <typename data_t>
 struct SR_BinCounterAtomic;
+
 class SR_Context; // SR_Context.hpp
 struct SR_FragmentBin; // SR_ShaderProcessor.hpp
 struct SR_FragCoord;
@@ -80,8 +84,8 @@ struct SR_VertexProcessor
     const SR_Mesh* mMeshes;
 
     // 32-64 bits
-    SR_BinCounterAtomic* mBinsReady;
-    SR_BinCounter* mBinsUsed;
+    SR_BinCounterAtomic<int32_t>* mBinsReady;
+    SR_BinCounter<uint32_t>* mBinsUsed;
 
     // 96-192 bits
     SR_FragmentBin* mFragBins;

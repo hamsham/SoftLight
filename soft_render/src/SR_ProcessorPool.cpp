@@ -69,8 +69,8 @@ SR_ProcessorPool::~SR_ProcessorPool() noexcept
 SR_ProcessorPool::SR_ProcessorPool(unsigned numThreads) noexcept :
     mFragSemaphore{0},
     mShadingSemaphore{0},
-    mBinsReady{_aligned_alloc<SR_BinCounterAtomic>(numThreads)},
-    mBinsUsed{_aligned_alloc<SR_BinCounter>(numThreads)},
+    mBinsReady{_aligned_alloc<SR_BinCounterAtomic<int32_t>>(numThreads)},
+    mBinsUsed{_aligned_alloc<SR_BinCounter<uint32_t>>(numThreads)},
     mFragBins{_aligned_alloc<SR_FragmentBin>(numThreads * SR_SHADER_MAX_BINNED_PRIMS)},
     mVaryings{_aligned_alloc<ls::math::vec4>(numThreads * SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_QUEUED_FRAGS)},
     mFragQueues{_aligned_alloc<SR_FragCoord>(numThreads)},
@@ -95,8 +95,8 @@ SR_ProcessorPool::SR_ProcessorPool(unsigned numThreads) noexcept :
 SR_ProcessorPool::SR_ProcessorPool(const SR_ProcessorPool& p) noexcept :
     mFragSemaphore{0},
     mShadingSemaphore{0},
-    mBinsReady{_aligned_alloc<SR_BinCounterAtomic>(p.mNumThreads)},
-    mBinsUsed{_aligned_alloc<SR_BinCounter>(p.mNumThreads)},
+    mBinsReady{_aligned_alloc<SR_BinCounterAtomic<int32_t>>(p.mNumThreads)},
+    mBinsUsed{_aligned_alloc<SR_BinCounter<uint32_t>>(p.mNumThreads)},
     mFragBins{_aligned_alloc<SR_FragmentBin>(p.mNumThreads * SR_SHADER_MAX_BINNED_PRIMS)},
     mVaryings{_aligned_alloc<ls::math::vec4>(p.mNumThreads * SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_QUEUED_FRAGS)},
     mFragQueues{_aligned_alloc<SR_FragCoord>(p.mNumThreads)},
@@ -226,8 +226,8 @@ unsigned SR_ProcessorPool::concurrency(unsigned inNumThreads) noexcept
         mWorkers[i].~WorkerThread();
     }
 
-    mBinsReady.reset(_aligned_alloc<SR_BinCounterAtomic>(inNumThreads));
-    mBinsUsed.reset(_aligned_alloc<SR_BinCounter>(inNumThreads));
+    mBinsReady.reset(_aligned_alloc<SR_BinCounterAtomic<int32_t>>(inNumThreads));
+    mBinsUsed.reset(_aligned_alloc<SR_BinCounter<uint32_t>>(inNumThreads));
     mFragBins.reset(_aligned_alloc<SR_FragmentBin>(inNumThreads * SR_SHADER_MAX_BINNED_PRIMS));
     mVaryings.reset(_aligned_alloc<ls::math::vec4>(inNumThreads * SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_QUEUED_FRAGS));
     mFragQueues.reset(_aligned_alloc<SR_FragCoord>(inNumThreads));

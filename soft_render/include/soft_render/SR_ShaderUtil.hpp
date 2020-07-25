@@ -2,9 +2,11 @@
 #ifndef SR_SHADERUTIL_HPP
 #define SR_SHADERUTIL_HPP
 
+#include <atomic>
 #include <cstdlib> // size_t
 
 #include "lightsky/setup/Api.h"
+#include "lightsky/setup/Types.h"
 
 #include "lightsky/math/scalar_utils.h"
 #include "lightsky/math/vec4.h"
@@ -237,6 +239,28 @@ enum SR_ShaderLimits
     // Maximum number of vertex groups which get binned before being sent to a
     // fragment processor.
     SR_SHADER_MAX_BINNED_PRIMS    = 1024,
+};
+
+
+
+
+/*-----------------------------------------------------------------------------
+ * Padded data types to avoid false sharing
+-----------------------------------------------------------------------------*/
+template <typename data_t>
+struct SR_BinCounter
+{
+    typename ls::setup::EnableIf<ls::setup::IsIntegral<data_t>::value, data_t>::type count;
+    uint8_t padding[128];
+};
+
+
+
+template <typename data_t>
+struct SR_BinCounterAtomic
+{
+    std::atomic<typename ls::setup::EnableIf<ls::setup::IsIntegral<data_t>::value, data_t>::type> count;
+    uint8_t padding[128];
 };
 
 

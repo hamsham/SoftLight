@@ -591,7 +591,7 @@ void SR_VertexProcessor::push_bin(
 ) const noexcept
 {
     const uint_fast32_t numVaryings = mShader->get_num_varyings();
-    SR_BinCounter* const pBinCount = mBinsUsed+mThreadId;
+    SR_BinCounter<uint32_t>* const pBinCount = mBinsUsed+mThreadId;
 
     const math::vec4& p0 = a.vert;
     const math::vec4& p1 = b.vert;

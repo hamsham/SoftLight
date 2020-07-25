@@ -29,8 +29,12 @@ union vec4_t;
 } // math namespace
 } // ls namespace
 
+template <typename data_t>
 struct SR_BinCounter;
+
+template <typename data_t>
 struct SR_BinCounterAtomic;
+
 class SR_Context;
 struct SR_FragCoord;
 struct SR_FragmentBin;
@@ -56,9 +60,9 @@ class SR_ProcessorPool
 
     std::atomic_uint_fast64_t mShadingSemaphore;
 
-    ls::utils::Pointer<SR_BinCounterAtomic[], ls::utils::AlignedDeleter> mBinsReady;
+    ls::utils::Pointer<SR_BinCounterAtomic<int32_t>[], ls::utils::AlignedDeleter> mBinsReady;
 
-    ls::utils::Pointer<SR_BinCounter[], ls::utils::AlignedDeleter> mBinsUsed;
+    ls::utils::Pointer<SR_BinCounter<uint32_t>[], ls::utils::AlignedDeleter> mBinsUsed;
 
     ls::utils::Pointer<SR_FragmentBin[], ls::utils::AlignedDeleter> mFragBins;
 

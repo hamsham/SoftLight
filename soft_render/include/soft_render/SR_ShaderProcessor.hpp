@@ -22,22 +22,6 @@ enum SR_ShaderType : uint8_t
 
 
 
-struct SR_BinCounter
-{
-    uint32_t count;
-    uint8_t padding[128];
-};
-
-
-
-struct SR_BinCounterAtomic
-{
-    std::atomic_int32_t count;
-    uint8_t padding[128];
-};
-
-
-
 /*-----------------------------------------------------------------------------
  * Encapsulation of vertex & fragment processing on another thread.
 -----------------------------------------------------------------------------*/
