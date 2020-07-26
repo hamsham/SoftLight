@@ -31,6 +31,9 @@ SR_ShaderProcessor::SR_ShaderProcessor(const SR_ShaderProcessor& sp) noexcept :
 
         case SR_BLIT_SHADER:
             mBlitter = sp.mBlitter;
+
+        case SR_CLEAR_SHADER:
+            mClear = sp.mClear;
     }
 }
 
@@ -54,6 +57,9 @@ SR_ShaderProcessor::SR_ShaderProcessor(SR_ShaderProcessor&& sp) noexcept :
 
         case SR_BLIT_SHADER:
             mBlitter = sp.mBlitter;
+
+        case SR_CLEAR_SHADER:
+            mClear = sp.mClear;
     }
 }
 
@@ -80,6 +86,9 @@ SR_ShaderProcessor& SR_ShaderProcessor::operator=(const SR_ShaderProcessor& sp) 
 
             case SR_BLIT_SHADER:
                 mBlitter = sp.mBlitter;
+
+            case SR_CLEAR_SHADER:
+                mClear = sp.mClear;
         }
     }
 
@@ -109,6 +118,9 @@ SR_ShaderProcessor& SR_ShaderProcessor::operator=(SR_ShaderProcessor&& sp) noexc
 
             case SR_BLIT_SHADER:
                 mBlitter = sp.mBlitter;
+
+            case SR_CLEAR_SHADER:
+                mClear = sp.mClear;
         }
     }
 

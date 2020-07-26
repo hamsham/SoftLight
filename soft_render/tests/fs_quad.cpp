@@ -647,10 +647,9 @@ int main()
             viewMatrix.rotate(math::vec3{-0.5f*tickTime, 0.f, 0.f});
             viewMatrix.apply_transform();
 
-            context.framebuffer(0).clear_color_buffers();
-            context.framebuffer(0).clear_depth_buffer();
-            //context.framebuffer(1).clear_color_buffers();
-            //context.framebuffer(1).clear_depth_buffer();
+            context.clear(0, SR_ColorRG8{0, 0});
+            context.clear(1, SR_ColorRf{0.f});
+
             mesh_test_render(pGraph.get(), projMatrix* viewMatrix.transform());
 
             context.blit(*pRenderBuf, 2);

@@ -423,3 +423,35 @@ void SR_ProcessorPool::run_blit_processors(
     // Each thread should now pause except for the main thread.
     wait();
 }
+
+
+/*-------------------------------------
+-------------------------------------*/
+void SR_ProcessorPool::run_clear_processors(const void* inColor, SR_Texture* outTex) noexcept
+{
+    SR_ShaderProcessor processor;
+    processor.mType = SR_CLEAR_SHADER;
+
+    SR_ClearProcessor& blitter = processor.mClear;
+    blitter.mThreadId         = 0;
+    blitter.mNumThreads       = (uint16_t)mNumThreads;
+    blitter.mTexture          = inColor;
+    blitter.mBackBuffer       = outTex;
+
+    // Process most of the rendering on other threads first.
+    for (uint16_t threadId = 0; threadId < mNumThreads - 1; ++threadId)
+    {
+        blitter.mThreadId = threadId;
+
+        SR_ProcessorPool::ThreadedWorker& worker = mWorkers[threadId];
+        worker.busy_waiting(false);
+        worker.push(processor);
+    }
+
+    flush();
+    blitter.mThreadId = (uint16_t)(mNumThreads - 1u);
+    blitter.execute();
+
+    // Each thread should now pause except for the main thread.
+    wait();
+}

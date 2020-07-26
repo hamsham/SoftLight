@@ -5,6 +5,7 @@
 #include <cstdint>
 
 #include "soft_render/SR_BlitProcesor.hpp"
+#include "soft_render/SR_ClearProcesor.hpp"
 #include "soft_render/SR_FragmentProcessor.hpp"
 #include "soft_render/SR_VertexProcessor.hpp"
 
@@ -17,7 +18,8 @@ enum SR_ShaderType : uint8_t
 {
     SR_VERTEX_SHADER,
     SR_FRAGMENT_SHADER,
-    SR_BLIT_SHADER
+    SR_BLIT_SHADER,
+    SR_CLEAR_SHADER
 };
 
 
@@ -35,6 +37,7 @@ struct SR_ShaderProcessor
         SR_VertexProcessor mVertProcessor;
         SR_FragmentProcessor mFragProcessor;
         SR_BlitProcessor mBlitter;
+        SR_ClearProcessor mClear;
     };
 
     // 2144 bits (268 bytes), padding not included
@@ -73,6 +76,10 @@ inline void SR_ShaderProcessor::operator()() noexcept
 
         case SR_BLIT_SHADER:
             mBlitter.execute();
+            break;
+
+        case SR_CLEAR_SHADER:
+            mClear.execute();
             break;
     }
 }

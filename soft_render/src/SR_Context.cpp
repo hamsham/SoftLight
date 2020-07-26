@@ -782,6 +782,130 @@ void SR_Context::blit(
 
 
 
+/*-------------------------------------
+ * Clear a Texture
+-------------------------------------*/
+template <typename color_type>
+void SR_Context::clear(size_t outTextureId, const color_type& inColor) noexcept
+{
+    typedef typename color_type::value_type ConvertedType;
+
+    // First, convert the input color to a float so we can work in a common
+    // format
+    const auto&& temp = color_cast<float, ConvertedType>(inColor);
+    ls::math::vec4 temp4{0.f};
+
+    // Import all relevant color channels
+    switch (color_type::num_components())
+    {
+        case 4: temp4[3] = temp[3];
+        case 3: temp4[2] = temp[2];
+        case 2: temp4[1] = temp[1];
+        case 1: temp4[0] = temp[0];
+    }
+
+    union
+    {
+        SR_ColorRType<uint8_t> r8;
+        SR_ColorRType<uint16_t> r16;
+        SR_ColorRType<uint32_t> r32;
+        SR_ColorRType<uint64_t> r64;
+        SR_ColorRType<float> rf;
+        SR_ColorRType<double> rd;
+
+        ls::math::vec2_t<uint8_t> rg8;
+        ls::math::vec2_t<uint16_t> rg16;
+        ls::math::vec2_t<uint32_t> rg32;
+        ls::math::vec2_t<uint64_t> rg64;
+        ls::math::vec2_t<float> rgf;
+        ls::math::vec2_t<double> rgd;
+
+        ls::math::vec3_t<uint8_t> rgb8;
+        ls::math::vec3_t<uint16_t> rgb16;
+        ls::math::vec3_t<uint32_t> rgb32;
+        ls::math::vec3_t<uint64_t> rgb64;
+        ls::math::vec3_t<float> rgbf;
+        ls::math::vec3_t<double> rgbd;
+
+        ls::math::vec4_t<uint8_t> rgba8;
+        ls::math::vec4_t<uint16_t> rgba16;
+        ls::math::vec4_t<uint32_t> rgba32;
+        ls::math::vec4_t<uint64_t> rgba64;
+        ls::math::vec4_t<float> rgbaf;
+        ls::math::vec4_t<double> rgbad;
+    } outColor;
+
+    // Convert to the correct output type
+    switch (mTextures[outTextureId]->type())
+    {
+        case SR_COLOR_R_8U:        outColor.r8 = color_cast<uint8_t, float>(*reinterpret_cast<const SR_ColorRf*>(temp4.v)); break;
+        case SR_COLOR_RG_8U:       outColor.rg8 = color_cast<uint8_t, float>(*reinterpret_cast<const SR_ColorRGf*>(temp4.v)); break;
+        case SR_COLOR_RGB_8U:      outColor.rgb8 = color_cast<uint8_t, float>(*reinterpret_cast<const SR_ColorRGBf*>(temp4.v)); break;
+        case SR_COLOR_RGBA_8U:     outColor.rgba8 = color_cast<uint8_t, float>(*reinterpret_cast<const SR_ColorRGBAf*>(temp4.v)); break;
+
+        case SR_COLOR_R_16U:        outColor.r16 = color_cast<uint16_t, float>(*reinterpret_cast<const SR_ColorRf*>(temp4.v)); break;
+        case SR_COLOR_RG_16U:       outColor.rg16 = color_cast<uint16_t, float>(*reinterpret_cast<const SR_ColorRGf*>(temp4.v)); break;
+        case SR_COLOR_RGB_16U:      outColor.rgb16 = color_cast<uint16_t, float>(*reinterpret_cast<const SR_ColorRGBf*>(temp4.v)); break;
+        case SR_COLOR_RGBA_16U:     outColor.rgba16 = color_cast<uint16_t, float>(*reinterpret_cast<const SR_ColorRGBAf*>(temp4.v)); break;
+
+        case SR_COLOR_R_32U:        outColor.r32 = color_cast<uint32_t, float>(*reinterpret_cast<const SR_ColorRf*>(temp4.v)); break;
+        case SR_COLOR_RG_32U:       outColor.rg32 = color_cast<uint32_t, float>(*reinterpret_cast<const SR_ColorRGf*>(temp4.v)); break;
+        case SR_COLOR_RGB_32U:      outColor.rgb32 = color_cast<uint32_t, float>(*reinterpret_cast<const SR_ColorRGBf*>(temp4.v)); break;
+        case SR_COLOR_RGBA_32U:     outColor.rgba32 = color_cast<uint32_t, float>(*reinterpret_cast<const SR_ColorRGBAf*>(temp4.v)); break;
+
+        case SR_COLOR_R_64U:        outColor.r64 = color_cast<uint64_t, float>(*reinterpret_cast<const SR_ColorRf*>(temp4.v)); break;
+        case SR_COLOR_RG_64U:       outColor.rg64 = color_cast<uint64_t, float>(*reinterpret_cast<const SR_ColorRGf*>(temp4.v)); break;
+        case SR_COLOR_RGB_64U:      outColor.rgb64 = color_cast<uint64_t, float>(*reinterpret_cast<const SR_ColorRGBf*>(temp4.v)); break;
+        case SR_COLOR_RGBA_64U:     outColor.rgba64 = color_cast<uint64_t, float>(*reinterpret_cast<const SR_ColorRGBAf*>(temp4.v)); break;
+
+        case SR_COLOR_R_FLOAT:        outColor.rf = *reinterpret_cast<const SR_ColorRf*>(temp4.v); break;
+        case SR_COLOR_RG_FLOAT:       outColor.rgf = *reinterpret_cast<const SR_ColorRGf*>(temp4.v); break;
+        case SR_COLOR_RGB_FLOAT:      outColor.rgbf = *reinterpret_cast<const SR_ColorRGBf*>(temp4.v); break;
+        case SR_COLOR_RGBA_FLOAT:     outColor.rgbaf = *reinterpret_cast<const SR_ColorRGBAf*>(temp4.v); break;
+
+        case SR_COLOR_R_DOUBLE:        outColor.rd = color_cast<double, float>(*reinterpret_cast<const SR_ColorRf*>(temp4.v)); break;
+        case SR_COLOR_RG_DOUBLE:       outColor.rgd = color_cast<double, float>(*reinterpret_cast<const SR_ColorRGf*>(temp4.v)); break;
+        case SR_COLOR_RGB_DOUBLE:      outColor.rgbd = color_cast<double, float>(*reinterpret_cast<const SR_ColorRGBf*>(temp4.v)); break;
+        case SR_COLOR_RGBA_DOUBLE:     outColor.rgbad = color_cast<double, float>(*reinterpret_cast<const SR_ColorRGBAf*>(temp4.v)); break;
+
+        default:
+            LS_UNREACHABLE();
+    }
+
+    // Clear the output texture
+    mProcessors.run_clear_processors(&outColor, mTextures[outTextureId]);
+}
+
+template void SR_Context::clear<SR_ColorRType<uint8_t>>( size_t, const SR_ColorRType<uint8_t>&) noexcept;
+template void SR_Context::clear<SR_ColorRType<uint16_t>>(size_t, const SR_ColorRType<uint16_t>&) noexcept;
+template void SR_Context::clear<SR_ColorRType<uint32_t>>(size_t, const SR_ColorRType<uint32_t>&) noexcept;
+template void SR_Context::clear<SR_ColorRType<uint64_t>>(size_t, const SR_ColorRType<uint64_t>&) noexcept;
+template void SR_Context::clear<SR_ColorRType<float>>(   size_t, const SR_ColorRType<float>&) noexcept;
+template void SR_Context::clear<SR_ColorRType<double>>(  size_t, const SR_ColorRType<double>&) noexcept;
+
+template void SR_Context::clear<ls::math::vec2_t<uint8_t>>( size_t, const ls::math::vec2_t<uint8_t>&) noexcept;
+template void SR_Context::clear<ls::math::vec2_t<uint16_t>>(size_t, const ls::math::vec2_t<uint16_t>&) noexcept;
+template void SR_Context::clear<ls::math::vec2_t<uint32_t>>(size_t, const ls::math::vec2_t<uint32_t>&) noexcept;
+template void SR_Context::clear<ls::math::vec2_t<uint64_t>>(size_t, const ls::math::vec2_t<uint64_t>&) noexcept;
+template void SR_Context::clear<ls::math::vec2_t<float>>(   size_t, const ls::math::vec2_t<float>&) noexcept;
+template void SR_Context::clear<ls::math::vec2_t<double>>(  size_t, const ls::math::vec2_t<double>&) noexcept;
+
+template void SR_Context::clear<ls::math::vec3_t<uint8_t>>( size_t, const ls::math::vec3_t<uint8_t>&) noexcept;
+template void SR_Context::clear<ls::math::vec3_t<uint16_t>>(size_t, const ls::math::vec3_t<uint16_t>&) noexcept;
+template void SR_Context::clear<ls::math::vec3_t<uint32_t>>(size_t, const ls::math::vec3_t<uint32_t>&) noexcept;
+template void SR_Context::clear<ls::math::vec3_t<uint64_t>>(size_t, const ls::math::vec3_t<uint64_t>&) noexcept;
+template void SR_Context::clear<ls::math::vec3_t<float>>(   size_t, const ls::math::vec3_t<float>&) noexcept;
+template void SR_Context::clear<ls::math::vec3_t<double>>(  size_t, const ls::math::vec3_t<double>&) noexcept;
+
+template void SR_Context::clear<ls::math::vec4_t<uint8_t>>( size_t, const ls::math::vec4_t<uint8_t>&) noexcept;
+template void SR_Context::clear<ls::math::vec4_t<uint16_t>>(size_t, const ls::math::vec4_t<uint16_t>&) noexcept;
+template void SR_Context::clear<ls::math::vec4_t<uint32_t>>(size_t, const ls::math::vec4_t<uint32_t>&) noexcept;
+template void SR_Context::clear<ls::math::vec4_t<uint64_t>>(size_t, const ls::math::vec4_t<uint64_t>&) noexcept;
+template void SR_Context::clear<ls::math::vec4_t<float>>(   size_t, const ls::math::vec4_t<float>&) noexcept;
+template void SR_Context::clear<ls::math::vec4_t<double>>(  size_t, const ls::math::vec4_t<double>&) noexcept;
+
+
+
 /*--------------------------------------
  * Retrieve the number of threads
 --------------------------------------*/

@@ -26,6 +26,26 @@ class SR_WindowBuffer;
 
 
 
+template <typename T>
+struct SR_ColorRType;
+
+namespace ls
+{
+namespace math
+{
+    template <typename T>
+    struct vec2_t;
+
+    template <typename T>
+    struct vec3_t;
+
+    template <typename T>
+    union vec4_t;
+}
+}
+
+
+
 class SR_Context
 {
     friend class SR_SceneFilePreload;
@@ -227,6 +247,12 @@ class SR_Context
     /*
      *
      */
+    template <typename color_type>
+    void clear(size_t outTextureId, const color_type& color) noexcept;
+
+    /*
+     *
+     */
     unsigned num_threads() const noexcept;
 
     /*
@@ -235,6 +261,35 @@ class SR_Context
     unsigned num_threads(unsigned inNumThreads) noexcept;
 };
 
+
+
+extern template void SR_Context::clear<SR_ColorRType<uint8_t>>( size_t, const SR_ColorRType<uint8_t>&) noexcept;
+extern template void SR_Context::clear<SR_ColorRType<uint16_t>>(size_t, const SR_ColorRType<uint16_t>&) noexcept;
+extern template void SR_Context::clear<SR_ColorRType<uint32_t>>(size_t, const SR_ColorRType<uint32_t>&) noexcept;
+extern template void SR_Context::clear<SR_ColorRType<uint64_t>>(size_t, const SR_ColorRType<uint64_t>&) noexcept;
+extern template void SR_Context::clear<SR_ColorRType<float>>(   size_t, const SR_ColorRType<float>&) noexcept;
+extern template void SR_Context::clear<SR_ColorRType<double>>(  size_t, const SR_ColorRType<double>&) noexcept;
+
+extern template void SR_Context::clear<ls::math::vec2_t<uint8_t>>( size_t, const ls::math::vec2_t<uint8_t>&) noexcept;
+extern template void SR_Context::clear<ls::math::vec2_t<uint16_t>>(size_t, const ls::math::vec2_t<uint16_t>&) noexcept;
+extern template void SR_Context::clear<ls::math::vec2_t<uint32_t>>(size_t, const ls::math::vec2_t<uint32_t>&) noexcept;
+extern template void SR_Context::clear<ls::math::vec2_t<uint64_t>>(size_t, const ls::math::vec2_t<uint64_t>&) noexcept;
+extern template void SR_Context::clear<ls::math::vec2_t<float>>(   size_t, const ls::math::vec2_t<float>&) noexcept;
+extern template void SR_Context::clear<ls::math::vec2_t<double>>(  size_t, const ls::math::vec2_t<double>&) noexcept;
+
+extern template void SR_Context::clear<ls::math::vec3_t<uint8_t>>( size_t, const ls::math::vec3_t<uint8_t>&) noexcept;
+extern template void SR_Context::clear<ls::math::vec3_t<uint16_t>>(size_t, const ls::math::vec3_t<uint16_t>&) noexcept;
+extern template void SR_Context::clear<ls::math::vec3_t<uint32_t>>(size_t, const ls::math::vec3_t<uint32_t>&) noexcept;
+extern template void SR_Context::clear<ls::math::vec3_t<uint64_t>>(size_t, const ls::math::vec3_t<uint64_t>&) noexcept;
+extern template void SR_Context::clear<ls::math::vec3_t<float>>(   size_t, const ls::math::vec3_t<float>&) noexcept;
+extern template void SR_Context::clear<ls::math::vec3_t<double>>(  size_t, const ls::math::vec3_t<double>&) noexcept;
+
+extern template void SR_Context::clear<ls::math::vec4_t<uint8_t>>( size_t, const ls::math::vec4_t<uint8_t>&) noexcept;
+extern template void SR_Context::clear<ls::math::vec4_t<uint16_t>>(size_t, const ls::math::vec4_t<uint16_t>&) noexcept;
+extern template void SR_Context::clear<ls::math::vec4_t<uint32_t>>(size_t, const ls::math::vec4_t<uint32_t>&) noexcept;
+extern template void SR_Context::clear<ls::math::vec4_t<uint64_t>>(size_t, const ls::math::vec4_t<uint64_t>&) noexcept;
+extern template void SR_Context::clear<ls::math::vec4_t<float>>(   size_t, const ls::math::vec4_t<float>&) noexcept;
+extern template void SR_Context::clear<ls::math::vec4_t<double>>(  size_t, const ls::math::vec4_t<double>&) noexcept;
 
 
 

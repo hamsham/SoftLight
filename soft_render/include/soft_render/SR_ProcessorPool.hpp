@@ -115,6 +115,8 @@ class SR_ProcessorPool
         uint16_t dstX1,
         uint16_t dstY1
     ) noexcept;
+
+    void run_clear_processors(const void* inColor, SR_Texture* outTex) noexcept;
 };
 
 

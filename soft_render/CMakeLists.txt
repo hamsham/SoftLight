@@ -120,6 +120,7 @@ set(SR_LIB_HEADERS
     include/soft_render/SR_BlitProcesor.hpp
     include/soft_render/SR_BoundingBox.hpp
     include/soft_render/SR_Camera.hpp
+    include/soft_render/SR_ClearProcesor.hpp
     include/soft_render/SR_Color.hpp
     include/soft_render/SR_Config.hpp
     include/soft_render/SR_Context.hpp
@@ -190,6 +191,7 @@ set(SR_LIB_SOURCES
     src/SR_BlitProcessor.cpp
     src/SR_BoundingBox.cpp
     src/SR_Camera.cpp
+    src/SR_ClearProcessor.cpp
     src/SR_Color.cpp
     src/SR_Context.cpp
     src/SR_FragmentProcessor.cpp
