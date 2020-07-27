@@ -398,25 +398,21 @@ inline LS_INLINE float face_determinant(const math::vec4& p0, const math::vec4& 
 inline LS_INLINE SR_ClipStatus face_visible(const math::vec4& clip0, const math::vec4& clip1, const math::vec4& clip2) noexcept
 {
     #if defined(LS_ARCH_X86)
-        const __m128 sign = _mm_set1_ps(-0.f);
-        const __m128 c0p = _mm_or_ps(clip0.simd, sign);
-        const __m128 w0p = _mm_permute_ps(c0p, 0xFF);
-        const __m128 c1p = _mm_or_ps(clip1.simd, sign);
-        const __m128 w1p = _mm_permute_ps(c1p, 0xFF);
-        const __m128 c2p = _mm_or_ps(clip2.simd, sign);
-        const __m128 w2p = _mm_permute_ps(c2p, 0xFF);
+        const __m128 w0p = _mm_permute_ps(clip0.simd, 0xFF);
+        const __m128 w1p = _mm_permute_ps(clip1.simd, 0xFF);
+        const __m128 w2p = _mm_permute_ps(clip2.simd, 0xFF);
 
-        const __m128 ge0 = _mm_cmpge_ps(c0p, w0p);
-        const __m128 ge1 = _mm_cmpge_ps(c1p, w1p);
-        const __m128 ge2 = _mm_cmpge_ps(c2p, w2p);
-        const __m128 vis = _mm_and_ps(ge2, _mm_and_ps(ge1, ge0));
+        const __m128 sign = _mm_set1_ps(-0.f);
+        const __m128 ge0 = _mm_and_ps(_mm_cmple_ps(_mm_or_ps(w0p, sign), clip0.simd), _mm_cmpge_ps(w0p, clip0.simd));
+        const __m128 ge1 = _mm_and_ps(_mm_cmple_ps(_mm_or_ps(w1p, sign), clip1.simd), _mm_cmpge_ps(w1p, clip1.simd));
+        const __m128 ge2 = _mm_and_ps(_mm_cmple_ps(_mm_or_ps(w2p, sign), clip2.simd), _mm_cmpge_ps(w2p, clip2.simd));
+        const __m128 vis = _mm_and_ps(_mm_and_ps(ge0, ge1), ge2);
         const int visI = SR_TRIANGLE_FULLY_VISIBLE & -(_mm_movemask_ps(vis) == 0x0F);
 
-        const __m128 one = _mm_set1_ps(-1.f);
-        const __m128 le0 = _mm_cmpge_ps(one, w0p);
-        const __m128 le1 = _mm_cmpge_ps(one, w1p);
-        const __m128 le2 = _mm_cmpge_ps(one, w2p);
-        const __m128 part = _mm_or_ps(le2, _mm_or_ps(le1, le0));
+        const __m128 le0 = _mm_cmpgt_ps(w0p, _mm_setzero_ps());
+        const __m128 le1 = _mm_cmpgt_ps(w1p, _mm_setzero_ps());
+        const __m128 le2 = _mm_cmpgt_ps(w2p, _mm_setzero_ps());
+        const __m128 part = _mm_or_ps(_mm_or_ps(le0, le1), le2);
         const int partI = SR_TRIANGLE_PARTIALLY_VISIBLE & -(_mm_movemask_ps(part) == 0x0F);
 
         return (SR_ClipStatus)(visI | partI);
@@ -434,8 +430,10 @@ inline LS_INLINE SR_ClipStatus face_visible(const math::vec4& clip0, const math:
         const uint32x2_t vis2 = vand_u32(vget_low_u32(vis), vget_high_u32(vis));
         const unsigned   visI = SR_TRIANGLE_FULLY_VISIBLE & vget_lane_u32(vis2, 0) & vget_lane_u32(vis2, 1);
 
-        const uint32x4_t part = vcaleq_f32(vdupq_n_f32(1.f), vmaxq_f32(w2p, vmaxq_f32(w1p, w0p)));
-        const uint32x2_t part2 = vorr_u32(vget_low_u32(part), vget_high_u32(part));
+        const uint32x2_t gt0 = vcgt_f32(vget_low_f32(w0p), vcreate_f32(0));
+        const uint32x2_t gt1 = vcgt_f32(vget_low_f32(w1p), vcreate_f32(0));
+        const uint32x2_t gt2 = vcgt_f32(vget_low_f32(w2p), vcreate_f32(0));
+        const uint32x2_t part2 = vorr_u32(gt2, vorr_u32(gt1, gt0));
         const unsigned   partI = SR_TRIANGLE_PARTIALLY_VISIBLE & (vget_lane_u32(part2, 0) | vget_lane_u32(part2, 1));
 
         return (SR_ClipStatus)(visI | partI);
@@ -458,7 +456,7 @@ inline LS_INLINE SR_ClipStatus face_visible(const math::vec4& clip0, const math:
             clip2 >= w2n
         );
 
-        int part = SR_TRIANGLE_PARTIALLY_VISIBLE & -(w0p >= 1.f || w1p >= 1.f || w2p >= 1.f);
+        int part = SR_TRIANGLE_PARTIALLY_VISIBLE & -(w0p > 0.f || w1p > 0.f || w2p > 0.f);
 
         return (SR_ClipStatus)(vis | part);
     #endif

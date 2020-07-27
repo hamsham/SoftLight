@@ -107,10 +107,10 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
 
         for (uint_fast32_t i = numVaryings; i--;)
         {
-            const float32x4_t v0 = vmulq_f32(    vld1q_f32(reinterpret_cast<const float*>(inVaryings0++)), bc0);
-            const float32x4_t v1 = vmlaq_f32(v0, vld1q_f32(reinterpret_cast<const float*>(inVaryings1++)), bc1);
-            const float32x4_t v2 = vmlaq_f32(v1, vld1q_f32(reinterpret_cast<const float*>(inVaryings2++)), bc2);
-            vst1q_f32(reinterpret_cast<float*>(outVaryings++), v2);
+            const float32x4_t v0 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings0++)), bc0);
+            const float32x4_t v1 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings1++)), bc1);
+            const float32x4_t v2 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings2++)), bc2);
+            vst1q_f32(reinterpret_cast<float*>(outVaryings++), vaddq_f32(v2, vaddq_f32(v1, v0)));
         }
 
     #else
