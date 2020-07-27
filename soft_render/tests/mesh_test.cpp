@@ -34,6 +34,10 @@ namespace utils = ls::utils;
     #define IMAGE_HEIGHT 1080
 #endif /* IMAGE_HEIGHT */
 
+#ifndef SR_TEST_MAX_THREADS
+    #define SR_TEST_MAX_THREADS (ls::math::max<unsigned>(std::thread::hardware_concurrency(), 2u) - 1u)
+#endif /* SR_TEST_MAX_THREADS */
+
 
 
 /*-----------------------------------------------------------------------------
@@ -143,7 +147,7 @@ utils::Pointer<SR_SceneGraph> mesh_test_create_context()
     size_t texId   = context.create_texture();
     size_t depthId = context.create_texture();
 
-    retCode = context.num_threads(std::thread::hardware_concurrency());
+    retCode = context.num_threads(SR_TEST_MAX_THREADS);
     assert(retCode == (int)std::thread::hardware_concurrency());
 
     SR_Texture& tex = context.texture(texId);
