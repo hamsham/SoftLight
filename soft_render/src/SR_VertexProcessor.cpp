@@ -312,7 +312,7 @@ inline LS_INLINE math::vec3_t<size_t> get_next_vertex3(const SR_IndexBuffer* pIb
 /*--------------------------------------
  * Triangle determinants for backface culling
 --------------------------------------*/
-inline LS_INLINE float face_determinant(const math::vec4& p0, const math::vec4& p1, const math::vec4& p2) noexcept
+inline LS_INLINE float face_determinant(math::vec4 p0, math::vec4 p1, math::vec4 p2) noexcept
 {
     // 3D homogeneous determinant of the 3 vertices of a triangle. The
     // Z-component of each 3D vertex is replaced by the 4D W-component.

@@ -73,29 +73,30 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
         const float* LS_RESTRICT_PTR i1 = reinterpret_cast<const float*>(inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS);
         const float* LS_RESTRICT_PTR i2 = reinterpret_cast<const float*>(inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS * 2);
         float* const LS_RESTRICT_PTR o  = reinterpret_cast<float*>(outVaryings);
-        const __m256 bc  = _mm256_broadcast_ps(reinterpret_cast<const __m128*>(baryCoords));
-        const __m256 bc0 = _mm256_permute_ps(bc, 0x00);
-        const __m256 bc1 = _mm256_permute_ps(bc, 0x55);
-        const __m256 bc2 = _mm256_permute_ps(bc, 0xAA);
 
-        {
-            const __m256 a = _mm256_load_ps(i0);
-            const __m256 b = _mm256_load_ps(i1);
-            const __m256 c = _mm256_load_ps(i2);
-            const __m256 v0 = _mm256_mul_ps(bc0, a);
-            const __m256 v1 = _mm256_mul_ps(bc1, b);
-            const __m256 v2 = _mm256_mul_ps(bc2, c);
-            _mm256_store_ps(o, _mm256_add_ps(v2, _mm256_add_ps(v0, v1)));
-        }
-        {
-            const __m256 a = _mm256_load_ps(i0+8);
-            const __m256 b = _mm256_load_ps(i1+8);
-            const __m256 c = _mm256_load_ps(i2+8);
-            const __m256 v0 = _mm256_mul_ps(bc0, a);
-            const __m256 v1 = _mm256_mul_ps(bc1, b);
-            const __m256 v2 = _mm256_mul_ps(bc2, c);
-            _mm256_store_ps(o+8, _mm256_add_ps(v2, _mm256_add_ps(v0, v1)));
-        }
+        const __m256 bc  = _mm256_broadcast_ps(reinterpret_cast<const __m128*>(baryCoords));
+        const __m256 a = _mm256_load_ps(i0);
+        const __m256 d = _mm256_load_ps(i0+8);
+        const __m256 b = _mm256_load_ps(i1);
+
+        const __m256 bc0 = _mm256_permute_ps(bc, 0x00);
+        const __m256 e = _mm256_load_ps(i1+8);
+        const __m256 c = _mm256_load_ps(i2);
+        const __m256 f = _mm256_load_ps(i2+8);
+
+        const __m256 bc1 = _mm256_permute_ps(bc, 0x55);
+        const __m256 v0 = _mm256_mul_ps(bc0, a);
+        const __m256 v3 = _mm256_mul_ps(bc0, d);
+
+        const __m256 bc2 = _mm256_permute_ps(bc, 0xAA);
+        const __m256 v1 = _mm256_fmadd_ps(bc1, b, v0);
+        const __m256 v4 = _mm256_fmadd_ps(bc1, e, v3);
+
+        const __m256 v2 = _mm256_fmadd_ps(bc2, c, v1);
+        const __m256 v5 = _mm256_fmadd_ps(bc2, f, v4);
+
+        _mm256_store_ps(o, v2);
+        _mm256_store_ps(o+8, v5);
 
     #elif defined(LS_ARCH_ARM)
         const math::vec4* inVaryings1  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
@@ -691,13 +692,12 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
                     continue;
                 }
 
+                const math::vec4&& persp4 = math::rcp(homogenous * bc);
+
                 uint_fast32_t shifts0 = numQueuedFrags;
                 uint_fast32_t shifts1 = math::popcnt_u32(depthTest & 0x01) + numQueuedFrags;
                 uint_fast32_t shifts2 = math::popcnt_u32(depthTest & 0x03) + numQueuedFrags;
                 uint_fast32_t shifts3 = math::popcnt_u32(depthTest & 0x07) + numQueuedFrags;
-                uint_fast32_t shifts = math::popcnt_u32(depthTest & 0x0F) + numQueuedFrags;
-
-                const math::vec4&& persp4 = math::rcp(homogenous * bc);
 
                 outCoords->bc[shifts0] = (bc[0] * homogenous) * persp4[0];
                 outCoords->bc[shifts1] = (bc[1] * homogenous) * persp4[1];
@@ -709,7 +709,7 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
                 outCoords->coord[shifts2] = {(uint16_t)x4[2], (uint16_t)y, z[2]};
                 outCoords->coord[shifts3] = {(uint16_t)x4[3], (uint16_t)y, z[3]};
 
-                numQueuedFrags = shifts;
+                numQueuedFrags += math::popcnt_u32(depthTest & 0x0F);
                 if (numQueuedFrags > SR_SHADER_MAX_QUEUED_FRAGS-4)
                 {
                     flush_fragments(pBin, numQueuedFrags, outCoords);
