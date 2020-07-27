@@ -134,18 +134,19 @@ inline LS_INLINE void sr_perspective_divide3(math::vec4& v0, math::vec4& v1, mat
 {
     #if defined(LS_ARCH_X86)
         const __m128 p0    = _mm_load_ps(reinterpret_cast<const float*>(&v0));
-        const __m128 wInv0 = _mm_rcp_ps(_mm_permute_ps(p0, 0xFF));
-        const __m128 vMul0 = _mm_mul_ps(p0, wInv0);
-        _mm_store_ps(reinterpret_cast<float*>(&v0), _mm_blend_ps(wInv0, vMul0, 0x07));
-
         const __m128 p1    = _mm_load_ps(reinterpret_cast<const float*>(&v1));
-        const __m128 wInv1 = _mm_rcp_ps(_mm_permute_ps(p1, 0xFF));
-        const __m128 vMul1 = _mm_mul_ps(p1, wInv1);
-        _mm_store_ps(reinterpret_cast<float*>(&v1), _mm_blend_ps(wInv1, vMul1, 0x07));
-
         const __m128 p2    = _mm_load_ps(reinterpret_cast<const float*>(&v2));
+
+        const __m128 wInv0 = _mm_rcp_ps(_mm_permute_ps(p0, 0xFF));
+        const __m128 wInv1 = _mm_rcp_ps(_mm_permute_ps(p1, 0xFF));
         const __m128 wInv2 = _mm_rcp_ps(_mm_permute_ps(p2, 0xFF));
+
+        const __m128 vMul0 = _mm_mul_ps(p0, wInv0);
+        const __m128 vMul1 = _mm_mul_ps(p1, wInv1);
         const __m128 vMul2 = _mm_mul_ps(p2, wInv2);
+
+        _mm_store_ps(reinterpret_cast<float*>(&v0), _mm_blend_ps(wInv0, vMul0, 0x07));
+        _mm_store_ps(reinterpret_cast<float*>(&v1), _mm_blend_ps(wInv1, vMul1, 0x07));
         _mm_store_ps(reinterpret_cast<float*>(&v2), _mm_blend_ps(wInv2, vMul2, 0x07));
 
     #elif defined(LS_ARCH_ARM)
@@ -194,10 +195,9 @@ inline LS_INLINE void sr_world_to_screen_coords_divided(math::vec4& v, const flo
         const __m128 wh0 = _mm_set_ps(0.f, 0.f, heightScale, widthScale);
         const __m128 wh1 = _mm_set_ps(1.f, 1.f, heightScale, widthScale);
 
-
         __m128 scl = _mm_fmadd_ps(wh1, p, wh0);
         scl = _mm_max_ps(_mm_floor_ps(scl), _mm_setzero_ps());
-        _mm_stream_ps(reinterpret_cast<float*>(&v), _mm_blend_ps(scl, p, 0x0C));
+        _mm_store_ps(reinterpret_cast<float*>(&v), _mm_blend_ps(scl, p, 0x0C));
     #endif
 }
 
@@ -224,18 +224,19 @@ inline LS_INLINE void sr_world_to_screen_coords_divided3(math::vec4& p0, math::v
         const __m128 wh1 = _mm_set_ps(1.f, 1.f, heightScale, widthScale);
 
         const __m128 v0 = _mm_load_ps(reinterpret_cast<float*>(&p0));
-        __m128 scl0 = _mm_fmadd_ps(wh1, v0, wh0);
-        scl0 = _mm_max_ps(_mm_floor_ps(scl0), _mm_setzero_ps());
-        _mm_store_ps(reinterpret_cast<float*>(&p0), _mm_blend_ps(scl0, v0, 0x0C));
-
         const __m128 v1 = _mm_load_ps(reinterpret_cast<float*>(&p1));
-        __m128 scl1 = _mm_fmadd_ps(wh1, v1, wh0);
-        scl1 = _mm_max_ps(_mm_floor_ps(scl1), _mm_setzero_ps());
-        _mm_store_ps(reinterpret_cast<float*>(&p1), _mm_blend_ps(scl1, v1, 0x0C));
-
         const __m128 v2 = _mm_load_ps(reinterpret_cast<float*>(&p2));
+
+        __m128 scl0 = _mm_fmadd_ps(wh1, v0, wh0);
+        __m128 scl1 = _mm_fmadd_ps(wh1, v1, wh0);
         __m128 scl2 = _mm_fmadd_ps(wh1, v2, wh0);
+
+        scl0 = _mm_max_ps(_mm_floor_ps(scl0), _mm_setzero_ps());
+        scl1 = _mm_max_ps(_mm_floor_ps(scl1), _mm_setzero_ps());
         scl2 = _mm_max_ps(_mm_floor_ps(scl2), _mm_setzero_ps());
+
+        _mm_store_ps(reinterpret_cast<float*>(&p0), _mm_blend_ps(scl0, v0, 0x0C));
+        _mm_store_ps(reinterpret_cast<float*>(&p1), _mm_blend_ps(scl1, v1, 0x0C));
         _mm_store_ps(reinterpret_cast<float*>(&p2), _mm_blend_ps(scl2, v2, 0x0C));
     #endif
 }
