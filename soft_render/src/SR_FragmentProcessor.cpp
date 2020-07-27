@@ -774,11 +774,11 @@ void SR_FragmentProcessor::flush_fragments(
                 case 3: fbo->put_alpha_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], blendMode);
                 case 2: fbo->put_alpha_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], blendMode);
                 case 1: fbo->put_alpha_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], blendMode);
-            }
 
-            if (depthMask)
-            {
-                pDepthBuf->raw_texel<float>(fragParams.coord.x, fragParams.coord.y) = fragParams.coord.depth;
+                    if (depthMask)
+                    {
+                        pDepthBuf->raw_texel<float>(fragParams.coord.x, fragParams.coord.y) = fragParams.coord.depth;
+                    }
             }
 
             fragParams.pVaryings += SR_SHADER_MAX_VARYING_VECTORS;
@@ -799,11 +799,11 @@ void SR_FragmentProcessor::flush_fragments(
                 case 3: fbo->put_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2]);
                 case 2: fbo->put_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1]);
                 case 1: fbo->put_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0]);
-            }
 
-            if (depthMask)
-            {
-                pDepthBuf->raw_texel<float>(fragParams.coord.x, fragParams.coord.y) = fragParams.coord.depth;
+                    if (depthMask)
+                    {
+                        pDepthBuf->raw_texel<float>(fragParams.coord.x, fragParams.coord.y) = fragParams.coord.depth;
+                    }
             }
 
             fragParams.pVaryings += SR_SHADER_MAX_VARYING_VECTORS;
