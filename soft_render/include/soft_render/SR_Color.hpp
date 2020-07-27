@@ -613,6 +613,78 @@ constexpr SR_ColorRGBAType<T> color_cast(const SR_ColorRGBAType<T>& p)
 
 
 /*-----------------------------------------------------------------------------
+ * General Conversion for standard types (lossy).
+-----------------------------------------------------------------------------*/
+struct SR_GeneralColor
+{
+    SR_ColorDataType type;
+
+    union
+    {
+        SR_ColorRType<uint8_t> r8;
+        SR_ColorRType<uint16_t> r16;
+        SR_ColorRType<uint32_t> r32;
+        SR_ColorRType<uint64_t> r64;
+        SR_ColorRType<float> rf;
+        SR_ColorRType<double> rd;
+
+        ls::math::vec2_t<uint8_t> rg8;
+        ls::math::vec2_t<uint16_t> rg16;
+        ls::math::vec2_t<uint32_t> rg32;
+        ls::math::vec2_t<uint64_t> rg64;
+        ls::math::vec2_t<float> rgf;
+        ls::math::vec2_t<double> rgd;
+
+        ls::math::vec3_t<uint8_t> rgb8;
+        ls::math::vec3_t<uint16_t> rgb16;
+        ls::math::vec3_t<uint32_t> rgb32;
+        ls::math::vec3_t<uint64_t> rgb64;
+        ls::math::vec3_t<float> rgbf;
+        ls::math::vec3_t<double> rgbd;
+
+        ls::math::vec4_t<uint8_t> rgba8;
+        ls::math::vec4_t<uint16_t> rgba16;
+        ls::math::vec4_t<uint32_t> rgba32;
+        ls::math::vec4_t<uint64_t> rgba64;
+        ls::math::vec4_t<float> rgbaf;
+        ls::math::vec4_t<double> rgbad;
+    } color;
+};
+
+template <typename color_type>
+SR_GeneralColor sr_match_color_for_type(SR_ColorDataType typeToMatch, const color_type& inColor) noexcept;
+
+extern template SR_GeneralColor sr_match_color_for_type<SR_ColorRType<uint8_t>>( SR_ColorDataType, const SR_ColorRType<uint8_t>&) noexcept;
+extern template SR_GeneralColor sr_match_color_for_type<SR_ColorRType<uint16_t>>(SR_ColorDataType, const SR_ColorRType<uint16_t>&) noexcept;
+extern template SR_GeneralColor sr_match_color_for_type<SR_ColorRType<uint32_t>>(SR_ColorDataType, const SR_ColorRType<uint32_t>&) noexcept;
+extern template SR_GeneralColor sr_match_color_for_type<SR_ColorRType<uint64_t>>(SR_ColorDataType, const SR_ColorRType<uint64_t>&) noexcept;
+extern template SR_GeneralColor sr_match_color_for_type<SR_ColorRType<float>>(   SR_ColorDataType, const SR_ColorRType<float>&) noexcept;
+extern template SR_GeneralColor sr_match_color_for_type<SR_ColorRType<double>>(  SR_ColorDataType, const SR_ColorRType<double>&) noexcept;
+
+extern template SR_GeneralColor sr_match_color_for_type<ls::math::vec2_t<uint8_t>>( SR_ColorDataType, const ls::math::vec2_t<uint8_t>&) noexcept;
+extern template SR_GeneralColor sr_match_color_for_type<ls::math::vec2_t<uint16_t>>(SR_ColorDataType, const ls::math::vec2_t<uint16_t>&) noexcept;
+extern template SR_GeneralColor sr_match_color_for_type<ls::math::vec2_t<uint32_t>>(SR_ColorDataType, const ls::math::vec2_t<uint32_t>&) noexcept;
+extern template SR_GeneralColor sr_match_color_for_type<ls::math::vec2_t<uint64_t>>(SR_ColorDataType, const ls::math::vec2_t<uint64_t>&) noexcept;
+extern template SR_GeneralColor sr_match_color_for_type<ls::math::vec2_t<float>>(   SR_ColorDataType, const ls::math::vec2_t<float>&) noexcept;
+extern template SR_GeneralColor sr_match_color_for_type<ls::math::vec2_t<double>>(  SR_ColorDataType, const ls::math::vec2_t<double>&) noexcept;
+
+extern template SR_GeneralColor sr_match_color_for_type<ls::math::vec3_t<uint8_t>>( SR_ColorDataType, const ls::math::vec3_t<uint8_t>&) noexcept;
+extern template SR_GeneralColor sr_match_color_for_type<ls::math::vec3_t<uint16_t>>(SR_ColorDataType, const ls::math::vec3_t<uint16_t>&) noexcept;
+extern template SR_GeneralColor sr_match_color_for_type<ls::math::vec3_t<uint32_t>>(SR_ColorDataType, const ls::math::vec3_t<uint32_t>&) noexcept;
+extern template SR_GeneralColor sr_match_color_for_type<ls::math::vec3_t<uint64_t>>(SR_ColorDataType, const ls::math::vec3_t<uint64_t>&) noexcept;
+extern template SR_GeneralColor sr_match_color_for_type<ls::math::vec3_t<float>>(   SR_ColorDataType, const ls::math::vec3_t<float>&) noexcept;
+extern template SR_GeneralColor sr_match_color_for_type<ls::math::vec3_t<double>>(  SR_ColorDataType, const ls::math::vec3_t<double>&) noexcept;
+
+extern template SR_GeneralColor sr_match_color_for_type<ls::math::vec4_t<uint8_t>>( SR_ColorDataType, const ls::math::vec4_t<uint8_t>&) noexcept;
+extern template SR_GeneralColor sr_match_color_for_type<ls::math::vec4_t<uint16_t>>(SR_ColorDataType, const ls::math::vec4_t<uint16_t>&) noexcept;
+extern template SR_GeneralColor sr_match_color_for_type<ls::math::vec4_t<uint32_t>>(SR_ColorDataType, const ls::math::vec4_t<uint32_t>&) noexcept;
+extern template SR_GeneralColor sr_match_color_for_type<ls::math::vec4_t<uint64_t>>(SR_ColorDataType, const ls::math::vec4_t<uint64_t>&) noexcept;
+extern template SR_GeneralColor sr_match_color_for_type<ls::math::vec4_t<float>>(   SR_ColorDataType, const ls::math::vec4_t<float>&) noexcept;
+extern template SR_GeneralColor sr_match_color_for_type<ls::math::vec4_t<double>>(  SR_ColorDataType, const ls::math::vec4_t<double>&) noexcept;
+
+
+
+/*-----------------------------------------------------------------------------
  * Extended Color Models
 -----------------------------------------------------------------------------*/
 /**

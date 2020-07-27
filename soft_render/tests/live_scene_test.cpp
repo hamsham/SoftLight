@@ -1021,12 +1021,10 @@ int main()
 
             pGraph->update();
 
-            context.framebuffer(0).clear_color_buffers();
-
             #if SR_REVERSED_Z_RENDERING
-                context.framebuffer(0).clear_depth_buffer();
+                context.clear_framebuffer(0, 0, SR_ColorRGBAd{0.0, 0.0, 0.0, 1.0}, 0.0);
             #else
-                context.framebuffer(0).clear_depth_buffer(1.f);
+                context.clear_framebuffer(0, 0, SR_ColorRGBAd{0.0, 0.0, 0.0, 1.0}, 1.0);
             #endif
 
             render_scene(pGraph.get(), vpMatrix, camTrans, usePbr);

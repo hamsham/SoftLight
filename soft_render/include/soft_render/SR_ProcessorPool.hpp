@@ -2,6 +2,7 @@
 #ifndef SR_PROCESSORPOOL_HPP
 #define SR_PROCESSORPOOL_HPP
 
+#include <array>
 #include <atomic>
 
 #include "lightsky/utils/Pointer.h" // Pointer, AlignedPointerDeleter
@@ -117,6 +118,14 @@ class SR_ProcessorPool
     ) noexcept;
 
     void run_clear_processors(const void* inColor, SR_Texture* outTex) noexcept;
+
+    void run_clear_processors(const void* inColor, const void* depth, SR_Texture* colorBuf, SR_Texture* depthBuf) noexcept;
+
+    void run_clear_processors(const std::array<const void*, 2>& inColors, const void* depth, const std::array<SR_Texture*, 2>& colorBufs, SR_Texture* depthBuf) noexcept;
+
+    void run_clear_processors(const std::array<const void*, 3>& inColors, const void* depth, const std::array<SR_Texture*, 3>& colorBufs, SR_Texture* depthBuf) noexcept;
+
+    void run_clear_processors(const std::array<const void*, 4>& inColors, const void* depth, const std::array<SR_Texture*, 4>& colorBufs, SR_Texture* depthBuf) noexcept;
 };
 
 

@@ -264,8 +264,7 @@ int main()
     constexpr int numFrames = 600;
     for (int i = 0; i < numFrames; ++i)
     {
-        context.framebuffer(0).clear_color_buffers();
-        context.framebuffer(0).clear_depth_buffer();
+        context.clear_framebuffer(0, 0, SR_ColorRGBAd{0.6, 0.6, 0.6, 1.0}, 0.0);
         mesh_test_render(pGraph.get(), projMatrix*viewMatrix);
     }
     timer.tick();

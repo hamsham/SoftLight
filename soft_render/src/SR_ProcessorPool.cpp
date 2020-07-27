@@ -1,6 +1,18 @@
 
 #include <utility> // std::move()
 
+#include "lightsky/setup/Compiler.h"
+#include "lightsky/setup/Macros.h"
+#include "lightsky/setup/OS.h"
+
+#ifdef LS_OS_UNIX
+    #include <time.h> // nanosleep, time_spec
+#endif
+
+#if defined(LS_COMPILER_CLANG) && defined(LS_ARCH_AARCH64)
+    #include <arm_acle.h> // __yield()
+#endif
+
 #include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Log.h"
 #include "lightsky/utils/WorkerThread.hpp"
@@ -9,6 +21,7 @@
 
 #include "soft_render/SR_BlitProcesor.hpp"
 #include "soft_render/SR_FragmentProcessor.hpp"
+#include "soft_render/SR_Framebuffer.hpp"
 #include "soft_render/SR_ProcessorPool.hpp"
 #include "soft_render/SR_ShaderProcessor.hpp"
 #include "soft_render/SR_ShaderUtil.hpp" // SR_FragmentBin
@@ -205,9 +218,36 @@ void SR_ProcessorPool::flush() noexcept
 void SR_ProcessorPool::wait() noexcept
 {
     // Each thread will pause except for the main thread.
+    /*
     for (unsigned threadId = 0; threadId < mNumThreads-1u; ++threadId)
     {
         mWorkers[threadId].wait();
+    }
+    */
+
+    #if defined(LS_OS_UNIX) && !defined(LS_ARCH_X86)
+        struct timespec sleepAmt;
+        sleepAmt.tv_sec = 0;
+        sleepAmt.tv_nsec = 1;
+        (void)sleepAmt;
+    #endif
+
+    for (unsigned threadId = 0; threadId < mNumThreads-1u; ++threadId)
+    {
+        while (!mWorkers[threadId].ready())
+        {
+            #if defined(LS_ARCH_X86)
+                _mm_pause();
+            #elif defined(LS_COMPILER_CLANG) && defined(LS_ARCH_AARCH64)
+                __yield();
+            #elif defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
+                clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
+            #elif defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
+                nanosleep(&sleepAmt, nullptr);
+            #else
+                std::this_thread::yield();
+            #endif
+        }
     }
 }
 
@@ -376,6 +416,7 @@ void SR_ProcessorPool::clear_fragment_bins() noexcept
 
 
 /*-------------------------------------
+ * Execute a texture blit across threads
 -------------------------------------*/
 void SR_ProcessorPool::run_blit_processors(
     const SR_Texture* inTex,
@@ -425,7 +466,9 @@ void SR_ProcessorPool::run_blit_processors(
 }
 
 
+
 /*-------------------------------------
+ * Clear a framebuffer's attachment across threads
 -------------------------------------*/
 void SR_ProcessorPool::run_clear_processors(const void* inColor, SR_Texture* outTex) noexcept
 {
@@ -450,6 +493,238 @@ void SR_ProcessorPool::run_clear_processors(const void* inColor, SR_Texture* out
 
     flush();
     blitter.mThreadId = (uint16_t)(mNumThreads - 1u);
+    blitter.execute();
+
+    // Each thread should now pause except for the main thread.
+    wait();
+}
+
+
+
+/*-------------------------------------
+ * Clear a framebuffer across threads
+-------------------------------------*/
+void SR_ProcessorPool::run_clear_processors(const void* inColor, const void* depth, SR_Texture* colorBuf, SR_Texture* depthBuf) noexcept
+{
+    SR_ShaderProcessor processor;
+    processor.mType = SR_CLEAR_SHADER;
+
+    SR_ClearProcessor& blitter = processor.mClear;
+    blitter.mThreadId         = 0;
+    blitter.mNumThreads       = (uint16_t)mNumThreads;
+
+    // Process most of the rendering on other threads first.
+    for (uint16_t threadId = 0; threadId < mNumThreads - 1; ++threadId)
+    {
+        blitter.mThreadId = threadId;
+        SR_ProcessorPool::ThreadedWorker& worker = mWorkers[threadId];
+
+        blitter.mBackBuffer = colorBuf;
+        blitter.mTexture = inColor;
+        worker.push(processor);
+
+        blitter.mBackBuffer = depthBuf;
+        blitter.mTexture = depth;
+        worker.push(processor);
+
+        worker.busy_waiting(false);
+    }
+
+    flush();
+
+    blitter.mThreadId = (uint16_t)(mNumThreads - 1u);
+    blitter.mBackBuffer = colorBuf;
+    blitter.mTexture = inColor;
+    blitter.execute();
+
+    blitter.mBackBuffer = depthBuf;
+    blitter.mTexture = depth;
+    blitter.execute();
+
+    // Each thread should now pause except for the main thread.
+    wait();
+}
+
+
+
+/*-------------------------------------
+ * Clear a framebuffer across threads (2 attachments)
+-------------------------------------*/
+void SR_ProcessorPool::run_clear_processors(const std::array<const void*, 2>& inColors, const void* depth, const std::array<SR_Texture*, 2>& colorBufs, SR_Texture* depthBuf) noexcept
+{
+    SR_ShaderProcessor processor;
+    processor.mType = SR_CLEAR_SHADER;
+
+    SR_ClearProcessor& blitter = processor.mClear;
+    blitter.mThreadId         = 0;
+    blitter.mNumThreads       = (uint16_t)mNumThreads;
+
+    // Process most of the rendering on other threads first.
+    for (uint16_t threadId = 0; threadId < mNumThreads - 1; ++threadId)
+    {
+        blitter.mThreadId = threadId;
+        SR_ProcessorPool::ThreadedWorker& worker = mWorkers[threadId];
+
+        blitter.mBackBuffer = colorBufs[0];
+        blitter.mTexture = inColors[0];
+        worker.push(processor);
+
+        blitter.mBackBuffer = colorBufs[1];
+        blitter.mTexture = inColors[1];
+        worker.push(processor);
+
+        blitter.mBackBuffer = depthBuf;
+        blitter.mTexture = depth;
+        worker.push(processor);
+
+        worker.busy_waiting(false);
+    }
+
+    flush();
+
+    blitter.mThreadId = (uint16_t)(mNumThreads - 1u);
+    blitter.mBackBuffer = colorBufs[0];
+    blitter.mTexture = inColors[0];
+    blitter.execute();
+
+    blitter.mBackBuffer = colorBufs[1];
+    blitter.mTexture = inColors[1];
+    blitter.execute();
+
+    blitter.mBackBuffer = depthBuf;
+    blitter.mTexture = depth;
+    blitter.execute();
+
+    // Each thread should now pause except for the main thread.
+    wait();
+}
+
+
+
+/*-------------------------------------
+ * Clear a framebuffer across threads (3 attachments)
+-------------------------------------*/
+void SR_ProcessorPool::run_clear_processors(const std::array<const void*, 3>& inColors, const void* depth, const std::array<SR_Texture*, 3>& colorBufs, SR_Texture* depthBuf) noexcept
+{
+    SR_ShaderProcessor processor;
+    processor.mType = SR_CLEAR_SHADER;
+
+    SR_ClearProcessor& blitter = processor.mClear;
+    blitter.mThreadId         = 0;
+    blitter.mNumThreads       = (uint16_t)mNumThreads;
+
+    // Process most of the rendering on other threads first.
+    for (uint16_t threadId = 0; threadId < mNumThreads - 1; ++threadId)
+    {
+        blitter.mThreadId = threadId;
+        SR_ProcessorPool::ThreadedWorker& worker = mWorkers[threadId];
+
+        blitter.mBackBuffer = colorBufs[0];
+        blitter.mTexture = inColors[0];
+        worker.push(processor);
+
+        blitter.mBackBuffer = colorBufs[1];
+        blitter.mTexture = inColors[1];
+        worker.push(processor);
+
+        blitter.mBackBuffer = colorBufs[2];
+        blitter.mTexture = inColors[2];
+        worker.push(processor);
+
+        blitter.mBackBuffer = depthBuf;
+        blitter.mTexture = depth;
+        worker.push(processor);
+
+        worker.busy_waiting(false);
+    }
+
+    flush();
+
+    blitter.mThreadId = (uint16_t)(mNumThreads - 1u);
+    blitter.mBackBuffer = colorBufs[0];
+    blitter.mTexture = inColors[0];
+    blitter.execute();
+
+    blitter.mBackBuffer = colorBufs[1];
+    blitter.mTexture = inColors[1];
+    blitter.execute();
+
+    blitter.mBackBuffer = colorBufs[2];
+    blitter.mTexture = inColors[2];
+    blitter.execute();
+
+    blitter.mBackBuffer = depthBuf;
+    blitter.mTexture = depth;
+    blitter.execute();
+
+    // Each thread should now pause except for the main thread.
+    wait();
+}
+
+
+
+/*-------------------------------------
+ * Clear a framebuffer across threads (4 attachments)
+-------------------------------------*/
+void SR_ProcessorPool::run_clear_processors(const std::array<const void*, 4>& inColors, const void* depth, const std::array<SR_Texture*, 4>& colorBufs, SR_Texture* depthBuf) noexcept
+{
+    SR_ShaderProcessor processor;
+    processor.mType = SR_CLEAR_SHADER;
+
+    SR_ClearProcessor& blitter = processor.mClear;
+    blitter.mThreadId         = 0;
+    blitter.mNumThreads       = (uint16_t)mNumThreads;
+
+    // Process most of the rendering on other threads first.
+    for (uint16_t threadId = 0; threadId < mNumThreads - 1; ++threadId)
+    {
+        blitter.mThreadId = threadId;
+        SR_ProcessorPool::ThreadedWorker& worker = mWorkers[threadId];
+
+        blitter.mBackBuffer = colorBufs[0];
+        blitter.mTexture = inColors[0];
+        worker.push(processor);
+
+        blitter.mBackBuffer = colorBufs[1];
+        blitter.mTexture = inColors[1];
+        worker.push(processor);
+
+        blitter.mBackBuffer = colorBufs[2];
+        blitter.mTexture = inColors[2];
+        worker.push(processor);
+
+        blitter.mBackBuffer = colorBufs[3];
+        blitter.mTexture = inColors[3];
+        worker.push(processor);
+
+        blitter.mBackBuffer = depthBuf;
+        blitter.mTexture = depth;
+        worker.push(processor);
+
+        worker.busy_waiting(false);
+    }
+
+    flush();
+
+    blitter.mThreadId = (uint16_t)(mNumThreads - 1u);
+    blitter.mBackBuffer = colorBufs[0];
+    blitter.mTexture = inColors[0];
+    blitter.execute();
+
+    blitter.mBackBuffer = colorBufs[1];
+    blitter.mTexture = inColors[1];
+    blitter.execute();
+
+    blitter.mBackBuffer = colorBufs[2];
+    blitter.mTexture = inColors[2];
+    blitter.execute();
+
+    blitter.mBackBuffer = colorBufs[3];
+    blitter.mTexture = inColors[3];
+    blitter.execute();
+
+    blitter.mBackBuffer = depthBuf;
+    blitter.mTexture = depth;
     blitter.execute();
 
     // Each thread should now pause except for the main thread.

@@ -782,127 +782,138 @@ void SR_Context::blit(
 
 
 
-/*-------------------------------------
- * Clear a Texture
--------------------------------------*/
-template <typename color_type>
-void SR_Context::clear(size_t outTextureId, const color_type& inColor) noexcept
+/*--------------------------------------
+ * Clear a framebuffer's color attachment
+--------------------------------------*/
+void SR_Context::clear_color_buffer(size_t fboId, size_t attachmentId, const ls::math::vec4_t<double>& color) noexcept
 {
-    typedef typename color_type::value_type ConvertedType;
+    SR_Texture* pTex = mFbos[fboId].get_color_buffer(attachmentId);
+    SR_GeneralColor outColor = sr_match_color_for_type(pTex->type(), color);
 
-    // First, convert the input color to a float so we can work in a common
-    // format
-    const auto&& temp = color_cast<float, ConvertedType>(inColor);
-    ls::math::vec4 temp4{0.f};
-
-    // Import all relevant color channels
-    switch (color_type::num_components())
-    {
-        case 4: temp4[3] = temp[3];
-        case 3: temp4[2] = temp[2];
-        case 2: temp4[1] = temp[1];
-        case 1: temp4[0] = temp[0];
-    }
-
-    union
-    {
-        SR_ColorRType<uint8_t> r8;
-        SR_ColorRType<uint16_t> r16;
-        SR_ColorRType<uint32_t> r32;
-        SR_ColorRType<uint64_t> r64;
-        SR_ColorRType<float> rf;
-        SR_ColorRType<double> rd;
-
-        ls::math::vec2_t<uint8_t> rg8;
-        ls::math::vec2_t<uint16_t> rg16;
-        ls::math::vec2_t<uint32_t> rg32;
-        ls::math::vec2_t<uint64_t> rg64;
-        ls::math::vec2_t<float> rgf;
-        ls::math::vec2_t<double> rgd;
-
-        ls::math::vec3_t<uint8_t> rgb8;
-        ls::math::vec3_t<uint16_t> rgb16;
-        ls::math::vec3_t<uint32_t> rgb32;
-        ls::math::vec3_t<uint64_t> rgb64;
-        ls::math::vec3_t<float> rgbf;
-        ls::math::vec3_t<double> rgbd;
-
-        ls::math::vec4_t<uint8_t> rgba8;
-        ls::math::vec4_t<uint16_t> rgba16;
-        ls::math::vec4_t<uint32_t> rgba32;
-        ls::math::vec4_t<uint64_t> rgba64;
-        ls::math::vec4_t<float> rgbaf;
-        ls::math::vec4_t<double> rgbad;
-    } outColor;
-
-    // Convert to the correct output type
-    switch (mTextures[outTextureId]->type())
-    {
-        case SR_COLOR_R_8U:        outColor.r8 = color_cast<uint8_t, float>(*reinterpret_cast<const SR_ColorRf*>(temp4.v)); break;
-        case SR_COLOR_RG_8U:       outColor.rg8 = color_cast<uint8_t, float>(*reinterpret_cast<const SR_ColorRGf*>(temp4.v)); break;
-        case SR_COLOR_RGB_8U:      outColor.rgb8 = color_cast<uint8_t, float>(*reinterpret_cast<const SR_ColorRGBf*>(temp4.v)); break;
-        case SR_COLOR_RGBA_8U:     outColor.rgba8 = color_cast<uint8_t, float>(*reinterpret_cast<const SR_ColorRGBAf*>(temp4.v)); break;
-
-        case SR_COLOR_R_16U:        outColor.r16 = color_cast<uint16_t, float>(*reinterpret_cast<const SR_ColorRf*>(temp4.v)); break;
-        case SR_COLOR_RG_16U:       outColor.rg16 = color_cast<uint16_t, float>(*reinterpret_cast<const SR_ColorRGf*>(temp4.v)); break;
-        case SR_COLOR_RGB_16U:      outColor.rgb16 = color_cast<uint16_t, float>(*reinterpret_cast<const SR_ColorRGBf*>(temp4.v)); break;
-        case SR_COLOR_RGBA_16U:     outColor.rgba16 = color_cast<uint16_t, float>(*reinterpret_cast<const SR_ColorRGBAf*>(temp4.v)); break;
-
-        case SR_COLOR_R_32U:        outColor.r32 = color_cast<uint32_t, float>(*reinterpret_cast<const SR_ColorRf*>(temp4.v)); break;
-        case SR_COLOR_RG_32U:       outColor.rg32 = color_cast<uint32_t, float>(*reinterpret_cast<const SR_ColorRGf*>(temp4.v)); break;
-        case SR_COLOR_RGB_32U:      outColor.rgb32 = color_cast<uint32_t, float>(*reinterpret_cast<const SR_ColorRGBf*>(temp4.v)); break;
-        case SR_COLOR_RGBA_32U:     outColor.rgba32 = color_cast<uint32_t, float>(*reinterpret_cast<const SR_ColorRGBAf*>(temp4.v)); break;
-
-        case SR_COLOR_R_64U:        outColor.r64 = color_cast<uint64_t, float>(*reinterpret_cast<const SR_ColorRf*>(temp4.v)); break;
-        case SR_COLOR_RG_64U:       outColor.rg64 = color_cast<uint64_t, float>(*reinterpret_cast<const SR_ColorRGf*>(temp4.v)); break;
-        case SR_COLOR_RGB_64U:      outColor.rgb64 = color_cast<uint64_t, float>(*reinterpret_cast<const SR_ColorRGBf*>(temp4.v)); break;
-        case SR_COLOR_RGBA_64U:     outColor.rgba64 = color_cast<uint64_t, float>(*reinterpret_cast<const SR_ColorRGBAf*>(temp4.v)); break;
-
-        case SR_COLOR_R_FLOAT:        outColor.rf = *reinterpret_cast<const SR_ColorRf*>(temp4.v); break;
-        case SR_COLOR_RG_FLOAT:       outColor.rgf = *reinterpret_cast<const SR_ColorRGf*>(temp4.v); break;
-        case SR_COLOR_RGB_FLOAT:      outColor.rgbf = *reinterpret_cast<const SR_ColorRGBf*>(temp4.v); break;
-        case SR_COLOR_RGBA_FLOAT:     outColor.rgbaf = *reinterpret_cast<const SR_ColorRGBAf*>(temp4.v); break;
-
-        case SR_COLOR_R_DOUBLE:        outColor.rd = color_cast<double, float>(*reinterpret_cast<const SR_ColorRf*>(temp4.v)); break;
-        case SR_COLOR_RG_DOUBLE:       outColor.rgd = color_cast<double, float>(*reinterpret_cast<const SR_ColorRGf*>(temp4.v)); break;
-        case SR_COLOR_RGB_DOUBLE:      outColor.rgbd = color_cast<double, float>(*reinterpret_cast<const SR_ColorRGBf*>(temp4.v)); break;
-        case SR_COLOR_RGBA_DOUBLE:     outColor.rgbad = color_cast<double, float>(*reinterpret_cast<const SR_ColorRGBAf*>(temp4.v)); break;
-
-        default:
-            LS_UNREACHABLE();
-    }
-
-    // Clear the output texture
-    mProcessors.run_clear_processors(&outColor, mTextures[outTextureId]);
+    mProcessors.run_clear_processors(&outColor.color, pTex);
 }
 
-template void SR_Context::clear<SR_ColorRType<uint8_t>>( size_t, const SR_ColorRType<uint8_t>&) noexcept;
-template void SR_Context::clear<SR_ColorRType<uint16_t>>(size_t, const SR_ColorRType<uint16_t>&) noexcept;
-template void SR_Context::clear<SR_ColorRType<uint32_t>>(size_t, const SR_ColorRType<uint32_t>&) noexcept;
-template void SR_Context::clear<SR_ColorRType<uint64_t>>(size_t, const SR_ColorRType<uint64_t>&) noexcept;
-template void SR_Context::clear<SR_ColorRType<float>>(   size_t, const SR_ColorRType<float>&) noexcept;
-template void SR_Context::clear<SR_ColorRType<double>>(  size_t, const SR_ColorRType<double>&) noexcept;
 
-template void SR_Context::clear<ls::math::vec2_t<uint8_t>>( size_t, const ls::math::vec2_t<uint8_t>&) noexcept;
-template void SR_Context::clear<ls::math::vec2_t<uint16_t>>(size_t, const ls::math::vec2_t<uint16_t>&) noexcept;
-template void SR_Context::clear<ls::math::vec2_t<uint32_t>>(size_t, const ls::math::vec2_t<uint32_t>&) noexcept;
-template void SR_Context::clear<ls::math::vec2_t<uint64_t>>(size_t, const ls::math::vec2_t<uint64_t>&) noexcept;
-template void SR_Context::clear<ls::math::vec2_t<float>>(   size_t, const ls::math::vec2_t<float>&) noexcept;
-template void SR_Context::clear<ls::math::vec2_t<double>>(  size_t, const ls::math::vec2_t<double>&) noexcept;
 
-template void SR_Context::clear<ls::math::vec3_t<uint8_t>>( size_t, const ls::math::vec3_t<uint8_t>&) noexcept;
-template void SR_Context::clear<ls::math::vec3_t<uint16_t>>(size_t, const ls::math::vec3_t<uint16_t>&) noexcept;
-template void SR_Context::clear<ls::math::vec3_t<uint32_t>>(size_t, const ls::math::vec3_t<uint32_t>&) noexcept;
-template void SR_Context::clear<ls::math::vec3_t<uint64_t>>(size_t, const ls::math::vec3_t<uint64_t>&) noexcept;
-template void SR_Context::clear<ls::math::vec3_t<float>>(   size_t, const ls::math::vec3_t<float>&) noexcept;
-template void SR_Context::clear<ls::math::vec3_t<double>>(  size_t, const ls::math::vec3_t<double>&) noexcept;
+/*--------------------------------------
+ * Clear a framebuffer's depth attachment
+--------------------------------------*/
+void SR_Context::clear_depth_buffer(size_t fboId, double depth) noexcept
+{
+    SR_Texture* pTex = mFbos[fboId].get_depth_buffer();
+    SR_GeneralColor outColor = sr_match_color_for_type(pTex->type(), SR_ColorRType<double>{depth});
 
-template void SR_Context::clear<ls::math::vec4_t<uint8_t>>( size_t, const ls::math::vec4_t<uint8_t>&) noexcept;
-template void SR_Context::clear<ls::math::vec4_t<uint16_t>>(size_t, const ls::math::vec4_t<uint16_t>&) noexcept;
-template void SR_Context::clear<ls::math::vec4_t<uint32_t>>(size_t, const ls::math::vec4_t<uint32_t>&) noexcept;
-template void SR_Context::clear<ls::math::vec4_t<uint64_t>>(size_t, const ls::math::vec4_t<uint64_t>&) noexcept;
-template void SR_Context::clear<ls::math::vec4_t<float>>(   size_t, const ls::math::vec4_t<float>&) noexcept;
-template void SR_Context::clear<ls::math::vec4_t<double>>(  size_t, const ls::math::vec4_t<double>&) noexcept;
+    mProcessors.run_clear_processors(&outColor.color, pTex);
+}
+
+
+
+/*--------------------------------------
+ * Clear a framebuffer
+--------------------------------------*/
+void SR_Context::clear_framebuffer(size_t fboId, size_t attachmentId, const ls::math::vec4_t<double>& color, double depth) noexcept
+{
+    SR_Texture* pColorBuf = mFbos[fboId].get_color_buffer(attachmentId);
+    SR_Texture* pDepth = mFbos[fboId].get_depth_buffer();
+
+    SR_GeneralColor outColor = sr_match_color_for_type(pColorBuf->type(), color);
+    SR_GeneralColor depthVal = sr_match_color_for_type(pDepth->type(), SR_ColorRType<double>{depth});
+
+    mProcessors.run_clear_processors(&outColor.color, &depthVal.color, pColorBuf, pDepth);
+}
+
+
+
+/*--------------------------------------
+ * Clear a framebuffer (2 attachments)
+--------------------------------------*/
+void SR_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 2>& bufferIndices, const std::array<const ls::math::vec4_t<double>, 2>& colors, double depth) noexcept
+{
+    SR_Texture* pDepth = mFbos[fboId].get_depth_buffer();
+    SR_GeneralColor depthVal = sr_match_color_for_type(pDepth->type(), SR_ColorRType<double>{depth});
+
+    std::array<SR_Texture*, 2> buffers{
+        mFbos[fboId].get_color_buffer(bufferIndices[0]),
+        mFbos[fboId].get_color_buffer(bufferIndices[1])
+    };
+
+    SR_GeneralColor tempColors[2] = {
+        sr_match_color_for_type(buffers[0]->type(), colors[0]),
+        sr_match_color_for_type(buffers[1]->type(), colors[1])
+    };
+
+    std::array<const void*, 2> outColors{
+        &tempColors[0].color,
+        &tempColors[1].color
+    };
+
+    mProcessors.run_clear_processors(outColors, &depthVal.color, buffers, pDepth);
+}
+
+
+
+/*--------------------------------------
+ * Clear a framebuffer (3 attachments)
+--------------------------------------*/
+void SR_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 3>& bufferIndices, const std::array<const ls::math::vec4_t<double>, 3>& colors, double depth) noexcept
+{
+    SR_Texture* pDepth = mFbos[fboId].get_depth_buffer();
+    SR_GeneralColor depthVal = sr_match_color_for_type(pDepth->type(), SR_ColorRType<double>{depth});
+
+    std::array<SR_Texture*, 3> buffers{
+        mFbos[fboId].get_color_buffer(bufferIndices[0]),
+        mFbos[fboId].get_color_buffer(bufferIndices[1]),
+        mFbos[fboId].get_color_buffer(bufferIndices[2])
+    };
+
+    SR_GeneralColor tempColors[3] = {
+        sr_match_color_for_type(buffers[0]->type(), colors[0]),
+        sr_match_color_for_type(buffers[1]->type(), colors[1]),
+        sr_match_color_for_type(buffers[2]->type(), colors[2])
+    };
+
+    std::array<const void*, 3> outColors{
+        &tempColors[0].color,
+        &tempColors[1].color,
+        &tempColors[2].color
+    };
+
+    mProcessors.run_clear_processors(outColors, &depthVal.color, buffers, pDepth);
+}
+
+
+
+/*--------------------------------------
+ * Clear a framebuffer (4 attachments)
+--------------------------------------*/
+void SR_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 4>& bufferIndices, const std::array<const ls::math::vec4_t<double>, 4>& colors, double depth) noexcept
+{
+    SR_Texture* pDepth = mFbos[fboId].get_depth_buffer();
+    SR_GeneralColor depthVal = sr_match_color_for_type(pDepth->type(), SR_ColorRType<double>{depth});
+
+    std::array<SR_Texture*, 4> buffers{
+        mFbos[fboId].get_color_buffer(bufferIndices[0]),
+        mFbos[fboId].get_color_buffer(bufferIndices[1]),
+        mFbos[fboId].get_color_buffer(bufferIndices[2]),
+        mFbos[fboId].get_color_buffer(bufferIndices[3])
+    };
+
+    SR_GeneralColor tempColors[4] = {
+        sr_match_color_for_type(buffers[0]->type(), colors[0]),
+        sr_match_color_for_type(buffers[1]->type(), colors[1]),
+        sr_match_color_for_type(buffers[2]->type(), colors[2]),
+        sr_match_color_for_type(buffers[3]->type(), colors[3])
+    };
+
+    std::array<const void*, 4> outColors{
+        &tempColors[0].color,
+        &tempColors[1].color,
+        &tempColors[2].color,
+        &tempColors[3].color
+    };
+
+    mProcessors.run_clear_processors(outColors, &depthVal.color, buffers, pDepth);
+}
 
 
 

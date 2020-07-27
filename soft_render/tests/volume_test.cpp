@@ -787,9 +787,7 @@ int main()
 
             pGraph->update();
 
-            context.framebuffer(0).clear_color_buffer(0, SR_ColorRGBAf{0.25f, 0.25f, 0.25f, 1.f});
-            //context.framebuffer(0).clear_color_buffers();
-            context.framebuffer(0).clear_depth_buffer();
+            context.clear_framebuffer(0, 0, SR_ColorRGBAd{0.6, 0.6, 0.6, 1.0}, 0.0);
 
             render_volume(pGraph.get(), camTrans, vpMatrix);
 

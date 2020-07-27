@@ -589,7 +589,7 @@ void SR_VertexProcessor::push_bin(
 ) const noexcept
 {
     const uint_fast32_t numVaryings = mShader->get_num_varyings();
-    SR_BinCounter<uint32_t>* const pBinCount = mBinsUsed+mThreadId;
+    const uint32_t binId = mBinsUsed[mThreadId].count;
 
     const math::vec4& p0 = a.vert;
     const math::vec4& p1 = b.vert;
@@ -641,16 +641,6 @@ void SR_VertexProcessor::push_bin(
 
     SR_FragmentBin* const pFragBins = mFragBins + mThreadId * SR_SHADER_MAX_BINNED_PRIMS;
 
-    // Check if the output bin is full
-    uint32_t binId = pBinCount->count;
-    if (LS_UNLIKELY(binId >= SR_SHADER_MAX_BINNED_PRIMS))
-    {
-        flush_bins();
-        binId = 0;
-    }
-
-    pBinCount->count = binId+1;
-
     // place a triangle into the next available bin
     SR_FragmentBin& bin = pFragBins[binId];
     bin.mScreenCoords[0] = p0;
@@ -701,6 +691,13 @@ void SR_VertexProcessor::push_bin(
             {
                 *pOutVar++ = *pInVar++;
             }
+    }
+
+    // Check if the output bin is full
+    mBinsUsed[mThreadId].count = binId+1;
+    if (LS_UNLIKELY(binId == SR_SHADER_MAX_BINNED_PRIMS-1))
+    {
+        flush_bins();
     }
 }
 

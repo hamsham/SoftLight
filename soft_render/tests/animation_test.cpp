@@ -583,8 +583,7 @@ int main()
             update_animations(*pGraph, animPlayer, currentAnimId, -tickTime);
             pGraph->update();
 
-            context.framebuffer(0).clear_color_buffer(0, SR_ColorRGBA{128, 128, 128, 1});
-            context.framebuffer(0).clear_depth_buffer();
+            context.clear_framebuffer(0, 0, SR_ColorRGBAd{0.6, 0.6, 0.6, 1.0}, 0.0);
             render_scene(pGraph.get(), vpMatrix);
 
             context.blit(*pRenderBuf, 0);
