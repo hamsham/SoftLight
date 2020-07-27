@@ -112,7 +112,7 @@ inline LS_INLINE math::vec4 sr_perspective_divide(const math::vec4& v) noexcept
         return math::vec4{_mm_blend_ps(wInv, vMul, 0x07)};
 
     #elif defined(LS_ARCH_ARM)
-        const float32x4_t w = vdupq_lane_f32(vget_high_f32(v.simd), 1);
+        const float32x4_t w = vdupq_n_f32(vgetq_lane_f32(v.simd, 3));
         const float32x4_t wInv = vrecpeq_f32(w);
         const float32x4_t vMul = vmulq_f32(v.simd, vmulq_f32(vrecpsq_f32(w, wInv), wInv));
         return math::vec4{vsetq_lane_f32(vgetq_lane_f32(wInv, 3), vMul, 3)};
@@ -149,17 +149,17 @@ inline LS_INLINE void sr_perspective_divide3(math::vec4& v0, math::vec4& v1, mat
         _mm_store_ps(reinterpret_cast<float*>(&v2), _mm_blend_ps(wInv2, vMul2, 0x07));
 
     #elif defined(LS_ARCH_ARM)
-        const float32x4_t w0 = vdupq_lane_f32(vget_high_f32(v0.simd), 1);
+        const float32x4_t w0 = vdupq_n_f32(vgetq_lane_f32(v0.simd, 3));
         const float32x4_t wInv0 = vrecpeq_f32(w0);
         const float32x4_t vMul0 = vmulq_f32(v0.simd, vmulq_f32(vrecpsq_f32(w0, wInv0), wInv0));
         v0.simd = vsetq_lane_f32(vgetq_lane_f32(wInv0, 3), vMul0, 3);
 
-        const float32x4_t w1 = vdupq_lane_f32(vget_high_f32(v1.simd), 1);
+        const float32x4_t w1 = vdupq_n_f32(vgetq_lane_f32(v1.simd, 3));
         const float32x4_t wInv1 = vrecpeq_f32(w1);
         const float32x4_t vMul1 = vmulq_f32(v1.simd, vmulq_f32(vrecpsq_f32(w1, wInv1), wInv1));
         v1.simd = vsetq_lane_f32(vgetq_lane_f32(wInv1, 3), vMul1, 3);
 
-        const float32x4_t w2 = vdupq_lane_f32(vget_high_f32(v2.simd), 1);
+        const float32x4_t w2 = vdupq_n_f32(vgetq_lane_f32(v2.simd, 3));
         const float32x4_t wInv2 = vrecpeq_f32(w2);
         const float32x4_t vMul2 = vmulq_f32(v2.simd, vmulq_f32(vrecpsq_f32(w2, wInv2), wInv2));
         v2.simd = vsetq_lane_f32(vgetq_lane_f32(wInv2, 3), vMul2, 3);

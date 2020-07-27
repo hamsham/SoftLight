@@ -101,9 +101,10 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
         const math::vec4* inVaryings1  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS;
         const math::vec4* inVaryings2  = inVaryings0 + SR_SHADER_MAX_VARYING_VECTORS * 2;
 
-        const float32x4_t bc0 = vld1q_dup_f32(baryCoords+0);
-        const float32x4_t bc1 = vld1q_dup_f32(baryCoords+1);
-        const float32x4_t bc2 = vld1q_dup_f32(baryCoords+2);
+        const float32x4_t bc  = vld1q_f32(baryCoords);
+        const float32x4_t bc0 = vdupq_n_f32(vgetq_lane_f32(bc, 0));
+        const float32x4_t bc1 = vdupq_n_f32(vgetq_lane_f32(bc, 1));
+        const float32x4_t bc2 = vdupq_n_f32(vgetq_lane_f32(bc, 2));
 
         for (uint_fast32_t i = numVaryings; i--;)
         {
