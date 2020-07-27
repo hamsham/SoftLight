@@ -278,8 +278,8 @@ unsigned SR_ProcessorPool::concurrency(unsigned inNumThreads) noexcept
         new (&mWorkers[i]) ThreadedWorker{};
     }
 
-    clear_fragment_bins();
     mNumThreads = inNumThreads;
+    clear_fragment_bins();
 
     LS_LOG_MSG(
         "Rendering threads updated:"
