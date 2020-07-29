@@ -84,7 +84,119 @@ struct AnimUniforms
 /*--------------------------------------
  * Vertex Shader
 --------------------------------------*/
-math::vec4 _texture_vert_shader_impl(SR_VertexParam& param)
+math::vec4 _untextured_vert_shader_impl(SR_VertexParam& param)
+{
+    typedef Tuple<math::vec3, int32_t> Vertex;
+
+    const AnimUniforms* pUniforms   = param.pUniforms->as<AnimUniforms>();
+    const Vertex* const v           = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));
+    const math::vec4&&  vert        = math::vec4_cast(v->const_element<0>(), 1.f);
+    const math::vec4&&  norm        = sr_unpack_vertex_vec4(v->const_element<1>());
+
+    const math::vec4&& pos = pUniforms->modelMatrix * vert;
+
+    param.pVaryings[0] = pos;
+    param.pVaryings[1] = pUniforms->modelMatrix * norm;
+
+    return pUniforms->vpMatrix * pos;
+}
+
+
+
+SR_VertexShader untextured_vert_shader()
+{
+    SR_VertexShader shader;
+    shader.numVaryings = 2;
+    shader.cullMode = SR_CULL_BACK_FACE;
+    shader.shader = _untextured_vert_shader_impl;
+
+    return shader;
+}
+
+
+
+/*--------------------------------------
+ * Fragment Shader
+--------------------------------------*/
+bool _untextured_frag_shader(SR_FragmentParam& fragParam)
+{
+    const AnimUniforms*  pUniforms = fragParam.pUniforms->as<AnimUniforms>();
+    const math::vec4&    pos       = fragParam.pVaryings[0];
+    const math::vec4&&   norm      = math::normalize(fragParam.pVaryings[1]);
+    const math::vec4     ambient   = {0.5f, 0.5f, 0.5f, 1.f};
+
+    // Light direction calculation
+    math::vec4          lightDir   = math::normalize(pUniforms->camPos - pos);
+    const float         lightAngle = 0.5f * math::dot(-lightDir, norm) + 0.5f;
+    const math::vec4&&  diffuse    = math::vec4{1.f} * lightAngle;
+
+    const math::vec4 rgba = ambient+diffuse;
+    fragParam.pOutputs[0] = math::min(rgba, math::vec4{1.f});
+
+    return true;
+}
+
+
+
+SR_FragmentShader untextured_frag_shader()
+{
+    SR_FragmentShader shader;
+    shader.numVaryings = 2;
+    shader.numOutputs  = 1;
+    shader.blend       = SR_BLEND_OFF;
+    shader.depthTest   = SR_DEPTH_TEST_ON;
+    shader.depthMask   = SR_DEPTH_MASK_ON;
+    shader.shader      = _untextured_frag_shader;
+
+    return shader;
+}
+
+
+
+/*-----------------------------------------------------------------------------
+ * Shader to display vertices with positions, UVs, normals, and a texture
+-----------------------------------------------------------------------------*/
+/*--------------------------------------
+ * Vertex Shader
+--------------------------------------*/
+math::vec4 _textured_vert_shader_impl(SR_VertexParam& param)
+{
+    typedef Tuple<math::vec3, math::vec2h, int32_t> Vertex;
+
+    const AnimUniforms* pUniforms   = param.pUniforms->as<AnimUniforms>();
+    const Vertex* const v           = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));
+    const math::vec4&&  vert        = math::vec4_cast(v->const_element<0>(), 1.f);
+    const math::vec2h   uv          = v->const_element<1>();
+    const math::vec4&&  norm        = sr_unpack_vertex_vec4(v->const_element<2>());
+    const math::mat4&   modelPos    = pUniforms->modelMatrix;
+
+    const math::vec4&& pos = modelPos * vert;
+
+    param.pVaryings[0] = pos;
+    param.pVaryings[1] = math::vec4_cast((math::vec2)uv, 0.f, 0.f);
+    param.pVaryings[2] = modelPos * norm;
+
+    return pUniforms->vpMatrix * pos;
+}
+
+
+
+SR_VertexShader textured_vert_shader()
+{
+    SR_VertexShader shader;
+    shader.numVaryings = 3;
+    shader.cullMode = SR_CULL_BACK_FACE;
+    shader.shader = _textured_vert_shader_impl;
+
+    return shader;
+}
+
+
+
+/*--------------------------------------
+ * Vertex Shader
+--------------------------------------*/
+math::vec4 _textured_skin_vert_shader_impl(SR_VertexParam& param)
 {
     typedef Tuple<math::vec3, math::vec2h, int32_t, math::vec4s, math::vec4h> Vertex;
 
@@ -116,12 +228,12 @@ math::vec4 _texture_vert_shader_impl(SR_VertexParam& param)
 
 
 
-SR_VertexShader texture_vert_shader()
+SR_VertexShader textured_skin_vert_shader()
 {
     SR_VertexShader shader;
     shader.numVaryings = 3;
     shader.cullMode = SR_CULL_BACK_FACE;
-    shader.shader = _texture_vert_shader_impl;
+    shader.shader = _textured_skin_vert_shader_impl;
 
     return shader;
 }
@@ -131,18 +243,22 @@ SR_VertexShader texture_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-bool _texture_frag_shader(SR_FragmentParam& fragParam)
+bool _textured_frag_shader(SR_FragmentParam& fragParam)
 {
     const AnimUniforms*  pUniforms = fragParam.pUniforms->as<AnimUniforms>();
     const math::vec4&    pos       = fragParam.pVaryings[0];
     const math::vec4&    uv        = fragParam.pVaryings[1];
     const math::vec4&&   norm      = math::normalize(fragParam.pVaryings[2]);
     const SR_Texture*    pTexture  = pUniforms->pTexture;
-    const math::vec4     ambient   = {0.1f, 0.1f, 0.1f, 1.f};
+    const math::vec4     ambient   = {0.5f, 0.5f, 0.5f, 1.f};
     math::vec4           albedo;
 
     // normalize the texture colors to within (0.f, 1.f)
-    if (pTexture->channels() == 3)
+    if (!pTexture)
+    {
+        albedo = math::vec4{1.f, 1.f, 1.f, 1.f};
+    }
+    else if (pTexture->channels() == 3)
     {
         const math::vec3_t<uint8_t>&& pixel8 = sr_sample_bilinear<math::vec3_t<uint8_t>, SR_WrapMode::REPEAT>(*pTexture, uv[0], uv[1]);
         const math::vec4_t<uint8_t>&& pixelF = math::vec4_cast<uint8_t>(pixel8, 255);
@@ -167,7 +283,7 @@ bool _texture_frag_shader(SR_FragmentParam& fragParam)
 
 
 
-SR_FragmentShader texture_frag_shader()
+SR_FragmentShader textured_frag_shader()
 {
     SR_FragmentShader shader;
     shader.numVaryings = 3;
@@ -175,7 +291,7 @@ SR_FragmentShader texture_frag_shader()
     shader.blend       = SR_BLEND_OFF;
     shader.depthTest   = SR_DEPTH_TEST_ON;
     shader.depthMask   = SR_DEPTH_MASK_ON;
-    shader.shader      = _texture_frag_shader;
+    shader.shader      = _textured_frag_shader;
 
     return shader;
 }
@@ -286,6 +402,7 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
     SR_Context& context = pGraph->mContext;
     AnimUniforms* pUniforms = context.ubo(0).as<AnimUniforms>();
 
+    pUniforms->vpMatrix = vpMatrix;
     pUniforms->pBones = pGraph->mModelMatrices.data();
 
     for (SR_SceneNode& n : pGraph->mNodes)
@@ -300,21 +417,33 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix)
         const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
 
         pUniforms->modelMatrix = modelMat;
-        pUniforms->vpMatrix    = vpMatrix * modelMat;
 
         for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
         {
             const size_t          nodeMeshId = meshIds[meshId];
             const SR_Mesh&        m          = pGraph->mMeshes[nodeMeshId];
             const SR_Material&    material   = pGraph->mMaterials[m.materialId];
+            const SR_VertexArray& vao = context.vao(m.vaoId);
 
-            if (pGraph->mContext.vao(m.vaoId).num_bindings() < 3)
+            if (!(m.mode & SR_RenderMode::RENDER_MODE_TRIANGLES))
             {
                 continue;
             }
 
             pUniforms->pTexture = material.pTextures[SR_MATERIAL_TEXTURE_DIFFUSE];
-            context.draw(m, 0, 0);
+
+            if (vao.num_bindings() == 5) // pos, uv, norm, bone weight, bone ID
+            {
+                context.draw(m, 2, 0);
+            }
+            else if (vao.num_bindings() == 3) // pos, uv, norm
+            {
+                context.draw(m, 1, 0);
+            }
+            else // pos, norm
+            {
+                context.draw(m, 0, 0);
+            }
         }
     }
 }
@@ -362,32 +491,54 @@ utils::Pointer<SR_SceneGraph> create_context()
     retCode = fbo.valid();
     assert(retCode == 0);
 
-    //retCode = meshLoader.load("testdata/rover/testmesh.dae");
     SR_SceneLoadOpts opts = sr_default_scene_load_opts();
     opts.packUvs = true;
     opts.packNormals = true;
     opts.packBoneIds = true;
     opts.packBoneWeights = true;
     opts.genSmoothNormals = true;
+
     retCode = meshLoader.load("testdata/bob/Bob.md5mesh", opts);
     assert(retCode != 0);
 
+    meshLoader.data().mCurrentTransforms[1].rotate(math::vec3{LS_PI_OVER_4, LS_PI_OVER_3, 0.f});
+    meshLoader.data().mCurrentTransforms[0].position(math::vec3{-20.f, 0.f, 20.f});
     retCode = pGraph->import(meshLoader.data());
     assert(retCode == 0);
 
-    SR_Transform& tempTrans = pGraph->mCurrentTransforms[0];
-    tempTrans.rotate(math::vec3{0.f, 0.f, LS_PI});
+    retCode = meshLoader.load("testdata/rover/testmesh.dae", opts);
+    assert(retCode != 0);
+
+    meshLoader.data().mCurrentTransforms[0].rotate(math::vec3{0.f, 0.f, LS_PI_OVER_2});
+    meshLoader.data().mCurrentTransforms[0].position(math::vec3{0.f, 0.f, -50.f});
+    meshLoader.data().mCurrentTransforms[0].scale(math::vec3{20.f});
+    retCode = pGraph->import(meshLoader.data());
+    assert(retCode == 0);
+
     pGraph->update();
 
-    const SR_VertexShader&&   texVertShader  = texture_vert_shader();
-    const SR_FragmentShader&& texFragShader  = texture_frag_shader();
+    const SR_VertexShader&&   noTexVertShader  = untextured_vert_shader();
+    const SR_FragmentShader&& noTexFragShader  = untextured_frag_shader();
+
+    const SR_VertexShader&&   texVertShader    = textured_vert_shader();
+    const SR_FragmentShader&& texFragShader    = textured_frag_shader();
+
+    const SR_VertexShader&&   texSkinVertShader = textured_skin_vert_shader();
 
     size_t uboId = context.create_ubo();
     assert(uboId == 0);
 
+    size_t noTexShaderId  = context.create_shader(noTexVertShader,  noTexFragShader,  uboId);
+    assert(noTexShaderId == 0);
+    (void)noTexShaderId;
+
     size_t texShaderId  = context.create_shader(texVertShader,  texFragShader,  uboId);
-    assert(texShaderId == 0);
+    assert(texShaderId == 1);
     (void)texShaderId;
+
+    size_t skinTexShaderId  = context.create_shader(texSkinVertShader,  texFragShader,  uboId);
+    assert(skinTexShaderId == 2);
+    (void)skinTexShaderId;
 
     (void)retCode;
     return pGraph;
@@ -427,7 +578,7 @@ int main()
 
     SR_Transform camTrans;
     camTrans.type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
-    camTrans.extract_transforms(math::look_at(math::vec3{75.f, 25.f, 25.f}, math::vec3{0.f, 30.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
+    camTrans.extract_transforms(math::look_at(math::vec3{75.f}, math::vec3{0.f, 30.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
     math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
 
     if (shouldQuit)
@@ -580,7 +731,7 @@ int main()
 
             const math::mat4&& vpMatrix = projMatrix * camTrans.transform();
 
-            update_animations(*pGraph, animPlayer, currentAnimId, -tickTime);
+            update_animations(*pGraph, animPlayer, currentAnimId, tickTime);
             pGraph->update();
 
             context.clear_framebuffer(0, 0, SR_ColorRGBAd{0.6, 0.6, 0.6, 1.0}, 0.0);
