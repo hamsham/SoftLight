@@ -219,7 +219,7 @@ void SR_FragmentProcessor::render_point(
         }
     }
 
-    if (depthMask)
+    if (haveOutputs && depthMask)
     {
         fbo->put_depth_pixel<float>(fragParams.coord.x, fragParams.coord.y, fragParams.coord.depth);
     }
@@ -434,7 +434,7 @@ void SR_FragmentProcessor::render_line(
                 }
             }
 
-            if (depthMask)
+            if (haveOutputs && depthMask)
             {
                 fbo->put_depth_pixel<float>(xi, yi, z);
             }
