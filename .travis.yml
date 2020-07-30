@@ -75,6 +75,7 @@ addons:
       - assimp
       - freeimage
       - libxkbcommon
+      - subversion
   chocolatey:
     packages:
       - tortoisesvn
