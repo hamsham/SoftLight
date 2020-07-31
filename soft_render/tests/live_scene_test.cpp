@@ -439,9 +439,6 @@ bool _texture_frag_shader_spot(SR_FragmentParam& fragParams)
         pixel = color_cast<float, uint8_t>(sr_sample_nearest<math::vec4_t<uint8_t>, SR_WrapMode::REPEAT>(*albedo, uv[0], uv[1]));
     }
 
-    // gamma corection
-    pixel = math::pow(pixel, math::vec4{2.2f});
-
     #if SR_TEST_BUMP_MAPS
         const SR_Texture* bumpMap = pUniforms->pBump;
         if (bumpMap)
@@ -472,6 +469,9 @@ bool _texture_frag_shader_spot(SR_FragmentParam& fragParams)
         attenuation = math::rcp(constant + (linear * lightDist) + (quadratic * lightDist * lightDist));
         diffuse     = l.diffuse * (lightAngle * attenuation) * diffuseMultiplier;
     }
+
+    // gamma corection
+    pixel = math::pow(pixel, math::vec4{2.2f});
 
     // specular reflection calculation
     {
