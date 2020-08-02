@@ -75,20 +75,22 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
         float* const LS_RESTRICT_PTR o  = reinterpret_cast<float*>(outVaryings);
 
         const __m256 bc  = _mm256_broadcast_ps(reinterpret_cast<const __m128*>(baryCoords));
+
         const __m256 a = _mm256_load_ps(i0);
         const __m256 d = _mm256_load_ps(i0+8);
-        const __m256 b = _mm256_load_ps(i1);
-
         const __m256 bc0 = _mm256_permute_ps(bc, 0x00);
+
+        const __m256 b = _mm256_load_ps(i1);
         const __m256 e = _mm256_load_ps(i1+8);
+        const __m256 bc1 = _mm256_permute_ps(bc, 0x55);
+
         const __m256 c = _mm256_load_ps(i2);
         const __m256 f = _mm256_load_ps(i2+8);
+        const __m256 bc2 = _mm256_permute_ps(bc, 0xAA);
 
-        const __m256 bc1 = _mm256_permute_ps(bc, 0x55);
         const __m256 v0 = _mm256_mul_ps(bc0, a);
         const __m256 v3 = _mm256_mul_ps(bc0, d);
 
-        const __m256 bc2 = _mm256_permute_ps(bc, 0xAA);
         const __m256 v1 = _mm256_fmadd_ps(bc1, b, v0);
         const __m256 v4 = _mm256_fmadd_ps(bc1, e, v3);
 
@@ -588,9 +590,9 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
             for (; x < xMax; ++x, xf += 1.f)
             {
                 // calculate barycentric coordinates
+                const float  depthTexels = pDepth[x];
                 math::vec4&& bc          = math::fmadd(bcClipSpace[0], math::vec4{xf}, bcY);
                 const float  z           = math::dot(depth, bc);
-                const float  depthTexels = pDepth[x];
 
                 #if SR_REVERSED_Z_RENDERING
                     const int_fast32_t&& depthTest = math::sign_mask(depthTexels - z) | depthTesting;
@@ -604,17 +606,17 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
                 }
 
                 // perspective correction
-                float persp = math::rcp(math::dot(bc, homogenous));
-                outCoords->bc[numQueuedFrags]    = (bc * homogenous) * persp;
+                const float persp = math::dot(bc, homogenous);
+                bc *= homogenous;
+                outCoords->bc[numQueuedFrags] = bc * math::rcp(persp);
                 outCoords->coord[numQueuedFrags] = {(uint16_t)x, (uint16_t)y, z};
+
                 ++numQueuedFrags;
 
                 if (numQueuedFrags == SR_SHADER_MAX_QUEUED_FRAGS)
                 {
                     numQueuedFrags = 0;
                     flush_fragments(pBin, SR_SHADER_MAX_QUEUED_FRAGS, outCoords);
-
-                    LS_PREFETCH(pBin+1, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
                 }
             }
         }
@@ -670,21 +672,22 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
             int32_t xMax;
             scanline.step(yf, xMin, xMax);
 
-            math::vec4i&&       x4     = math::vec4i{0, 1, 2, 3} + xMin;
             const float*        pDepth = depthBuffer->row_pointer<float>((uintptr_t)y) + xMin;
-            const math::vec4i&& xMaxf  = math::vec4i{xMax};
+            math::vec4i&&       x4     = math::vec4i{0, 1, 2, 3} + xMin;
+            const math::vec4i&& xMaxf  = (float)xMax;
 
             for (; x4[0] < xMax; pDepth += 4, x4 += 4)
             {
                 // calculate barycentric coordinates and perform a depth test
+                const math::vec4   d      = math::vec4{pDepth[0], pDepth[1], pDepth[2], pDepth[3]};
+                const int32_t      xBound = math::sign_mask(x4-xMaxf);
                 math::mat4&&       bc     = math::outer((math::vec4)x4, bcClipSpace[0]) + bcY;
                 const math::vec4&& z      = depth * bc;
-                const int32_t      xBound = math::sign_mask(x4-xMaxf);
 
                 #if SR_REVERSED_Z_RENDERING
-                    const int32_t depthTest = xBound & (math::sign_mask(math::vec4{pDepth[0], pDepth[1], pDepth[2], pDepth[3]}-z) | depthTesting);
+                    const int32_t depthTest = xBound & (math::sign_mask(d-z) | depthTesting);
                 #else
-                    const int32_t depthTest = xBound & (math::sign_mask(z-math::vec4{pDepth[0], pDepth[1], pDepth[2], pDepth[3]}) | depthTesting);
+                    const int32_t depthTest = xBound & (math::sign_mask(z-d) | depthTesting);
                 #endif
 
                 if (LS_UNLIKELY(!depthTest))
@@ -692,25 +695,43 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
                     continue;
                 }
 
+                math::vec4i storeMasks{depthTest};
+                storeMasks[0] &= 0x00;
+                storeMasks[1] &= 0x01;
+                storeMasks[2] &= 0x03;
+                storeMasks[3] &= 0x07;
+
+                storeMasks[0] = 0;
+                storeMasks[1] = math::popcnt_i32(storeMasks[1]);
+                storeMasks[2] = math::popcnt_i32(storeMasks[2]);
+                storeMasks[3] = math::popcnt_i32(storeMasks[3]);
+
+                storeMasks += (int32_t)numQueuedFrags;
+
                 const math::vec4&& persp4 = math::rcp(homogenous * bc);
 
-                uint_fast32_t shifts0 = numQueuedFrags;
-                uint_fast32_t shifts1 = math::popcnt_u32(depthTest & 0x01) + numQueuedFrags;
-                uint_fast32_t shifts2 = math::popcnt_u32(depthTest & 0x03) + numQueuedFrags;
-                uint_fast32_t shifts3 = math::popcnt_u32(depthTest & 0x07) + numQueuedFrags;
+                bc[0] *= homogenous;
+                bc[1] *= homogenous;
+                bc[2] *= homogenous;
+                bc[3] *= homogenous;
 
-                outCoords->bc[shifts0] = (bc[0] * homogenous) * persp4[0];
-                outCoords->bc[shifts1] = (bc[1] * homogenous) * persp4[1];
-                outCoords->bc[shifts2] = (bc[2] * homogenous) * persp4[2];
-                outCoords->bc[shifts3] = (bc[3] * homogenous) * persp4[3];
+                outCoords->bc[storeMasks[0]] = bc[0] * persp4[0];
+                outCoords->bc[storeMasks[1]] = bc[1] * persp4[1];
+                outCoords->bc[storeMasks[2]] = bc[2] * persp4[2];
+                outCoords->bc[storeMasks[3]] = bc[3] * persp4[3];
 
-                outCoords->coord[shifts0] = {(uint16_t)x4[0], (uint16_t)y, z[0]};
-                outCoords->coord[shifts1] = {(uint16_t)x4[1], (uint16_t)y, z[1]};
-                outCoords->coord[shifts2] = {(uint16_t)x4[2], (uint16_t)y, z[2]};
-                outCoords->coord[shifts3] = {(uint16_t)x4[3], (uint16_t)y, z[3]};
+                const SR_FragCoordXYZ coord0{(uint16_t)x4[0], (uint16_t)y, z[0]};
+                const SR_FragCoordXYZ coord1{(uint16_t)x4[1], (uint16_t)y, z[1]};
+                const SR_FragCoordXYZ coord2{(uint16_t)x4[2], (uint16_t)y, z[2]};
+                const SR_FragCoordXYZ coord3{(uint16_t)x4[3], (uint16_t)y, z[3]};
+
+                outCoords->coord[storeMasks[0]] = coord0;
+                outCoords->coord[storeMasks[1]] = coord1;
+                outCoords->coord[storeMasks[2]] = coord2;
+                outCoords->coord[storeMasks[3]] = coord3;
 
                 numQueuedFrags += math::popcnt_u32(depthTest & 0x0F);
-                if (numQueuedFrags > SR_SHADER_MAX_QUEUED_FRAGS-4)
+                if (LS_UNLIKELY(numQueuedFrags > SR_SHADER_MAX_QUEUED_FRAGS-4))
                 {
                     flush_fragments(pBin, numQueuedFrags, outCoords);
                     numQueuedFrags = 0;
@@ -759,7 +780,7 @@ void SR_FragmentProcessor::flush_fragments(
         interpolate_tri_varyings(bc.v, numVaryings, inVaryings, pVaryings);
     }
 
-    if (blendMode != SR_BLEND_OFF)
+    if (LS_LIKELY(blendMode == SR_BLEND_OFF))
     {
         for (uint_fast32_t i = 0; i < numQueuedFrags; ++i)
         {
@@ -770,10 +791,10 @@ void SR_FragmentProcessor::flush_fragments(
             // branchless select
             switch (-haveOutputs & numOutputs)
             {
-                case 4: fbo->put_alpha_pixel(3, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3], blendMode);
-                case 3: fbo->put_alpha_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], blendMode);
-                case 2: fbo->put_alpha_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], blendMode);
-                case 1: fbo->put_alpha_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], blendMode);
+                case 4: fbo->put_pixel(3, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3]);
+                case 3: fbo->put_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2]);
+                case 2: fbo->put_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1]);
+                case 1: fbo->put_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0]);
 
                     if (depthMask)
                     {
@@ -795,10 +816,10 @@ void SR_FragmentProcessor::flush_fragments(
             // branchless select
             switch (-haveOutputs & numOutputs)
             {
-                case 4: fbo->put_pixel(3, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3]);
-                case 3: fbo->put_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2]);
-                case 2: fbo->put_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1]);
-                case 1: fbo->put_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0]);
+                case 4: fbo->put_alpha_pixel(3, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3], blendMode);
+                case 3: fbo->put_alpha_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], blendMode);
+                case 2: fbo->put_alpha_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], blendMode);
+                case 1: fbo->put_alpha_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], blendMode);
 
                     if (depthMask)
                     {
