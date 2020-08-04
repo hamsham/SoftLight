@@ -218,37 +218,39 @@ void SR_ProcessorPool::flush() noexcept
 void SR_ProcessorPool::wait() noexcept
 {
     // Each thread will pause except for the main thread.
-    /*
-    for (unsigned threadId = 0; threadId < mNumThreads-1u; ++threadId)
-    {
-        mWorkers[threadId].wait();
-    }
-    */
-
-    #if defined(LS_OS_UNIX) && !defined(LS_ARCH_X86)
-        struct timespec sleepAmt;
-        sleepAmt.tv_sec = 0;
-        sleepAmt.tv_nsec = 1;
-        (void)sleepAmt;
-    #endif
-
-    for (unsigned threadId = 0; threadId < mNumThreads-1u; ++threadId)
-    {
-        while (!mWorkers[threadId].ready())
+    #if 0
+        for (unsigned threadId = 0; threadId < mNumThreads-1u; ++threadId)
         {
-            #if defined(LS_ARCH_X86)
-                _mm_pause();
-            #elif defined(LS_COMPILER_CLANG) && defined(LS_ARCH_AARCH64)
-                __yield();
-            #elif defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
-                clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
-            #elif defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
-                nanosleep(&sleepAmt, nullptr);
-            #else
-                std::this_thread::yield();
-            #endif
+            mWorkers[threadId].wait();
         }
-    }
+
+        #else
+        #if defined(LS_OS_UNIX) && !defined(LS_ARCH_X86)
+            struct timespec sleepAmt;
+            sleepAmt.tv_sec = 0;
+            sleepAmt.tv_nsec = 1;
+            (void)sleepAmt;
+        #endif
+
+        for (unsigned threadId = 0; threadId < mNumThreads-1u; ++threadId)
+        {
+            while (!mWorkers[threadId].ready())
+            {
+                #if defined(LS_ARCH_X86)
+                    _mm_pause();
+                #elif defined(LS_COMPILER_CLANG) && defined(LS_ARCH_AARCH64)
+                    __yield();
+                #elif defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
+                    clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
+                #elif defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
+                    nanosleep(&sleepAmt, nullptr);
+                #else
+                    std::this_thread::yield();
+                #endif
+            }
+        }
+
+    #endif
 }
 
 
