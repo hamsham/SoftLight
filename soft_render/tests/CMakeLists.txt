@@ -155,22 +155,9 @@ endif()
 # -------------------------------------
 # Building and Linking Targets
 # -------------------------------------
-# See if we can enable link-time optimizations
-include(CheckIPOSupported OPTIONAL RESULT_VARIABLE CMAKE_ENABLE_LTO)
-if (CMAKE_ENABLE_LTO)
-	check_ipo_supported(RESULT ENABLE_LTO OUTPUT LTO_ERR)
-	if(NOT ENABLE_LTO)
-		message(WARNING "Cannot enable link-time optimization: ${LTO_ERR}")
-	endif()
-endif()
-
 function(sr_add_test target sources)
     add_executable(${target} ${sources} ${ARGN})
     target_link_libraries(${target} soft_render LightSky::Math LightSky::Game LightSky::Utils LightSky::Setup ${SR_EXTERNAL_LIBS})
-
-	if(ENABLE_LTO)
-		set_property(TARGET ${target} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-	endif()
 endfunction(sr_add_test)
 
 sr_add_test(animation_test          animation_test.cpp)
