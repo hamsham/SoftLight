@@ -50,7 +50,7 @@ bool _xlib_get_position(_XDisplay* const pDisplay, const unsigned long window, i
         XWindowAttributes attribs;
     #endif
 
-    utils::fast_memset(&attribs, 0, sizeof(XWindowAttributes));
+    utils::fast_fill((char*)&attribs, 0, sizeof(XWindowAttributes));
 
     int tempX, tempY;
 
@@ -349,8 +349,8 @@ int SR_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
 
     assert(!this->valid());
 
-    utils::fast_memset(&visualTemplate, 0, sizeof(XVisualInfo));
-    utils::fast_memset(&windowAttribs, 0, sizeof(XSetWindowAttributes));
+    utils::fast_fill((char*)&visualTemplate, 0, sizeof(XVisualInfo));
+    utils::fast_fill((char*)&windowAttribs, 0, sizeof(XSetWindowAttributes));
 
     LS_LOG_MSG("SR_RenderWindowXlib ", this, " initializing");
     {
