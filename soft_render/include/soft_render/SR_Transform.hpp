@@ -41,52 +41,52 @@ enum SR_TransformType : uint32_t
  * This class is primarily intended to contain the transformations of renderable
  * objects, as well as simplify the management of their model matrices.
 ----------------------------------------------------------------------------*/
-class SR_Transform
+class alignas(alignof(ls::math::vec4)) SR_Transform
 {
   public:
     /**
      * Array index of a parent transformation in a Scene Graph.
      */
-    size_t mParentId;
+    alignas(alignof(uint64_t)) size_t mParentId;
 
   private:
     /**
      * @brief Meta-information container.
      */
-      uint32_t mFlags;
+    alignas(alignof(uint32_t)) uint32_t mFlags;
 
     /**
      * @brief Transformation type.
      */
-    SR_TransformType mType;
+    alignas(alignof(uint32_t)) SR_TransformType mType;
 
     /**
      * @brief position
      *
      * Represents the position of a point in 3D catersian coordinates.
      */
-    ls::math::vec3 mPosition;
+    alignas(alignof(ls::math::vec4)) ls::math::vec3 mPosition;
 
     /**
      * @brief scaling
      *
      * Represents the size of an object in 3D space.
      */
-    ls::math::vec3 mScaling;
+    alignas(alignof(ls::math::vec4)) ls::math::vec3 mScaling;
 
     /**
      * @brief position
      *
      * Represents the orientation of a point in both 3D and 4D space.
      */
-    ls::math::quat mOrientation;
+    alignas(alignof(ls::math::vec4)) ls::math::quat mOrientation;
 
     /**
      * @brief modelMatrix
      *
      * Contains the position, size, and rotation of an object in 3D space.
      */
-    ls::math::mat4 mModelMat;
+    alignas(alignof(ls::math::vec4)) ls::math::mat4 mModelMat;
 
     /**
      * Convenience method to mark the internal state as clean (no
