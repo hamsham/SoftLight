@@ -47,46 +47,46 @@ class alignas(alignof(ls::math::vec4)) SR_Transform
     /**
      * Array index of a parent transformation in a Scene Graph.
      */
-    alignas(alignof(uint64_t)) size_t mParentId;
+    alignas(sizeof(uint64_t)) size_t mParentId;
 
   private:
     /**
      * @brief Meta-information container.
      */
-    alignas(alignof(uint32_t)) uint32_t mFlags;
+    alignas(sizeof(uint32_t)) uint32_t mFlags;
 
     /**
      * @brief Transformation type.
      */
-    alignas(alignof(uint32_t)) SR_TransformType mType;
+    alignas(sizeof(uint32_t)) SR_TransformType mType;
 
     /**
      * @brief position
      *
      * Represents the position of a point in 3D catersian coordinates.
      */
-    alignas(alignof(ls::math::vec4)) ls::math::vec3 mPosition;
+    alignas(sizeof(ls::math::vec4)) ls::math::vec3 mPosition;
 
     /**
      * @brief scaling
      *
      * Represents the size of an object in 3D space.
      */
-    alignas(alignof(ls::math::vec4)) ls::math::vec3 mScaling;
+    alignas(sizeof(ls::math::vec4)) ls::math::vec3 mScaling;
 
     /**
      * @brief position
      *
      * Represents the orientation of a point in both 3D and 4D space.
      */
-    alignas(alignof(ls::math::vec4)) ls::math::quat mOrientation;
+    alignas(sizeof(ls::math::vec4)) ls::math::quat mOrientation;
 
     /**
      * @brief modelMatrix
      *
      * Contains the position, size, and rotation of an object in 3D space.
      */
-    alignas(alignof(ls::math::vec4)) ls::math::mat4 mModelMat;
+    alignas(sizeof(ls::math::vec4)) ls::math::mat4 mModelMat;
 
     /**
      * Convenience method to mark the internal state as clean (no
