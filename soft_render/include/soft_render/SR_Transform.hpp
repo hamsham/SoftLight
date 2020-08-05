@@ -86,7 +86,7 @@ class alignas(sizeof(ls::math::vec4)*4) SR_Transform
      *
      * Contains the position, size, and rotation of an object in 3D space.
      */
-    alignas(alignof(ls::math::vec4)) ls::math::mat4 mModelMat;
+    alignas(alignof(ls::math::vec4)*4) ls::math::mat4 mModelMat;
 
     /**
      * Convenience method to mark the internal state as clean (no
