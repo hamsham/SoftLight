@@ -359,7 +359,7 @@ inline LS_INLINE float face_determinant(math::vec4 p0, math::vec4 p1, math::vec4
         // perform a dot product to get the determinant
         const float32x4_t mul2 = vmulq_f32(sub0, col4);
 
-        #if defined(LS_ARCH_AARCH64)
+        #if 0//defined(LS_ARCH_AARCH64)
             return vaddvq_f32(mul2);
         #else
             const float32x2_t swap = vadd_f32(vget_high_f32(mul2), vget_low_f32(mul2));
