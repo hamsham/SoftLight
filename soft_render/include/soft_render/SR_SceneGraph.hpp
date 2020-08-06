@@ -4,8 +4,11 @@
 
 #include <vector>
 
+#include "lightsky/utils/AlignedAllocator.hpp"
+
 #include "soft_render/SR_Context.hpp"
 #include "soft_render/SR_SceneNode.hpp"
+#include "soft_render/SR_Setup.hpp"
 
 
 
@@ -49,19 +52,19 @@ class SR_SceneGraph
      *
      * This member is unique to all camera nodes.
      */
-    std::vector<SR_Camera> mCameras;
+    SR_AlignedVector<SR_Camera> mCameras;
 
     /**
      * Array to contain all meshes referenced by mesh node draw commands.
      */
-    std::vector<SR_Mesh> mMeshes;
+    SR_AlignedVector<SR_Mesh> mMeshes;
 
     /**
      * Bounding boxes for meshes.
      *
      * This member is unique to all mesh objects.
      */
-    std::vector<SR_BoundingBox> mMeshBounds;
+    SR_AlignedVector<SR_BoundingBox> mMeshBounds;
 
     /**
      * Referenced by all mesh node types using the following relationship:
@@ -69,7 +72,7 @@ class SR_SceneGraph
      *
      * This member is shared by all mesh objects.
      */
-    std::vector<SR_Material> mMaterials;
+    SR_AlignedVector<SR_Material> mMaterials;
 
     /**
      * Contains all empty, camera, mesh, and bode nodes in a scene graph.
@@ -82,7 +85,7 @@ class SR_SceneGraph
      * Child nodes are always expected to be grouped sequentially after
      * their parent nodes.
      */
-    std::vector<SR_SceneNode> mNodes;
+    SR_AlignedVector<SR_SceneNode> mNodes;
 
     /**
      * Referenced by all scene node types using their
@@ -91,7 +94,7 @@ class SR_SceneGraph
      *
      * This member is unique to all nodes.
      */
-    std::vector<ls::math::mat4_t<float>> mBaseTransforms;
+    SR_AlignedVector<ls::math::mat4_t<float>> mBaseTransforms;
 
     /**
      * Referenced by all scene node types using their
@@ -100,7 +103,7 @@ class SR_SceneGraph
      *
      * This member is unique to all nodes.
      */
-    std::vector<SR_Transform> mCurrentTransforms;
+    SR_AlignedVector<SR_Transform> mCurrentTransforms;
 
     /**
      * Referenced by all scene node types using their
@@ -108,7 +111,7 @@ class SR_SceneGraph
      *
      * This member is unique to all nodes.
      */
-    std::vector<ls::math::mat4_t<float>> mModelMatrices;
+    SR_AlignedVector<ls::math::mat4_t<float>> mModelMatrices;
 
     /**
      * @brief Referenced by all bone nodes using the "SR_SceneNode::dataId"
@@ -116,7 +119,7 @@ class SR_SceneGraph
      *
      * This member is unique to all bone nodes.
      */
-    std::vector<ls::math::mat4_t<float>> mInvBoneTransforms;
+    SR_AlignedVector<ls::math::mat4_t<float>> mInvBoneTransforms;
 
     /**
      * @brief Referenced by all bone nodes using the "SR_SceneNode::dataId"
@@ -124,7 +127,7 @@ class SR_SceneGraph
      *
      * This member is unique to all bone nodes.
      */
-    std::vector<ls::math::mat4_t<float>> mBoneOffsets;
+    SR_AlignedVector<ls::math::mat4_t<float>> mBoneOffsets;
 
     /**
      * Referenced by all scene node types using their
@@ -132,7 +135,7 @@ class SR_SceneGraph
      *
      * This member is unique to all nodes.
      */
-    std::vector<std::string> mNodeNames;
+    SR_AlignedVector<std::string> mNodeNames;
 
     /**
      * Contains all animations available in the current scene graph.
@@ -140,13 +143,13 @@ class SR_SceneGraph
      * Animations reference only the nodes they modify and are not shared among
      * nodes directly within the scene graph.
      */
-    std::vector<SR_Animation> mAnimations;
+    SR_AlignedVector<SR_Animation> mAnimations;
 
     /**
      * Referenced by all scene node types using their
      * "SR_SceneNode::animTrackId" member.
      */
-    std::vector<std::vector<SR_AnimationChannel>> mNodeAnims;
+    SR_AlignedVector<SR_AlignedVector<SR_AnimationChannel>> mNodeAnims;
 
     /**
      * Referenced by mesh-type scene nodes using their
@@ -158,7 +161,7 @@ class SR_SceneGraph
      *
      * This member is unique to all mesh nodes.
      */
-    std::vector<ls::utils::Pointer<size_t[]>> mNodeMeshes;
+    SR_AlignedVector<ls::utils::Pointer<size_t[]>> mNodeMeshes;
 
     /**
      * Referenced by mesh-type scene nodes using their
@@ -169,7 +172,7 @@ class SR_SceneGraph
      *
      * This member is unique to all mesh nodes.
      */
-    std::vector<size_t> mNumNodeMeshes;
+    SR_AlignedVector<size_t> mNumNodeMeshes;
 
     /**
      * @brief Graphical context & resources required for rendering all data in

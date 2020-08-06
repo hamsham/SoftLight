@@ -662,19 +662,19 @@ bool SR_SceneGraph::copy_node(const size_t nodeIndex) noexcept
     const size_t numChildren    = num_total_children(nodeIndex);
     const size_t displacement   = 1 + numChildren;
 
-    const std::vector<SR_SceneNode>::iterator&& nodeIter = mNodes.begin() + nodeIndex;
+    const SR_AlignedVector<SR_SceneNode>::iterator&& nodeIter = mNodes.begin() + nodeIndex;
     mNodes.insert(nodeIter+displacement, nodeIter, nodeIter+displacement);
 
-    const std::vector<ls::math::mat4>::iterator&& baseTransIter = mBaseTransforms.begin() + nodeIndex;
+    const SR_AlignedVector<ls::math::mat4>::iterator&& baseTransIter = mBaseTransforms.begin() + nodeIndex;
     mBaseTransforms.insert(baseTransIter+displacement, baseTransIter, baseTransIter+displacement);
 
-    const std::vector<SR_Transform>::iterator&& nodeTransIter = mCurrentTransforms.begin() + nodeIndex;
+    const SR_AlignedVector<SR_Transform>::iterator&& nodeTransIter = mCurrentTransforms.begin() + nodeIndex;
     mCurrentTransforms.insert(nodeTransIter+displacement, nodeTransIter, nodeTransIter+displacement);
 
-    const std::vector<ls::math::mat4>::iterator&& modelMatIter = mModelMatrices.begin() + nodeIndex;
+    const SR_AlignedVector<ls::math::mat4>::iterator&& modelMatIter = mModelMatrices.begin() + nodeIndex;
     mModelMatrices.insert(modelMatIter+displacement, modelMatIter, modelMatIter+displacement);
 
-    const std::vector<std::string>::iterator&& nameIter = mNodeNames.begin() + nodeIndex;
+    const SR_AlignedVector<std::string>::iterator&& nameIter = mNodeNames.begin() + nodeIndex;
     mNodeNames.insert(nameIter+displacement, nameIter, nameIter+displacement);
 
     // easy part is done. now move onto the node data...
@@ -947,11 +947,12 @@ bool SR_SceneGraph::node_is_child(const size_t nodeIndex, const size_t parentId)
 -------------------------------------*/
 int SR_SceneGraph::import(SR_SceneGraph& inGraph) noexcept
 {
-    SR_Context&           inContext  = inGraph.mContext;
-    std::vector<SR_Mesh>& inMeshes   = inGraph.mMeshes;
-    const std::size_t     baseVaoId  = mContext.vaos().size();
-    const std::size_t     baseMatId  = mMaterials.size();
-    const std::size_t     baseNodeId = mNodes.size();
+    const std::size_t baseVaoId  = mContext.vaos().size();
+    const std::size_t baseMatId  = mMaterials.size();
+    const std::size_t baseNodeId = mNodes.size();
+    SR_Context&       inContext  = inGraph.mContext;
+
+    SR_AlignedVector<SR_Mesh>& inMeshes = inGraph.mMeshes;
 
     for (SR_SceneNode& n : inGraph.mNodes)
     {

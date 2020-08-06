@@ -143,7 +143,7 @@ SR_Context& SR_Context::operator=(SR_Context&& c) noexcept
 /*-------------------------------------
  *
 -------------------------------------*/
-const std::vector<SR_VertexArray>& SR_Context::vaos() const
+const SR_AlignedVector<SR_VertexArray>& SR_Context::vaos() const
 {
     return mVaos;
 }
@@ -194,7 +194,7 @@ void SR_Context::destroy_vao(std::size_t index)
 /*-------------------------------------
  *
 -------------------------------------*/
-const std::vector<SR_Texture*>& SR_Context::textures() const
+const SR_AlignedVector<SR_Texture*>& SR_Context::textures() const
 {
     return mTextures;
 }
@@ -246,7 +246,7 @@ void SR_Context::destroy_texture(std::size_t index)
 /*-------------------------------------
  *
 -------------------------------------*/
-const std::vector<SR_Framebuffer>& SR_Context::framebuffers() const
+const SR_AlignedVector<SR_Framebuffer>& SR_Context::framebuffers() const
 {
     return mFbos;
 }
@@ -297,7 +297,7 @@ void SR_Context::destroy_framebuffer(std::size_t index)
 /*-------------------------------------
  *
 -------------------------------------*/
-const std::vector<SR_VertexBuffer>& SR_Context::vbos() const
+const SR_AlignedVector<SR_VertexBuffer>& SR_Context::vbos() const
 {
     return mVbos;
 }
@@ -348,7 +348,7 @@ void SR_Context::destroy_vbo(std::size_t index)
 /*-------------------------------------
  *
 -------------------------------------*/
-const std::vector<SR_IndexBuffer>& SR_Context::ibos() const
+const SR_AlignedVector<SR_IndexBuffer>& SR_Context::ibos() const
 {
     return mIbos;
 }
@@ -399,7 +399,7 @@ void SR_Context::destroy_ibo(std::size_t index)
 /*-------------------------------------
  *
 -------------------------------------*/
-const std::vector<SR_UniformBuffer>& SR_Context::ubos() const
+const SR_AlignedVector<SR_UniformBuffer>& SR_Context::ubos() const
 {
     return mUniforms;
 }
@@ -450,7 +450,7 @@ void SR_Context::destroy_ubo(std::size_t index)
 /*-------------------------------------
  *
 -------------------------------------*/
-const std::vector<SR_Shader>& SR_Context::shaders() const
+const SR_AlignedVector<SR_Shader>& SR_Context::shaders() const
 {
     return mShaders;
 }
@@ -591,12 +591,12 @@ void SR_Context::terminate()
 -------------------------------------*/
 void SR_Context::import(SR_Context&& inContext) noexcept
 {
-    std::vector<SR_VertexArray>&  inVaos     = inContext.mVaos;
-    std::vector<SR_Texture*>&     inTextures = inContext.mTextures;
-    std::vector<SR_Framebuffer>&  inFbos     = inContext.mFbos;
-    std::vector<SR_VertexBuffer>& inVbos     = inContext.mVbos;
-    std::vector<SR_IndexBuffer>&  inIbos     = inContext.mIbos;
-    std::vector<SR_Shader>&       inShaders  = inContext.mShaders;
+    SR_AlignedVector<SR_VertexArray>&  inVaos     = inContext.mVaos;
+    SR_AlignedVector<SR_Texture*>&     inTextures = inContext.mTextures;
+    SR_AlignedVector<SR_Framebuffer>&  inFbos     = inContext.mFbos;
+    SR_AlignedVector<SR_VertexBuffer>& inVbos     = inContext.mVbos;
+    SR_AlignedVector<SR_IndexBuffer>&  inIbos     = inContext.mIbos;
+    SR_AlignedVector<SR_Shader>&       inShaders  = inContext.mShaders;
 
     const std::size_t baseVboId  = mVbos.size();
     const std::size_t baseIboId  = mIbos.size();
@@ -801,9 +801,33 @@ void SR_Context::clear_color_buffer(size_t fboId, size_t attachmentId, const ls:
 void SR_Context::clear_depth_buffer(size_t fboId, double depth) noexcept
 {
     SR_Texture* pTex = mFbos[fboId].get_depth_buffer();
-    SR_GeneralColor outColor = sr_match_color_for_type(pTex->type(), SR_ColorRType<double>{depth});
+    union
+    {
+        double d;
+        float f;
+        ls::math::half h;
+    } depthVal;
 
-    mProcessors.run_clear_processors(&outColor.color, pTex);
+    switch (pTex->bpp())
+    {
+        case sizeof(ls::math::half):
+            depthVal.h = (ls::math::half)(float)depth;
+            break;
+
+        case sizeof(float):
+            depthVal.f = (float)depth;
+            break;
+
+        case sizeof(double):
+            depthVal.d = depth;
+            break;
+
+        default:
+            return;
+    }
+
+    mProcessors.run_clear_processors(&depthVal, pTex);
+
 }
 
 
@@ -815,11 +839,34 @@ void SR_Context::clear_framebuffer(size_t fboId, size_t attachmentId, const ls::
 {
     SR_Texture* pColorBuf = mFbos[fboId].get_color_buffer(attachmentId);
     SR_Texture* pDepth = mFbos[fboId].get_depth_buffer();
-
     SR_GeneralColor outColor = sr_match_color_for_type(pColorBuf->type(), color);
-    SR_GeneralColor depthVal = sr_match_color_for_type(pDepth->type(), SR_ColorRType<double>{depth});
 
-    mProcessors.run_clear_processors(&outColor.color, &depthVal.color, pColorBuf, pDepth);
+    union
+    {
+        double d;
+        float f;
+        ls::math::half h;
+    } depthVal;
+
+    switch (pDepth->bpp())
+    {
+        case sizeof(ls::math::half):
+            depthVal.h = (ls::math::half)(float)depth;
+            break;
+
+        case sizeof(float):
+            depthVal.f = (float)depth;
+            break;
+
+        case sizeof(double):
+            depthVal.d = depth;
+            break;
+
+        default:
+            return;
+    }
+
+    mProcessors.run_clear_processors(&outColor.color, &depthVal, pColorBuf, pDepth);
 }
 
 
@@ -830,7 +877,6 @@ void SR_Context::clear_framebuffer(size_t fboId, size_t attachmentId, const ls::
 void SR_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 2>& bufferIndices, const std::array<const ls::math::vec4_t<double>, 2>& colors, double depth) noexcept
 {
     SR_Texture* pDepth = mFbos[fboId].get_depth_buffer();
-    SR_GeneralColor depthVal = sr_match_color_for_type(pDepth->type(), SR_ColorRType<double>{depth});
 
     std::array<SR_Texture*, 2> buffers{
         mFbos[fboId].get_color_buffer(bufferIndices[0]),
@@ -847,7 +893,32 @@ void SR_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 2>& bu
         &tempColors[1].color
     };
 
-    mProcessors.run_clear_processors(outColors, &depthVal.color, buffers, pDepth);
+    union
+    {
+        double d;
+        float f;
+        ls::math::half h;
+    } depthVal;
+
+    switch (pDepth->bpp())
+    {
+        case sizeof(ls::math::half):
+            depthVal.h = (ls::math::half)(float)depth;
+            break;
+
+        case sizeof(float):
+            depthVal.f = (float)depth;
+            break;
+
+        case sizeof(double):
+            depthVal.d = depth;
+            break;
+
+        default:
+            return;
+    }
+
+    mProcessors.run_clear_processors(outColors, &depthVal, buffers, pDepth);
 }
 
 
@@ -858,7 +929,6 @@ void SR_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 2>& bu
 void SR_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 3>& bufferIndices, const std::array<const ls::math::vec4_t<double>, 3>& colors, double depth) noexcept
 {
     SR_Texture* pDepth = mFbos[fboId].get_depth_buffer();
-    SR_GeneralColor depthVal = sr_match_color_for_type(pDepth->type(), SR_ColorRType<double>{depth});
 
     std::array<SR_Texture*, 3> buffers{
         mFbos[fboId].get_color_buffer(bufferIndices[0]),
@@ -878,7 +948,32 @@ void SR_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 3>& bu
         &tempColors[2].color
     };
 
-    mProcessors.run_clear_processors(outColors, &depthVal.color, buffers, pDepth);
+    union
+    {
+        double d;
+        float f;
+        ls::math::half h;
+    } depthVal;
+
+    switch (pDepth->bpp())
+    {
+        case sizeof(ls::math::half):
+            depthVal.h = (ls::math::half)(float)depth;
+            break;
+
+        case sizeof(float):
+            depthVal.f = (float)depth;
+            break;
+
+        case sizeof(double):
+            depthVal.d = depth;
+            break;
+
+        default:
+            return;
+    }
+
+    mProcessors.run_clear_processors(outColors, &depthVal, buffers, pDepth);
 }
 
 
@@ -889,7 +984,6 @@ void SR_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 3>& bu
 void SR_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 4>& bufferIndices, const std::array<const ls::math::vec4_t<double>, 4>& colors, double depth) noexcept
 {
     SR_Texture* pDepth = mFbos[fboId].get_depth_buffer();
-    SR_GeneralColor depthVal = sr_match_color_for_type(pDepth->type(), SR_ColorRType<double>{depth});
 
     std::array<SR_Texture*, 4> buffers{
         mFbos[fboId].get_color_buffer(bufferIndices[0]),
@@ -912,7 +1006,32 @@ void SR_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 4>& bu
         &tempColors[3].color
     };
 
-    mProcessors.run_clear_processors(outColors, &depthVal.color, buffers, pDepth);
+    union
+    {
+        double d;
+        float f;
+        ls::math::half h;
+    } depthVal;
+
+    switch (pDepth->bpp())
+    {
+        case sizeof(ls::math::half):
+            depthVal.h = (ls::math::half)(float)depth;
+            break;
+
+        case sizeof(float):
+            depthVal.f = (float)depth;
+            break;
+
+        case sizeof(double):
+            depthVal.d = depth;
+            break;
+
+        default:
+            return;
+    }
+
+    mProcessors.run_clear_processors(outColors, &depthVal, buffers, pDepth);
 }
 
 

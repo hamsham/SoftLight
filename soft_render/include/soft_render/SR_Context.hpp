@@ -9,10 +9,14 @@
 
 #include "lightsky/utils/Pointer.h"
 
+#include "soft_render/SR_Setup.hpp"
 #include "soft_render/SR_ProcessorPool.hpp"
 
 
 
+/*-----------------------------------------------------------------------------
+ * Forward declarations
+-----------------------------------------------------------------------------*/
 class SR_Framebuffer;
 struct SR_FragmentShader;
 class SR_IndexBuffer;
@@ -47,25 +51,28 @@ namespace math
 
 
 
+/**----------------------------------------------------------------------------
+ * @brief SR_Context object manage all "GPU" related data.
+-----------------------------------------------------------------------------*/
 class SR_Context
 {
     friend class SR_SceneFilePreload;
     friend class SR_SceneFileLoader;
 
   private:
-    std::vector<SR_VertexArray> mVaos;
+    SR_AlignedVector<SR_VertexArray> mVaos;
 
-    std::vector<SR_Texture*> mTextures;
+    SR_AlignedVector<SR_Texture*> mTextures;
 
-    std::vector<SR_Framebuffer> mFbos;
+    SR_AlignedVector<SR_Framebuffer> mFbos;
 
-    std::vector<SR_VertexBuffer> mVbos;
+    SR_AlignedVector<SR_VertexBuffer> mVbos;
 
-    std::vector<SR_IndexBuffer> mIbos;
+    SR_AlignedVector<SR_IndexBuffer> mIbos;
 
-    std::vector<SR_UniformBuffer> mUniforms;
+    SR_AlignedVector<SR_UniformBuffer> mUniforms;
 
-    std::vector<SR_Shader> mShaders;
+    SR_AlignedVector<SR_Shader> mShaders;
 
     SR_ProcessorPool mProcessors;
 
@@ -85,7 +92,7 @@ class SR_Context
     /*
      *
      */
-    const std::vector<SR_VertexArray>& vaos() const;
+    const SR_AlignedVector<SR_VertexArray>& vaos() const;
 
     const SR_VertexArray& vao(std::size_t index) const;
 
@@ -98,7 +105,7 @@ class SR_Context
     /*
      *
      */
-    const std::vector<SR_Texture*>& textures() const;
+    const SR_AlignedVector<SR_Texture*>& textures() const;
 
     const SR_Texture& texture(std::size_t index) const;
 
@@ -111,7 +118,7 @@ class SR_Context
     /*
      *
      */
-    const std::vector<SR_Framebuffer>& framebuffers() const;
+    const SR_AlignedVector<SR_Framebuffer>& framebuffers() const;
 
     const SR_Framebuffer& framebuffer(std::size_t index) const;
 
@@ -124,7 +131,7 @@ class SR_Context
     /*
      *
      */
-    const std::vector<SR_VertexBuffer>& vbos() const;
+    const SR_AlignedVector<SR_VertexBuffer>& vbos() const;
 
     const SR_VertexBuffer& vbo(std::size_t index) const;
 
@@ -137,7 +144,7 @@ class SR_Context
     /*
      *
      */
-    const std::vector<SR_IndexBuffer>& ibos() const;
+    const SR_AlignedVector<SR_IndexBuffer>& ibos() const;
 
     const SR_IndexBuffer& ibo(std::size_t index) const;
 
@@ -150,7 +157,7 @@ class SR_Context
     /*
      *
      */
-    const std::vector<SR_UniformBuffer>& ubos() const;
+    const SR_AlignedVector<SR_UniformBuffer>& ubos() const;
 
     const SR_UniformBuffer& ubo(std::size_t index) const;
 
@@ -163,7 +170,7 @@ class SR_Context
     /*
      *
      */
-    const std::vector<SR_Shader>& shaders() const;
+    const SR_AlignedVector<SR_Shader>& shaders() const;
 
     const SR_Shader& shader(std::size_t index) const;
 

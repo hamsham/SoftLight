@@ -303,9 +303,9 @@ SR_FragmentShader textured_frag_shader()
 -------------------------------------*/
 void setup_animations(SR_SceneGraph& graph, SR_AnimationPlayer& animPlayer)
 {
-    std::vector<SR_Animation>& sceneAnims = graph.mAnimations;
+    SR_AlignedVector<SR_Animation>& sceneAnims = graph.mAnimations;
 
-    for (std::vector<SR_AnimationChannel>& animList : graph.mNodeAnims)
+    for (SR_AlignedVector<SR_AnimationChannel>& animList : graph.mNodeAnims)
     {
         for (SR_AnimationChannel& track : animList)
         {
@@ -336,7 +336,7 @@ void update_animations(SR_SceneGraph& graph, SR_AnimationPlayer& animPlayer, uns
     if (animPlayer.is_stopped())
     {
         std::cout << "Completed animation " << currentAnimId << ". ";
-        std::vector<SR_Animation>& animations = graph.mAnimations;
+        SR_AlignedVector<SR_Animation>& animations = graph.mAnimations;
         currentAnimId = (currentAnimId + 1) % animations.size();
 
         // reset the transformations in graph graph to those at the beginning of an animation
@@ -472,7 +472,7 @@ utils::Pointer<SR_SceneGraph> create_context()
     assert(retCode == 0);
 
     SR_Texture& depth = context.texture(depthId);
-    retCode = depth.init(SR_ColorDataType::SR_COLOR_R_FLOAT, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = depth.init(SR_ColorDataType::SR_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     assert(retCode == 0);
 
     SR_Framebuffer& fbo = context.framebuffer(fboId);

@@ -468,6 +468,7 @@ int SR_Framebuffer::attach_depth_buffer(SR_Texture& d) noexcept
 
     switch (d.type())
     {
+        case SR_ColorDataType::SR_COLOR_R_16U:
         case SR_ColorDataType::SR_COLOR_R_FLOAT:
         case SR_ColorDataType::SR_COLOR_R_DOUBLE:
             break;
@@ -562,7 +563,7 @@ int SR_Framebuffer::valid() const noexcept
         return -11;
     }
 
-    if (mDepth->type() != SR_COLOR_R_FLOAT && mDepth->type() != SR_COLOR_R_DOUBLE)
+    if (mDepth->type() != SR_COLOR_R_16U && mDepth->type() != SR_COLOR_R_FLOAT && mDepth->type() != SR_COLOR_R_DOUBLE)
     {
         return -12;
     }

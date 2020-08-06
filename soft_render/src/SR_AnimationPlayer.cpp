@@ -136,7 +136,7 @@ void SR_AnimationPlayer::tick(SR_SceneGraph& graph, size_t animationIndex, int64
         return;
     }
 
-    const std::vector<SR_Animation>& animations = graph.mAnimations;
+    const SR_AlignedVector<SR_Animation>& animations = graph.mAnimations;
     const SR_Animation& anim = animations[animationIndex];
 
     if (mNumPlays == PLAY_AUTO)
@@ -190,7 +190,7 @@ void SR_AnimationPlayer::tick(SR_SceneGraph& graph, size_t animationIndex, int64
         return;
     }
 
-    const std::vector<SR_Animation>& animations = graph.mAnimations;
+    const SR_AlignedVector<SR_Animation>& animations = graph.mAnimations;
     const SR_Animation& anim = animations[animationIndex];
 
     if (mNumPlays == PLAY_AUTO)
@@ -243,7 +243,7 @@ SR_AnimPrecision SR_AnimationPlayer::tick_explicit(
     size_t transformOffset
 ) const noexcept
 {
-    const std::vector<SR_Animation>& animations = graph.mAnimations;
+    const SR_AlignedVector<SR_Animation>& animations = graph.mAnimations;
     const SR_Animation& anim = animations[animationIndex];
 
     const SR_AnimPrecision secondsDelta  = SR_AnimPrecision{0.001} * (SR_AnimPrecision)requestedMillis;

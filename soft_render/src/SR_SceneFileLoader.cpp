@@ -724,7 +724,7 @@ bool SR_SceneFileLoader::allocate_gpu_data() noexcept
     }
 
     // Start adding the mesh descriptors and GL handles
-    std::vector<SR_VertexArray>& vaos = renderData.mVaos;
+    SR_AlignedVector<SR_VertexArray>& vaos = renderData.mVaos;
     vaos.clear();
     vaos.reserve(totalMeshTypes);
 
@@ -1043,16 +1043,16 @@ bool SR_SceneFileLoader::import_mesh_data(const aiScene* const pScene, const SR_
 {
     LS_LOG_MSG("\tImporting vertices and indices of individual meshes from a file.");
 
-    std::vector<SR_VaoGroup>& tempVboMarks = mPreloader.mVaoGroups;
-    SR_SceneGraph&           sceneData    = mPreloader.mSceneData;
-    SR_Context&              renderData   = sceneData.mContext;
-    std::vector<SR_Mesh>&    meshes       = sceneData.mMeshes;
-    std::vector<SR_BoundingBox>& bounds   = sceneData.mMeshBounds;
-    SR_VertexBuffer&         vbo          = renderData.vbo(renderData.vbos().size()-1);
-    SR_IndexBuffer&          ibo          = renderData.ibo(renderData.ibos().size()-1);
-    size_t                   baseIndex    = 0;
-    char* const              pVbo         = reinterpret_cast<char*>(vbo.data());
-    char*                    pIbo         = reinterpret_cast<char*>(ibo.data());
+    std::vector<SR_VaoGroup>&         tempVboMarks = mPreloader.mVaoGroups;
+    SR_SceneGraph&                    sceneData    = mPreloader.mSceneData;
+    SR_Context&                       renderData   = sceneData.mContext;
+    SR_AlignedVector<SR_Mesh>&        meshes       = sceneData.mMeshes;
+    SR_AlignedVector<SR_BoundingBox>& bounds       = sceneData.mMeshBounds;
+    SR_VertexBuffer&                  vbo          = renderData.vbo(renderData.vbos().size()-1);
+    SR_IndexBuffer&                   ibo          = renderData.ibo(renderData.ibos().size()-1);
+    size_t                            baseIndex    = 0;
+    char* const                       pVbo         = reinterpret_cast<char*>(vbo.data());
+    char*                             pIbo         = reinterpret_cast<char*>(ibo.data());
 
     // vertex data in ASSIMP is not interleaved. It has to be converted into
     // the internally used vertex format which is recommended for use on mobile
@@ -1108,8 +1108,8 @@ bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh, unsigned ba
     }
 
     LS_LOG_MSG("\tImporting bones from a file.");
-    std::vector<std::string>&                    nodeNames = mPreloader.mSceneData.mNodeNames;
-    std::unordered_map<uint32_t, SR_BoneData>&   boneData  = mPreloader.mBones;
+    SR_AlignedVector<std::string>&             nodeNames = mPreloader.mSceneData.mNodeNames;
+    std::unordered_map<uint32_t, SR_BoneData>& boneData  = mPreloader.mBones;
 
     for (unsigned i = 0; i < pMesh->mNumBones; ++i)
     {
@@ -1118,7 +1118,7 @@ bool SR_SceneFileLoader::import_bone_data(const aiMesh* const pMesh, unsigned ba
         const uint32_t    numWeights = pBone->mNumWeights;
         size_t            boneId     = 0;
 
-        std::vector<std::string>::iterator&& nameIter = std::find(nodeNames.begin(), nodeNames.end(), boneName);
+        SR_AlignedVector<std::string>::iterator&& nameIter = std::find(nodeNames.begin(), nodeNames.end(), boneName);
         if (nameIter != nodeNames.end())
         {
             boneId = std::distance(nodeNames.begin(), nameIter);
@@ -1311,12 +1311,12 @@ void SR_SceneFileLoader::read_node_hierarchy(
 {
     // use the size of the node list as an index which should be returned to
     // the parent node's child indices.
-    SR_SceneGraph&               sceneData      = mPreloader.mSceneData;
-    std::vector<SR_SceneNode>&   nodeList       = sceneData.mNodes;
-    std::vector<std::string>&    nodeNames      = sceneData.mNodeNames;
-    std::vector<math::mat4>&     baseTransforms = sceneData.mBaseTransforms;
-    std::vector<SR_Transform>&   currTransforms = sceneData.mCurrentTransforms;
-    std::vector<math::mat4>&     modelMatrices  = sceneData.mModelMatrices;
+    SR_SceneGraph&                  sceneData      = mPreloader.mSceneData;
+    SR_AlignedVector<SR_SceneNode>& nodeList       = sceneData.mNodes;
+    SR_AlignedVector<std::string>&  nodeNames      = sceneData.mNodeNames;
+    SR_AlignedVector<math::mat4>&   baseTransforms = sceneData.mBaseTransforms;
+    SR_AlignedVector<SR_Transform>& currTransforms = sceneData.mCurrentTransforms;
+    SR_AlignedVector<math::mat4>&   modelMatrices  = sceneData.mModelMatrices;
 
     //LS_LOG_MSG("\tImporting Scene Node ", nodeList.size(), ": ", pInNode->mName.C_Str());
 
@@ -1420,8 +1420,8 @@ void SR_SceneFileLoader::read_node_hierarchy(
 void SR_SceneFileLoader::import_mesh_node(const aiNode* const pNode, SR_SceneNode& outNode) noexcept
 {
     SR_SceneGraph& graph = mPreloader.mSceneData;
-    std::vector<size_t>& nodeMeshCounts = graph.mNumNodeMeshes;
-    std::vector<utils::Pointer<size_t[]>>& meshList = graph.mNodeMeshes;
+    SR_AlignedVector<size_t>& nodeMeshCounts = graph.mNumNodeMeshes;
+    SR_AlignedVector<utils::Pointer<size_t[]>>& meshList = graph.mNodeMeshes;
 
     // The check for how many meshes a scene node has must have already been
     // performed.
@@ -1462,7 +1462,7 @@ void SR_SceneFileLoader::import_camera_node(
     outNode.dataId = camIndex;
 
     const aiCamera* const pInCam = pScene->mCameras[camIndex];
-    std::vector<SR_Camera>& camList = graph.mCameras;
+    SR_AlignedVector<SR_Camera>& camList = graph.mCameras;
 
     camList.emplace_back(SR_Camera());
     SR_Camera& outCam = graph.mCameras.back();
@@ -1531,9 +1531,10 @@ bool SR_SceneFileLoader::import_animations(const aiScene* const pScene) noexcept
     bool ret = true;
     SR_SceneGraph&                  graph                      = mPreloader.mSceneData;
     const aiAnimation* const* const pAnimations                = pScene->mAnimations;
-    std::vector<SR_Animation>&      animations                 = graph.mAnimations;
+    SR_AlignedVector<SR_Animation>& animations                 = graph.mAnimations;
     const unsigned                  totalAnimations            = pScene->mNumAnimations;
-    std::vector<std::vector<SR_AnimationChannel>>& allChannels = graph.mNodeAnims;
+
+    SR_AlignedVector<SR_AlignedVector<SR_AnimationChannel>>& allChannels = graph.mNodeAnims;
 
     for (unsigned i = 0; i < totalAnimations; ++i)
     {
@@ -1572,10 +1573,10 @@ bool SR_SceneFileLoader::import_animations(const aiScene* const pScene) noexcept
             if (node.animListId == SCENE_NODE_ROOT_ID)
             {
                 node.animListId = allChannels.size();
-                allChannels.emplace_back(std::vector<SR_AnimationChannel>{});
+                allChannels.emplace_back(SR_AlignedVector<SR_AnimationChannel>{});
             }
 
-            std::vector<SR_AnimationChannel>& nodeChannels = allChannels[node.animListId];
+            SR_AlignedVector<SR_AnimationChannel>& nodeChannels = allChannels[node.animListId];
             nodeChannels.emplace_back(std::move(track));
 
             // Add the node's imported track to the current animation
@@ -1615,7 +1616,7 @@ unsigned SR_SceneFileLoader::import_animation_track(
     const unsigned posFrames                    = pInAnim->mNumPositionKeys;
     const unsigned sclFrames                    = pInAnim->mNumScalingKeys;
     const unsigned rotFrames                    = pInAnim->mNumRotationKeys;
-    const std::vector<std::string>& nodeNames   = mPreloader.mSceneData.mNodeNames;
+    const SR_AlignedVector<std::string>& nodeNames = mPreloader.mSceneData.mNodeNames;
     const char* const pInName                   = pInAnim->mNodeName.C_Str();
     unsigned nodeId                             = 0;
 

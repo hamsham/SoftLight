@@ -322,7 +322,7 @@ void SR_Animation::animate(SR_SceneGraph& graph, const SR_AnimPrecision percentD
     LS_DEBUG_ASSERT(mTransformIds.size() == mTrackIds.size());
 
     // prefetch
-    const std::vector<SR_AnimationChannel>* pNodeAnims = graph.mNodeAnims.data();
+    const SR_AlignedVector<SR_AnimationChannel>* pNodeAnims = graph.mNodeAnims.data();
     SR_Transform* const pTransforms = graph.mCurrentTransforms.data();
 
     for (size_t i = mTransformIds.size(); i --> 0;)
@@ -367,7 +367,7 @@ void SR_Animation::animate(SR_SceneGraph& graph, const SR_AnimPrecision percentD
     LS_DEBUG_ASSERT(mTransformIds.size() == mTrackIds.size());
 
     // prefetch
-    const std::vector<SR_AnimationChannel>* pNodeAnims = graph.mNodeAnims.data();
+    const SR_AlignedVector<SR_AnimationChannel>* pNodeAnims = graph.mNodeAnims.data();
     SR_Transform* const pTransforms = graph.mCurrentTransforms.data();
 
     size_t rootIndex = !mTransformIds.empty() ? mTransformIds[0] : 0;
@@ -413,7 +413,7 @@ void SR_Animation::init(SR_SceneGraph& graph, const bool atStart) const noexcept
     LS_DEBUG_ASSERT(mTransformIds.size() == mTrackIds.size());
     
     // prefetch
-    const std::vector<SR_AnimationChannel>* pNodeAnims = graph.mNodeAnims.data();
+    const SR_AlignedVector<SR_AnimationChannel>* pNodeAnims = graph.mNodeAnims.data();
     SR_Transform* pTransforms = graph.mCurrentTransforms.data();
     
     for (size_t i = mTransformIds.size(); i --> 0;)

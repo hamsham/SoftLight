@@ -4,6 +4,8 @@
 
 #include "lightsky/setup/Arch.h"
 
+#include "lightsky/math/half.h"
+
 #include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Copy.h" // utils::fast_memset, fast_fill
 
@@ -261,6 +263,14 @@ inline SR_Texture* SR_Framebuffer::get_depth_buffer() noexcept
 /*-------------------------------------
  * Place a single pixel onto the depth buffer
 -------------------------------------*/
+template <>
+inline void SR_Framebuffer::put_depth_pixel<ls::math::half>(uint16_t x, uint16_t y, ls::math::half depth) noexcept
+{
+    mDepth->texel<ls::math::half>(x, y) = depth;
+}
+
+
+
 template <>
 inline void SR_Framebuffer::put_depth_pixel<float>(uint16_t x, uint16_t y, float depth) noexcept
 {

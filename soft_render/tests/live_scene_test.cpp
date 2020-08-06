@@ -49,7 +49,7 @@
 #endif /* SR_TEST_MAX_THREADS */
 
 #ifndef SR_BENCHMARK_SCENE
-    #define SR_BENCHMARK_SCENE 0
+    #define SR_BENCHMARK_SCENE 1
 #endif /* SR_BENCHMARK_SCENE */
 
 #ifndef SR_TEST_BUMP_MAPS
@@ -752,7 +752,7 @@ utils::Pointer<SR_SceneGraph> create_context()
     assert(retCode == 0);
 
     SR_Texture& depth = context.texture(depthId);
-    retCode = depth.init(SR_ColorDataType::SR_COLOR_R_FLOAT, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = depth.init(SR_ColorDataType::SR_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     assert(retCode == 0);
 
     SR_Framebuffer& fbo = context.framebuffer(fboId);

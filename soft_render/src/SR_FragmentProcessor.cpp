@@ -3,6 +3,7 @@
 
 #include "lightsky/math/bits.h"
 #include "lightsky/math/fixed.h"
+#include "lightsky/math/half.h"
 #include "lightsky/math/vec_utils.h"
 #include "lightsky/math/mat_utils.h"
 
@@ -147,6 +148,7 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
 /*--------------------------------------
  * Determine if a point can be rendered.
 --------------------------------------*/
+template <typename depth_type>
 void SR_FragmentProcessor::render_point(
     const uint_fast64_t binId,
     SR_Framebuffer* const fbo,
@@ -183,9 +185,9 @@ void SR_FragmentProcessor::render_point(
     if (depthTest == SR_DEPTH_TEST_ON)
     {
 #if SR_REVERSED_Z_RENDERING
-        if (fragCoord[2] < pDepthBuf->raw_texel<float>(fragParams.coord.x, fragParams.coord.y))
+        if (fragCoord[2] < (float)pDepthBuf->raw_texel<depth_type>(fragParams.coord.x, fragParams.coord.y))
 #else
-        if (fragCoord[2] > pDepthBuf->raw_texel<float>(fragParams.coord.x, fragParams.coord.y))
+        if (fragCoord[2] > (float)pDepthBuf->raw_texel<depth_type>(fragParams.coord.x, fragParams.coord.y))
 #endif
         {
             return;
@@ -223,7 +225,7 @@ void SR_FragmentProcessor::render_point(
 
     if (haveOutputs && depthMask)
     {
-        fbo->put_depth_pixel<float>(fragParams.coord.x, fragParams.coord.y, fragParams.coord.depth);
+        fbo->put_depth_pixel<depth_type>(fragParams.coord.x, fragParams.coord.y, (depth_type)fragParams.coord.depth);
     }
 }
 
@@ -333,6 +335,7 @@ inline bool sr_clip_liang_barsky(math::vec2 screenCoords[2], const math::vec4_t<
 /*--------------------------------------
  * Process the line fragments using a simple DDA algorithm
 --------------------------------------*/
+template <typename depth_type>
 void SR_FragmentProcessor::render_line(
     const uint_fast64_t binId,
     SR_Framebuffer* fbo,
@@ -397,9 +400,9 @@ void SR_FragmentProcessor::render_line(
         const float      z       = math::mix(z0, z1, interp);
 
 #if SR_REVERSED_Z_RENDERING
-        if (noDepthTest || depthBuf->raw_texel<float>((uint16_t)xi, (uint16_t)yi) <= z)
+        if (noDepthTest || (float)depthBuf->raw_texel<depth_type>((uint16_t)xi, (uint16_t)yi) <= z)
 #else
-        if (noDepthTest || depthBuf->raw_texel<float>((uint16_t)xi, (uint16_t)yi) >= z)
+        if (noDepthTest || (float)depthBuf->raw_texel<depth_type>((uint16_t)xi, (uint16_t)yi) >= z)
 #endif
         {
             interpolate_line_varyings(interp, numVaryings, inVaryings, mVaryings);
@@ -438,7 +441,7 @@ void SR_FragmentProcessor::render_line(
 
             if (haveOutputs && depthMask)
             {
-                fbo->put_depth_pixel<float>(xi, yi, z);
+                fbo->put_depth_pixel<depth_type>(xi, yi, (depth_type)z);
             }
         }
 
@@ -452,6 +455,7 @@ void SR_FragmentProcessor::render_line(
 /*--------------------------------------
  * Wireframe Rasterization
 --------------------------------------*/
+template <typename depth_type>
 void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const noexcept
 {
     const SR_FragmentBin* pBin         = mBins;
@@ -491,7 +495,7 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
             scanline.step(yf, xMin, xMax);
             int32_t x = xMin;
 
-            const float* const pDepth = depthBuffer->row_pointer<float>(y);
+            const depth_type* const pDepth = depthBuffer->row_pointer<depth_type>(y);
 
             for (; x < xMax; x += xMax-xMin)
             {
@@ -503,12 +507,12 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
                 if (depthTesting)
                 {
                     #if SR_REVERSED_Z_RENDERING
-                        if (z < pDepth[x])
+                        if (z < (float)pDepth[x])
                         {
                             continue;
                         }
                     #else
-                        if (z > pDepth[x])
+                        if (z > (float)pDepth[x])
                         {
                             continue;
                         }
@@ -524,7 +528,7 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
                 if (numQueuedFrags == SR_SHADER_MAX_QUEUED_FRAGS)
                 {
                     numQueuedFrags = 0;
-                    flush_fragments(pBin, SR_SHADER_MAX_QUEUED_FRAGS, outCoords);
+                    flush_fragments<depth_type>(pBin, SR_SHADER_MAX_QUEUED_FRAGS, outCoords);
 
                     LS_PREFETCH(pBin+1, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
                 }
@@ -534,7 +538,7 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
         // cleanup remaining fragments
         if (numQueuedFrags > 0)
         {
-            flush_fragments(pBin, numQueuedFrags, outCoords);
+            flush_fragments<depth_type>(pBin, numQueuedFrags, outCoords);
         }
     }
 }
@@ -544,6 +548,7 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
 /*--------------------------------------
  * Triangle Rasterization, scalar
 --------------------------------------*/
+template <typename depth_type>
 void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const noexcept
 {
     const SR_FragmentBin* pBin         = mBins;
@@ -585,12 +590,12 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
             int32_t x = xMin;
             float xf = (float)x;
 
-            const float* const pDepth = depthBuffer->row_pointer<float>(y);
+            const depth_type* const pDepth = depthBuffer->row_pointer<depth_type>(y);
 
             for (; x < xMax; ++x, xf += 1.f)
             {
                 // calculate barycentric coordinates
-                const float  depthTexels = pDepth[x];
+                const float  depthTexels = (float)pDepth[x];
                 math::vec4&& bc          = math::fmadd(bcClipSpace[0], math::vec4{xf}, bcY);
                 const float  z           = math::dot(depth, bc);
 
@@ -616,7 +621,7 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
                 if (numQueuedFrags == SR_SHADER_MAX_QUEUED_FRAGS)
                 {
                     numQueuedFrags = 0;
-                    flush_fragments(pBin, SR_SHADER_MAX_QUEUED_FRAGS, outCoords);
+                    flush_fragments<depth_type>(pBin, SR_SHADER_MAX_QUEUED_FRAGS, outCoords);
                 }
             }
         }
@@ -624,7 +629,7 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
         // cleanup remaining fragments
         if (numQueuedFrags > 0)
         {
-            flush_fragments(pBin, numQueuedFrags, outCoords);
+            flush_fragments<depth_type>(pBin, numQueuedFrags, outCoords);
         }
     }
 }
@@ -634,6 +639,7 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
 /*-------------------------------------
  * Render a triangle using 4 elements at a time
 -------------------------------------*/
+template <typename depth_type>
 void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) const noexcept
 {
     const SR_FragmentBin* pBin         = mBins;
@@ -672,14 +678,14 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
             int32_t xMax;
             scanline.step(yf, xMin, xMax);
 
-            const float*        pDepth = depthBuffer->row_pointer<float>((uintptr_t)y) + xMin;
+            const depth_type*   pDepth = depthBuffer->row_pointer<depth_type>((uintptr_t)y) + xMin;
             math::vec4i&&       x4     = math::vec4i{0, 1, 2, 3} + xMin;
             const math::vec4i&& xMaxf  = (float)xMax;
 
             for (; x4[0] < xMax; pDepth += 4, x4 += 4)
             {
                 // calculate barycentric coordinates and perform a depth test
-                const math::vec4   d      = math::vec4{pDepth[0], pDepth[1], pDepth[2], pDepth[3]};
+                const math::vec4&& d      = (math::vec4)(*reinterpret_cast<const math::vec4_t<depth_type>*>(pDepth));
                 const int32_t      xBound = math::sign_mask(x4-xMaxf);
                 math::mat4&&       bc     = math::outer((math::vec4)x4, bcClipSpace[0]) + bcY;
                 const math::vec4&& z      = depth * bc;
@@ -733,7 +739,7 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
                 numQueuedFrags += math::popcnt_u32(depthTest & 0x0F);
                 if (LS_UNLIKELY(numQueuedFrags > SR_SHADER_MAX_QUEUED_FRAGS-4))
                 {
-                    flush_fragments(pBin, numQueuedFrags, outCoords);
+                    flush_fragments<depth_type>(pBin, numQueuedFrags, outCoords);
                     numQueuedFrags = 0;
                 }
             }
@@ -741,7 +747,7 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
 
         if (numQueuedFrags)
         {
-            flush_fragments(pBin, numQueuedFrags, outCoords);
+            flush_fragments<depth_type>(pBin, numQueuedFrags, outCoords);
         }
     }
 }
@@ -751,6 +757,7 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
 /*--------------------------------------
  * Triangle Fragment Bin-Rasterization
 --------------------------------------*/
+template <typename depth_type>
 void SR_FragmentProcessor::flush_fragments(
     const SR_FragmentBin* pBin,
     uint_fast32_t         numQueuedFrags,
@@ -798,7 +805,7 @@ void SR_FragmentProcessor::flush_fragments(
 
                     if (depthMask)
                     {
-                        pDepthBuf->raw_texel<float>(fragParams.coord.x, fragParams.coord.y) = fragParams.coord.depth;
+                        pDepthBuf->raw_texel<depth_type>(fragParams.coord.x, fragParams.coord.y) = (depth_type)fragParams.coord.depth;
                     }
             }
 
@@ -823,7 +830,7 @@ void SR_FragmentProcessor::flush_fragments(
 
                     if (depthMask)
                     {
-                        pDepthBuf->raw_texel<float>(fragParams.coord.x, fragParams.coord.y) = fragParams.coord.depth;
+                        pDepthBuf->raw_texel<depth_type>(fragParams.coord.x, fragParams.coord.y) = (depth_type)fragParams.coord.depth;
                     }
             }
 
@@ -839,6 +846,8 @@ void SR_FragmentProcessor::flush_fragments(
 -------------------------------------*/
 void SR_FragmentProcessor::execute() noexcept
 {
+    const uint16_t depthBpp = mFbo->get_depth_buffer()->bpp();
+
     switch(mMode)
     {
         case RENDER_MODE_POINTS:
@@ -850,9 +859,26 @@ void SR_FragmentProcessor::execute() noexcept
             const int32_t h = mFbo->height();
             const math::vec4_t<int32_t> dimens = sr_subdivide_region<int32_t>(w, h, mNumProcessors, mThreadId);
 
-            for (uint64_t binId = 0; binId < mNumBins; ++binId)
+            if (depthBpp == sizeof(math::half))
             {
-                render_point(binId, mFbo, dimens);
+                for (uint64_t binId = 0; binId < mNumBins; ++binId)
+                {
+                    render_point<math::half>(binId, mFbo, dimens);
+                }
+            }
+            else if (depthBpp == sizeof(float))
+            {
+                for (uint64_t binId = 0; binId < mNumBins; ++binId)
+                {
+                    render_point<float>(binId, mFbo, dimens);
+                }
+            }
+            else if (depthBpp == sizeof(double))
+            {
+                for (uint64_t binId = 0; binId < mNumBins; ++binId)
+                {
+                    render_point<double>(binId, mFbo, dimens);
+                }
             }
             break;
         }
@@ -866,24 +892,89 @@ void SR_FragmentProcessor::execute() noexcept
             const int32_t h = mFbo->height();
             const math::vec4_t<int32_t> dimens = sr_subdivide_region<int32_t>(w, h, mNumProcessors, mThreadId);
 
-            for (uint64_t binId = 0; binId < mNumBins; ++binId)
+            if (depthBpp == sizeof(math::half))
             {
-                render_line(binId, mFbo, dimens);
+                for (uint64_t binId = 0; binId < mNumBins; ++binId)
+                {
+                    render_line<math::half>(binId, mFbo, dimens);
+                }
+            }
+            else if (depthBpp == sizeof(float))
+            {
+                for (uint64_t binId = 0; binId < mNumBins; ++binId)
+                {
+                    render_line<float>(binId, mFbo, dimens);
+                }
+            }
+            else if (depthBpp == sizeof(double))
+            {
+                for (uint64_t binId = 0; binId < mNumBins; ++binId)
+                {
+                    render_line<double>(binId, mFbo, dimens);
+                }
             }
             break;
         }
 
         case RENDER_MODE_TRI_WIRE:
         case RENDER_MODE_INDEXED_TRI_WIRE:
-            render_wireframe(mFbo->get_depth_buffer());
+            if (depthBpp == sizeof(math::half))
+            {
+                render_wireframe<math::half>(mFbo->get_depth_buffer());
+            }
+            else if (depthBpp == sizeof(float))
+            {
+                render_wireframe<float>(mFbo->get_depth_buffer());
+            }
+            else if (depthBpp == sizeof(double))
+            {
+                render_wireframe<double>(mFbo->get_depth_buffer());
+            }
             break;
 
         case RENDER_MODE_TRIANGLES:
         case RENDER_MODE_INDEXED_TRIANGLES:
             // Triangles assign scan-lines per thread for rasterization.
             // There's No need to subdivide the output framebuffer
-            render_triangle(mFbo->get_depth_buffer());
-            //render_triangle_simd(mFbo->get_depth_buffer());
+            if (depthBpp == sizeof(math::half))
+            {
+                //render_triangle<math::half>(mFbo->get_depth_buffer());
+                render_triangle_simd<math::half>(mFbo->get_depth_buffer());
+            }
+            else if (depthBpp == sizeof(float))
+            {
+                render_triangle<float>(mFbo->get_depth_buffer());
+                //render_triangle_simd<float>(mFbo->get_depth_buffer());
+            }
+            else if (depthBpp == sizeof(double))
+            {
+                render_triangle<double>(mFbo->get_depth_buffer());
+                //render_triangle_simd<double>(mFbo->get_depth_buffer());
+            }
             break;
     }
 }
+
+template void SR_FragmentProcessor::render_point<ls::math::half>(const uint_fast64_t, SR_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+template void SR_FragmentProcessor::render_point<float>(const uint_fast64_t, SR_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+template void SR_FragmentProcessor::render_point<double>(const uint_fast64_t, SR_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+
+template void SR_FragmentProcessor::render_line<ls::math::half>(const uint_fast64_t, SR_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+template void SR_FragmentProcessor::render_line<float>(const uint_fast64_t, SR_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+template void SR_FragmentProcessor::render_line<double>(const uint_fast64_t, SR_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+
+template void SR_FragmentProcessor::render_wireframe<ls::math::half>(const SR_Texture*) const noexcept;
+template void SR_FragmentProcessor::render_wireframe<float>(const SR_Texture*) const noexcept;
+template void SR_FragmentProcessor::render_wireframe<double>(const SR_Texture*) const noexcept;
+
+template void SR_FragmentProcessor::render_triangle<ls::math::half>(const SR_Texture*) const noexcept;
+template void SR_FragmentProcessor::render_triangle<float>(const SR_Texture*) const noexcept;
+template void SR_FragmentProcessor::render_triangle<double>(const SR_Texture*) const noexcept;
+
+template void SR_FragmentProcessor::render_triangle_simd<ls::math::half>(const SR_Texture*) const noexcept;
+template void SR_FragmentProcessor::render_triangle_simd<float>(const SR_Texture*) const noexcept;
+template void SR_FragmentProcessor::render_triangle_simd<double>(const SR_Texture*) const noexcept;
+
+template void SR_FragmentProcessor::flush_fragments<ls::math::half>(const SR_FragmentBin*, uint_fast32_t, const SR_FragCoord*) const noexcept;
+template void SR_FragmentProcessor::flush_fragments<float>(const SR_FragmentBin*, uint_fast32_t, const SR_FragCoord*) const noexcept;
+template void SR_FragmentProcessor::flush_fragments<double>(const SR_FragmentBin*, uint_fast32_t, const SR_FragCoord*) const noexcept;

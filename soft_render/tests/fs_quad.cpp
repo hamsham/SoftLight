@@ -389,7 +389,7 @@ utils::Pointer<SR_SceneGraph> mesh_test_create_context()
 
     size_t depthId = context.create_texture();
     SR_Texture& depth = context.texture(depthId);
-    retCode = depth.init(SR_ColorDataType::SR_COLOR_R_FLOAT, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = depth.init(SR_ColorDataType::SR_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     assert(retCode == 0);
 
     // FBO 0, compact YCoCg buffer
