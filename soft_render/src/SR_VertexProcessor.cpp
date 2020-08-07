@@ -112,10 +112,11 @@ inline LS_INLINE math::vec4 sr_perspective_divide(const math::vec4& v) noexcept
         return math::vec4{_mm_blend_ps(wInv, vMul, 0x07)};
 
     #elif defined(LS_ARCH_ARM)
+        const uint32x4_t blendMask{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000000};
         const float32x4_t w = vdupq_n_f32(vgetq_lane_f32(v.simd, 3));
         const float32x4_t wInv = vrecpeq_f32(w);
         const float32x4_t vMul = vmulq_f32(v.simd, vmulq_f32(vrecpsq_f32(w, wInv), wInv));
-        return math::vec4{vsetq_lane_f32(vgetq_lane_f32(wInv, 3), vMul, 3)};
+        return math::vec4{vbslq_f32(blendMask, vMul, wInv)};
 
     #else
         const math::vec4&& wInv = math::rcp(math::vec4{v[3]});
@@ -150,20 +151,22 @@ inline LS_INLINE void sr_perspective_divide3(math::vec4& v0, math::vec4& v1, mat
         _mm_store_ps(reinterpret_cast<float*>(&v2), _mm_blend_ps(wInv2, vMul2, 0x07));
 
     #elif defined(LS_ARCH_ARM)
+        const uint32x4_t blendMask{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000000};
+
         const float32x4_t w0 = vdupq_n_f32(vgetq_lane_f32(v0.simd, 3));
         const float32x4_t wInv0 = vrecpeq_f32(w0);
         const float32x4_t vMul0 = vmulq_f32(v0.simd, vmulq_f32(vrecpsq_f32(w0, wInv0), wInv0));
-        v0.simd = vsetq_lane_f32(vgetq_lane_f32(wInv0, 3), vMul0, 3);
+        v0.simd = vbslq_f32(blendMask, vMul0, wInv0);
 
         const float32x4_t w1 = vdupq_n_f32(vgetq_lane_f32(v1.simd, 3));
         const float32x4_t wInv1 = vrecpeq_f32(w1);
         const float32x4_t vMul1 = vmulq_f32(v1.simd, vmulq_f32(vrecpsq_f32(w1, wInv1), wInv1));
-        v1.simd = vsetq_lane_f32(vgetq_lane_f32(wInv1, 3), vMul1, 3);
+        v1.simd = vbslq_f32(blendMask, vMul1, wInv1);
 
         const float32x4_t w2 = vdupq_n_f32(vgetq_lane_f32(v2.simd, 3));
         const float32x4_t wInv2 = vrecpeq_f32(w2);
         const float32x4_t vMul2 = vmulq_f32(v2.simd, vmulq_f32(vrecpsq_f32(w2, wInv2), wInv2));
-        v2.simd = vsetq_lane_f32(vgetq_lane_f32(wInv2, 3), vMul2, 3);
+        v2.simd = vbslq_f32(blendMask, vMul2, wInv2);
 
     #else
         const math::vec4&& wInv0 = math::rcp(v0[3]);
@@ -186,11 +189,7 @@ inline LS_INLINE void sr_perspective_divide3(math::vec4& v0, math::vec4& v1, mat
 --------------------------------------*/
 inline LS_INLINE void sr_world_to_screen_coords_divided(math::vec4& v, const float widthScale, const float heightScale) noexcept
 {
-    #if !defined(LS_ARCH_X86)
-        v[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  v[0], widthScale)));
-        v[1] = math::max(0.f, math::floor(math::fmadd(heightScale, v[1], heightScale)));
-        //v = math::fmadd(math::vec4{widthScale, heightScale, 1.f, 1.f}, v, math::vec4{widthScale, heightScale, 0.f, 0.f});
-    #else
+    #if defined(LS_ARCH_X86)
         const __m128 p   = _mm_load_ps(reinterpret_cast<const float*>(&v));
         const __m128 wh0 = _mm_set_ps(0.f, 0.f, heightScale, widthScale);
         const __m128 wh1 = _mm_set_ps(1.f, 1.f, heightScale, widthScale);
@@ -198,6 +197,33 @@ inline LS_INLINE void sr_world_to_screen_coords_divided(math::vec4& v, const flo
         __m128 scl = _mm_fmadd_ps(wh1, p, wh0);
         scl = _mm_max_ps(_mm_floor_ps(scl), _mm_setzero_ps());
         _mm_store_ps(reinterpret_cast<float*>(&v), _mm_blend_ps(scl, p, 0x0C));
+
+    #elif defined(LS_ARCH_AARCH64)
+        const float32x4_t p = vld1q_f32(reinterpret_cast<const float*>(&v));
+
+        const uint32x4_t blendMask{0x00000000, 0x00000000, 0xFFFFFFFF, 0xFFFFFFFF};
+        const float32x4_t wh0{widthScale, heightScale, 0.f, 0.f};
+        const float32x4_t wh1{widthScale, heightScale, 1.f, 1.f};
+
+        float32x4_t scl = vmlaq_f32(wh0, p, wh1);
+        scl = vmaxq_f32(vdupq_n_f32(0.f), vrndmq_f32(scl));
+        vst1q_f32(reinterpret_cast<float*>(&v), vbslq_f32(blendMask, p, scl));
+
+    #elif defined(LS_ARCH_ARM)
+        const uint32x4_t blendMask{0x00000000, 0x00000000, 0xFFFFFFFF, 0xFFFFFFFF};
+        const float32x4_t wh0{widthScale, heightScale, 0.f, 0.f};
+        const float32x4_t wh1{widthScale, heightScale, 1.f, 1.f};
+
+        const float32x4_t p = vld1q_f32(reinterpret_cast<const float*>(&v));
+        float32x4_t scl = vmlaq_f32(wh0, p, wh1);
+        scl = vmaxq_f32(vdupq_n_f32(0.f), vcvtq_f32_s32(vcvtq_s32_f32(scl)));
+        vst1q_f32(reinterpret_cast<float*>(&v), vbslq_f32(blendMask, p, scl));
+
+    #else
+        v[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  v[0], widthScale)));
+        v[1] = math::max(0.f, math::floor(math::fmadd(heightScale, v[1], heightScale)));
+        //v = math::fmadd(math::vec4{widthScale, heightScale, 1.f, 1.f}, v, math::vec4{widthScale, heightScale, 0.f, 0.f});
+
     #endif
 }
 
@@ -208,18 +234,7 @@ inline LS_INLINE void sr_world_to_screen_coords_divided(math::vec4& v, const flo
 --------------------------------------*/
 inline LS_INLINE void sr_world_to_screen_coords_divided3(math::vec4& p0, math::vec4& p1, math::vec4& p2, const float widthScale, const float heightScale) noexcept
 {
-    #if !defined(LS_ARCH_X86)
-        p0[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  p0[0], widthScale)));
-        p0[1] = math::max(0.f, math::floor(math::fmadd(heightScale, p0[1], heightScale)));
-
-        p1[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  p1[0], widthScale)));
-        p1[1] = math::max(0.f, math::floor(math::fmadd(heightScale, p1[1], heightScale)));
-
-        p2[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  p2[0], widthScale)));
-        p2[1] = math::max(0.f, math::floor(math::fmadd(heightScale, p2[1], heightScale)));
-        //v = math::fmadd(math::vec4{widthScale, heightScale, 1.f, 1.f}, v, math::vec4{widthScale, heightScale, 0.f, 0.f});
-    #else
-
+    #if defined(LS_ARCH_X86)
         const __m128 wh0 = _mm_set_ps(0.f, 0.f, heightScale, widthScale);
         const __m128 wh1 = _mm_set_ps(1.f, 1.f, heightScale, widthScale);
 
@@ -238,6 +253,59 @@ inline LS_INLINE void sr_world_to_screen_coords_divided3(math::vec4& p0, math::v
         _mm_store_ps(reinterpret_cast<float*>(&p0), _mm_blend_ps(scl0, v0, 0x0C));
         _mm_store_ps(reinterpret_cast<float*>(&p1), _mm_blend_ps(scl1, v1, 0x0C));
         _mm_store_ps(reinterpret_cast<float*>(&p2), _mm_blend_ps(scl2, v2, 0x0C));
+
+    #elif defined(LS_ARCH_AARCH64)
+        const float32x4_t wh0{widthScale, heightScale, 0.f, 0.f};
+        const float32x4_t wh1{widthScale, heightScale, 1.f, 1.f};
+        const uint32x4_t blendMask{0x00000000, 0x00000000, 0xFFFFFFFF, 0xFFFFFFFF};
+
+        const float32x4_t v0 = vld1q_f32(reinterpret_cast<const float*>(&p0));
+        const float32x4_t v1 = vld1q_f32(reinterpret_cast<const float*>(&p1));
+        const float32x4_t v2 = vld1q_f32(reinterpret_cast<const float*>(&p2));
+
+        float32x4_t scl0 = vmlaq_f32(wh0, v0, wh1);
+        scl0 = vmaxq_f32(vdupq_n_f32(0.f), vrndmq_f32(scl0));
+        vst1q_f32(reinterpret_cast<float*>(&p0), vbslq_f32(blendMask, v0, scl0));
+
+        float32x4_t scl1 = vmlaq_f32(wh0, v1, wh1);
+        scl1 = vmaxq_f32(vdupq_n_f32(0.f), vrndmq_f32(scl1));
+        vst1q_f32(reinterpret_cast<float*>(&p1), vbslq_f32(blendMask, v1, scl1));
+
+        float32x4_t scl2 = vmlaq_f32(wh0, v2, wh1);
+        scl2 = vmaxq_f32(vdupq_n_f32(0.f), vrndmq_f32(scl2));
+        vst1q_f32(reinterpret_cast<float*>(&p2), vbslq_f32(blendMask, v2, scl2));
+
+    #elif defined(LS_ARCH_ARM)
+        const float32x4_t wh0{widthScale, heightScale, 0.f, 0.f};
+        const float32x4_t wh1{widthScale, heightScale, 1.f, 1.f};
+        const uint32x4_t blendMask{0x00000000, 0x00000000, 0xFFFFFFFF, 0xFFFFFFFF};
+
+        const float32x4_t v0 = vld1q_f32(reinterpret_cast<const float*>(&p0));
+        float32x4_t scl0 = vmlaq_f32(wh0, v0, wh1);
+        scl0 = vmaxq_f32(vdupq_n_f32(0.f), vcvtq_f32_s32(vcvtq_s32_f32(scl0)));
+        vst1q_f32(reinterpret_cast<float*>(&p0), vbslq_f32(blendMask, v0, scl0));
+
+        const float32x4_t v1 = vld1q_f32(reinterpret_cast<const float*>(&p1));
+        float32x4_t scl1 = vmlaq_f32(wh0, v1, wh1);
+        scl1 = vmaxq_f32(vdupq_n_f32(0.f), vcvtq_f32_s32(vcvtq_s32_f32(scl1)));
+        vst1q_f32(reinterpret_cast<float*>(&p1), vbslq_f32(blendMask, v1, scl1));
+
+        const float32x4_t v2 = vld1q_f32(reinterpret_cast<const float*>(&p2));
+        float32x4_t scl2 = vmlaq_f32(wh0, v2, wh1);
+        scl2 = vmaxq_f32(vdupq_n_f32(0.f), vcvtq_f32_s32(vcvtq_s32_f32(scl2)));
+        vst1q_f32(reinterpret_cast<float*>(&p2), vbslq_f32(blendMask, v2, scl2));
+
+    #else
+        p0[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  p0[0], widthScale)));
+        p0[1] = math::max(0.f, math::floor(math::fmadd(heightScale, p0[1], heightScale)));
+
+        p1[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  p1[0], widthScale)));
+        p1[1] = math::max(0.f, math::floor(math::fmadd(heightScale, p1[1], heightScale)));
+
+        p2[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  p2[0], widthScale)));
+        p2[1] = math::max(0.f, math::floor(math::fmadd(heightScale, p2[1], heightScale)));
+        //v = math::fmadd(math::vec4{widthScale, heightScale, 1.f, 1.f}, v, math::vec4{widthScale, heightScale, 0.f, 0.f});l
+
     #endif
 }
 
@@ -429,13 +497,13 @@ inline LS_INLINE SR_ClipStatus face_visible(const math::vec4& clip0, const math:
 
         const uint32x4_t vis = vandq_u32(le2, vandq_u32(le1, le0));
         const uint32x2_t vis2 = vand_u32(vget_low_u32(vis), vget_high_u32(vis));
-        const unsigned   visI = SR_TRIANGLE_FULLY_VISIBLE & vget_lane_u32(vis2, 0) & vget_lane_u32(vis2, 1);
+        const unsigned   visI = SR_TRIANGLE_FULLY_VISIBLE & vget_lane_u32(vand_u32(vis2, vrev64_u32(vis2)), 0);
 
         const uint32x2_t gt0 = vcgt_f32(vget_low_f32(w0p), vcreate_f32(0));
         const uint32x2_t gt1 = vcgt_f32(vget_low_f32(w1p), vcreate_f32(0));
         const uint32x2_t gt2 = vcgt_f32(vget_low_f32(w2p), vcreate_f32(0));
         const uint32x2_t part2 = vorr_u32(gt2, vorr_u32(gt1, gt0));
-        const unsigned   partI = SR_TRIANGLE_PARTIALLY_VISIBLE & (vget_lane_u32(part2, 0) | vget_lane_u32(part2, 1));
+        const unsigned   partI = SR_TRIANGLE_PARTIALLY_VISIBLE & vget_lane_u32(vorr_u32(part2, vrev64_u32(part2)), 0);
 
         return (SR_ClipStatus)(visI | partI);
 
