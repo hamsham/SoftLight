@@ -17,33 +17,6 @@
  * Helper Functions
 -----------------------------------------------------------------------------*/
 /**
- * @brief Retrieve the offset to a threads first renderable scanline.
- *
- * @tparam data_t
- * The requested data type.
- *
- * @param numThreads
- * The number of threads which are currently being used for rendering.
- *
- * @param threadId
- * The current thread's ID (0-based index).
- *
- * @param fragmentY
- * The initial scanline for a line or triangle being rendered.
- */
-template <typename data_t>
-constexpr LS_INLINE data_t sr_scanline_offset(
-    const data_t numThreads,
-    const data_t threadId,
-    const data_t fragmentY) noexcept
-{
-    //return numThreads - 1 - (((fragmentY % numThreads) + threadId) % numThreads);
-    return numThreads - 1 - ((fragmentY + threadId) % numThreads);
-}
-
-
-
-/**
  * @brief Calculate the optimal tiling for the fragment shader threads.
  *
  * Given a number of threads, retrieve the optimal number of horizontal and
