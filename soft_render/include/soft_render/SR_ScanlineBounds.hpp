@@ -149,8 +149,8 @@ struct alignas(sizeof(float)*4) SR_ScanlineBounds
             const __m128 p1001      = _mm_set_ss(p10xy);
             const __m128 p200       = _mm_set_ss(p20x);
             const __m128 p2101      = _mm_set_ss(p21xy);
-            const __m128 pdv0       = _mm_fmadd_ss( p1001, d0,    v00);
             const __m128 lo         = _mm_fmadd_ss( p200,  alpha, v00);
+            const __m128 pdv0       = _mm_fmadd_ss( p1001, d0,    v00);
             const __m128 pdv1       = _mm_fmadd_ss( p2101, d1,    v10);
             const __m128 hi         = _mm_blendv_ps(pdv0,  pdv1,  d1);
 
@@ -172,8 +172,8 @@ struct alignas(sizeof(float)*4) SR_ScanlineBounds
             const float32x2_t p1001      = vdup_n_f32(p10xy);
             const float32x2_t p200       = vdup_n_f32(p20x);
             const float32x2_t p2101      = vdup_n_f32(p21xy);
-            const float32x2_t pdv0       = vmla_f32(v00, p1001, d0);
             const float32x2_t lo         = vmla_f32(v00, p200,  alpha);
+            const float32x2_t pdv0       = vmla_f32(v00, p1001, d0);
             const float32x2_t pdv1       = vmla_f32(v10, p2101, d1);
             const float32x2_t hi         = vbsl_f32(secondHalf, pdv1, pdv0);
 
