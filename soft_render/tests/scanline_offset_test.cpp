@@ -1,7 +1,7 @@
 
 #include <iostream>
 
-#include "soft_render/SR_ShaderUtil.hpp" // sr_scanline_offset()
+#include "soft_render/SR_ScanlineBounds.hpp" // sr_scanline_offset()
 
 
 
