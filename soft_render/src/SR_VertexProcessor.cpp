@@ -1127,7 +1127,7 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
         begin += m.elementBegin;
         end += m.elementBegin;
 
-        //SR_PTVCache ptvCache{shader, params};
+        SR_PTVCache ptvCache{shader, params};
     #else
         const size_t begin = m.elementBegin + mThreadId * 3u;
         const size_t end   = m.elementEnd;
