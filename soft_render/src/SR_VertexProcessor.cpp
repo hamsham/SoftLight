@@ -79,10 +79,9 @@ class SR_PTVCache
         }
     }
 
-    inline SR_TransformedVert* query_and_update(size_t key, size_t numVaryings) noexcept
+    inline SR_TransformedVert* query_and_update(size_t key) noexcept
     {
         size_t i = key % PTV_CACHE_SIZE;
-        (void)numVaryings;
 
         if (LS_UNLIKELY(mIndices[i] != key))
         {
@@ -996,7 +995,6 @@ void SR_VertexProcessor::process_points(const SR_Mesh& m, size_t instanceId) noe
         end += m.elementBegin;
 
         SR_PTVCache ptvCache{shader, params};
-        const size_t numVaryings = vertShader.numVaryings;
     #else
         const size_t begin = m.elementBegin + mThreadId;
         const size_t end   = m.elementEnd;
@@ -1007,7 +1005,7 @@ void SR_VertexProcessor::process_points(const SR_Mesh& m, size_t instanceId) noe
     {
         #if SR_VERTEX_CACHING_ENABLED
             const size_t vertId = usingIndices ? get_next_vertex(pIbo, i) : i;
-            pVert0 = *ptvCache.query_and_update(vertId, numVaryings);
+            pVert0 = *ptvCache.query_and_update(vertId);
         #else
             params.vertId    = usingIndices ? get_next_vertex(pIbo, i) : i;
             params.pVaryings = pVert0.varyings;
@@ -1057,7 +1055,6 @@ void SR_VertexProcessor::process_lines(const SR_Mesh& m, size_t instanceId) noex
         end += m.elementBegin;
 
         SR_PTVCache ptvCache{shader, params};
-        const size_t numVaryings = vertShader.numVaryings;
     #else
         const size_t begin = m.elementBegin + mThreadId * 2u;
         const size_t end   = m.elementEnd;
@@ -1072,8 +1069,8 @@ void SR_VertexProcessor::process_lines(const SR_Mesh& m, size_t instanceId) noex
         #if SR_VERTEX_CACHING_ENABLED
             const size_t vertId0 = usingIndices ? get_next_vertex(pIbo, index0) : index0;
             const size_t vertId1 = usingIndices ? get_next_vertex(pIbo, index1) : index1;
-            pVert0 = *ptvCache.query_and_update(vertId0, numVaryings);
-            pVert1 = *ptvCache.query_and_update(vertId1, numVaryings);
+            pVert0 = *ptvCache.query_and_update(vertId0);
+            pVert1 = *ptvCache.query_and_update(vertId1);
         #else
             params.vertId    = usingIndices ? get_next_vertex(pIbo, index0) : index0;
             params.pVaryings = pVert0.varyings;
@@ -1126,12 +1123,11 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
         size_t end;
         constexpr size_t step = 3;
 
-        sr_calc_indexed_parition2<3>(m.elementEnd-m.elementBegin, mNumThreads, mThreadId, begin, end);
+        sr_calc_indexed_parition<3, true>(m.elementEnd-m.elementBegin, mNumThreads, mThreadId, begin, end);
         begin += m.elementBegin;
         end += m.elementBegin;
 
-        SR_PTVCache ptvCache{shader, params};
-        const size_t numVaryings = vertShader.numVaryings;
+        //SR_PTVCache ptvCache{shader, params};
     #else
         const size_t begin = m.elementBegin + mThreadId * 3u;
         const size_t end   = m.elementEnd;
@@ -1143,9 +1139,9 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
         const math::vec3_t<size_t>&& vertId = usingIndices ? get_next_vertex3(pIbo, i) : math::vec3_t<size_t>{i, i+1, i+2};
 
         #if SR_VERTEX_CACHING_ENABLED
-            pVert0 = *ptvCache.query_and_update(vertId[0], numVaryings);
-            pVert1 = *ptvCache.query_and_update(vertId[1], numVaryings);
-            pVert2 = *ptvCache.query_and_update(vertId[2], numVaryings);
+            pVert0 = *ptvCache.query_and_update(vertId[0]);
+            pVert1 = *ptvCache.query_and_update(vertId[1]);
+            pVert2 = *ptvCache.query_and_update(vertId[2]);
         #else
             params.vertId    = vertId.v[0];
             params.pVaryings = pVert0.varyings;
