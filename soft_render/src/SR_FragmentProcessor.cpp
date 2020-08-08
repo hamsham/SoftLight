@@ -460,7 +460,7 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
 {
     const SR_FragmentBin* pBin         = mBins;
     SR_FragCoord*         outCoords    = mQueues;
-    const int32_t         yOffset      = (uint32_t)mThreadId;
+    const int32_t         yOffset      = (int32_t)mThreadId;
     const int32_t         increment    = (int32_t)mNumProcessors;
     const int32_t         depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_ON;
     SR_ScanlineBounds     scanline;
@@ -472,16 +472,13 @@ void SR_FragmentProcessor::render_wireframe(const SR_Texture* depthBuffer) const
         const math::vec4* bcClipSpace    = pBin->mBarycentricCoords;
         const math::vec4  depth          {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
         const math::vec4  homogenous     {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
-
-        int32_t bboxMinY = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
-        int32_t bboxMaxY = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
-
-        // Let each thread start rendering at whichever scanline it's assigned to
-        bboxMinY += sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
+        const int32_t     bboxMinY       = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
+        const int32_t     scanLineOffset = bboxMinY + sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
+        const int32_t     bboxMaxY       = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
 
         scanline.init(pPoints[0], pPoints[1], pPoints[2]);
 
-        for (int32_t y = bboxMinY; y < bboxMaxY; y += increment)
+        for (int32_t y = scanLineOffset; y < bboxMaxY; y += increment)
         {
             // calculate the bounds of the current scan-line
             const float        yf     = (float)y;
@@ -553,7 +550,7 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
 {
     const SR_FragmentBin* pBin         = mBins;
     SR_FragCoord*         outCoords    = mQueues;
-    const int32_t         yOffset      = (uint32_t)mThreadId;
+    const int32_t         yOffset      = (int32_t)mThreadId;
     const int32_t         increment    = (int32_t)mNumProcessors;
     const int32_t         depthTesting = mShader->fragment_shader().depthTest == SR_DEPTH_TEST_OFF;
     SR_ScanlineBounds     scanline;
@@ -565,16 +562,13 @@ void SR_FragmentProcessor::render_triangle(const SR_Texture* depthBuffer) const 
         const math::vec4* bcClipSpace    = pBin->mBarycentricCoords;
         const math::vec4  depth          {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
         const math::vec4  homogenous     {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
-
-        int32_t bboxMinY = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
-        int32_t bboxMaxY = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
-
-        // Let each thread start rendering at whichever scanline it's assigned to
-        bboxMinY += sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
+        const int32_t     bboxMinY       = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
+        const int32_t     scanLineOffset = bboxMinY + sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
+        const int32_t     bboxMaxY       = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
 
         scanline.init(pPoints[0], pPoints[1], pPoints[2]);
 
-        for (int32_t y = bboxMinY; y < bboxMaxY; y += increment)
+        for (int32_t y = scanLineOffset; y < bboxMaxY; y += increment)
         {
             // calculate the bounds of the current scan-line
             const float        yf     = (float)y;
@@ -644,7 +638,7 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
 {
     const SR_FragmentBin* pBin         = mBins;
     SR_FragCoord*         outCoords    = mQueues;
-    const int32_t         yOffset      = (uint32_t)mThreadId;
+    const int32_t         yOffset      = (int32_t)mThreadId;
     const int32_t         increment    = (int32_t)mNumProcessors;
     const int32_t         depthTesting = -(mShader->fragment_shader().depthTest == SR_DEPTH_TEST_OFF) & 0x0F;
     SR_ScanlineBounds     scanline;
@@ -656,16 +650,13 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
         const math::vec4* bcClipSpace    = pBin->mBarycentricCoords;
         const math::vec4  depth          {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
         const math::vec4  homogenous     {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
-
-        int32_t bboxMinY = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
-        int32_t bboxMaxY = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
-
-        // Let each thread start rendering at whichever scanline it's assigned to
-        bboxMinY += sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
+        const int32_t     bboxMinY       = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
+        const int32_t     scanLineOffset = bboxMinY + sr_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
+        const int32_t     bboxMaxY       = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
 
         scanline.init(pPoints[0], pPoints[1], pPoints[2]);
 
-        for (int32_t y = bboxMinY; y < bboxMaxY; y += increment)
+        for (int32_t y = scanLineOffset; y < bboxMaxY; y += increment)
         {
             // calculate the bounds of the current scan-line
             const float yf = (float)y;
@@ -682,7 +673,7 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
             math::vec4i&&       x4     = math::vec4i{0, 1, 2, 3} + xMin;
             const math::vec4i&& xMaxf  = (float)xMax;
 
-            for (; x4[0] < xMax; pDepth += 4, x4 += 4)
+            for (; x4.v[0] < xMax; pDepth += 4, x4 += 4)
             {
                 // calculate barycentric coordinates and perform a depth test
                 const math::vec4&& d      = (math::vec4)(*reinterpret_cast<const math::vec4_t<depth_type>*>(pDepth));
@@ -701,40 +692,39 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
                     continue;
                 }
 
-                math::vec4i storeMasks{depthTest};
-                storeMasks[0] &= 0x00;
-                storeMasks[1] &= 0x01;
-                storeMasks[2] &= 0x03;
-                storeMasks[3] &= 0x07;
+                math::vec4i storeMasks{
+                    depthTest & 0x00,
+                    depthTest & 0x01,
+                    depthTest & 0x03,
+                    depthTest & 0x07
+                };
 
-                storeMasks[0] = 0;
-                storeMasks[1] = math::popcnt_i32(storeMasks[1]);
-                storeMasks[2] = math::popcnt_i32(storeMasks[2]);
-                storeMasks[3] = math::popcnt_i32(storeMasks[3]);
-
+                storeMasks.v[0] = 0;
+                storeMasks.v[1] = math::popcnt_i32(storeMasks.v[1]);
+                storeMasks.v[2] = math::popcnt_i32(storeMasks.v[2]);
+                storeMasks.v[3] = math::popcnt_i32(storeMasks.v[3]);
                 storeMasks += (int32_t)numQueuedFrags;
 
                 const math::vec4&& persp4 = math::rcp(homogenous * bc);
+                bc.m[0] *= homogenous;
+                bc.m[1] *= homogenous;
+                bc.m[2] *= homogenous;
+                bc.m[3] *= homogenous;
 
-                bc[0] *= homogenous;
-                bc[1] *= homogenous;
-                bc[2] *= homogenous;
-                bc[3] *= homogenous;
+                outCoords->bc[storeMasks.v[0]] = bc[0] * persp4[0];
+                outCoords->bc[storeMasks.v[1]] = bc[1] * persp4[1];
+                outCoords->bc[storeMasks.v[2]] = bc[2] * persp4[2];
+                outCoords->bc[storeMasks.v[3]] = bc[3] * persp4[3];
 
-                outCoords->bc[storeMasks[0]] = bc[0] * persp4[0];
-                outCoords->bc[storeMasks[1]] = bc[1] * persp4[1];
-                outCoords->bc[storeMasks[2]] = bc[2] * persp4[2];
-                outCoords->bc[storeMasks[3]] = bc[3] * persp4[3];
+                const SR_FragCoordXYZ coord0{(uint16_t)x4.v[0], (uint16_t)y, z.v[0]};
+                const SR_FragCoordXYZ coord1{(uint16_t)x4.v[1], (uint16_t)y, z.v[1]};
+                const SR_FragCoordXYZ coord2{(uint16_t)x4.v[2], (uint16_t)y, z.v[2]};
+                const SR_FragCoordXYZ coord3{(uint16_t)x4.v[3], (uint16_t)y, z.v[3]};
 
-                const SR_FragCoordXYZ coord0{(uint16_t)x4[0], (uint16_t)y, z[0]};
-                const SR_FragCoordXYZ coord1{(uint16_t)x4[1], (uint16_t)y, z[1]};
-                const SR_FragCoordXYZ coord2{(uint16_t)x4[2], (uint16_t)y, z[2]};
-                const SR_FragCoordXYZ coord3{(uint16_t)x4[3], (uint16_t)y, z[3]};
-
-                outCoords->coord[storeMasks[0]] = coord0;
-                outCoords->coord[storeMasks[1]] = coord1;
-                outCoords->coord[storeMasks[2]] = coord2;
-                outCoords->coord[storeMasks[3]] = coord3;
+                outCoords->coord[storeMasks.v[0]] = coord0;
+                outCoords->coord[storeMasks.v[1]] = coord1;
+                outCoords->coord[storeMasks.v[2]] = coord2;
+                outCoords->coord[storeMasks.v[3]] = coord3;
 
                 numQueuedFrags += math::popcnt_u32(depthTest & 0x0F);
                 if (LS_UNLIKELY(numQueuedFrags > SR_SHADER_MAX_QUEUED_FRAGS-4))
