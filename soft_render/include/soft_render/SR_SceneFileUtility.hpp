@@ -12,8 +12,9 @@
 #include <assimp/cimport.h>
 
 #include "soft_render/SR_Animation.hpp"
-#include "soft_render/SR_Mesh.hpp"
 #include "soft_render/SR_Color.hpp"
+#include "soft_render/SR_Config.hpp" // SR_VERTEX_CACHING_ENABLED
+#include "soft_render/SR_Mesh.hpp"
 #include "soft_render/SR_SceneNode.hpp"
 
 
@@ -47,13 +48,16 @@ enum : unsigned int
         | aiProcess_FixInfacingNormals
         | aiProcess_FindInvalidData
         | aiProcess_ValidateDataStructure
-        //| aiProcess_ImproveCacheLocality
         | aiProcess_TransformUVCoords
         | aiProcess_GenUVCoords
         | aiProcess_RemoveRedundantMaterials
         //| aiProcess_GenSmoothNormals
         //| aiProcess_GenNormals
         | aiProcess_Triangulate // the renderer can only handle triangles
+
+#if SR_VERTEX_CACHING_ENABLED
+        | aiProcess_ImproveCacheLocality
+#endif
         | 0
 };
 

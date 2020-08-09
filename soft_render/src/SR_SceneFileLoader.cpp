@@ -254,7 +254,10 @@ bool SR_SceneFilePreload::load(const std::string& filename, SR_SceneLoadOpts opt
     fileImporter.SetPropertyInteger(AI_CONFIG_PP_LBW_MAX_WEIGHTS, (int)SR_BONE_MAX_WEIGHTS);
     fileImporter.SetPropertyInteger(AI_CONFIG_FAVOUR_SPEED, 1);
     fileImporter.SetPropertyBool(AI_CONFIG_IMPORT_NO_SKELETON_MESHES, AI_TRUE);
-    //fileImporter.SetPropertyInteger(AI_CONFIG_PP_ICL_PTCACHE_SIZE, 32);
+
+    #if SR_VERTEX_CACHING_ENABLED
+        fileImporter.SetPropertyInteger(AI_CONFIG_PP_ICL_PTCACHE_SIZE, SR_VERTEX_CACHE_SIZE);
+    #endif
 
     fileImporter.SetPropertyInteger(AI_CONFIG_PP_FD_REMOVE, 1); // remove degenerate triangles
     fileImporter.SetPropertyBool(AI_CONFIG_PP_FD_CHECKAREA, AI_FALSE); // During degenerate removal, don't remove small triangles

@@ -130,7 +130,7 @@ inline LS_INLINE math::vec4 sr_perspective_divide(const math::vec4& v) noexcept
 /*--------------------------------------
  * Convert world coordinates to screen coordinates (temporary until NDC clipping is added)
 --------------------------------------*/
-inline LS_INLINE void sr_perspective_divide3(math::vec4& v0, math::vec4& v1, math::vec4& v2) noexcept
+inline LS_INLINE void sr_perspective_divide3(math::vec4& LS_RESTRICT_PTR v0, math::vec4& LS_RESTRICT_PTR v1, math::vec4& LS_RESTRICT_PTR v2) noexcept
 {
     #if defined(LS_ARCH_X86)
         const __m128 p0    = _mm_load_ps(reinterpret_cast<const float*>(&v0));
@@ -231,7 +231,13 @@ inline LS_INLINE void sr_world_to_screen_coords_divided(math::vec4& v, const flo
 /*--------------------------------------
  * Convert world coordinates to screen coordinates (temporary until NDC clipping is added)
 --------------------------------------*/
-inline LS_INLINE void sr_world_to_screen_coords_divided3(math::vec4& p0, math::vec4& p1, math::vec4& p2, const float widthScale, const float heightScale) noexcept
+inline LS_INLINE void sr_world_to_screen_coords_divided3(
+    math::vec4& LS_RESTRICT_PTR p0,
+    math::vec4& LS_RESTRICT_PTR p1,
+    math::vec4& LS_RESTRICT_PTR p2,
+    const float widthScale,
+    const float heightScale
+) noexcept
 {
     #if defined(LS_ARCH_X86)
         const __m128 wh0 = _mm_set_ps(0.f, 0.f, heightScale, widthScale);
@@ -332,7 +338,7 @@ inline LS_INLINE void sr_world_to_screen_coords(math::vec4& v, const float width
 /*--------------------------------------
  * Get the next vertex from an IBO
 --------------------------------------*/
-inline size_t get_next_vertex(const SR_IndexBuffer* pIbo, size_t vId) noexcept
+inline size_t get_next_vertex(const SR_IndexBuffer* LS_RESTRICT_PTR pIbo, size_t vId) noexcept
 {
     switch (pIbo->type())
     {
@@ -347,7 +353,7 @@ inline size_t get_next_vertex(const SR_IndexBuffer* pIbo, size_t vId) noexcept
 
 
 
-inline LS_INLINE math::vec3_t<size_t> get_next_vertex3(const SR_IndexBuffer* pIbo, size_t vId) noexcept
+inline LS_INLINE math::vec3_t<size_t> get_next_vertex3(const SR_IndexBuffer* LS_RESTRICT_PTR pIbo, size_t vId) noexcept
 {
     math::vec3_t<unsigned char> byteIds;
     math::vec3_t<unsigned short> shortIds;
@@ -379,49 +385,58 @@ inline LS_INLINE math::vec3_t<size_t> get_next_vertex3(const SR_IndexBuffer* pIb
 /*--------------------------------------
  * Triangle determinants for backface culling
 --------------------------------------*/
-inline LS_INLINE float face_determinant(math::vec4 p0, math::vec4 p1, math::vec4 p2) noexcept
+inline LS_INLINE float face_determinant(
+    const math::vec4& LS_RESTRICT_PTR p0,
+    const math::vec4& LS_RESTRICT_PTR p1,
+    const math::vec4& LS_RESTRICT_PTR p2
+) noexcept
 {
     // 3D homogeneous determinant of the 3 vertices of a triangle. The
     // Z-component of each 3D vertex is replaced by the 4D W-component.
 
     #if defined(LS_ARCH_X86)
-        // Swap the z and w components for each vector. Z will be discarded later
-        const __m128 col4 = _mm_blend_ps(_mm_permute_ps(p0.simd, 0xB4), _mm_setzero_ps(), 0x08);
-
         constexpr int shuffleMask120 = 0x8D; // indices: <base> + (2, 0, 3, 1): 10001101
         constexpr int shuffleMask201 = 0x93; // indices: <base> + (2, 1, 0, 3): 10010011
 
-        const __m128 col2 = _mm_permute_ps(p1.simd, shuffleMask201);
-        const __m128 col3 = _mm_mul_ps(col2, _mm_permute_ps(p2.simd, shuffleMask120));
+        // Swap the z and w components for each vector while placing the
+        // remaining elements in a position optimal for calculating the
+        // determinant.
+        const __m128 col4   = _mm_insert_ps( p0.simd, p0.simd, 0xE8);
+        const __m128 p1_201 = _mm_permute_ps(p1.simd, shuffleMask201);
+        const __m128 p2_120 = _mm_permute_ps(p2.simd, shuffleMask120);
+        const __m128 p1_120 = _mm_permute_ps(p1.simd, shuffleMask120);
+        const __m128 p2_201 = _mm_permute_ps(p2.simd, shuffleMask201);
 
-        const __m128 col0 = _mm_permute_ps(p1.simd, shuffleMask120);
-        const __m128 col1 = _mm_mul_ps(col0, _mm_permute_ps(p2.simd, shuffleMask201));
-
-        const __m128 sub0 = _mm_sub_ps(col1, col3);
+        const __m128 col3 = _mm_mul_ps(p1_201, p2_120);
+        const __m128 col1 = _mm_mul_ps(p1_120, p2_201);
+        const __m128 sub0 = _mm_sub_ps(col1,   col3);
 
         // Remove the Z component which was shuffled earlier
         const __m128 mul2 = _mm_mul_ps(sub0, col4);
 
-        // horizontal add: swap the words of each vector, add, then swap each
-        // half of the vectors and perform a final add.
-        const __m128 swap = _mm_add_ps(mul2, _mm_movehl_ps(mul2, mul2));
-        const __m128 sum  = _mm_add_ps(swap, _mm_permute_ps(swap, 1));
-
+        // horizontal add of only the first 3 elements. We're using the
+        // W-component of each vector as the 3rd dimension for out determinant
+        // calculation
+        __m128 sum;
+        const __m128 lo = _mm_permute_ps(mul2, 0x55);
+        const __m128 hi = _mm_movehl_ps(mul2, mul2);
+        sum = _mm_add_ss(mul2, lo);
+        sum = _mm_add_ss(sum, hi);
         return _mm_cvtss_f32(sum);
 
     #elif defined(LS_ARCH_ARM) // based on the AVX implementation
         const float32x4_t col4 = vcombine_f32(vget_low_f32(p0.simd), vrev64_f32(vget_high_f32(p0.simd)));
 
-        const float32x2x2_t z1_120 = vzip_f32(vget_low_f32(p1.simd), vget_high_f32(p1.simd));
-        const float32x4_t col0 = vcombine_f32(z1_120.val[1], z1_120.val[0]);
+        const float32x2x2_t p1_120 = vzip_f32(vget_low_f32(p1.simd), vget_high_f32(p1.simd));
+        const float32x4_t col0 = vcombine_f32(p1_120.val[1], p1_120.val[0]);
 
-        const uint32x4_t z2_201 = vextq_u32(vreinterpretq_u32_f32(p2.simd), vreinterpretq_u32_f32(p2.simd), 3);
-        const float32x4_t col1 = vmulq_f32(col0, vreinterpretq_f32_u32(z2_201));
+        const uint32x4_t p2_201 = vextq_u32(vreinterpretq_u32_f32(p2.simd), vreinterpretq_u32_f32(p2.simd), 3);
+        const float32x4_t col1 = vmulq_f32(col0, vreinterpretq_f32_u32(p2_201));
 
         const float32x4_t col2 = vreinterpretq_f32_u32(vextq_u32(vreinterpretq_u32_f32(p1.simd), vreinterpretq_u32_f32(p1.simd), 3));
 
-        const float32x2x2_t z2_120 = vzip_f32(vget_low_f32(p2.simd), vget_high_f32(p2.simd));
-        const float32x4_t sub0 = vmlsq_f32(col1, col2, vcombine_f32(z2_120.val[1], z2_120.val[0]));
+        const float32x2x2_t p2_120 = vzip_f32(vget_low_f32(p2.simd), vget_high_f32(p2.simd));
+        const float32x4_t sub0 = vmlsq_f32(col1, col2, vcombine_f32(p2_120.val[1], p2_120.val[0]));
 
         // perform a dot product to get the determinant
         const float32x4_t mul2 = vmulq_f32(sub0, col4);
@@ -463,7 +478,11 @@ inline LS_INLINE float face_determinant(math::vec4 p0, math::vec4 p1, math::vec4
 /*--------------------------------------
  * Cull only triangle outside of the screen
 --------------------------------------*/
-inline LS_INLINE SR_ClipStatus face_visible(const math::vec4& clip0, const math::vec4& clip1, const math::vec4& clip2) noexcept
+inline LS_INLINE SR_ClipStatus face_visible(
+    const math::vec4& LS_RESTRICT_PTR clip0,
+    const math::vec4& LS_RESTRICT_PTR clip1,
+    const math::vec4& LS_RESTRICT_PTR clip2
+) noexcept
 {
     #if defined(LS_ARCH_X86)
         const __m128 w0p = _mm_permute_ps(clip0.simd, 0xFF);
@@ -702,7 +721,7 @@ void SR_VertexProcessor::push_bin(
 
     int isPrimHidden = (bboxMaxX < 0.f || bboxMaxY < 0.f || fboW < bboxMinX || fboH < bboxMinY);
     isPrimHidden = isPrimHidden || (bboxMaxX-bboxMinX < 1.f) || (bboxMaxY-bboxMinY < 1.f);
-    if (isPrimHidden)
+    if (LS_UNLIKELY(isPrimHidden))
     {
         return;
     }
@@ -720,9 +739,16 @@ void SR_VertexProcessor::push_bin(
     // is only used for rendering triangles.
     if (renderMode == SR_RenderMode::RENDER_MODE_TRIANGLES)
     {
-        const float denom = 1.f / ((p0[0]-p2[0])*(p1[1]-p0[1]) - (p0[0]-p1[0])*(p2[1]-p0[1]));
-        bin.mBarycentricCoords[0] = denom*math::vec4(p1[1]-p2[1], p2[1]-p0[1], p0[1]-p1[1], 0.f);
-        bin.mBarycentricCoords[1] = denom*math::vec4(p2[0]-p1[0], p0[0]-p2[0], p1[0]-p0[0], 0.f);
+        const math::vec4&& p0p1 = p0 - p1;
+        const math::vec4&& p0p2 = p0 - p2;
+        const math::vec4&& p1p0 = p1 - p0;
+        const math::vec4&& p1p2 = p1 - p2;
+        const math::vec4&& p2p0 = p2 - p0;
+        const math::vec4&& p2p1 = p2 - p1;
+
+        const float denom = math::rcp((p0p2[0])*(p1p0[1]) - (p0p1[0])*(p2p0[1]));
+        bin.mBarycentricCoords[0] = denom*math::vec4(p1p2[1], p2p0[1], p0p1[1], 0.f);
+        bin.mBarycentricCoords[1] = denom*math::vec4(p2p1[0], p0p2[0], p1p0[0], 0.f);
         bin.mBarycentricCoords[2] = denom*math::vec4(
             p1[0]*p2[1] - p2[0]*p1[1],
             p2[0]*p0[1] - p0[0]*p2[1],
@@ -732,33 +758,31 @@ void SR_VertexProcessor::push_bin(
     }
 
     unsigned i;
-    const math::vec4* pInVar;
-    math::vec4* pOutVar;
     switch (vertCount)
     {
         case 3:
-            pInVar = c.varyings;
-            pOutVar = bin.mVaryings + 2 * SR_SHADER_MAX_VARYING_VECTORS;
-            for (i = numVaryings; i--;)
+            for (i = 0; i < numVaryings; ++i)
             {
-                *pOutVar++ = *pInVar++;
+                bin.mVaryings[i+SR_SHADER_MAX_VARYING_VECTORS*0] = a.varyings[i];
+                bin.mVaryings[i+SR_SHADER_MAX_VARYING_VECTORS*1] = b.varyings[i];
+                bin.mVaryings[i+SR_SHADER_MAX_VARYING_VECTORS*2] = c.varyings[i];
             }
+            break;
 
         case 2:
-            pInVar = b.varyings;
-            pOutVar = bin.mVaryings + 1 * SR_SHADER_MAX_VARYING_VECTORS;
-            for (i = numVaryings; i--;)
+            for (i = 0; i < numVaryings; ++i)
             {
-                *pOutVar++ = *pInVar++;
+                bin.mVaryings[i+SR_SHADER_MAX_VARYING_VECTORS*0] = a.varyings[i];
+                bin.mVaryings[i+SR_SHADER_MAX_VARYING_VECTORS*1] = b.varyings[i];
             }
+            break;
 
         case 1:
-            pInVar = a.varyings;
-            pOutVar = bin.mVaryings + 0 * SR_SHADER_MAX_VARYING_VECTORS;
-            for (i = numVaryings; i--;)
+            for (i = 0; i < numVaryings; ++i)
             {
-                *pOutVar++ = *pInVar++;
+                bin.mVaryings[i] = a.varyings[i];
             }
+            break;
     }
 
     // Check if the output bin is full
@@ -1160,8 +1184,14 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
         {
             const float det = face_determinant(pVert0.vert, pVert1.vert, pVert2.vert);
 
-            if ((cullMode == SR_CULL_BACK_FACE && det < 0.f)
-            || (cullMode == SR_CULL_FRONT_FACE && det > 0.f))
+            // Using bitwise magic to reduce time spent making comparisons.
+            // We can cull the backface with (det < 0.f) or cull the front
+            // face with (det > 0.f).
+
+            const bool culled = (cullMode == SR_CULL_BACK_FACE) ^ (det > 0.f);
+            //if ((cullMode == SR_CULL_BACK_FACE && det < 0.f)
+            //|| (cullMode == SR_CULL_FRONT_FACE && det > 0.f))
+            if (culled)
             {
                 continue;
             }
@@ -1169,20 +1199,19 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
 
         // Clip-space culling
         const SR_ClipStatus visStatus = face_visible(pVert0.vert, pVert1.vert, pVert2.vert);
-        if (visStatus == SR_TRIANGLE_NOT_VISIBLE)
+        switch (visStatus)
         {
-            continue;
-        }
+            case SR_TRIANGLE_FULLY_VISIBLE:
+                sr_perspective_divide3(pVert0.vert, pVert1.vert, pVert2.vert);
+                sr_world_to_screen_coords_divided3(pVert0.vert, pVert1.vert, pVert2.vert, widthScale, heightScale);
+                push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES, 3>(fboW, fboH, pVert0, pVert1, pVert2);
+                break;
 
-        if (visStatus == SR_TRIANGLE_FULLY_VISIBLE)
-        {
-            sr_perspective_divide3(pVert0.vert, pVert1.vert, pVert2.vert);
-            sr_world_to_screen_coords_divided3(pVert0.vert, pVert1.vert, pVert2.vert, widthScale, heightScale);
-            push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES, 3>(fboW, fboH, pVert0, pVert1, pVert2);
-        }
-        else
-        {
-            clip_and_process_tris(fboW, fboH, pVert0, pVert1, pVert2);
+            case SR_TRIANGLE_PARTIALLY_VISIBLE:
+                clip_and_process_tris(fboW, fboH, pVert0, pVert1, pVert2);
+
+            default:
+                break;
         }
     }
 }

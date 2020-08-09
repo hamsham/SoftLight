@@ -62,19 +62,14 @@ inline LS_INLINE void sr_sort_minmax(__m128& a, __m128& b)  noexcept
 
 inline LS_INLINE void sr_sort_minmax(float32x4_t& a, float32x4_t& b)  noexcept
 {
-    const float32x4_t ya   = vdupq_n_f32(vgetq_lane_f32(a, 1));
-    const float32x4_t yb   = vdupq_n_f32(vgetq_lane_f32(b, 1));
-    const uint32x4_t  ai   = vreinterpretq_u32_f32(a);
-    const uint32x4_t  bi   = vreinterpretq_u32_f32(b);
+    const float32x4_t ay   = vdupq_n_f32(vgetq_lane_f32(a, 1));
+    const float32x4_t by   = vdupq_n_f32(vgetq_lane_f32(b, 1));
+    const uint32x4_t  mask = vcltq_f32(ay, by);
+    const float32x4_t at   = a;
+    const float32x4_t bt   = b;
 
-    const uint32x4_t mask = vcltq_f32(ya, yb);
-    const uint32x4_t al   = vandq_u32(vmvnq_u32(mask), ai);
-    const uint32x4_t bg   = vandq_u32(vmvnq_u32(mask), bi);
-    const uint32x4_t bl   = vandq_u32(mask, bi);
-    const uint32x4_t ag   = vandq_u32(mask, ai);
-
-    a = vreinterpretq_f32_u32(vorrq_u32(al, bl));
-    b = vreinterpretq_f32_u32(vorrq_u32(ag, bg));
+    a = vbslq_f32(mask, bt, at);
+    b = vbslq_f32(mask, at, bt);
 }
 
 #endif
@@ -127,10 +122,10 @@ struct alignas(sizeof(float)*4) SR_ScanlineBounds
         v0x = p0[0];
         v1x = p1[0];
 
-        p20y  = 1.f / (p2[1] - p0[1]);
+        p20y  = ls::math::rcp(p2[1] - p0[1]);
         p20x  = p2[0] - p0[0];
-        p21xy = (p2[0] - p1[0]) / (p2[1] - p1[1]);
-        p10xy = (p1[0] - p0[0]) / (p1[1] - p0[1]);
+        p21xy = (p2[0] - p1[0]) * ls::math::rcp(p2[1] - p1[1]);
+        p10xy = (p1[0] - p0[0]) * ls::math::rcp(p1[1] - p0[1]);
     }
 
     inline void LS_INLINE step(const float yf, int32_t& xMin, int32_t& xMax) const noexcept

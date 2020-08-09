@@ -221,19 +221,19 @@ enum SR_ShaderLimits
  * Padded data types to avoid false sharing
 -----------------------------------------------------------------------------*/
 template <typename data_t>
-struct SR_BinCounter
+struct alignas(sizeof(data_t)) SR_BinCounter
 {
     typename ls::setup::EnableIf<ls::setup::IsIntegral<data_t>::value, data_t>::type count;
-    uint8_t padding[128];
+    uint8_t padding[128-sizeof(data_t)];
 };
 
 
 
 template <typename data_t>
-struct SR_BinCounterAtomic
+struct alignas(sizeof(data_t)) SR_BinCounterAtomic
 {
     std::atomic<typename ls::setup::EnableIf<ls::setup::IsIntegral<data_t>::value, data_t>::type> count;
-    uint8_t padding[128];
+    uint8_t padding[128-sizeof(data_t)];
 };
 
 
@@ -260,7 +260,7 @@ struct alignas(sizeof(ls::math::vec4)) SR_FragmentBin
 /*-----------------------------------------------------------------------------
  * Helper structure to put a pixel on the screen
 -----------------------------------------------------------------------------*/
-struct alignas(sizeof(uint32_t)) SR_FragCoordXYZ
+struct alignas(alignof(uint64_t)) SR_FragCoordXYZ
 {
     uint16_t x;
     uint16_t y;

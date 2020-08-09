@@ -47,7 +47,7 @@ struct SR_FragmentProcessor
     uint32_t mNumProcessors;
 
     // 64 bits
-    uint_fast64_t mNumBins;
+    uint_fast32_t mNumBins;
 
     // 256 bits
     const SR_Shader* mShader;
@@ -60,13 +60,13 @@ struct SR_FragmentProcessor
 
     template <typename depth_type>
     void render_point(
-        const uint_fast64_t binId,
+        const uint32_t binId,
         SR_Framebuffer* const fbo,
         const ls::math::vec4_t<int32_t> dimens) noexcept;
 
     template <typename depth_type>
     void render_line(
-        const uint_fast64_t binId,
+        const uint32_t binId,
         SR_Framebuffer* const fbo,
         const ls::math::vec4_t<int32_t> dimens) noexcept;
 
@@ -80,20 +80,20 @@ struct SR_FragmentProcessor
     void render_triangle_simd(const SR_Texture* depthBuffer) const noexcept;
 
     template <typename depth_type>
-    void flush_fragments(const SR_FragmentBin* pBin, uint_fast32_t numQueuedFrags, const SR_FragCoord* outCoords) const noexcept;
+    void flush_fragments(const SR_FragmentBin* pBin, uint32_t numQueuedFrags, const SR_FragCoord* outCoords) const noexcept;
 
     void execute() noexcept;
 };
 
 
 
-extern template void SR_FragmentProcessor::render_point<ls::math::half>(const uint_fast64_t, SR_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-extern template void SR_FragmentProcessor::render_point<float>(const uint_fast64_t, SR_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-extern template void SR_FragmentProcessor::render_point<double>(const uint_fast64_t, SR_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+extern template void SR_FragmentProcessor::render_point<ls::math::half>(const uint32_t, SR_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+extern template void SR_FragmentProcessor::render_point<float>(const uint32_t, SR_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+extern template void SR_FragmentProcessor::render_point<double>(const uint32_t, SR_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
 
-extern template void SR_FragmentProcessor::render_line<ls::math::half>(const uint_fast64_t, SR_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-extern template void SR_FragmentProcessor::render_line<float>(const uint_fast64_t, SR_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-extern template void SR_FragmentProcessor::render_line<double>(const uint_fast64_t, SR_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+extern template void SR_FragmentProcessor::render_line<ls::math::half>(const uint32_t, SR_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+extern template void SR_FragmentProcessor::render_line<float>(const uint32_t, SR_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+extern template void SR_FragmentProcessor::render_line<double>(const uint32_t, SR_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
 
 extern template void SR_FragmentProcessor::render_wireframe<ls::math::half>(const SR_Texture*) const noexcept;
 extern template void SR_FragmentProcessor::render_wireframe<float>(const SR_Texture*) const noexcept;
@@ -107,9 +107,9 @@ extern template void SR_FragmentProcessor::render_triangle_simd<ls::math::half>(
 extern template void SR_FragmentProcessor::render_triangle_simd<float>(const SR_Texture*) const noexcept;
 extern template void SR_FragmentProcessor::render_triangle_simd<double>(const SR_Texture*) const noexcept;
 
-extern template void SR_FragmentProcessor::flush_fragments<ls::math::half>(const SR_FragmentBin*, uint_fast32_t, const SR_FragCoord*) const noexcept;
-extern template void SR_FragmentProcessor::flush_fragments<float>(const SR_FragmentBin*, uint_fast32_t, const SR_FragCoord*) const noexcept;
-extern template void SR_FragmentProcessor::flush_fragments<double>(const SR_FragmentBin*, uint_fast32_t, const SR_FragCoord*) const noexcept;
+extern template void SR_FragmentProcessor::flush_fragments<ls::math::half>(const SR_FragmentBin*, uint32_t, const SR_FragCoord*) const noexcept;
+extern template void SR_FragmentProcessor::flush_fragments<float>(const SR_FragmentBin*, uint32_t, const SR_FragCoord*) const noexcept;
+extern template void SR_FragmentProcessor::flush_fragments<double>(const SR_FragmentBin*, uint32_t, const SR_FragCoord*) const noexcept;
 
 
 
