@@ -160,7 +160,7 @@ struct alignas(sizeof(float)*4) SR_ScanlineBounds
             const float32x2_t d0         = vsub_f32(yv, v01);
             const float32x2_t alpha      = vmul_f32(d0, p201);
             const float32x2_t d1         = vsub_f32(yv, v11);
-            const float32x2_t secondHalf = vreinterpret_f32_s32(vshr_n_s32(vreinterpret_s32_f32(d1), 31));
+            const uint32x2_t  secondHalf = vreinterpret_u32_s32(vshr_n_s32(vreinterpret_s32_f32(d1), 31));
 
             const float32x2_t v00        = vdup_n_f32(v0x);
             const float32x2_t v10        = vdup_n_f32(v1x);
