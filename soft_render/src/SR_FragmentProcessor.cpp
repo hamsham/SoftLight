@@ -979,8 +979,8 @@ void SR_FragmentProcessor::execute() noexcept
             // There's No need to subdivide the output framebuffer
             if (depthBpp == sizeof(math::half))
             {
-                //render_triangle<math::half>(mFbo->get_depth_buffer());
-                render_triangle_simd<math::half>(mFbo->get_depth_buffer());
+                render_triangle<math::half>(mFbo->get_depth_buffer());
+                //render_triangle_simd<math::half>(mFbo->get_depth_buffer());
             }
             else if (depthBpp == sizeof(float))
             {
