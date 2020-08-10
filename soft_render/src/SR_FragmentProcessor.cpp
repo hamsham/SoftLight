@@ -728,14 +728,13 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
 
             const depth_type* pDepth = depthBuffer->row_pointer<depth_type>((uintptr_t)y) + xMin;
             math::vec4i       x4     = math::vec4i{0, 1, 2, 3} + xMin;
-            const math::vec4  xMax4  {(float)xMax};
+            const math::vec4i xMax4  {xMax};
 
             for (; x4.v[0] < xMax; pDepth += 4, x4 += 4)
             {
                 // calculate barycentric coordinates and perform a depth test
-                const math::vec4&& x4f    = (math::vec4)x4;
-                const int32_t      xBound = math::sign_mask(x4f-xMax4);
-                math::mat4&&       bc     = math::outer(x4f, bcClipSpace[0]) + bcY;
+                const int32_t      xBound = math::sign_mask(x4-xMax4);
+                math::mat4&&       bc     = math::outer((math::vec4)x4, bcClipSpace[0]) + bcY;
                 const math::vec4&& z      = depth * bc;
                 const math::vec4&& d      = _sr_get_depth_texel4(pDepth);
 
@@ -980,8 +979,8 @@ void SR_FragmentProcessor::execute() noexcept
             // There's No need to subdivide the output framebuffer
             if (depthBpp == sizeof(math::half))
             {
-                render_triangle<math::half>(mFbo->get_depth_buffer());
-                //render_triangle_simd<math::half>(mFbo->get_depth_buffer());
+                //render_triangle<math::half>(mFbo->get_depth_buffer());
+                render_triangle_simd<math::half>(mFbo->get_depth_buffer());
             }
             else if (depthBpp == sizeof(float))
             {
