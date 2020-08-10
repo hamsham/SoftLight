@@ -48,6 +48,10 @@ namespace utils = ls::utils;
     #define SR_TEST_MAX_THREADS (ls::math::max<unsigned>(std::thread::hardware_concurrency(), 2u) - 1u)
 #endif /* SR_TEST_MAX_THREADS */
 
+#ifndef SR_BENCHMARK_SCENE
+    #define SR_BENCHMARK_SCENE 1
+#endif /* SR_BENCHMARK_SCENE */
+
 
 
 /*-----------------------------------------------------------------------------
@@ -580,6 +584,7 @@ int main()
     SR_Texture&        depth          = context.texture(0);
     int                shouldQuit     = 0;
     int                numFrames      = 0;
+    int                totalFrames    = 0;
     float              secondsCounter = 0.f;
     float              tickTime       = 0.f;
 
@@ -655,6 +660,7 @@ int main()
             pWindow->render(*pRenderBuf);
 
             ++numFrames;
+            ++totalFrames;
 
             if (secondsCounter >= 1.f)
             {
@@ -663,6 +669,12 @@ int main()
                 secondsCounter = 0.f;
             }
 
+            #if SR_BENCHMARK_SCENE
+                if (totalFrames >= 3600)
+                {
+                    shouldQuit = true;
+                }
+            #endif
         }
 
         // All events handled. Now check on the state of the window.

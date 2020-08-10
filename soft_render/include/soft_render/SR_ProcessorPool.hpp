@@ -7,6 +7,8 @@
 
 #include "lightsky/utils/Pointer.h" // Pointer, AlignedPointerDeleter
 
+#include "soft_render/SR_ShaderUtil.hpp"
+
 
 
 /*-----------------------------------------------------------------------------
@@ -57,9 +59,9 @@ class SR_ProcessorPool
     typedef ls::utils::WorkerThread<SR_ShaderProcessor> ThreadedWorker;
 
   private:
-    std::atomic_uint_fast64_t mFragSemaphore;
+    SR_BinCounterAtomic<uint_fast64_t> mFragSemaphore;
 
-    std::atomic_uint_fast64_t mShadingSemaphore;
+    SR_BinCounterAtomic<uint_fast64_t> mShadingSemaphore;
 
     ls::utils::Pointer<SR_BinCounterAtomic<int32_t>[], ls::utils::AlignedDeleter> mBinsReady;
 

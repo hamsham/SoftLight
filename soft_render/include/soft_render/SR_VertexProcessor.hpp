@@ -47,7 +47,7 @@ enum SR_ClipStatus
 
 
 
-struct alignas(sizeof(ls::math::vec4)) SR_TransformedVert
+struct alignas(alignof(ls::math::vec4)) SR_TransformedVert
 {
     ls::math::vec4 vert;
     ls::math::vec4 varyings[SR_SHADER_MAX_VARYING_VECTORS];
@@ -65,8 +65,8 @@ struct SR_VertexProcessor
     uint16_t mNumThreads;
 
     // 64-128 bits
-    std::atomic_uint_fast64_t* mFragProcessors;
-    std::atomic_uint_fast64_t* mBusyProcessors;
+    SR_BinCounterAtomic<uint_fast64_t>* mFragProcessors;
+    SR_BinCounterAtomic<uint_fast64_t>* mBusyProcessors;
 
     // 96-192 bits
     const SR_Shader*  mShader;

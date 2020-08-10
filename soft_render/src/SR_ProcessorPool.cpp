@@ -80,8 +80,8 @@ SR_ProcessorPool::~SR_ProcessorPool() noexcept
  * Constructor
 --------------------------------------*/
 SR_ProcessorPool::SR_ProcessorPool(unsigned numThreads) noexcept :
-    mFragSemaphore{0},
-    mShadingSemaphore{0},
+    mFragSemaphore{{0}, {}},
+    mShadingSemaphore{{0}, {}},
     mBinsReady{_aligned_alloc<SR_BinCounterAtomic<int32_t>>(numThreads)},
     mBinsUsed{_aligned_alloc<SR_BinCounter<uint32_t>>(numThreads)},
     mFragBins{_aligned_alloc<SR_FragmentBin>(numThreads * SR_SHADER_MAX_BINNED_PRIMS)},
@@ -106,8 +106,8 @@ SR_ProcessorPool::SR_ProcessorPool(unsigned numThreads) noexcept :
  * Copy Constructor
 --------------------------------------*/
 SR_ProcessorPool::SR_ProcessorPool(const SR_ProcessorPool& p) noexcept :
-    mFragSemaphore{0},
-    mShadingSemaphore{0},
+    mFragSemaphore{{0}, {}},
+    mShadingSemaphore{{0}, {}},
     mBinsReady{_aligned_alloc<SR_BinCounterAtomic<int32_t>>(p.mNumThreads)},
     mBinsUsed{_aligned_alloc<SR_BinCounter<uint32_t>>(p.mNumThreads)},
     mFragBins{_aligned_alloc<SR_FragmentBin>(p.mNumThreads * SR_SHADER_MAX_BINNED_PRIMS)},
@@ -130,8 +130,8 @@ SR_ProcessorPool::SR_ProcessorPool(const SR_ProcessorPool& p) noexcept :
  * Move Constructor
 --------------------------------------*/
 SR_ProcessorPool::SR_ProcessorPool(SR_ProcessorPool&& p) noexcept :
-    mFragSemaphore{0},
-    mShadingSemaphore{0},
+    mFragSemaphore{{0}, {}},
+    mShadingSemaphore{{0}, {}},
     mBinsReady{std::move(p.mBinsReady)},
     mBinsUsed{std::move(p.mBinsUsed)},
     mFragBins{std::move(p.mFragBins)},
@@ -172,11 +172,11 @@ SR_ProcessorPool& SR_ProcessorPool::operator=(SR_ProcessorPool&& p) noexcept
         return *this;
     }
 
-    mFragSemaphore.store(p.mFragSemaphore.load());
-    p.mFragSemaphore.store(0);
+    mFragSemaphore.count.store(p.mFragSemaphore.count.load());
+    p.mFragSemaphore.count.store(0);
 
-    mShadingSemaphore.store(p.mShadingSemaphore.load());
-    p.mShadingSemaphore.store(0);
+    mShadingSemaphore.count.store(p.mShadingSemaphore.count.load());
+    p.mShadingSemaphore.count.store(0);
 
     mBinsReady = std::move(p.mBinsReady);
     mBinsUsed = std::move(p.mBinsUsed);
@@ -303,8 +303,8 @@ unsigned SR_ProcessorPool::concurrency(unsigned inNumThreads) noexcept
 void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh& m, size_t numInstances, const SR_Shader& s, SR_Framebuffer& fbo) noexcept
 {
     // Reserve enough space for each thread to contain all triangles
-    mFragSemaphore.store(0);
-    mShadingSemaphore.store(mNumThreads);
+    mFragSemaphore.count.store(0);
+    mShadingSemaphore.count.store(mNumThreads);
     clear_fragment_bins();
 
     SR_ShaderProcessor task;
@@ -356,8 +356,8 @@ void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh&
 void SR_ProcessorPool::run_shader_processors(const SR_Context& c, const SR_Mesh* meshes, size_t numMeshes, const SR_Shader& s, SR_Framebuffer& fbo) noexcept
 {
     // Reserve enough space for each thread to contain all triangles
-    mFragSemaphore.store(0);
-    mShadingSemaphore.store(mNumThreads);
+    mFragSemaphore.count.store(0);
+    mShadingSemaphore.count.store(mNumThreads);
     clear_fragment_bins();
 
     SR_ShaderProcessor task;

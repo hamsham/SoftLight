@@ -83,7 +83,7 @@ class SR_PTVCache
     {
         size_t i = key % PTV_CACHE_SIZE;
 
-        if (LS_UNLIKELY(mIndices[i] != key))
+        if (mIndices[i] != key)
         {
             mIndices[i] = key;
             mParam.vertId = key;
@@ -566,7 +566,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
     // Allow the other threads to know this thread is ready for processing
     const bool noBlending = mShader->mFragShader.blend == SR_BLEND_OFF;
 
-    const uint_fast64_t tileId = mFragProcessors->fetch_add(1ull, std::memory_order_acq_rel);
+    const uint_fast64_t tileId = mFragProcessors->count.fetch_add(1ull, std::memory_order_acq_rel);
     mBinsReady[mThreadId].count.store((int32_t)mThreadId, std::memory_order_release);
 
     SR_FragmentProcessor fragTask{
@@ -602,7 +602,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
         }
 
         // wait for the next available set of bins
-        while (mBinsReady[t].count.load(std::memory_order_consume) < 0)
+        while (LS_LIKELY(mBinsReady[t].count.load(std::memory_order_consume) < 0))
         {
             #if defined(LS_ARCH_X86)
                 _mm_pause();
@@ -631,7 +631,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
 
     // Indicate to all threads we can now process more vertices
     const uint_fast64_t syncPoint = (uint_fast64_t)mNumThreads * 2ull - 1ull;
-    if (syncPoint == mFragProcessors->fetch_add(1, std::memory_order_acq_rel))
+    if (syncPoint == mFragProcessors->count.fetch_add(1, std::memory_order_acq_rel))
     {
         for (uint32_t t = 0; t < (uint32_t)mNumThreads; ++t)
         {
@@ -639,12 +639,12 @@ void SR_VertexProcessor::flush_bins() const noexcept
             mBinsUsed[t].count = 0;
         }
 
-        mFragProcessors->store(0ull, std::memory_order_release);
+        mFragProcessors->count.store(0ull, std::memory_order_release);
     }
     else
     {
         // Wait for the last thread to reset the number of available bins.
-        while (LS_LIKELY(mFragProcessors->load(std::memory_order_consume) >= (uint_fast64_t)mNumThreads))
+        while (LS_LIKELY(mFragProcessors->count.load(std::memory_order_consume) >= (uint_fast64_t)mNumThreads))
         {
             #if defined(LS_ARCH_X86)
                 _mm_pause();
@@ -1223,17 +1223,17 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
 --------------------------------------*/
 void SR_VertexProcessor::execute() noexcept
 {
-    if (mFragProcessors->load(std::memory_order_consume))
-    {
-        flush_bins();
-    }
-
     if (mNumInstances == 1)
     {
         if (mRenderMode & (RENDER_MODE_POINTS | RENDER_MODE_INDEXED_POINTS))
         {
             for (size_t i = 0; i < mNumMeshes; ++i)
             {
+                if (mFragProcessors->count.load(std::memory_order_consume))
+                {
+                    flush_bins();
+                }
+
                 process_points(mMeshes[i], 0);
             }
         }
@@ -1241,6 +1241,11 @@ void SR_VertexProcessor::execute() noexcept
         {
             for (size_t i = 0; i < mNumMeshes; ++i)
             {
+                if (mFragProcessors->count.load(std::memory_order_consume))
+                {
+                    flush_bins();
+                }
+
                 process_lines(mMeshes[i], 0);
             }
         }
@@ -1248,6 +1253,11 @@ void SR_VertexProcessor::execute() noexcept
         {
             for (size_t i = 0; i < mNumMeshes; ++i)
             {
+                if (mFragProcessors->count.load(std::memory_order_consume))
+                {
+                    flush_bins();
+                }
+
                 process_tris(mMeshes[i], 0);
             }
         }
@@ -1258,6 +1268,11 @@ void SR_VertexProcessor::execute() noexcept
         {
             for (size_t i = 0; i < mNumInstances; ++i)
             {
+                if (mFragProcessors->count.load(std::memory_order_consume))
+                {
+                    flush_bins();
+                }
+
                 process_points(mMeshes[0], i);
             }
         }
@@ -1265,6 +1280,11 @@ void SR_VertexProcessor::execute() noexcept
         {
             for (size_t i = 0; i < mNumInstances; ++i)
             {
+                if (mFragProcessors->count.load(std::memory_order_consume))
+                {
+                    flush_bins();
+                }
+
                 process_lines(mMeshes[0], i);
             }
         }
@@ -1272,6 +1292,11 @@ void SR_VertexProcessor::execute() noexcept
         {
             for (size_t i = 0; i < mNumInstances; ++i)
             {
+                if (mFragProcessors->count.load(std::memory_order_consume))
+                {
+                    flush_bins();
+                }
+
                 process_tris(mMeshes[0], i);
             }
         }
@@ -1282,10 +1307,10 @@ void SR_VertexProcessor::execute() noexcept
         flush_bins();
     }
 
-    mBusyProcessors->fetch_sub(1, std::memory_order_acq_rel);
-    while (mBusyProcessors->load(std::memory_order_consume))
+    mBusyProcessors->count.fetch_sub(1, std::memory_order_acq_rel);
+    while (mBusyProcessors->count.load(std::memory_order_consume))
     {
-        if (mFragProcessors->load(std::memory_order_consume))
+        if (mFragProcessors->count.load(std::memory_order_consume))
         {
             flush_bins();
         }

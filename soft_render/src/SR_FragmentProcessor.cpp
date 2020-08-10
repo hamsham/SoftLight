@@ -769,15 +769,13 @@ void SR_FragmentProcessor::render_triangle_simd(const SR_Texture* depthBuffer) c
                 bc.m[3] *= homogenous;
 
                 outCoords->bc[storeMasks.v[0]] = bc[0] * persp4[0];
-                outCoords->coord[storeMasks.v[0]] = SR_FragCoordXYZ{(uint16_t)x4.v[0], (uint16_t)y, z.v[0]};
-
                 outCoords->bc[storeMasks.v[1]] = bc[1] * persp4[1];
-                outCoords->coord[storeMasks.v[1]] = SR_FragCoordXYZ{(uint16_t)x4.v[1], (uint16_t)y, z.v[1]};
-
                 outCoords->bc[storeMasks.v[2]] = bc[2] * persp4[2];
-                outCoords->coord[storeMasks.v[2]] = SR_FragCoordXYZ{(uint16_t)x4.v[2], (uint16_t)y, z.v[2]};
-
                 outCoords->bc[storeMasks.v[3]] = bc[3] * persp4[3];
+
+                outCoords->coord[storeMasks.v[0]] = SR_FragCoordXYZ{(uint16_t)x4.v[0], (uint16_t)y, z.v[0]};
+                outCoords->coord[storeMasks.v[1]] = SR_FragCoordXYZ{(uint16_t)x4.v[1], (uint16_t)y, z.v[1]};
+                outCoords->coord[storeMasks.v[2]] = SR_FragCoordXYZ{(uint16_t)x4.v[2], (uint16_t)y, z.v[2]};
                 outCoords->coord[storeMasks.v[3]] = SR_FragCoordXYZ{(uint16_t)x4.v[3], (uint16_t)y, z.v[3]};
 
                 numQueuedFrags += math::popcnt_u32(depthTest & 0x0F);

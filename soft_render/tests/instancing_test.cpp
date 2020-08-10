@@ -42,16 +42,20 @@
     #define SR_TEST_MAX_THREADS (ls::math::max<unsigned>(std::thread::hardware_concurrency(), 2u) - 1u)
 #endif /* SR_TEST_MAX_THREADS */
 
+#ifndef SR_BENCHMARK_SCENE
+    #define SR_BENCHMARK_SCENE 1
+#endif /* SR_BENCHMARK_SCENE */
+
 #ifndef DEFAULT_INSTANCES_X
-    #define DEFAULT_INSTANCES_X 5
+    #define DEFAULT_INSTANCES_X 10
 #endif
 
 #ifndef DEFAULT_INSTANCES_Y
-    #define DEFAULT_INSTANCES_Y 5
+    #define DEFAULT_INSTANCES_Y 10
 #endif
 
 #ifndef DEFAULT_INSTANCES_Z
-    #define DEFAULT_INSTANCES_Z 5
+    #define DEFAULT_INSTANCES_Z 10
 #endif
 
 #ifndef DEFAULT_INSTANCES
@@ -566,6 +570,13 @@ int main()
                 currFrames = 0;
                 currSeconds = 0.f;
             }
+
+            #if SR_BENCHMARK_SCENE
+                if (totalFrames >= 1200)
+                {
+                    shouldQuit = true;
+                }
+            #endif
 
             update_cam_position(camTrans, tickTime, pKeySyms);
 
