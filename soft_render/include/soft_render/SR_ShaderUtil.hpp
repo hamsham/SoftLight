@@ -11,6 +11,8 @@
 #include "lightsky/math/scalar_utils.h"
 #include "lightsky/math/vec4.h"
 
+#include "soft_render/SR_ScanlineBounds.hpp"
+
 
 
 /*-----------------------------------------------------------------------------
@@ -207,11 +209,11 @@ enum SR_ShaderLimits
 
     // Maximum number of fragments that get queued before being placed on a
     // framebuffer.
-    SR_SHADER_MAX_QUEUED_FRAGS    = 4096,
+    SR_SHADER_MAX_QUEUED_FRAGS    = 600,
 
     // Maximum number of vertex groups which get binned before being sent to a
     // fragment processor.
-    SR_SHADER_MAX_BINNED_PRIMS    = 1024,
+    SR_SHADER_MAX_BINNED_PRIMS    = 960,
 };
 
 
