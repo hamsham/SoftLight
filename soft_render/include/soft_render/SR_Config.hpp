@@ -13,7 +13,7 @@
 
 #if SR_VERTEX_CACHING_ENABLED
     #ifndef SR_VERTEX_CACHE_SIZE
-        #define SR_VERTEX_CACHE_SIZE 64
+        #define SR_VERTEX_CACHE_SIZE 48
     #endif /* SR_VERTEX_CACHE_SIZE */
 #endif /* SR_VERTEX_CACHING_ENABLED */
 

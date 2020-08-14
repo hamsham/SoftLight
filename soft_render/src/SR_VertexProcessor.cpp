@@ -79,11 +79,11 @@ class SR_PTVCache
         }
     }
 
-    inline SR_TransformedVert* query_and_update(size_t key) noexcept
+    inline LS_INLINE SR_TransformedVert* query_and_update(size_t key) noexcept
     {
         size_t i = key % PTV_CACHE_SIZE;
 
-        if (mIndices[i] != key)
+        if (LS_LIKELY(mIndices[i] != key))
         {
             mIndices[i] = key;
             mParam.vertId = key;
@@ -94,6 +94,29 @@ class SR_PTVCache
         return mVertices+i;
     }
 };
+
+
+
+inline LS_INLINE void _copy_transformed_vert(SR_TransformedVert& out, const SR_TransformedVert* pIn) noexcept
+{
+    #if defined(LS_ARCH_X86)
+        _mm_store_si128(reinterpret_cast<__m128i*>(&out)+0, _mm_lddqu_si128(reinterpret_cast<const __m128i*>(pIn)+0));
+        _mm_store_si128(reinterpret_cast<__m128i*>(&out)+1, _mm_lddqu_si128(reinterpret_cast<const __m128i*>(pIn)+1));
+        _mm_store_si128(reinterpret_cast<__m128i*>(&out)+2, _mm_lddqu_si128(reinterpret_cast<const __m128i*>(pIn)+2));
+        _mm_store_si128(reinterpret_cast<__m128i*>(&out)+3, _mm_lddqu_si128(reinterpret_cast<const __m128i*>(pIn)+3));
+        _mm_store_si128(reinterpret_cast<__m128i*>(&out)+4, _mm_lddqu_si128(reinterpret_cast<const __m128i*>(pIn)+4));
+    #elif defined(LS_ARCH_ARM)
+        vst1q_f32(reinterpret_cast<float*>(&out)+0,  vld1q_f32(reinterpret_cast<const float*>(pIn)+0));
+        vst1q_f32(reinterpret_cast<float*>(&out)+4,  vld1q_f32(reinterpret_cast<const float*>(pIn)+4));
+        vst1q_f32(reinterpret_cast<float*>(&out)+8,  vld1q_f32(reinterpret_cast<const float*>(pIn)+8));
+        vst1q_f32(reinterpret_cast<float*>(&out)+12, vld1q_f32(reinterpret_cast<const float*>(pIn)+12));
+        vst1q_f32(reinterpret_cast<float*>(&out)+16, vld1q_f32(reinterpret_cast<const float*>(pIn)+16));
+    #else
+        out = *pIn;
+    #endif
+}
+
+
 
 #endif // SR_VERTEX_CACHING_ENABLED
 
@@ -1164,9 +1187,9 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
         const math::vec3_t<size_t>&& vertId = usingIndices ? get_next_vertex3(pIbo, i) : math::vec3_t<size_t>{i, i+1, i+2};
 
         #if SR_VERTEX_CACHING_ENABLED
-            pVert0 = *ptvCache.query_and_update(vertId[0]);
-            pVert1 = *ptvCache.query_and_update(vertId[1]);
-            pVert2 = *ptvCache.query_and_update(vertId[2]);
+            _copy_transformed_vert(pVert0, ptvCache.query_and_update(vertId[0]));
+            _copy_transformed_vert(pVert1, ptvCache.query_and_update(vertId[1]));
+            _copy_transformed_vert(pVert2, ptvCache.query_and_update(vertId[2]));
         #else
             params.vertId    = vertId.v[0];
             params.pVaryings = pVert0.varyings;

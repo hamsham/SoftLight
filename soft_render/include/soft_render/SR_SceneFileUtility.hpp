@@ -54,10 +54,6 @@ enum : unsigned int
         //| aiProcess_GenSmoothNormals
         //| aiProcess_GenNormals
         | aiProcess_Triangulate // the renderer can only handle triangles
-
-#if SR_VERTEX_CACHING_ENABLED
-        | aiProcess_ImproveCacheLocality
-#endif
         | 0
 };
 
