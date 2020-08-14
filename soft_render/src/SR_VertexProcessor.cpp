@@ -417,12 +417,10 @@ inline LS_INLINE float face_determinant(
         // horizontal add of only the first 3 elements. We're using the
         // W-component of each vector as the 3rd dimension for out determinant
         // calculation
-        __m128 sum;
-        const __m128 lo = _mm_permute_ps(mul2, 0x55);
-        const __m128 hi = _mm_movehl_ps(mul2, mul2);
-        sum = _mm_add_ss(mul2, lo);
-        sum = _mm_add_ss(sum, hi);
-        return _mm_cvtss_f32(sum);
+        const __m128 hi = _mm_movehdup_ps(mul2);
+        const __m128 lo = _mm_add_ss(hi, mul2);
+        const __m128 w = _mm_permute_ps(mul2, 0xAA);
+        return _mm_cvtss_f32(_mm_add_ss(w, lo));
 
     #elif defined(LS_ARCH_ARM) // based on the AVX implementation
         const float32x4_t col4 = vcombine_f32(vget_low_f32(p0.simd), vrev64_f32(vget_high_f32(p0.simd)));
@@ -577,8 +575,8 @@ void SR_VertexProcessor::flush_bins() const noexcept
         mShader,
         mFbo,
         mFragBins + mThreadId * SR_SHADER_MAX_BINNED_PRIMS,
-        mVaryings + mThreadId * SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_QUEUED_FRAGS,
-        mFragQueues + mThreadId
+        mVaryings + tileId * SR_SHADER_MAX_VARYING_VECTORS * SR_SHADER_MAX_QUEUED_FRAGS,
+        mFragQueues + tileId
     };
 
     // Execute the fragment processor if possible
@@ -666,7 +664,7 @@ void SR_VertexProcessor::flush_bins() const noexcept
 /*--------------------------------------
  * Publish a vertex to a fragment thread
 --------------------------------------*/
-template <int renderMode, int vertCount>
+template <int renderMode>
 void SR_VertexProcessor::push_bin(
     float fboW,
     float fboH,
@@ -716,7 +714,7 @@ void SR_VertexProcessor::push_bin(
             break;
 
         default:
-            return;
+            LS_UNREACHABLE();
     }
 
     int isPrimHidden = (bboxMaxX < 0.f || bboxMaxY < 0.f || fboW < bboxMinX || fboH < bboxMinY);
@@ -758,9 +756,9 @@ void SR_VertexProcessor::push_bin(
     }
 
     unsigned i;
-    switch (vertCount)
+    switch (renderMode)
     {
-        case 3:
+        case SR_RenderMode::RENDER_MODE_TRIANGLES:
             for (i = 0; i < numVaryings; ++i)
             {
                 bin.mVaryings[i+SR_SHADER_MAX_VARYING_VECTORS*0] = a.varyings[i];
@@ -769,7 +767,7 @@ void SR_VertexProcessor::push_bin(
             }
             break;
 
-        case 2:
+        case SR_RenderMode::RENDER_MODE_LINES:
             for (i = 0; i < numVaryings; ++i)
             {
                 bin.mVaryings[i+SR_SHADER_MAX_VARYING_VECTORS*0] = a.varyings[i];
@@ -777,12 +775,15 @@ void SR_VertexProcessor::push_bin(
             }
             break;
 
-        case 1:
+        case SR_RenderMode::RENDER_MODE_POINTS:
             for (i = 0; i < numVaryings; ++i)
             {
                 bin.mVaryings[i] = a.varyings[i];
             }
             break;
+
+        default:
+            LS_UNREACHABLE();
     }
 
     // Check if the output bin is full
@@ -795,7 +796,7 @@ void SR_VertexProcessor::push_bin(
 
 
 
-template void SR_VertexProcessor::push_bin<RENDER_MODE_POINTS, 1>(
+template void SR_VertexProcessor::push_bin<RENDER_MODE_POINTS>(
     float,
     float,
     const SR_TransformedVert&,
@@ -803,7 +804,7 @@ template void SR_VertexProcessor::push_bin<RENDER_MODE_POINTS, 1>(
     const SR_TransformedVert&
 ) const noexcept;
 
-template void SR_VertexProcessor::push_bin<RENDER_MODE_LINES, 2>(
+template void SR_VertexProcessor::push_bin<RENDER_MODE_LINES>(
     float,
     float,
     const SR_TransformedVert&,
@@ -811,7 +812,7 @@ template void SR_VertexProcessor::push_bin<RENDER_MODE_LINES, 2>(
     const SR_TransformedVert&
 ) const noexcept;
 
-template void SR_VertexProcessor::push_bin<RENDER_MODE_TRIANGLES, 3>(
+template void SR_VertexProcessor::push_bin<RENDER_MODE_TRIANGLES>(
     float,
     float,
     const SR_TransformedVert&,
@@ -981,7 +982,7 @@ void SR_VertexProcessor::clip_and_process_tris(
         p2.vert = newVerts[k];
         _copy_verts(numVarys, newVarys+(k*SR_SHADER_MAX_VARYING_VECTORS), p2.varyings);
 
-        push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES, 3>(fboW, fboH, p0, p1, p2);
+        push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES>(fboW, fboH, p0, p1, p2);
     }
 }
 
@@ -1039,7 +1040,7 @@ void SR_VertexProcessor::process_points(const SR_Mesh& m, size_t instanceId) noe
         if (pVert0.vert[3] > 0.f)
         {
             sr_world_to_screen_coords(pVert0.vert, widthScale, heightScale);
-            push_bin<SR_RenderMode::RENDER_MODE_POINTS, 1>(fboW, fboH, pVert0, pVert0, pVert0);
+            push_bin<SR_RenderMode::RENDER_MODE_POINTS>(fboW, fboH, pVert0, pVert0, pVert0);
         }
     }
 }
@@ -1110,7 +1111,7 @@ void SR_VertexProcessor::process_lines(const SR_Mesh& m, size_t instanceId) noex
             sr_world_to_screen_coords(pVert0.vert, widthScale, heightScale);
             sr_world_to_screen_coords(pVert1.vert, widthScale, heightScale);
 
-            push_bin<SR_RenderMode::RENDER_MODE_LINES, 2>(fboW, fboH, pVert0, pVert1, pVert1);
+            push_bin<SR_RenderMode::RENDER_MODE_LINES>(fboW, fboH, pVert0, pVert1, pVert1);
         }
     }
 }
@@ -1180,7 +1181,7 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
             pVert2.vert      = shader(params);
         #endif
 
-        if (cullMode != SR_CULL_OFF)
+        if (LS_LIKELY(cullMode != SR_CULL_OFF))
         {
             const float det = face_determinant(pVert0.vert, pVert1.vert, pVert2.vert);
 
@@ -1188,7 +1189,7 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
             // We can cull the backface with (det < 0.f) or cull the front
             // face with (det > 0.f).
 
-            const bool culled = (cullMode == SR_CULL_BACK_FACE) ^ (det > 0.f);
+            const bool culled = (cullMode == SR_CULL_FRONT_FACE) ^ math::sign_mask(det);
             //if ((cullMode == SR_CULL_BACK_FACE && det < 0.f)
             //|| (cullMode == SR_CULL_FRONT_FACE && det > 0.f))
             if (culled)
@@ -1199,19 +1200,15 @@ void SR_VertexProcessor::process_tris(const SR_Mesh& m, size_t instanceId) noexc
 
         // Clip-space culling
         const SR_ClipStatus visStatus = face_visible(pVert0.vert, pVert1.vert, pVert2.vert);
-        switch (visStatus)
+        if (visStatus == SR_TRIANGLE_FULLY_VISIBLE)
         {
-            case SR_TRIANGLE_FULLY_VISIBLE:
-                sr_perspective_divide3(pVert0.vert, pVert1.vert, pVert2.vert);
-                sr_world_to_screen_coords_divided3(pVert0.vert, pVert1.vert, pVert2.vert, widthScale, heightScale);
-                push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES, 3>(fboW, fboH, pVert0, pVert1, pVert2);
-                break;
-
-            case SR_TRIANGLE_PARTIALLY_VISIBLE:
-                clip_and_process_tris(fboW, fboH, pVert0, pVert1, pVert2);
-
-            default:
-                break;
+            sr_perspective_divide3(pVert0.vert, pVert1.vert, pVert2.vert);
+            sr_world_to_screen_coords_divided3(pVert0.vert, pVert1.vert, pVert2.vert, widthScale, heightScale);
+            push_bin<SR_RenderMode::RENDER_MODE_TRIANGLES>(fboW, fboH, pVert0, pVert1, pVert2);
+        }
+        else if (visStatus == SR_TRIANGLE_PARTIALLY_VISIBLE)
+        {
+            clip_and_process_tris(fboW, fboH, pVert0, pVert1, pVert2);
         }
     }
 }
@@ -1308,17 +1305,20 @@ void SR_VertexProcessor::execute() noexcept
     }
 
     mBusyProcessors->count.fetch_sub(1, std::memory_order_acq_rel);
-    while (mBusyProcessors->count.load(std::memory_order_consume))
+    do
     {
         if (mFragProcessors->count.load(std::memory_order_consume))
         {
             flush_bins();
         }
-
-        #if defined(LS_ARCH_X86)
-            _mm_pause();
-        #elif defined(LS_COMPILER_CLANG) && defined(LS_ARCH_AARCH64)
-            __yield();
-        #endif
+        else
+        {
+            #if defined(LS_ARCH_X86)
+                _mm_pause();
+            #elif defined(LS_COMPILER_CLANG) && defined(LS_ARCH_AARCH64)
+                __yield();
+            #endif
+        }
     }
+    while (mBusyProcessors->count.load(std::memory_order_consume));
 }

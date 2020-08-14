@@ -993,6 +993,9 @@ void SR_FragmentProcessor::execute() noexcept
                 //render_triangle_simd<double>(mFbo->get_depth_buffer());
             }
             break;
+
+        default:
+            LS_UNREACHABLE();
     }
 }
 

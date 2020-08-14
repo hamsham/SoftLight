@@ -98,7 +98,7 @@ struct SR_VertexProcessor
 
     void flush_bins() const noexcept;
 
-    template <int renderMode, int vertCount>
+    template <int renderMode>
     void push_bin(
         float fboW,
         float fboH,
@@ -127,7 +127,7 @@ struct SR_VertexProcessor
 
 
 extern template
-void SR_VertexProcessor::push_bin<RENDER_MODE_POINTS, 1>(
+void SR_VertexProcessor::push_bin<RENDER_MODE_POINTS>(
     float,
     float,
     const SR_TransformedVert&,
@@ -136,7 +136,7 @@ void SR_VertexProcessor::push_bin<RENDER_MODE_POINTS, 1>(
 ) const noexcept;
 
 extern template
-void SR_VertexProcessor::push_bin<RENDER_MODE_LINES, 2>(
+void SR_VertexProcessor::push_bin<RENDER_MODE_LINES>(
     float,
     float,
     const SR_TransformedVert&,
@@ -145,7 +145,7 @@ void SR_VertexProcessor::push_bin<RENDER_MODE_LINES, 2>(
 ) const noexcept;
 
 extern template
-void SR_VertexProcessor::push_bin<RENDER_MODE_TRIANGLES, 3>(
+void SR_VertexProcessor::push_bin<RENDER_MODE_TRIANGLES>(
     float,
     float,
     const SR_TransformedVert&,
