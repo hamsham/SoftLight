@@ -281,7 +281,7 @@ class SR_SceneFileLoader
         std::unordered_map<std::string, const SR_Texture*>& loadedTextures
     ) noexcept;
 
-    SR_Texture* load_texture_at_path(const std::string& path, SR_ImgFile& imgLoader, int wrapMode) noexcept;
+    SR_Texture* load_texture_at_path(const std::string& path, SR_ImgFile& imgLoader) noexcept;
 
     bool import_mesh_data(const aiScene* const pScene, const SR_SceneLoadOpts& opts) noexcept;
 

@@ -981,7 +981,7 @@ void SR_SceneFileLoader::import_texture_path(
         }
         else
         {
-            pTexture = load_texture_at_path(texPath, imgLoader, inWrapMode[0]);
+            pTexture = load_texture_at_path(texPath, imgLoader);
 
             if (pTexture != nullptr)
             {
@@ -1005,10 +1005,7 @@ void SR_SceneFileLoader::import_texture_path(
 /*-------------------------------------
  * Attempt to load a texture from the local filesystem
 -------------------------------------*/
-SR_Texture* SR_SceneFileLoader::load_texture_at_path(
-    const std::string& path,
-    SR_ImgFile& imgLoader,
-    int wrapMode) noexcept
+SR_Texture* SR_SceneFileLoader::load_texture_at_path(const std::string& path, SR_ImgFile& imgLoader) noexcept
 {
     if (imgLoader.load(path.c_str()) != SR_ImgFile::img_status_t::FILE_LOAD_SUCCESS)
     {
@@ -1024,8 +1021,6 @@ SR_Texture* SR_SceneFileLoader::load_texture_at_path(
         graph.mContext.destroy_texture(loadedTexture);
         return nullptr;
     }
-
-    t.set_wrap_mode(sr_convert_assimp_tex_wrap((aiTextureMapMode)wrapMode));
 
     return &t;
 }

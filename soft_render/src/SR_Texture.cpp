@@ -111,7 +111,6 @@ SR_Texture::~SR_Texture() noexcept
  *
 -------------------------------------*/
 SR_Texture::SR_Texture() noexcept :
-    mWrapping{SR_TEXTURE_WRAP_DEFAULT},
     mWidth{0},
     mHeight{0},
     mDepth{0},
@@ -127,7 +126,6 @@ SR_Texture::SR_Texture() noexcept :
  *
 -------------------------------------*/
 SR_Texture::SR_Texture(const SR_Texture& r) noexcept :
-    mWrapping{r.mWrapping},
     mWidth{r.mWidth},
     mHeight{r.mHeight},
     mDepth{r.mDepth},
@@ -143,7 +141,6 @@ SR_Texture::SR_Texture(const SR_Texture& r) noexcept :
  *
 -------------------------------------*/
 SR_Texture::SR_Texture(SR_Texture&& r) noexcept :
-    mWrapping{r.mWrapping},
     mWidth{r.mWidth},
     mHeight{r.mHeight},
     mDepth{r.mDepth},
@@ -152,7 +149,6 @@ SR_Texture::SR_Texture(SR_Texture&& r) noexcept :
     mNumChannels{r.mNumChannels},
     mTexels{r.mTexels}
 {
-    r.mWrapping = SR_TEXTURE_WRAP_DEFAULT;
     r.mWidth = 0;
     r.mHeight = 0;
     r.mDepth = 0;
@@ -177,7 +173,6 @@ SR_Texture& SR_Texture::operator=(const SR_Texture& r) noexcept
 
     terminate();
 
-    mWrapping = r.mWrapping;
     mWidth = r.mWidth;
     mHeight = r.mHeight;
     mDepth = r.mDepth;
@@ -202,9 +197,6 @@ SR_Texture& SR_Texture::operator=(SR_Texture&& r) noexcept
     }
 
     terminate();
-
-    mWrapping = r.mWrapping;
-    r.mWrapping = SR_TEXTURE_WRAP_DEFAULT;
 
     mWidth = r.mWidth;
     r.mWidth = 0;
@@ -254,7 +246,6 @@ int SR_Texture::init(SR_ColorDataType type, uint16_t w, uint16_t h, uint16_t d) 
         terminate();
     }
 
-    mWrapping      = SR_TEXTURE_WRAP_DEFAULT;
     mWidth         = w;
     mHeight        = h;
     mDepth         = d;
@@ -331,7 +322,6 @@ int SR_Texture::init(const SR_ImgFile& imgFile, SR_TexelOrder texelOrder) noexce
 -------------------------------------*/
 void SR_Texture::terminate() noexcept
 {
-    mWrapping = SR_TEXTURE_WRAP_DEFAULT;
     mWidth = 0;
     mHeight = 0;
     mDepth = 0;

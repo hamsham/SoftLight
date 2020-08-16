@@ -270,8 +270,6 @@ int read_volume_file(SR_SceneGraph& graph)
         }
     }
 
-    pTex.set_wrap_mode(SR_TexWrapMode::SR_TEXTURE_WRAP_CUTOFF);
-
     return 0;
 }
 
@@ -403,7 +401,6 @@ int create_opacity_map(SR_SceneGraph& graph, const size_t volumeTexIndex)
         std::cerr << "Error: Unable to allocate memory for the opacity transfer functions." << std::endl;
         return 1;
     }
-    opacityTex.set_wrap_mode(SR_TexWrapMode::SR_TEXTURE_WRAP_CUTOFF);
 
     const auto add_transfer_func = [&opacityTex](const uint16_t begin, const uint16_t end, const float opacity)->void
     {
@@ -451,7 +448,6 @@ int create_color_map(SR_SceneGraph& graph, const size_t volumeTexIndex)
         std::cerr << "Error: Unable to allocate memory for the color transfer functions." << std::endl;
         return 1;
     }
-    colorTex.set_wrap_mode(SR_TexWrapMode::SR_TEXTURE_WRAP_CUTOFF);
 
     const auto add_transfer_func = [&colorTex](const uint16_t begin, const uint16_t end, const SR_ColorRGBType<float> color)->void
     {

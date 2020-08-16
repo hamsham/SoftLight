@@ -63,8 +63,6 @@ class alignas(sizeof(uint64_t)) SR_Texture
     typedef ls::math::long_medp_t fixed_type;
 
   private:
-    SR_TexWrapMode mWrapping; // 2 bytes
-
     uint16_t mWidth; // 2 bytes
 
     uint16_t mHeight; // 2 bytes
@@ -113,10 +111,6 @@ class alignas(sizeof(uint64_t)) SR_Texture
     uint16_t bpp() const noexcept;
 
     uint32_t channels() const noexcept;
-
-    SR_TexWrapMode wrap_mode() const noexcept;
-
-    void set_wrap_mode(const SR_TexWrapMode wrapMode) noexcept;
 
     int init(SR_ColorDataType type, uint16_t w, uint16_t h, uint16_t d = 1) noexcept;
 
@@ -388,26 +382,6 @@ inline LS_INLINE uint16_t SR_Texture::bpp() const noexcept
 inline LS_INLINE uint32_t SR_Texture::channels() const noexcept
 {
     return mNumChannels;
-}
-
-
-
-/*-------------------------------------
- * Get the current wrapping mode
--------------------------------------*/
-inline LS_INLINE SR_TexWrapMode SR_Texture::wrap_mode() const noexcept
-{
-    return mWrapping;
-}
-
-
-
-/*-------------------------------------
- * Set the current wrapping mode
--------------------------------------*/
-inline LS_INLINE void SR_Texture::set_wrap_mode(const SR_TexWrapMode wrapMode) noexcept
-{
-    mWrapping = wrapMode;
 }
 
 
