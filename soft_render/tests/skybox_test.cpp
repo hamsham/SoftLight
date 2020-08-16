@@ -158,7 +158,7 @@ int read_skybox_files(SR_SceneGraph& graph, const std::array<std::string, 6>& cu
             w = loader.width();
             h = loader.height();
             bpp = loader.bpp();
-            tex.init(SR_ColorDataType::SR_COLOR_RGB_8U, w, h, 6);
+            tex.init(SR_ColorDataType::SR_COLOR_RGB_8U, (uint16_t)w, (uint16_t)h, 6);
         }
         else
         {
@@ -187,7 +187,7 @@ int read_skybox_files(SR_SceneGraph& graph, const std::array<std::string, 6>& cu
         ++iter;
     }
 
-    sr_img_save_ppm(w, h*6, (const SR_ColorRGB8*)tex.data(), "skybox.ppm");
+    sr_img_save_ppm((uint16_t)w, (uint16_t)h*6, (const SR_ColorRGB8*)tex.data(), "skybox.ppm");
     std::cout << "Successfully saved the image skybox.ppm" << std::endl;
 
     return 0;
