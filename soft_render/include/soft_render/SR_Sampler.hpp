@@ -230,12 +230,12 @@ inline LS_INLINE color_type sr_sample_nearest(const SR_Texture& tex, float x, fl
     #if 0
         const uint32_t xi = (uint_fast32_t)((float)tex.width()  * wx);
         const uint32_t yi = (uint_fast32_t)((float)tex.height() * wy);
-        const uint32_t zi = (uint_fast32_t)((float)tex.depth()  * wz);
+        const uint32_t zi = (uint_fast32_t)ls::math::round((float)tex.depth() * wz);
     #else
         typedef typename SR_Texture::fixed_type fixed_type;
         const fixed_type    xf = ls::math::fixed_cast<fixed_type, float>(wx);
         const fixed_type    yf = ls::math::fixed_cast<fixed_type, float>(wy);
-        const fixed_type    zf = ls::math::fixed_cast<fixed_type, float>(wz);
+        const fixed_type    zf = ls::math::fixed_cast<fixed_type, float>(wz) + ls::math::fixed_cast<fixed_type, float>(0.1f);
         const uint_fast32_t xi = ls::math::integer_cast<uint_fast32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(tex.width()) * xf);
         const uint_fast32_t yi = ls::math::integer_cast<uint_fast32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(tex.height()) * yf);
         const uint_fast32_t zi = ls::math::integer_cast<uint_fast32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(tex.depth()) * zf);
