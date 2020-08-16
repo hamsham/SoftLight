@@ -255,26 +255,42 @@ inline LS_INLINE color_type sr_sample_bilinear(const SR_Texture& tex, float x, f
         return color_type{0};
     }
 
+    typedef typename SR_Texture::fixed_type fixed_type;
     constexpr WrapMode wrapMode;
 
-    const float    xf      = wrapMode(x) * (float)tex.width();
-    const float    yf      = wrapMode(y) * (float)tex.height();
-    const uint16_t xi0     = (uint16_t)xf;
-    const uint16_t yi0     = (uint16_t)yf;
-    const uint16_t xi1     = ls::math::clamp<uint16_t>(xi0+1u, 0u, tex.width());
-    const uint16_t yi1     = ls::math::clamp<uint16_t>(yi0+1u, 0u, tex.height());
-    const float    dx      = xf - (float)xi0;
-    const float    dy      = yf - (float)yi0;
-    const float    omdx    = 1.f - dx;
-    const float    omdy    = 1.f - dy;
-    const auto&&   pixel0  = color_cast<float, typename color_type::value_type>(tex.texel<color_type, order>(xi0, yi0));
-    const auto&&   pixel1  = color_cast<float, typename color_type::value_type>(tex.texel<color_type, order>(xi0, yi1));
-    const auto&&   pixel2  = color_cast<float, typename color_type::value_type>(tex.texel<color_type, order>(xi1, yi0));
-    const auto&&   pixel3  = color_cast<float, typename color_type::value_type>(tex.texel<color_type, order>(xi1, yi1));
-    const auto&&   weight0 = pixel0 * omdx * omdy;
-    const auto&&   weight1 = pixel1 * omdx * dy;
-    const auto&&   weight2 = pixel2 * dx * omdy;
-    const auto&&   weight3 = pixel3 * dx * dy;
+    const float wx = wrapMode(x);
+    const float wy = wrapMode(y);
+
+    const fixed_type w    = ls::math::fixed_cast<fixed_type, uint16_t>(tex.width());
+    const fixed_type h    = ls::math::fixed_cast<fixed_type, uint16_t>(tex.height());
+
+    const fixed_type xf   = ls::math::fixed_cast<fixed_type, float>(wx) * w;
+    const fixed_type yf   = ls::math::fixed_cast<fixed_type, float>(wy) * h;
+
+    const fixed_type xi0  = ls::math::floor(xf);
+    const fixed_type yi0  = ls::math::floor(yf);
+    const fixed_type xi1  = ls::math::clamp<fixed_type>(xi0 + ls::math::fixed_cast<fixed_type, float>(1.f), ls::math::fixed_cast<fixed_type, float>(0.f), w);
+    const fixed_type yi1  = ls::math::clamp<fixed_type>(yi0 + ls::math::fixed_cast<fixed_type, float>(1.f), ls::math::fixed_cast<fixed_type, float>(0.f), h);
+
+    const float dx   = ls::math::float_cast<float, fixed_type>(xf - xi0);
+    const float dy   = ls::math::float_cast<float, fixed_type>(yf - yi0);
+    const float omdx = ls::math::float_cast<float, fixed_type>(1.f - dx);
+    const float omdy = ls::math::float_cast<float, fixed_type>(1.f - dy);
+
+    const uint_fast32_t xu0 = ls::math::integer_cast<uint_fast32_t>(xi0);
+    const uint_fast32_t xu1 = ls::math::integer_cast<uint_fast32_t>(xi1);
+    const uint_fast32_t yu0 = ls::math::integer_cast<uint_fast32_t>(yi0);
+    const uint_fast32_t yu1 = ls::math::integer_cast<uint_fast32_t>(yi1);
+
+    const auto&& pixel0 = color_cast<float, typename color_type::value_type>(tex.texel<color_type, order>(xu0, yu0));
+    const auto&& pixel1 = color_cast<float, typename color_type::value_type>(tex.texel<color_type, order>(xu0, yu1));
+    const auto&& pixel2 = color_cast<float, typename color_type::value_type>(tex.texel<color_type, order>(xu1, yu0));
+    const auto&& pixel3 = color_cast<float, typename color_type::value_type>(tex.texel<color_type, order>(xu1, yu1));
+
+    const auto&&   weight0 = pixel0 * (omdx * omdy);
+    const auto&&   weight1 = pixel1 * (omdx * dy);
+    const auto&&   weight2 = pixel2 * (dx   * omdy);
+    const auto&&   weight3 = pixel3 * (dx   * dy);
 
     const auto&& ret = ls::math::sum(weight0, weight1, weight2, weight3);
 
@@ -289,27 +305,47 @@ inline LS_INLINE color_type sr_sample_bilinear(const SR_Texture& tex, float x, f
         return color_type{0};
     }
 
+    typedef typename SR_Texture::fixed_type fixed_type;
     constexpr WrapMode wrapMode;
 
-    const float    xf      = wrapMode(x) * (float)tex.width();
-    const float    yf      = wrapMode(y) * (float)tex.height();
-    const uint16_t zi      = (uint16_t)ls::math::round(wrapMode(z) * (float)tex.depth());
-    const uint16_t xi0     = (uint16_t)xf;
-    const uint16_t yi0     = (uint16_t)yf;
-    const uint16_t xi1     = ls::math::clamp<uint16_t>(xi0+1u, 0u, tex.width());
-    const uint16_t yi1     = ls::math::clamp<uint16_t>(yi0+1u, 0u, tex.height());
-    const float    dx      = xf - (float)xi0;
-    const float    dy      = yf - (float)yi0;
-    const float    omdx    = 1.f - dx;
-    const float    omdy    = 1.f - dy;
-    const auto&&   pixel0  = color_cast<float, typename color_type::value_type>(tex.texel<color_type, order>(xi0, yi0, zi));
-    const auto&&   pixel1  = color_cast<float, typename color_type::value_type>(tex.texel<color_type, order>(xi0, yi1, zi));
-    const auto&&   pixel2  = color_cast<float, typename color_type::value_type>(tex.texel<color_type, order>(xi1, yi0, zi));
-    const auto&&   pixel3  = color_cast<float, typename color_type::value_type>(tex.texel<color_type, order>(xi1, yi1, zi));
-    const auto&&   weight0 = pixel0 * omdx * omdy;
-    const auto&&   weight1 = pixel1 * omdx * dy;
-    const auto&&   weight2 = pixel2 * dx * omdy;
-    const auto&&   weight3 = pixel3 * dx * dy;
+    const float wx = wrapMode(x);
+    const float wy = wrapMode(y);
+    const float wz = wrapMode(z);
+
+    const fixed_type w    = ls::math::fixed_cast<fixed_type, uint16_t>(tex.width());
+    const fixed_type h    = ls::math::fixed_cast<fixed_type, uint16_t>(tex.height());
+    const fixed_type d    = ls::math::fixed_cast<fixed_type, uint16_t>(tex.depth());
+
+    const fixed_type xf   = ls::math::fixed_cast<fixed_type, float>(wx) * w;
+    const fixed_type yf   = ls::math::fixed_cast<fixed_type, float>(wy) * h;
+    const fixed_type zf   = ls::math::fixed_cast<fixed_type, float>(wz) * d;
+
+    const fixed_type xi0  = ls::math::floor(xf);
+    const fixed_type yi0  = ls::math::floor(yf);
+    const fixed_type xi1  = ls::math::clamp<fixed_type>(xi0 + ls::math::fixed_cast<fixed_type, float>(1.f), ls::math::fixed_cast<fixed_type, float>(0.f), w);
+    const fixed_type yi1  = ls::math::clamp<fixed_type>(yi0 + ls::math::fixed_cast<fixed_type, float>(1.f), ls::math::fixed_cast<fixed_type, float>(0.f), h);
+    const fixed_type zi   = ls::math::clamp<fixed_type>(zf  + ls::math::fixed_cast<fixed_type, float>(0.1f), ls::math::fixed_cast<fixed_type, float>(0.f), d);
+
+    const float dx   = ls::math::float_cast<float, fixed_type>(xf - xi0);
+    const float dy   = ls::math::float_cast<float, fixed_type>(yf - yi0);
+    const float omdx = ls::math::float_cast<float, fixed_type>(1.f - dx);
+    const float omdy = ls::math::float_cast<float, fixed_type>(1.f - dy);
+
+    const uint_fast32_t xu0 = ls::math::integer_cast<uint_fast32_t>(xi0);
+    const uint_fast32_t xu1 = ls::math::integer_cast<uint_fast32_t>(xi1);
+    const uint_fast32_t yu0 = ls::math::integer_cast<uint_fast32_t>(yi0);
+    const uint_fast32_t yu1 = ls::math::integer_cast<uint_fast32_t>(yi1);
+    const uint_fast32_t zu  = ls::math::integer_cast<uint_fast32_t>(zi);
+
+    const auto&& pixel0 = color_cast<float, typename color_type::value_type>(tex.texel<color_type, order>(xu0, yu0, zu));
+    const auto&& pixel1 = color_cast<float, typename color_type::value_type>(tex.texel<color_type, order>(xu0, yu1, zu));
+    const auto&& pixel2 = color_cast<float, typename color_type::value_type>(tex.texel<color_type, order>(xu1, yu0, zu));
+    const auto&& pixel3 = color_cast<float, typename color_type::value_type>(tex.texel<color_type, order>(xu1, yu1, zu));
+
+    const auto&&   weight0 = pixel0 * (omdx * omdy);
+    const auto&&   weight1 = pixel1 * (omdx * dy);
+    const auto&&   weight2 = pixel2 * (dx   * omdy);
+    const auto&&   weight3 = pixel3 * (dx   * dy);
 
     const auto&& ret = ls::math::sum(weight0, weight1, weight2, weight3);
 
