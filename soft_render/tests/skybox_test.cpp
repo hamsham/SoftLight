@@ -630,7 +630,7 @@ int main()
                 camTrans.apply_transform();
 
                 constexpr float    viewAngle  = math::radians(60.f);
-                const math::mat4&& projMatrix = math::perspective(viewAngle, (float)pWindow->width() / (float)pWindow->height(), 0.1f, 10.f);
+                const math::mat4&& projMatrix = math::infinite_perspective(viewAngle, (float)pWindow->width() / (float)pWindow->height(), 0.1f);
 
                 // remove the camera's position
                 vpMatrix = projMatrix * math::mat4{math::mat3{camTrans.transform()}};
