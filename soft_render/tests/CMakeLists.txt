@@ -128,6 +128,13 @@ configure_file(testdata/sibenik/sibenik.obj        testdata/sibenik/sibenik.obj 
 
 configure_file(testdata/head256x256x109            testdata/head256x256x109            COPYONLY)
 
+configure_file(testdata/skybox/top.jpg    testdata/skybox/top.jpg    COPYONLY)
+configure_file(testdata/skybox/bottom.jpg testdata/skybox/bottom.jpg COPYONLY)
+configure_file(testdata/skybox/front.jpg  testdata/skybox/front.jpg  COPYONLY)
+configure_file(testdata/skybox/back.jpg   testdata/skybox/back.jpg   COPYONLY)
+configure_file(testdata/skybox/left.jpg   testdata/skybox/left.jpg   COPYONLY)
+configure_file(testdata/skybox/right.jpg  testdata/skybox/right.jpg  COPYONLY)
+
 #configure_file(testdata/dragon.obj                testdata/dragon.obj                  COPYONLY)
 
 
@@ -172,6 +179,7 @@ sr_add_test(packed_normal_test      packed_normal_test.cpp)
 sr_add_test(scanline_offset_test    scanline_offset_test.cpp)
 sr_add_test(scene_info_test         scene_info_test.cpp)
 sr_add_test(screen_tile_test        screen_tile_test.cpp)
+sr_add_test(skybox_test             skybox_test.cpp)
 sr_add_test(sr_vertex_chunking_test sr_vertex_chunking_test.cpp)
 sr_add_test(sr_vertex_info          sr_vertex_info.cpp)
 sr_add_test(volume_test             volume_test.cpp)
