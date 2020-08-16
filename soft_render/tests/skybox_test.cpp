@@ -144,13 +144,11 @@ int read_skybox_files(SR_SceneGraph& graph, const std::array<std::string, 6>& cu
     const size_t texId = graph.mContext.create_texture();
     SR_Texture& tex = graph.mContext.texture(texId);
 
-    for (size_t i = 0; i < cubeFiles.size(); ++i)
+    for (const std::string& cubeFace : cubeFiles)
     {
-        const std::string& cubeFace = cubeFiles[i];
-        
         if (loader.load(cubeFace.c_str()) != SR_ImgFile::FILE_LOAD_SUCCESS)
         {
-            std::cerr << "Unable to load the cube map face \"" << cubeFace << "\"." << std::endl;
+            std::cerr << "Unable to load the cube map face \"" << cubeFace.c_str() << "\"." << std::endl;
             graph.mContext.destroy_texture(texId);
             return -1;
         }
