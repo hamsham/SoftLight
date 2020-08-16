@@ -367,11 +367,11 @@ utils::Pointer<SR_SceneGraph> init_sky_context()
     context.num_threads(SR_TEST_MAX_THREADS);
 
     SR_Texture& tex = context.texture(texId);
-    retCode = tex.init(SR_ColorDataType::SR_COLOR_RGBA_FLOAT, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = tex.init(SR_ColorDataType::SR_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     assert(retCode == 0);
 
     SR_Texture& depth = context.texture(depthId);
-    retCode = depth.init(SR_ColorDataType::SR_COLOR_R_FLOAT, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = depth.init(SR_ColorDataType::SR_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     assert(retCode == 0);
 
     SR_Framebuffer& fbo = context.framebuffer(fboId);
