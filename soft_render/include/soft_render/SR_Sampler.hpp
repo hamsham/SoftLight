@@ -126,67 +126,6 @@ struct SR_WrapModeRepeat
 
 
 template <typename color_type, class WrapMode, SR_TexelOrder order = SR_TEXELS_ORDERED>
-inline LS_INLINE color_type sr_sample_near(const SR_Texture& tex, float x, float y) noexcept
-{
-    if (SR_WrapMode::SR_IsWrapModeBorder<WrapMode>::value && (x < 0.f || x >= 1.f || y < 0.f || y >= 1.f))
-    {
-        return color_type{0};
-    }
-
-    constexpr WrapMode wrapMode;
-
-    const float wx = wrapMode(x);
-    const float wy = wrapMode(y);
-
-    #if 0
-        const uint32_t xi = (uint_fast32_t)((float)tex.width()  * wx);
-        const uint32_t yi = (uint_fast32_t)((float)tex.height() * wy);
-    #else
-        typedef typename SR_Texture::fixed_type fixed_type;
-        const fixed_type    xf = ls::math::fixed_cast<fixed_type, float>(wx);
-        const fixed_type    yf = ls::math::fixed_cast<fixed_type, float>(wy);
-        const uint_fast32_t xi = ls::math::integer_cast<uint_fast32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(tex.width()) * xf);
-        const uint_fast32_t yi = ls::math::integer_cast<uint_fast32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(tex.height()) * yf);
-    #endif
-
-    const ptrdiff_t index = tex.map_coordinate<order>(xi, yi);
-    return reinterpret_cast<const color_type*>(tex.data())[index];
-}
-
-template <typename color_type, class WrapMode, SR_TexelOrder order = SR_TEXELS_ORDERED>
-inline LS_INLINE color_type sr_sample_near(const SR_Texture& tex, float x, float y, float z) noexcept
-{
-    if (SR_WrapMode::SR_IsWrapModeBorder<WrapMode>::value && (x < 0.f || x >= 1.f || y < 0.f || y >= 1.f || z < 0.f || z >= 1.f))
-    {
-        return color_type{0};
-    }
-
-    constexpr WrapMode wrapMode;
-    const float wx = wrapMode(x);
-    const float wy = wrapMode(y);
-    const float wz = wrapMode(z);
-
-    #if 0
-        const uint32_t xi = (uint_fast32_t)((float)tex.width()  * wx);
-        const uint32_t yi = (uint_fast32_t)((float)tex.height() * wy);
-        const uint32_t zi = (uint_fast32_t)((float)tex.depth()  * wz);
-    #else
-        typedef typename SR_Texture::fixed_type fixed_type;
-        const fixed_type    xf = ls::math::fixed_cast<fixed_type, float>(wx);
-        const fixed_type    yf = ls::math::fixed_cast<fixed_type, float>(wy);
-        const fixed_type    zf = ls::math::fixed_cast<fixed_type, float>(wz);
-        const uint_fast32_t xi = ls::math::integer_cast<uint_fast32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(tex.width()) * xf);
-        const uint_fast32_t yi = ls::math::integer_cast<uint_fast32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(tex.height()) * yf);
-        const uint_fast32_t zi = ls::math::integer_cast<uint_fast32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(tex.depth()) * zf);
-    #endif
-
-    const ptrdiff_t index = tex.map_coordinate<order>(xi, yi, zi);
-    return reinterpret_cast<const color_type*>(tex.data())[index];
-}
-
-
-
-template <typename color_type, class WrapMode, SR_TexelOrder order = SR_TEXELS_ORDERED>
 inline LS_INLINE color_type sr_sample_nearest(const SR_Texture& tex, float x, float y) noexcept
 {
     if (SR_WrapMode::SR_IsWrapModeBorder<WrapMode>::value && (x < 0.f || x >= 1.f || y < 0.f || y >= 1.f))
@@ -199,7 +138,7 @@ inline LS_INLINE color_type sr_sample_nearest(const SR_Texture& tex, float x, fl
     const float wx = wrapMode(x);
     const float wy = wrapMode(y);
 
-    #if 0
+    #if 1
         const uint32_t xi = (uint_fast32_t)((float)tex.width()  * wx);
         const uint32_t yi = (uint_fast32_t)((float)tex.height() * wy);
     #else
@@ -227,7 +166,7 @@ inline LS_INLINE color_type sr_sample_nearest(const SR_Texture& tex, float x, fl
     const float wy = wrapMode(y);
     const float wz = wrapMode(z);
 
-    #if 0
+    #if 1
         const uint32_t xi = (uint_fast32_t)((float)tex.width()  * wx);
         const uint32_t yi = (uint_fast32_t)((float)tex.height() * wy);
         const uint32_t zi = (uint_fast32_t)ls::math::round((float)tex.depth() * wz);
