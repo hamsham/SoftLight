@@ -172,18 +172,7 @@ int read_skybox_files(SR_SceneGraph& graph, const std::array<std::string, 6>& cu
             }
         }
 
-        const SR_ColorRGB8* inTexels = (const SR_ColorRGB8*)loader.data();
-        for (size_t z = (size_t)iter-1; z < (size_t)iter; ++z)
-        {
-            for (size_t y = 0; y < h; ++y)
-            {
-                for (size_t x = 0; x < w; ++x)
-                {
-                    tex.texel<SR_ColorRGB8>((uint16_t)x, (uint16_t)y, (uint16_t)z) = inTexels[x + y * h];
-                }
-            }
-        }
-
+        tex.set_texels(0, 0, (uint16_t)(iter-1), (uint16_t)w, (uint16_t)h, 1, loader.data());
         ++iter;
     }
 
