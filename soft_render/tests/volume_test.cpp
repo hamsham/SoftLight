@@ -259,16 +259,7 @@ int read_volume_file(SR_SceneGraph& graph)
     fin.read(tempBuf.get(), numBytes);
     fin.close();
 
-    for (size_t z = 0; z < d; ++z)
-    {
-        for (size_t y = 0; y < h; ++y)
-        {
-            for (size_t x = 0; x < w; ++x)
-            {
-                pTex.texel<char>((uint16_t)x, (uint16_t)y, (uint16_t)z) = tempBuf[x + w * (y + h * z)];
-            }
-        }
-    }
+    pTex.set_texels(0, 0, 0, (uint16_t)w, (uint16_t)h, (uint16_t)d, tempBuf.get());
 
     return 0;
 }
