@@ -49,7 +49,7 @@
 #endif /* SR_TEST_MAX_THREADS */
 
 #ifndef SR_BENCHMARK_SCENE
-    #define SR_BENCHMARK_SCENE 1
+    #define SR_BENCHMARK_SCENE 0
 #endif /* SR_BENCHMARK_SCENE */
 
 #ifndef SR_TEST_BUMP_MAPS
@@ -665,16 +665,16 @@ void update_cam_position(SR_Transform& camTrans, float tickTime, utils::Pointer<
 /*-------------------------------------
  * Render the Scene
 -------------------------------------*/
-void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, const SR_Transform& camTrans, bool usePbr)
+void render_scene(SR_SceneGraph* pGraph, unsigned w, unsigned h, const math::mat4& projection, const SR_Transform& camTrans, bool usePbr)
 {
     SR_Context&    context   = pGraph->mContext;
     MeshUniforms*  pUniforms = context.ubo(0).as<MeshUniforms>();
     SR_Plane       planes[6];
 
-    const math::mat4 projection = math::perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 1.f, 10.f);
-    const math::mat4 vp2 = projection * camTrans.transform();
+    const math::mat4&& p  = math::perspective(math::radians(60.f), (float)w/(float)h, 0.1f, 100.f);
+    const math::mat4&& vp = projection * camTrans.transform();
 
-    sr_extract_frustum_planes(projection, planes);
+    sr_extract_frustum_planes(p, planes);
 
     for (SR_SceneNode& n : pGraph->mNodes)
     {
@@ -685,17 +685,23 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, const SR_Tr
 
         const math::mat4& modelMat = pGraph->mModelMatrices[n.nodeId];
         const size_t numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
-        const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
 
         pUniforms->modelMatrix = modelMat;
-        pUniforms->mvpMatrix   = vpMatrix * modelMat;
+        pUniforms->mvpMatrix   = vp * modelMat;
 
+        const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
         for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
         {
+            const math::mat4&&    mv         = camTrans.transform() * modelMat;
             const size_t          nodeMeshId = meshIds[meshId];
             const SR_Mesh&        m          = pGraph->mMeshes[nodeMeshId];
             const SR_BoundingBox& box        = pGraph->mMeshBounds[nodeMeshId];
             const SR_Material&    material   = pGraph->mMaterials[m.materialId];
+
+            if (!sr_is_visible(box, mv, planes))
+            {
+                continue;
+            }
 
             if (!(m.mode & SR_RenderMode::RENDER_MODE_TRIANGLES))
             {
@@ -711,18 +717,15 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, const SR_Tr
             // Use the textureless shader if needed
             size_t shaderId = (size_t)(material.pTextures[SR_MATERIAL_TEXTURE_AMBIENT] == nullptr);
 
-            pUniforms->light.ambient  = material.ambient;
-            pUniforms->light.diffuse  = material.diffuse;
+            pUniforms->light.ambient = material.ambient;
+            pUniforms->light.diffuse = material.diffuse;
 
             if (usePbr)
             {
                 shaderId += 2;
             }
 
-            if (sr_is_visible(box, vp2 * modelMat, planes))
-            {
-                context.draw(m, shaderId, 0);
-            }
+            context.draw(m, shaderId, 0);
         }
     }
 }
@@ -1017,7 +1020,6 @@ int main()
                 MeshUniforms* pUniforms = context.ubo(0).as<MeshUniforms>();
                 pUniforms->camPos = math::vec4_cast(camTrans.absolute_position(), 1.f);
             }
-            const math::mat4&& vpMatrix = projMatrix * camTrans.transform();
 
             pGraph->update();
 
@@ -1027,7 +1029,7 @@ int main()
                 context.clear_framebuffer(0, 0, SR_ColorRGBAd{0.0, 0.0, 0.0, 1.0}, 1.0);
             #endif
 
-            render_scene(pGraph.get(), vpMatrix, camTrans, usePbr);
+            render_scene(pGraph.get(), pWindow->width(), pWindow->height(), projMatrix, camTrans, usePbr);
 
             context.blit(*pRenderBuf, 0);
             pWindow->render(*pRenderBuf);
