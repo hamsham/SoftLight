@@ -115,6 +115,7 @@ endif()
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR};${CMAKE_MODULE_PATH}")
 include(assimpConfig.cmake)
 include(FreeImageConfig.cmake)
+include(freetypeConfig.cmake)
 
 
 
@@ -131,6 +132,7 @@ set(SR_LIB_HEADERS
     include/soft_render/SR_AnimationKeyList.hpp
     include/soft_render/SR_AnimationPlayer.hpp
     include/soft_render/SR_AnimationProperty.hpp
+    include/soft_render/SR_Atlas.hpp
     include/soft_render/SR_BlitProcesor.hpp
     include/soft_render/SR_BoundingBox.hpp
     include/soft_render/SR_Camera.hpp
@@ -138,6 +140,7 @@ set(SR_LIB_HEADERS
     include/soft_render/SR_Color.hpp
     include/soft_render/SR_Config.hpp
     include/soft_render/SR_Context.hpp
+    include/soft_render/SR_FontLoader.hpp
     include/soft_render/SR_FragmentProcessor.hpp
     include/soft_render/SR_Framebuffer.hpp
     include/soft_render/SR_Geometry.hpp
@@ -162,6 +165,7 @@ set(SR_LIB_HEADERS
     include/soft_render/SR_ShaderUtil.hpp
     include/soft_render/SR_ShaderProcessor.hpp
     include/soft_render/SR_Swizzle.hpp
+    include/soft_render/SR_TextMeshLoader.hpp
     include/soft_render/SR_Texture.hpp
     include/soft_render/SR_Transform.hpp
     include/soft_render/SR_UniformBuffer.hpp
@@ -202,12 +206,14 @@ set(SR_LIB_SOURCES
     src/SR_AnimationChannel.cpp
     src/SR_AnimationKeyList.cpp
     src/SR_AnimationPlayer.cpp
+    src/SR_Atlas.cpp
     src/SR_BlitProcessor.cpp
     src/SR_BoundingBox.cpp
     src/SR_Camera.cpp
     src/SR_ClearProcessor.cpp
     src/SR_Color.cpp
     src/SR_Context.cpp
+    src/SR_FontLoader.cpp
     src/SR_FragmentProcessor.cpp
     src/SR_Framebuffer.cpp
     src/SR_Geometry.cpp
@@ -224,6 +230,7 @@ set(SR_LIB_SOURCES
     src/SR_SceneNode.cpp
     src/SR_Shader.cpp
     src/SR_ShaderProcessor.cpp
+    src/SR_TextMeshLoader.cpp
     src/SR_Texture.cpp
     src/SR_Transform.cpp
     src/SR_UniformBuffer.cpp
@@ -305,6 +312,7 @@ target_link_libraries(${PROJECT_NAME}
         LightSky::Setup
         ${ASSIMP_LIBRARIES}
         ${FREEIMAGE_LIBRARIES}
+        ${FREETYPE_LIBRARIES}
 )
 
 if (NOT MSVC AND NOT PREFER_COCOA)
@@ -328,7 +336,12 @@ elseif (PREFER_COCOA)
 
 endif()
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${FREEIMAGE_INCLUDE_PATH})
+target_include_directories(
+    ${PROJECT_NAME}
+        PRIVATE
+            ${FREEIMAGE_INCLUDE_PATH}
+            ${FREETYPE_INCLUDE_DIRS}
+)
 
 
 # -------------------------------------

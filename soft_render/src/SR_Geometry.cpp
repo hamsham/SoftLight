@@ -1,6 +1,8 @@
 
 #include <algorithm> // std::swap
 
+#include "lightsky/math/bits.h"
+
 #include "soft_render/SR_Geometry.hpp"
 
 namespace math = ls::math;
@@ -295,6 +297,41 @@ unsigned sr_vertex_attrib_offset(const SR_CommonVertType vertexTypes, const SR_C
     }
 
     return numBytes;
+}
+
+
+
+/*-------------------------------------
+ * Count the number of active vertex attributes
+-------------------------------------*/
+unsigned sr_count_vertex_attribs(const SR_CommonVertType vertAttribs)
+{
+    return math::popcnt_u32((unsigned)vertAttribs);
+}
+
+
+
+/*-------------------------------------
+ * Get the Nth active vertex attributes in an attribute bitmask.
+-------------------------------------*/
+SR_CommonVertType sr_get_vertex_attrib(const SR_CommonVertType vertAttribs, unsigned index)
+{
+    unsigned numAttribs = sr_count_vertex_attribs(vertAttribs);
+    for (unsigned i = 0, j = 0; j < numAttribs; ++i)
+    {
+        unsigned mask = (unsigned)vertAttribs & (0x00000001u << i);
+        if (mask)
+        {
+            if (j == index)
+            {
+                return (SR_CommonVertType)mask;
+            }
+
+            ++j;
+        }
+    }
+
+    return (SR_CommonVertType)0;
 }
 
 

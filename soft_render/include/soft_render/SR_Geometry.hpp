@@ -72,24 +72,24 @@ struct SR_BoneData
 -------------------------------------*/
 enum SR_CommonVertType : uint32_t
 {
-    POSITION_VERTEX           = 0x10000000,
-    TEXTURE_VERTEX            = 0x20000000,
-    PACKED_TEXTURE_VERTEX     = 0x40000000,
-    COLOR_VERTEX              = 0x80000000,
-    NORMAL_VERTEX             = 0x01000000,
-    TANGENT_VERTEX            = 0x02000000,
-    BITANGENT_VERTEX          = 0x04000000,
-    PACKED_NORMAL_VERTEX      = 0x08000000,
-    PACKED_TANGENT_VERTEX     = 0x00100000,
-    PACKED_BITANGENT_VERTEX   = 0x00200000,
-    MODEL_MAT_VERTEX          = 0x00400000,
-    BONE_ID_VERTEX            = 0x00800000,
-    PACKED_BONE_ID_VERTEX     = 0x00010000,
-    BONE_WEIGHT_VERTEX        = 0x00020000,
-    PACKED_BONE_WEIGHT_VERTEX = 0x00040000,
-    INDEX_VERTEX              = 0x00080000,
-    BBOX_TRR_VERTEX           = 0x00001000,
-    BBOX_BFL_VERTEX           = 0x00002000,
+    POSITION_VERTEX           = 0x00000001,
+    TEXTURE_VERTEX            = 0x00000002,
+    PACKED_TEXTURE_VERTEX     = 0x00000004,
+    COLOR_VERTEX              = 0x00000008,
+    NORMAL_VERTEX             = 0x00000010,
+    TANGENT_VERTEX            = 0x00000020,
+    BITANGENT_VERTEX          = 0x00000040,
+    PACKED_NORMAL_VERTEX      = 0x00000080,
+    PACKED_TANGENT_VERTEX     = 0x00000100,
+    PACKED_BITANGENT_VERTEX   = 0x00000200,
+    MODEL_MAT_VERTEX          = 0x00000400,
+    BONE_ID_VERTEX            = 0x00000800,
+    PACKED_BONE_ID_VERTEX     = 0x00001000,
+    BONE_WEIGHT_VERTEX        = 0x00002000,
+    PACKED_BONE_WEIGHT_VERTEX = 0x00004000,
+    INDEX_VERTEX              = 0x00008000,
+    BBOX_TRR_VERTEX           = 0x00010000,
+    BBOX_BFL_VERTEX           = 0x00020000,
 
 
     /**
@@ -194,6 +194,20 @@ uint32_t sr_bytes_per_vertex(SR_DataType t, SR_Dimension d);
  * a particular attribute is reached.
 -------------------------------------*/
 unsigned sr_vertex_attrib_offset(const SR_CommonVertType vertFlags, const SR_CommonVertType mask);
+
+
+
+/*-------------------------------------
+ * Count the number of active vertex attributes
+-------------------------------------*/
+unsigned sr_count_vertex_attribs(const SR_CommonVertType vertAttribs);
+
+
+
+/*-------------------------------------
+ * Get the Nth active vertex attributes in an attribute bitmask.
+-------------------------------------*/
+SR_CommonVertType sr_get_vertex_attrib(const SR_CommonVertType vertAttribs, unsigned index);
 
 
 

@@ -1,5 +1,6 @@
 
 #include <iostream>
+#include <fstream>
 #include <thread>
 
 #include "lightsky/math/vec_utils.h"
@@ -10,19 +11,22 @@
 #include "lightsky/utils/Time.hpp"
 #include "lightsky/utils/Tuple.h"
 
+#include "soft_render/SR_Atlas.hpp"
 #include "soft_render/SR_Camera.hpp"
 #include "soft_render/SR_Context.hpp"
 #include "soft_render/SR_IndexBuffer.hpp"
+#include "soft_render/SR_FontLoader.hpp"
 #include "soft_render/SR_Framebuffer.hpp"
+#include "soft_render/SR_ImgFilePPM.hpp"
 #include "soft_render/SR_KeySym.hpp"
 #include "soft_render/SR_Mesh.hpp"
 #include "soft_render/SR_Material.hpp"
-#include "soft_render/SR_PackedVertex.hpp"
+#include "soft_render/SR_Plane.hpp"
 #include "soft_render/SR_RenderWindow.hpp"
 #include "soft_render/SR_Sampler.hpp"
-#include "soft_render/SR_SceneFileLoader.hpp"
 #include "soft_render/SR_SceneGraph.hpp"
 #include "soft_render/SR_Shader.hpp"
+#include "soft_render/SR_TextMeshLoader.hpp"
 #include "soft_render/SR_Transform.hpp"
 #include "soft_render/SR_UniformBuffer.hpp"
 #include "soft_render/SR_VertexArray.hpp"
@@ -43,24 +47,8 @@
 #endif /* SR_TEST_MAX_THREADS */
 
 #ifndef SR_BENCHMARK_SCENE
-    #define SR_BENCHMARK_SCENE 1
+    #define SR_BENCHMARK_SCENE 0
 #endif /* SR_BENCHMARK_SCENE */
-
-#ifndef DEFAULT_INSTANCES_X
-    #define DEFAULT_INSTANCES_X 10
-#endif
-
-#ifndef DEFAULT_INSTANCES_Y
-    #define DEFAULT_INSTANCES_Y 10
-#endif
-
-#ifndef DEFAULT_INSTANCES_Z
-    #define DEFAULT_INSTANCES_Z 10
-#endif
-
-#ifndef DEFAULT_INSTANCES
-    #define DEFAULT_INSTANCES (DEFAULT_INSTANCES_X*DEFAULT_INSTANCES_Y*DEFAULT_INSTANCES_Z)
-#endif
 
 namespace ls
 {
@@ -81,14 +69,11 @@ using Tuple = utils::Tuple<data_t...>;
 /*-----------------------------------------------------------------------------
  * Structures to create uniform variables shared across all shader stages.
 -----------------------------------------------------------------------------*/
-struct AnimUniforms
+struct TextUniforms
 {
-    const SR_Texture* pTexture;
-    size_t            instanceId;
-    utils::UniqueAlignedArray<math::mat4> instanceMatrix;
-    math::mat4        modelMatrix;
-    math::mat4        vpMatrix;
+    math::mat4        mvpMatrix;
     math::vec4        camPos;
+    const SR_Texture* pTexture;
 };
 
 
@@ -102,25 +87,16 @@ struct AnimUniforms
 --------------------------------------*/
 math::vec4 _texture_vert_shader_impl(SR_VertexParam& param)
 {
-    typedef Tuple<math::vec3, math::vec2, math::vec3> Vertex;
+    typedef Tuple<math::vec3, math::vec2> Vertex;
 
-    const AnimUniforms* pUniforms   = param.pUniforms->as<AnimUniforms>();
+    const TextUniforms* pUniforms   = param.pUniforms->as<TextUniforms>();
     const Vertex* const v           = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));
     const math::vec4&&  vert        = math::vec4_cast(v->const_element<0>(), 1.f);
     const math::vec4&&  uv          = math::vec4_cast(v->const_element<1>(), 0.f, 0.f);
-    const math::vec4&&  norm        = math::vec4_cast(v->const_element<2>(), 0.f);
 
-    const size_t       instanceId  = pUniforms->instanceId == SCENE_NODE_ROOT_ID ? param.instanceId : pUniforms->instanceId;
-    const math::mat4&  instanceMat = pUniforms->instanceMatrix[instanceId];
-    const math::mat4&& modelMat    = instanceMat * pUniforms->modelMatrix;
-    const math::vec4&& pos         = modelMat * vert;
-    const math::vec4&& n           = modelMat * norm;
+    param.pVaryings[0] = uv;
 
-    param.pVaryings[0] = pos;
-    param.pVaryings[1] = uv;
-    param.pVaryings[2] = n;
-
-    return pUniforms->vpMatrix * pos;
+    return pUniforms->mvpMatrix * vert;
 }
 
 
@@ -128,7 +104,7 @@ math::vec4 _texture_vert_shader_impl(SR_VertexParam& param)
 SR_VertexShader texture_vert_shader()
 {
     SR_VertexShader shader;
-    shader.numVaryings = 3;
+    shader.numVaryings = 1;
     shader.cullMode = SR_CULL_BACK_FACE;
     shader.shader = _texture_vert_shader_impl;
 
@@ -142,30 +118,16 @@ SR_VertexShader texture_vert_shader()
 --------------------------------------*/
 bool _texture_frag_shader(SR_FragmentParam& fragParam)
 {
-    const AnimUniforms*  pUniforms = fragParam.pUniforms->as<AnimUniforms>();
-    const math::vec4&    pos       = fragParam.pVaryings[0];
-    const math::vec4&    uv        = fragParam.pVaryings[1];
-    const math::vec4&&   norm      = math::normalize(fragParam.pVaryings[2]);
-    const SR_Texture*    pTexture  = pUniforms->pTexture;
-    const math::vec4     ambient   = {0.1f, 0.1f, 0.1f, 1.f};
-    math::vec4           albedo;
+    const TextUniforms* pUniforms = fragParam.pUniforms->as<TextUniforms>();
+    const math::vec4&   uv        = fragParam.pVaryings[0];
+    const SR_Texture*   pTexture  = pUniforms->pTexture;
+    const math::vec4    albedo    = {0.1f, 1.f, 0.25f, 1.f};
 
-    // normalize the texture colors to within (0.f, 1.f)
-    {
-        const math::vec3_t<uint8_t>&& pixel8 = sr_sample_bilinear<math::vec3_t<uint8_t>, SR_WrapMode::REPEAT>(*pTexture, uv[0], uv[1]);
-        const math::vec4_t<uint8_t>&& pixelF = math::vec4_cast<uint8_t>(pixel8, 255);
-        albedo = color_cast<float, uint8_t>(pixelF);
-    }
+    const SR_ColorR8&& pixel8 = sr_sample_bilinear<SR_ColorR8, SR_WrapMode::EDGE>(*pTexture, uv[0], uv[1]);
 
-    // Light direction calculation
-    math::vec4          lightDir   = math::normalize(pUniforms->camPos - pos);
-    const float         lightAngle = 0.5f * math::dot(-lightDir, norm) + 0.5f;
-    const math::vec4&&  diffuse    = math::vec4{1.f} * lightAngle;
+    fragParam.pOutputs[0] = albedo * (float)pixel8.r * (1.f/255.f);
 
-    const math::vec4 rgba = albedo * (ambient+diffuse);
-    fragParam.pOutputs[0] = math::min(rgba, math::vec4{1.f});
-
-    return true;
+    return pixel8.r > 128;
 }
 
 
@@ -173,9 +135,9 @@ bool _texture_frag_shader(SR_FragmentParam& fragParam)
 SR_FragmentShader texture_frag_shader()
 {
     SR_FragmentShader shader;
-    shader.numVaryings = 3;
+    shader.numVaryings = 1;
     shader.numOutputs  = 1;
-    shader.blend       = SR_BLEND_OFF;
+    shader.blend       = SR_BLEND_PREMULTIPLED_ALPHA;
     shader.depthTest   = SR_DEPTH_TEST_ON;
     shader.depthMask   = SR_DEPTH_MASK_ON;
     shader.shader      = _texture_frag_shader;
@@ -228,10 +190,16 @@ void update_cam_position(SR_Transform& camTrans, float tickTime, utils::Pointer<
 /*-------------------------------------
  * Render the Scene
 -------------------------------------*/
-void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, bool useInstancing, size_t maxInstances)
+void render_scene(SR_SceneGraph* pGraph, const math::mat4& projection, unsigned w, unsigned h, const SR_Transform& camTrans)
 {
-    SR_Context& context = pGraph->mContext;
-    AnimUniforms* pUniforms = context.ubo(0).as<AnimUniforms>();
+    SR_Context&   context = pGraph->mContext;
+    TextUniforms* pUniforms = context.ubo(0).as<TextUniforms>();
+    SR_Plane      planes[6];
+
+    const math::mat4 p = math::perspective(math::radians(60.f), (float)w/(float)h, 0.1f, 100.f);
+    const math::mat4&& vp = projection * camTrans.transform();
+
+    sr_extract_frustum_planes(p, planes);
 
     for (SR_SceneNode& n : pGraph->mNodes)
     {
@@ -240,64 +208,24 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& vpMatrix, bool useIns
             continue;
         }
 
-        const math::mat4& modelMat = pGraph->mModelMatrices[n.nodeId];
-        const size_t numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
+        const math::mat4&  modelMat      = pGraph->mModelMatrices[n.nodeId];
+        const math::mat4&& mv            = camTrans.transform() * modelMat;
+        const size_t       numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
+
+        pUniforms->mvpMatrix = vp * modelMat;
+
         const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
-
-        pUniforms->modelMatrix = modelMat;
-        pUniforms->vpMatrix    = vpMatrix * modelMat;
-
         for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
         {
-            const size_t       nodeMeshId = meshIds[meshId];
-            const SR_Mesh&     m          = pGraph->mMeshes[nodeMeshId];
-            const SR_Material& material   = pGraph->mMaterials[m.materialId];
+            const size_t          nodeMeshId = meshIds[meshId];
+            const SR_Mesh&        m          = pGraph->mMeshes[nodeMeshId];
+            const SR_BoundingBox& box        = pGraph->mMeshBounds[nodeMeshId];
+            const SR_Material&    material   = pGraph->mMaterials[m.materialId];
 
-            pUniforms->pTexture = material.pTextures[SR_MATERIAL_TEXTURE_DIFFUSE];
-
-            if (useInstancing)
+            if (sr_is_visible(box, mv, planes))
             {
-                pUniforms->instanceId = SCENE_NODE_ROOT_ID;
-                context.draw_instanced(m, maxInstances, 0, 0);
-            }
-            else
-            {
-                for (size_t i = maxInstances; i--;)
-                {
-                    pUniforms->instanceId = i;
-                    context.draw(m, 0, 0);
-                }
-            }
-        }
-    }
-}
-
-
-
-/*-----------------------------------------------------------------------------
- * Update the number of instances
------------------------------------------------------------------------------*/
-void update_instance_count(utils::Pointer<SR_SceneGraph>& pGraph, size_t instancesX, size_t instancesY, size_t instancesZ)
-{
-    SR_Context& context = pGraph->mContext;
-    AnimUniforms* pUniforms = context.ubo(0).as<AnimUniforms>();
-
-    size_t instanceCount = instancesX * instancesY * instancesZ;
-    pUniforms->instanceMatrix = utils::make_unique_aligned_array<math::mat4>(instanceCount);
-
-    for (size_t z = 0; z < instancesZ; ++z)
-    {
-        for (size_t y = 0; y < instancesY; ++y)
-        {
-            for (size_t x = 0; x < instancesX; ++x)
-            {
-                SR_Transform tempTrans;
-                tempTrans.scale(0.125f);
-                tempTrans.position(math::vec3{(float)x, (float)y, (float)z} * 25.f);
-                tempTrans.apply_transform();
-
-                const size_t index = x + (instancesX * y + (instancesX * instancesY * z));
-                pUniforms->instanceMatrix[index] = tempTrans.transform();
+                pUniforms->pTexture = material.pTextures[SR_MATERIAL_TEXTURE_AMBIENT];
+                context.draw(m, 0, 0);
             }
         }
     }
@@ -311,9 +239,8 @@ void update_instance_count(utils::Pointer<SR_SceneGraph>& pGraph, size_t instanc
 utils::Pointer<SR_SceneGraph> create_context()
 {
     int retCode = 0;
-
-    SR_SceneFileLoader meshLoader;
     utils::Pointer<SR_SceneGraph> pGraph{new SR_SceneGraph{}};
+
     SR_Context& context = pGraph->mContext;
     size_t fboId   = context.create_framebuffer();
     size_t texId   = context.create_texture();
@@ -346,28 +273,79 @@ utils::Pointer<SR_SceneGraph> create_context()
     retCode = fbo.valid();
     assert(retCode == 0);
 
-    SR_SceneLoadOpts opts = sr_default_scene_load_opts();
-    opts.packUvs = false;
-    opts.packNormals = false;
-    opts.genSmoothNormals = true;
-    retCode = meshLoader.load("testdata/heart/heart.obj", opts);
-    assert(retCode != 0);
-
-    retCode = pGraph->import(meshLoader.data());
-    assert(retCode == 0);
-
-    pGraph->update();
-
     const SR_VertexShader&&   texVertShader  = texture_vert_shader();
     const SR_FragmentShader&& texFragShader  = texture_frag_shader();
 
     size_t uboId = context.create_ubo();
     assert(uboId == 0);
-    update_instance_count(pGraph, DEFAULT_INSTANCES_X, DEFAULT_INSTANCES_Y, DEFAULT_INSTANCES_Z);
 
-    size_t texShaderId  = context.create_shader(texVertShader,  texFragShader,  uboId);
+    size_t texShaderId = context.create_shader(texVertShader, texFragShader, uboId);
     assert(texShaderId == 0);
     (void)texShaderId;
+
+    // backbuffer and shader loading is complete. now load the text
+
+    SR_FontLoader fontLoader;
+    if (!fontLoader.load_file("testdata/testfont.ttf"))
+    {
+        std::cerr << "Failed to open the test text font." << std::endl;
+        return pGraph;
+    }
+
+    SR_Atlas atlas;
+    if (!atlas.init(pGraph->mContext, fontLoader))
+    {
+        std::cerr << "Failed to initialize a font atlas." << std::endl;
+        return pGraph;
+    }
+
+    std::string buffer;
+    if (0)
+    {
+        buffer = "Hello World!\nI'm a software renderer!";
+    }
+    else
+    {
+        std::ifstream fin{"testdata/lorem_ipsum.txt"};
+        if (!fin.good())
+        {
+            std::cerr << "Failed to open the test text file." << std::endl;
+            return pGraph;
+        }
+
+        size_t orig = 0, end = 0;
+        fin.seekg(0, std::ios::end);
+        end = fin.tellg();
+        fin.seekg(0, std::ios::beg);
+        buffer.resize(end - orig);
+        fin.read(&buffer[0], buffer.size());
+    }
+
+
+    SR_TextMeshLoader textMeshLoader;
+    SR_TextLoadOpts opts = sr_default_text_load_opts();
+
+    retCode = textMeshLoader.load(buffer, atlas, opts, true);
+    if (retCode != 0)
+    {
+        std::cerr << "Failed to load the test text mesh." << std::endl;
+        return pGraph;
+    }
+    retCode = pGraph->import(textMeshLoader.data());
+    assert(retCode == 0);
+
+    pGraph->update();
+
+    retCode = sr_img_save_ppm<uint8_t>((uint16_t)atlas.texture()->width(), (uint16_t)atlas.texture()->height(), (const SR_ColorR8*)atlas.texture()->data(), "text_atlas.ppm");
+    if (0 == retCode)
+    {
+        std::cout << "Successfully saved the image text_atlas.ppm" << std::endl;
+    }
+    else
+    {
+        std::cerr << "Error exporting the text atlas to a file: " << retCode << std::endl;
+    }
+
 
     (void)retCode;
     return pGraph;
@@ -398,16 +376,11 @@ int main()
     float totalSeconds = 0.f;
     float dx = 0.f;
     float dy = 0.f;
-    bool useInstancing = true;
-    unsigned instancesX = DEFAULT_INSTANCES_X;
-    unsigned instancesY = DEFAULT_INSTANCES_Y;
-    unsigned instancesZ = DEFAULT_INSTANCES_Z;
     unsigned numThreads = context.num_threads();
 
     SR_Transform camTrans;
     camTrans.type(SR_TransformType::SR_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
-    math::vec3 viewPos = math::vec3{(float)instancesX, (float)instancesY, (float)instancesZ} * 30.f;
-    camTrans.extract_transforms(math::look_at(viewPos, math::vec3{0.f, 0.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
+    camTrans.extract_transforms(math::look_at(math::vec3{30.f, -20.f, -55.f}, math::vec3{30.f, 40.f, 0.f}, math::vec3{0.f, -1.f, 0.f}));
     math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
 
     if (shouldQuit)
@@ -504,31 +477,6 @@ int main()
                         std::cout << "Mouse Capture: " << pWindow->is_mouse_captured() << std::endl;
                         break;
 
-                    case SR_KeySymbol::KEY_SYM_F2:
-                        useInstancing = !useInstancing;
-                        std::cout << "Instancing State: " << useInstancing << std::endl;
-                        break;
-
-                    case SR_KeySymbol::KEY_SYM_1:
-                        instancesX = math::max<size_t>(1, instancesX-1);
-                        instancesY = math::max<size_t>(1, instancesY-1);
-                        instancesZ = math::max<size_t>(1, instancesZ-1);
-                        update_instance_count(pGraph, instancesX, instancesY, instancesZ);
-                        viewPos = math::vec3{(float)instancesX, (float)instancesY, (float)instancesZ} * 30.f;
-                        camTrans.extract_transforms(math::look_at(viewPos, math::vec3{0.f, 0.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
-                        std::cout << "Instance count decreased to (" << instancesX << 'x' << instancesY << 'x' << instancesZ << ") = " << instancesX*instancesY*instancesZ << std::endl;
-                        break;
-
-                    case SR_KeySymbol::KEY_SYM_2:
-                        instancesX = math::min<size_t>(std::numeric_limits<size_t>::max(), instancesX+1);
-                        instancesY = math::min<size_t>(std::numeric_limits<size_t>::max(), instancesY+1);
-                        instancesZ = math::min<size_t>(std::numeric_limits<size_t>::max(), instancesZ+1);
-                        update_instance_count(pGraph, instancesX, instancesY, instancesZ);
-                        viewPos = math::vec3{(float)instancesX, (float)instancesY, (float)instancesZ} * 30.f;
-                        camTrans.extract_transforms(math::look_at(viewPos, math::vec3{0.f, 0.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
-                        std::cout << "Instance count decreased to (" << instancesX << 'x' << instancesY << 'x' << instancesZ << ") = " << instancesX*instancesY*instancesZ << std::endl;
-                        break;
-
                     case SR_KeySymbol::KEY_SYM_ESCAPE:
                         std::cout << "Escape button pressed. Exiting." << std::endl;
                         shouldQuit = true;
@@ -580,7 +528,7 @@ int main()
 
             update_cam_position(camTrans, tickTime, pKeySyms);
 
-            AnimUniforms* pUniforms = context.ubo(0).as<AnimUniforms>();
+            TextUniforms* pUniforms = context.ubo(0).as<TextUniforms>();
             if (camTrans.is_dirty())
             {
                 camTrans.apply_transform();
@@ -589,16 +537,11 @@ int main()
                 pUniforms->camPos = math::vec4_cast(camTransPos, 1.f);
             }
 
-            for (size_t i = instancesX*instancesY*instancesZ; i--;) {
-                pUniforms->instanceMatrix[i] = math::rotate(pUniforms->instanceMatrix[i], math::vec3{0.f, 1.f, 0.f}, tickTime);
-            }
-
             pGraph->update();
 
             context.clear_framebuffer(0, 0, SR_ColorRGBAd{0.6, 0.6, 0.6, 1.0}, 0.0);
-            const math::mat4&& vpMatrix = projMatrix * camTrans.transform();
 
-            render_scene(pGraph.get(), vpMatrix, useInstancing, instancesX*instancesY*instancesZ);
+            render_scene(pGraph.get(), projMatrix, pWindow->width(), pWindow->height(), camTrans);
             context.blit(*pRenderBuf, 0);
             pWindow->render(*pRenderBuf);
         }
@@ -611,7 +554,6 @@ int main()
         }
     }
 
-    context.ubo(0).as<AnimUniforms>()->instanceMatrix.reset();
     pRenderBuf->terminate();
 
     return pWindow->destroy();

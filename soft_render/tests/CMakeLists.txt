@@ -135,6 +135,9 @@ configure_file(testdata/skybox/back.jpg   testdata/skybox/back.jpg   COPYONLY)
 configure_file(testdata/skybox/left.jpg   testdata/skybox/left.jpg   COPYONLY)
 configure_file(testdata/skybox/right.jpg  testdata/skybox/right.jpg  COPYONLY)
 
+configure_file(testdata/testfont.ttf    testdata/testfont.ttf    COPYONLY)
+configure_file(testdata/lorem_ipsum.txt testdata/lorem_ipsum.txt COPYONLY)
+
 #configure_file(testdata/dragon.obj                testdata/dragon.obj                  COPYONLY)
 
 
@@ -182,6 +185,7 @@ sr_add_test(screen_tile_test        screen_tile_test.cpp)
 sr_add_test(skybox_test             skybox_test.cpp)
 sr_add_test(sr_vertex_chunking_test sr_vertex_chunking_test.cpp)
 sr_add_test(sr_vertex_info          sr_vertex_info.cpp)
+sr_add_test(text_test               text_test.cpp)
 sr_add_test(volume_test             volume_test.cpp)
 sr_add_test(window_test             window_test.cpp)
 sr_add_test(z_curve_test            z_curve_test.cpp)
