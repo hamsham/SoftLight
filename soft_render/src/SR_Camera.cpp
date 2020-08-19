@@ -24,20 +24,29 @@ namespace math = ls::math;
 -------------------------------------*/
 void sr_extract_frustum_planes(const ls::math::mat4& projection, ls::math::vec4 planes[6]) noexcept
 {
-    planes[SR_FRUSTUM_PLANE_LEFT]   = projection[3] + projection[0];
-    planes[SR_FRUSTUM_PLANE_RIGHT]  = projection[3] - projection[0];
-    planes[SR_FRUSTUM_PLANE_BOTTOM] = projection[3] + projection[1];
-    planes[SR_FRUSTUM_PLANE_TOP]    = projection[3] - projection[1];
-    planes[SR_FRUSTUM_PLANE_NEAR]   = projection[3] + projection[2];
-    planes[SR_FRUSTUM_PLANE_FAR]    = projection[3] - projection[2];
+    //planes[SR_FRUSTUM_PLANE_LEFT]   = projection[3] + projection[0];
+    //planes[SR_FRUSTUM_PLANE_RIGHT]  = projection[3] - projection[0];
+    //planes[SR_FRUSTUM_PLANE_BOTTOM] = projection[3] + projection[1];
+    //planes[SR_FRUSTUM_PLANE_TOP]    = projection[3] - projection[1];
+    //planes[SR_FRUSTUM_PLANE_NEAR]   = projection[3] + projection[2];
+    //planes[SR_FRUSTUM_PLANE_FAR]    = projection[3] - projection[2];
+
+    for (unsigned i = 4; i--;) planes[SR_FRUSTUM_PLANE_LEFT][i]   = projection[i][3] + projection[i][0];
+    for (unsigned i = 4; i--;) planes[SR_FRUSTUM_PLANE_RIGHT][i]  = projection[i][3] - projection[i][0];
+
+    for (unsigned i = 4; i--;) planes[SR_FRUSTUM_PLANE_BOTTOM][i] = projection[i][3] + projection[i][1];
+    for (unsigned i = 4; i--;) planes[SR_FRUSTUM_PLANE_TOP][i]    = projection[i][3] - projection[i][1];
+
+    for (unsigned i = 4; i--;) planes[SR_FRUSTUM_PLANE_NEAR][i]   = projection[i][3] + projection[i][2];
+    for (unsigned i = 4; i--;) planes[SR_FRUSTUM_PLANE_FAR][i]    = projection[i][3] - projection[i][2];
 
     for (unsigned i = 6; i--;)
     {
-        const math::vec3&& norm = math::vec3_cast(planes[i]);
-        const float lenInv = 1.f / math::length(norm);
-        planes[i] = -planes[i] * lenInv;
+        const float lenInv = math::rcp(math::length(math::vec3_cast(planes[i])));
+        planes[i] = planes[i] * lenInv;
     }
 }
+
 
 
 bool sr_is_visible(const ls::math::vec4& p, const ls::math::vec4 planes[6]) noexcept
@@ -55,36 +64,18 @@ bool sr_is_visible(const ls::math::vec4& p, const ls::math::vec4 planes[6]) noex
 
 bool sr_is_visible(const SR_BoundingBox& bb, const ls::math::mat4& mvpMatrix, const ls::math::vec4 planes[6]) noexcept
 {
-    const math::vec4& boxMax = bb.max_point();
-    const math::vec4& boxMin = bb.min_point();
+    const math::vec4& boxMax = mvpMatrix * bb.max_point();
+    const math::vec4& boxMin = mvpMatrix * bb.min_point();
 
-    const math::vec4 points[] = {
-        mvpMatrix * math::vec4{boxMax[0], boxMin[1], boxMin[2], 1.f},
-        mvpMatrix * math::vec4{boxMax[0], boxMax[1], boxMin[2], 1.f},
-        mvpMatrix * math::vec4{boxMax[0], boxMax[1], boxMax[2], 1.f},
-        mvpMatrix * math::vec4{boxMin[0], boxMax[1], boxMax[2], 1.f},
-        mvpMatrix * math::vec4{boxMin[0], boxMin[1], boxMax[2], 1.f},
-        mvpMatrix * math::vec4{boxMin[0], boxMin[1], boxMin[2], 1.f},
-        mvpMatrix * math::vec4{boxMax[0], boxMin[1], boxMax[2], 1.f},
-        mvpMatrix * math::vec4{boxMin[0], boxMax[1], boxMin[2], 1.f},
-    };
+    const math::vec3&& center = math::vec3_cast((boxMax + boxMin) * 0.5f);
+    const float radius = math::length(math::vec3_cast(boxMax - boxMin) * 0.5f);
 
     for (unsigned i = 0; i < 6; ++i)
     {
         const SR_Plane& plane = planes[i];
-        const math::vec3 plane3 = math::vec3_cast(plane);
-        bool inside = false;
+        const math::vec3&& plane3 = math::vec3_cast(plane);
 
-        for (const math::vec4& point : points)
-        {
-            if (math::dot(math::vec3_cast(point), plane3)-plane[3] >= 0.f)
-            {
-                inside = true;
-                break;
-            }
-        }
-
-        if (!inside)
+        if ((math::dot(center, plane3) + plane[3] + radius) <= 0.f)
         {
             return false;
         }
@@ -92,7 +83,6 @@ bool sr_is_visible(const SR_BoundingBox& bb, const ls::math::mat4& mvpMatrix, co
 
     return true;
 }
-
 
 
 
