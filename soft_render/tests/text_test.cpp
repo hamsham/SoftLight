@@ -47,7 +47,7 @@
 #endif /* SR_TEST_MAX_THREADS */
 
 #ifndef SR_BENCHMARK_SCENE
-    #define SR_BENCHMARK_SCENE 0
+    #define SR_BENCHMARK_SCENE 1
 #endif /* SR_BENCHMARK_SCENE */
 
 namespace ls
@@ -87,12 +87,12 @@ struct TextUniforms
 --------------------------------------*/
 math::vec4 _texture_vert_shader_impl(SR_VertexParam& param)
 {
-    typedef Tuple<math::vec3, math::vec2> Vertex;
+    typedef Tuple<math::vec3, math::vec2h> Vertex;
 
-    const TextUniforms* pUniforms   = param.pUniforms->as<TextUniforms>();
-    const Vertex* const v           = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));
-    const math::vec4&&  vert        = math::vec4_cast(v->const_element<0>(), 1.f);
-    const math::vec4&&  uv          = math::vec4_cast(v->const_element<1>(), 0.f, 0.f);
+    const TextUniforms* pUniforms = param.pUniforms->as<TextUniforms>();
+    const Vertex* const v         = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));
+    const math::vec4&&  vert      = math::vec4_cast(v->const_element<0>(), 1.f);
+    const math::vec4&&  uv        = (math::vec4)math::vec4_cast<math::half>(v->const_element<1>(), math::half{0.f}, math::half{0.f});
 
     param.pVaryings[0] = uv;
 
@@ -138,8 +138,8 @@ SR_FragmentShader texture_frag_shader()
     shader.numVaryings = 1;
     shader.numOutputs  = 1;
     shader.blend       = SR_BLEND_PREMULTIPLED_ALPHA;
-    shader.depthTest   = SR_DEPTH_TEST_ON;
-    shader.depthMask   = SR_DEPTH_MASK_ON;
+    shader.depthTest   = SR_DEPTH_TEST_OFF;
+    shader.depthMask   = SR_DEPTH_MASK_OFF;
     shader.shader      = _texture_frag_shader;
 
     return shader;
@@ -196,6 +196,9 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& projection, unsigned 
     TextUniforms* pUniforms = context.ubo(0).as<TextUniforms>();
     SR_Plane      planes[6];
 
+    std::vector<SR_Mesh> instances;
+    instances.reserve(pGraph->mMeshes.size());
+
     const math::mat4 p = math::perspective(math::radians(60.f), (float)w/(float)h, 0.1f, 100.f);
     const math::mat4&& vp = projection * camTrans.transform();
 
@@ -225,10 +228,13 @@ void render_scene(SR_SceneGraph* pGraph, const math::mat4& projection, unsigned 
             if (sr_is_visible(box, mv, planes))
             {
                 pUniforms->pTexture = material.pTextures[SR_MATERIAL_TEXTURE_AMBIENT];
-                context.draw(m, 0, 0);
+                //context.draw(m, 0, 0);
+                instances.push_back(m);
             }
         }
     }
+
+    context.draw_multiple(instances.data(), instances.size(), 0, 0);
 }
 
 
@@ -324,6 +330,7 @@ utils::Pointer<SR_SceneGraph> create_context()
 
     SR_TextMeshLoader textMeshLoader;
     SR_TextLoadOpts opts = sr_default_text_load_opts();
+    opts.packUvs = true;
 
     retCode = textMeshLoader.load(buffer, atlas, opts, true);
     if (retCode != 0)
@@ -520,7 +527,7 @@ int main()
             }
 
             #if SR_BENCHMARK_SCENE
-                if (totalFrames >= 1200)
+                if (totalFrames >= 3600)
                 {
                     shouldQuit = true;
                 }
