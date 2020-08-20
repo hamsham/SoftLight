@@ -249,7 +249,7 @@ if(WIN32)
 
 elseif (PREFER_COCOA)
     message("-- Cocoa window backend enabled.")
-    add_definitions(-DSR_PREFER_COCOA)
+    add_definitions(-DSL_PREFER_COCOA)
 
     set(SL_LIB_SOURCES
         ${SL_LIB_SOURCES}
@@ -259,7 +259,7 @@ elseif (PREFER_COCOA)
 
 elseif(UNIX)
     if (PREFER_XCB)
-        add_definitions(-DSR_PREFER_XCB)
+        add_definitions(-DSL_PREFER_XCB)
         message("-- X11-XCB window backend enabled.")
     else()
         add_definitions(-USR_PREFER_XCB)
@@ -269,10 +269,10 @@ elseif(UNIX)
     # X11-shm extensions can not be used on OSX due to shared memory
     # allocation limits
     if(NOT APPLE AND ENABLE_XSHM)
-        add_definitions(-DSR_ENABLE_XSHM=1)
+        add_definitions(-DSL_ENABLE_XSHM=1)
         message("-- X11 Shared memory extensions enabled for X11 windows.")
     else()
-        add_definitions(-DSR_ENABLE_XSHM=0)
+        add_definitions(-DSL_ENABLE_XSHM=0)
         message("-- X11 Shared memory extensions disabled.")
     endif()
 
@@ -296,7 +296,7 @@ endif()
 option(BUILD_SHARED_LIBS "Build Shared Libraries" OFF)
 
 if (BUILD_SHARED_LIBS)
-    add_definitions(-DSR_BUILD_SHARED -DSR_SHARED)
+    add_definitions(-DSL_BUILD_SHARED -DSL_SHARED)
     set(SL_LIB_TYPE SHARED)
 else()
     set(SL_LIB_TYPE STATIC)
