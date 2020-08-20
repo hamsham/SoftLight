@@ -88,6 +88,7 @@ compiled.
 | FreeImage  | To load textures and image files.                              |
 | ENet       | Dependency of LightUtils. Used for UDP Networking.             |
 | GLM        | Dependency of LightMath. For unit testing and validation only. |
+| FreeType   | Used for loading TTF fonts.                                    |
 
 It is recommended to install the 3rd-party development packages onto the
 system to speed up build times.
@@ -125,9 +126,9 @@ examples include:
 
 Check out the below screenshots to see what else it can do!
 
-![Diffuse Lighting, 114 FPS, 14 Threads, Ryzen 1800X](https://github.com/hamsham/SoftLight/blob/master/examples/softlight_diffuse.png)
+![Diffuse Lighting, 122 FPS, 15 Threads, Ryzen 1800X](https://github.com/hamsham/SoftLight/blob/master/examples/softlight_diffuse.png)
 
-![Physically Based Rendering, 104 FPS, 14 Threads, Ryzen 1800X](https://github.com/hamsham/SoftLight/blob/master/examples/softlight_pbr.png)
+![Physically Based Rendering, 114 FPS, 15 Threads, Ryzen 1800X](https://github.com/hamsham/SoftLight/blob/master/examples/softlight_pbr.png)
 
 ![Skeletal Animations](https://github.com/hamsham/SoftLight/blob/master/examples/softlight_anims.png)
 
@@ -135,7 +136,7 @@ Check out the below screenshots to see what else it can do!
 
 ![Volume Rendering, ~9 FPS, 16 Threads, Ryzen 1800X](https://github.com/hamsham/SoftLight/blob/master/examples/softlight_volumes.png)
 
-![True-Type Font Rendering](https://github.com/hamsham/SoftLight/blob/master/examples/softlight_text.png)
+![True-Type Font Rendering, ~562 FPS, 15 Threads, Ryzen 1800X](https://github.com/hamsham/SoftLight/blob/master/examples/softlight_text.png)
 
 
 
