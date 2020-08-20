@@ -69,7 +69,7 @@ addons:
       - subversion
       - libassimp-dev
       - libfreeimage-dev
-      - libfreetype-dev
+      - libfreetype6-dev
       - libglm-dev
       - libenet-dev
   homebrew:
