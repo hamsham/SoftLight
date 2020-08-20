@@ -47,15 +47,15 @@
 #endif /* SL_BENCHMARK_SCENE */
 
 #ifndef DEFAULT_INSTANCES_X
-    #define DEFAULT_INSTANCES_X 10
+    #define DEFAULT_INSTANCES_X 5
 #endif
 
 #ifndef DEFAULT_INSTANCES_Y
-    #define DEFAULT_INSTANCES_Y 10
+    #define DEFAULT_INSTANCES_Y 5
 #endif
 
 #ifndef DEFAULT_INSTANCES_Z
-    #define DEFAULT_INSTANCES_Z 10
+    #define DEFAULT_INSTANCES_Z 5
 #endif
 
 #ifndef DEFAULT_INSTANCES
