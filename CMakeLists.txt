@@ -32,5 +32,5 @@ include_directories(light_game/include)
 add_subdirectory(light_math)
 include_directories(light_math/include)
 
-add_subdirectory(soft_render)
-include_directories(soft_render/include)
+add_subdirectory(softlight)
+include_directories(softlight/include)
