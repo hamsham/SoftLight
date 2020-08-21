@@ -77,11 +77,10 @@ math::vec4 _volume_vert_shader(SL_VertexParam& param)
 {
     const VolumeUniforms* pUniforms = param.pUniforms->as<VolumeUniforms>();
     const math::vec3&     vert      = *(param.pVbo->element<const math::vec3>(param.pVao->offset(0, param.vertId)));
-    const math::vec3      spacing   = {pUniforms->spacing[0], pUniforms->spacing[1], pUniforms->spacing[2]};
+    const math::vec4      spacing   = pUniforms->spacing;
     const math::vec4      worldPos  = math::vec4{vert[0], vert[1], vert[2], 1.f};
 
-    return pUniforms->mvpMatrix * math::scale(math::mat4{1.f}, spacing) * worldPos;
-    //return pUniforms->mvpMatrix * worldPos;
+    return pUniforms->mvpMatrix * (worldPos * spacing);
 }
 
 
@@ -146,7 +145,7 @@ inline math::vec4 calc_normal(const SL_Texture* tex, const math::vec4& p, float 
 
 bool _volume_frag_shader(SL_FragmentParam& fragParam)
 {
-    constexpr float       step      = 1.f / 256.f;
+    constexpr float       step      = 1.f / 128.f;
 
     const VolumeUniforms* pUniforms = fragParam.pUniforms->as<VolumeUniforms>();
     const float           focalLen  = math::rcp<float>(math::tan(pUniforms->viewAngle * 0.5f));
@@ -630,7 +629,7 @@ int main()
     math::mat4 vpMatrix;
     SL_Transform camTrans;
     camTrans.type(SL_TransformType::SL_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
-    camTrans.extract_transforms(math::look_from(math::vec3{-1.25f}, math::vec3{0.f}, math::vec3{0.f, -1.f, 0.f}));
+    camTrans.extract_transforms(math::look_from(math::vec3{-2.f}, math::vec3{0.f}, math::vec3{0.f, -1.f, 0.f}));
 
     if (shouldQuit)
     {
