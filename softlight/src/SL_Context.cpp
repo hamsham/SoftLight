@@ -580,8 +580,6 @@ void SL_Context::terminate()
 
     mShaders.clear();
     mShaders.shrink_to_fit();
-
-    mProcessors.clear_fragment_bins();
 }
 
 
