@@ -103,6 +103,15 @@ SL_ProcessorPool::SL_ProcessorPool(unsigned numThreads) noexcept :
 
 
 /*--------------------------------------
+ * Default Constructor (delegates)
+--------------------------------------*/
+SL_ProcessorPool::SL_ProcessorPool() noexcept :
+    SL_ProcessorPool{1u}
+{}
+
+
+
+/*--------------------------------------
  * Copy Constructor
 --------------------------------------*/
 SL_ProcessorPool::SL_ProcessorPool(const SL_ProcessorPool& p) noexcept :

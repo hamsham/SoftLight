@@ -80,7 +80,9 @@ class SL_ProcessorPool
   public:
     ~SL_ProcessorPool() noexcept;
 
-    SL_ProcessorPool(unsigned numThreads = 1) noexcept;
+    SL_ProcessorPool() noexcept;
+
+    SL_ProcessorPool(unsigned numThreads) noexcept;
 
     SL_ProcessorPool(const SL_ProcessorPool&) noexcept;
 
