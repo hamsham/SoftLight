@@ -149,7 +149,7 @@ SL_ProcessorPool::SL_ProcessorPool(SL_ProcessorPool&& p) noexcept :
     mWorkers{std::move(p.mWorkers)},
     mNumThreads{p.mNumThreads}
 {
-    p.mNumThreads = 0;
+    p.mNumThreads = 1;
 }
 
 
@@ -201,7 +201,7 @@ SL_ProcessorPool& SL_ProcessorPool::operator=(SL_ProcessorPool&& p) noexcept
     mWorkers = std::move(p.mWorkers);
 
     mNumThreads = p.mNumThreads;
-    p.mNumThreads = 0;
+    p.mNumThreads = 1;
 
     return *this;
 }
