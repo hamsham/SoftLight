@@ -872,7 +872,7 @@ void SL_Context::clear_framebuffer(size_t fboId, size_t attachmentId, const ls::
 /*--------------------------------------
  * Clear a framebuffer (2 attachments)
 --------------------------------------*/
-void SL_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 2>& bufferIndices, const std::array<const ls::math::vec4_t<double>, 2>& colors, double depth) noexcept
+void SL_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 2>& bufferIndices, const std::array<ls::math::vec4_t<double>, 2>& colors, double depth) noexcept
 {
     SL_Texture* pDepth = mFbos[fboId].get_depth_buffer();
 
@@ -924,7 +924,7 @@ void SL_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 2>& bu
 /*--------------------------------------
  * Clear a framebuffer (3 attachments)
 --------------------------------------*/
-void SL_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 3>& bufferIndices, const std::array<const ls::math::vec4_t<double>, 3>& colors, double depth) noexcept
+void SL_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 3>& bufferIndices, const std::array<ls::math::vec4_t<double>, 3>& colors, double depth) noexcept
 {
     SL_Texture* pDepth = mFbos[fboId].get_depth_buffer();
 
@@ -979,7 +979,7 @@ void SL_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 3>& bu
 /*--------------------------------------
  * Clear a framebuffer (4 attachments)
 --------------------------------------*/
-void SL_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 4>& bufferIndices, const std::array<const ls::math::vec4_t<double>, 4>& colors, double depth) noexcept
+void SL_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 4>& bufferIndices, const std::array<ls::math::vec4_t<double>, 4>& colors, double depth) noexcept
 {
     SL_Texture* pDepth = mFbos[fboId].get_depth_buffer();
 

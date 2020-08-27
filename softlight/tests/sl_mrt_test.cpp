@@ -15,7 +15,6 @@
 #include "softlight/SL_Color.hpp"
 #include "softlight/SL_Context.hpp"
 #include "softlight/SL_Framebuffer.hpp"
-#include "softlight/SL_ImgFilePPM.hpp"
 #include "softlight/SL_IndexBuffer.hpp"
 #include "softlight/SL_KeySym.hpp"
 #include "softlight/SL_Material.hpp"
@@ -59,12 +58,10 @@ namespace utils = ls::utils;
 -----------------------------------------------------------------------------*/
 struct MeshTestUniforms
 {
-    const SL_Texture* pTexture;
-    math::vec4        lightPos;
-    SL_ColorRGBAf     lightCol;
-    math::mat4        modelMatrix;
     math::mat4        mvMatrix;
+    math::mat4        mvRotationMatrix;
     math::mat4        mvpMatrix;
+    const SL_Texture* pTexture;
 };
 
 
@@ -81,9 +78,9 @@ math::vec4 _mrt_vert_shader(SL_VertexParam& param)
     const math::vec4&&      uv        = math::vec4_cast(v->const_element<1>(), 0.f, 0.f);
     const math::vec4&&      norm      = math::vec4_cast(v->const_element<2>(), 0.f);
 
-    param.pVaryings[0] = pUniforms->modelMatrix * vert;
+    param.pVaryings[0] = pUniforms->mvMatrix * vert;
     param.pVaryings[1] = uv;
-    param.pVaryings[2] = pUniforms->mvMatrix * norm;
+    param.pVaryings[2] = pUniforms->mvRotationMatrix * norm;
 
     return pUniforms->mvpMatrix * vert;
 }
@@ -116,18 +113,15 @@ bool _mrt_frag_shader(SL_FragmentParam& fragParams)
     // normalize the texture colors to within (0.f, 1.f)
     math::vec3_t<uint8_t>&& pixel8 = sl_sample_trilinear<SL_ColorRGB8, SL_WrapMode::EDGE>(*albedo, uv[0], uv[1]);
 
-    // Light direction calculation
-    math::vec4&& lightDir = math::normalize(pUniforms->lightPos - pos);
-
     // Diffuse light calculation
-    const float lightAngle = math::max(math::dot(lightDir, norm), 0.f);
+    const float lightAngle = math::max(math::dot(math::vec4{0.f, 0.f, 1.f, 0.f}, norm), 0.f);
 
     // CPU Cache load effects make it faster to read the texture data after
     // accounting for some latency.
     math::vec4_t<uint8_t>&& pixelF = math::vec4_cast<uint8_t>(pixel8, 255);
     math::vec4&&            pixel  = color_cast<float, uint8_t>(pixelF);
 
-    const math::vec4&& composite = pixel + pUniforms->lightCol * lightAngle;
+    const math::vec4&& composite = pixel * lightAngle;
     const math::vec4&& output = math::clamp(composite, math::vec4{0.f}, math::vec4{1.f});
 
     fragParams.pOutputs[0] = output;
@@ -213,8 +207,8 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     retCode = fbo.attach_depth_buffer(texDepth);
     assert(retCode == 0);
 
-    const std::array<size_t, 4> attachIds{0, 1, 2, 3};
-    const std::array<const SL_ColorRGBAd, 4> colors{
+    constexpr std::array<size_t, 4> attachIds{0, 1, 2, 3};
+    constexpr std::array<SL_ColorRGBAd, 4> colors{
         SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0},
         SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0},
         SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0},
@@ -243,10 +237,8 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     SL_UniformBuffer& ubo = context.ubo(uboId);
     MeshTestUniforms* pUniforms = ubo.as<MeshTestUniforms>();
 
-    pUniforms->lightPos = math::vec4{20.f, 100.f, 20.f, 0.f};
-    pUniforms->lightCol = math::vec4{0.125f, 0.09f, 0.08f, 1.f};
-    pUniforms->modelMatrix = math::mat4{1.f};
     pUniforms->mvMatrix = math::mat4{1.f};
+    pUniforms->mvRotationMatrix = math::mat4{1.f};
     pUniforms->mvpMatrix = math::mat4{1.f};
     size_t testShaderId = context.create_shader(vertShader, fragShader, uboId);
 
@@ -283,8 +275,8 @@ void mesh_test_render(SL_SceneGraph* pGraph, const math::mat4& projectionMat, co
         const size_t numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
         const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
 
-        pUniforms->modelMatrix = modelMat;
-        pUniforms->mvMatrix = math::mat4{math::mat3{viewMat}} * modelMat;
+        pUniforms->mvMatrix = viewMat * modelMat;
+        pUniforms->mvRotationMatrix = math::mat4{math::mat3{viewMat}} * modelMat;
         pUniforms->mvpMatrix   = vpMatrix * modelMat;
 
         for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
@@ -301,6 +293,44 @@ void mesh_test_render(SL_SceneGraph* pGraph, const math::mat4& projectionMat, co
             context.draw(m, shaderId, fboid);
         }
     }
+}
+
+
+
+/*-----------------------------------------------------------------------------
+ * Handle blitting to the backbuffer
+-----------------------------------------------------------------------------*/
+void blit_backbuffer(SL_WindowBuffer* backBuffer, SL_Context& context, unsigned colorId) noexcept
+{
+    if (colorId < 5)
+    {
+        context.blit(*backBuffer, colorId);
+        return;
+    }
+
+    context.blit(
+        *backBuffer, 1,
+        0, 0, backBuffer->width(), backBuffer->height(),
+        0, 0, backBuffer->width()/2, backBuffer->height()/2
+    );
+
+    context.blit(
+        *backBuffer, 2,
+        0, 0, backBuffer->width(), backBuffer->height(),
+        backBuffer->width()/2, 0, backBuffer->width(), backBuffer->height()/2
+    );
+
+    context.blit(
+        *backBuffer, 3,
+        0, 0, backBuffer->width(), backBuffer->height(),
+        0, backBuffer->height()/2, backBuffer->width()/2, backBuffer->height()
+    );
+
+    context.blit(
+        *backBuffer, 4,
+        0, 0, backBuffer->width(), backBuffer->height(),
+        backBuffer->width()/2, backBuffer->height()/2, backBuffer->width(), backBuffer->height()
+    );
 }
 
 
@@ -389,11 +419,11 @@ int main()
                 }
                 else if (keySym == SL_KeySymbol::KEY_SYM_LEFT)
                 {
-                    activeColor = (activeColor-1 >= 1) ? (activeColor-1) : 4;
+                    activeColor = (activeColor-1 >= 1) ? (activeColor-1) : 5;
                 }
                 else if (keySym == SL_KeySymbol::KEY_SYM_RIGHT)
                 {
-                    activeColor = (activeColor+1 <= 4) ? (activeColor+1) : 1;
+                    activeColor = (activeColor+1 <= 5) ? (activeColor+1) : 1;
                 }
             }
             else if (evt.type == SL_WinEventType::WIN_EVENT_CLOSING)
@@ -412,7 +442,7 @@ int main()
             viewMatrix.apply_transform();
 
             constexpr std::array<size_t, 4> attachIds{0, 1, 2, 3};
-            constexpr std::array<const SL_ColorRGBAd, 4> colors{
+            constexpr std::array<SL_ColorRGBAd, 4> colors{
                 SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0},
                 SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0},
                 SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0},
@@ -422,7 +452,7 @@ int main()
 
             mesh_test_render(pGraph.get(), projMatrix, viewMatrix.transform());
 
-            context.blit(*pRenderBuf, activeColor);
+            blit_backbuffer(pRenderBuf, context, activeColor);
             pWindow->render(*pRenderBuf);
 
             ++numFrames;

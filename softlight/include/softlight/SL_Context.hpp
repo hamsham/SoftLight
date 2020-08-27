@@ -270,17 +270,17 @@ class SL_Context
     /*
      *
      */
-    void clear_framebuffer(size_t fboId, const std::array<size_t, 2>& bufferIndices, const std::array<const ls::math::vec4_t<double>, 2>& colors, double depth) noexcept;
+    void clear_framebuffer(size_t fboId, const std::array<size_t, 2>& bufferIndices, const std::array<ls::math::vec4_t<double>, 2>& colors, double depth) noexcept;
 
     /*
      *
      */
-    void clear_framebuffer(size_t fboId, const std::array<size_t, 3>& bufferIndices, const std::array<const ls::math::vec4_t<double>, 3>& colors, double depth) noexcept;
+    void clear_framebuffer(size_t fboId, const std::array<size_t, 3>& bufferIndices, const std::array<ls::math::vec4_t<double>, 3>& colors, double depth) noexcept;
 
     /*
      *
      */
-    void clear_framebuffer(size_t fboId, const std::array<size_t, 4>& bufferIndices, const std::array<const ls::math::vec4_t<double>, 4>& colors, double depth) noexcept;
+    void clear_framebuffer(size_t fboId, const std::array<size_t, 4>& bufferIndices, const std::array<ls::math::vec4_t<double>, 4>& colors, double depth) noexcept;
 
     /*
      *
