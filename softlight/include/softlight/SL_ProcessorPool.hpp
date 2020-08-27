@@ -69,8 +69,6 @@ class SL_ProcessorPool
 
     ls::utils::Pointer<SL_FragmentBin[], ls::utils::AlignedDeleter> mFragBins;
 
-    ls::utils::Pointer<ls::math::vec4_t<float>[], ls::utils::AlignedDeleter> mVaryings;
-
     ls::utils::Pointer<SL_FragCoord[], ls::utils::AlignedDeleter> mFragQueues;
 
     ls::utils::Pointer<ThreadedWorker[], ls::utils::AlignedDeleter> mWorkers;

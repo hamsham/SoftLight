@@ -598,7 +598,6 @@ void SL_VertexProcessor::flush_bins() const noexcept
         mShader,
         mFbo,
         mFragBins + mThreadId * SL_SHADER_MAX_BINNED_PRIMS,
-        mVaryings + mThreadId * SL_SHADER_MAX_VARYING_VECTORS * SL_SHADER_MAX_QUEUED_FRAGS,
         mFragQueues + mThreadId
     };
 

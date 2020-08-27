@@ -2,6 +2,8 @@
 #ifndef SL_SHADER_HPP
 #define SL_SHADER_HPP
 
+#include "lightsky/math/vec4.h"
+
 #include "softlight/SL_ShaderUtil.hpp" // SL_SHADER_MAX_FRAG_OUTPUTS, SL_SHADER_MAX_VARYING_VECTORS
 
 
@@ -15,9 +17,6 @@ namespace math
 {
     template <typename num_type>
     struct vec3_t;
-
-    template <typename num_type>
-    union vec4_t;
 } // end math namespace
 } // end ls namespace
 
@@ -123,7 +122,8 @@ struct SL_FragmentParam
 {
     SL_FragCoordXYZ         coord;
     const SL_UniformBuffer* pUniforms;
-    ls::math::vec4*         pVaryings;
+
+    alignas(sizeof(ls::math::vec4)*2) ls::math::vec4 pVaryings[SL_SHADER_MAX_VARYING_VECTORS];
 
     alignas(sizeof(ls::math::vec4)) ls::math::vec4 pOutputs[SL_SHADER_MAX_FRAG_OUTPUTS];
 };

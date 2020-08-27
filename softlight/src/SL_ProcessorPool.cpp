@@ -85,7 +85,6 @@ SL_ProcessorPool::SL_ProcessorPool(unsigned numThreads) noexcept :
     mBinsReady{_aligned_alloc<SL_BinCounterAtomic<int32_t>>(numThreads)},
     mBinsUsed{_aligned_alloc<SL_BinCounter<uint32_t>>(numThreads)},
     mFragBins{_aligned_alloc<SL_FragmentBin>(numThreads * SL_SHADER_MAX_BINNED_PRIMS)},
-    mVaryings{_aligned_alloc<ls::math::vec4>(numThreads * SL_SHADER_MAX_VARYING_VECTORS * SL_SHADER_MAX_QUEUED_FRAGS)},
     mFragQueues{_aligned_alloc<SL_FragCoord>(numThreads)},
     mWorkers{numThreads > 1 ? _aligned_alloc<SL_ProcessorPool::ThreadedWorker>(numThreads - 1) : nullptr},
     mNumThreads{numThreads}
@@ -120,7 +119,6 @@ SL_ProcessorPool::SL_ProcessorPool(const SL_ProcessorPool& p) noexcept :
     mBinsReady{_aligned_alloc<SL_BinCounterAtomic<int32_t>>(p.mNumThreads)},
     mBinsUsed{_aligned_alloc<SL_BinCounter<uint32_t>>(p.mNumThreads)},
     mFragBins{_aligned_alloc<SL_FragmentBin>(p.mNumThreads * SL_SHADER_MAX_BINNED_PRIMS)},
-    mVaryings{_aligned_alloc<ls::math::vec4>(p.mNumThreads * SL_SHADER_MAX_VARYING_VECTORS * SL_SHADER_MAX_QUEUED_FRAGS)},
     mFragQueues{_aligned_alloc<SL_FragCoord>(p.mNumThreads)},
     mWorkers{p.mNumThreads > 1 ? _aligned_alloc<SL_ProcessorPool::ThreadedWorker>(p.mNumThreads - 1) : nullptr},
     mNumThreads{p.mNumThreads}
@@ -144,7 +142,6 @@ SL_ProcessorPool::SL_ProcessorPool(SL_ProcessorPool&& p) noexcept :
     mBinsReady{std::move(p.mBinsReady)},
     mBinsUsed{std::move(p.mBinsUsed)},
     mFragBins{std::move(p.mFragBins)},
-    mVaryings{std::move(p.mVaryings)},
     mFragQueues{std::move(p.mFragQueues)},
     mWorkers{std::move(p.mWorkers)},
     mNumThreads{p.mNumThreads}
@@ -190,7 +187,6 @@ SL_ProcessorPool& SL_ProcessorPool::operator=(SL_ProcessorPool&& p) noexcept
     mBinsReady = std::move(p.mBinsReady);
     mBinsUsed = std::move(p.mBinsUsed);
     mFragBins = std::move(p.mFragBins);
-    mVaryings = std::move(p.mVaryings);
     mFragQueues = std::move(p.mFragQueues);
 
     for (unsigned i = 0; i < mNumThreads-1u; ++i)
@@ -280,7 +276,6 @@ unsigned SL_ProcessorPool::concurrency(unsigned inNumThreads) noexcept
     mBinsReady.reset(_aligned_alloc<SL_BinCounterAtomic<int32_t>>(inNumThreads));
     mBinsUsed.reset(_aligned_alloc<SL_BinCounter<uint32_t>>(inNumThreads));
     mFragBins.reset(_aligned_alloc<SL_FragmentBin>(inNumThreads * SL_SHADER_MAX_BINNED_PRIMS));
-    mVaryings.reset(_aligned_alloc<ls::math::vec4>(inNumThreads * SL_SHADER_MAX_VARYING_VECTORS * SL_SHADER_MAX_QUEUED_FRAGS));
     mFragQueues.reset(_aligned_alloc<SL_FragCoord>(inNumThreads));
     mWorkers.reset(inNumThreads > 1 ? _aligned_alloc<SL_ProcessorPool::ThreadedWorker>(inNumThreads - 1) : nullptr);
 
@@ -334,7 +329,6 @@ void SL_ProcessorPool::run_shader_processors(const SL_Context& c, const SL_Mesh&
     vertTask.mBinsReady      = mBinsReady;
     vertTask.mBinsUsed       = mBinsUsed;
     vertTask.mFragBins       = mFragBins.get();
-    vertTask.mVaryings       = mVaryings.get();
     vertTask.mFragQueues     = mFragQueues.get();
 
     // Divide all vertex processing amongst the available worker threads. Let
@@ -387,7 +381,6 @@ void SL_ProcessorPool::run_shader_processors(const SL_Context& c, const SL_Mesh*
     vertTask.mBinsReady      = mBinsReady;
     vertTask.mBinsUsed       = mBinsUsed;
     vertTask.mFragBins       = mFragBins.get();
-    vertTask.mVaryings       = mVaryings.get();
     vertTask.mFragQueues     = mFragQueues.get();
 
     // Divide all vertex processing amongst the available worker threads. Let

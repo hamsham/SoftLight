@@ -89,7 +89,6 @@ struct SL_VertexProcessor
 
     // 96-192 bits
     SL_FragmentBin* mFragBins;
-    ls::math::vec4_t<float>* mVaryings;
     SL_FragCoord* mFragQueues;
 
     // 448 bits (56 bytes) in 32-bit mode

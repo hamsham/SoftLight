@@ -76,31 +76,46 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
         const float* LS_RESTRICT_PTR i1 = reinterpret_cast<const float*>(inVaryings0 + SL_SHADER_MAX_VARYING_VECTORS);
         const float* LS_RESTRICT_PTR i2 = reinterpret_cast<const float*>(inVaryings0 + SL_SHADER_MAX_VARYING_VECTORS * 2);
 
-        const __m256 bc0 = _mm256_broadcast_ss(baryCoords+0);
-        const __m256 bc1 = _mm256_broadcast_ss(baryCoords+1);
-        const __m256 bc2 = _mm256_broadcast_ss(baryCoords+2);
-        __m256 a, b, c, d, e, f, v0, v1, v2, v3, v4, v5;
+        __m128 a, b, c, d, v0, v1, v2, v3;
 
-        a = _mm256_load_ps(i0);
-        b = _mm256_load_ps(i1);
-        c = _mm256_load_ps(i2);
-        d = _mm256_load_ps(i0 + 8);
-        e = _mm256_load_ps(i1 + 8);
-        f = _mm256_load_ps(i2 + 8);
+        const __m128 bc0 = _mm_broadcast_ss(baryCoords+0);
+        a = _mm_load_ps(i0 + 0);
+        b = _mm_load_ps(i0 + 4);
+        c = _mm_load_ps(i0 + 8);
+        d = _mm_load_ps(i0 + 12);
+        v0 = _mm_mul_ps(bc0, a);
+        v1 = _mm_mul_ps(bc0, b);
+        v2 = _mm_mul_ps(bc0, c);
+        v3 = _mm_mul_ps(bc0, d);
 
-        v0 = _mm256_mul_ps(bc0, a);
-        v3 = _mm256_mul_ps(bc0, d);
-        v1 = _mm256_fmadd_ps(bc1, b, v0);
-        v4 = _mm256_fmadd_ps(bc1, e, v3);
-        v2 = _mm256_fmadd_ps(bc2, c, v1);
-        v5 = _mm256_fmadd_ps(bc2, f, v4);
+        const __m128 bc1 = _mm_broadcast_ss(baryCoords+1);
+        a = _mm_load_ps(i1 + 0);
+        b = _mm_load_ps(i1 + 4);
+        c = _mm_load_ps(i1 + 8);
+        d = _mm_load_ps(i1 + 12);
+        v0 = _mm_fmadd_ps(bc1, a, v0);
+        v1 = _mm_fmadd_ps(bc1, b, v1);
+        v2 = _mm_fmadd_ps(bc1, c, v2);
+        v3 = _mm_fmadd_ps(bc1, d, v3);
 
-        _mm256_store_ps(o,   v2);
-        _mm256_store_ps(o+8, v5);
+        const __m128 bc2 = _mm_broadcast_ss(baryCoords+2);
+        a = _mm_load_ps(i2 + 0);
+        b = _mm_load_ps(i2 + 4);
+        c = _mm_load_ps(i2 + 8);
+        d = _mm_load_ps(i2 + 12);
+        v0 = _mm_fmadd_ps(bc2, a, v0);
+        v1 = _mm_fmadd_ps(bc2, b, v1);
+        v2 = _mm_fmadd_ps(bc2, c, v2);
+        v3 = _mm_fmadd_ps(bc2, d, v3);
+
+        _mm_store_ps(o + 0,  v0);
+        _mm_store_ps(o + 4,  v1);
+        _mm_store_ps(o + 8,  v2);
+        _mm_store_ps(o + 12, v3);
 
     #elif defined(LS_ARCH_ARM)
-        const math::vec4* inVaryings1  = inVaryings0 + SL_SHADER_MAX_VARYING_VECTORS;
-        const math::vec4* inVaryings2  = inVaryings0 + SL_SHADER_MAX_VARYING_VECTORS * 2;
+        const math::vec4* LS_RESTRICT_PTR inVaryings1 = inVaryings0 + SL_SHADER_MAX_VARYING_VECTORS;
+        const math::vec4* LS_RESTRICT_PTR inVaryings2 = inVaryings0 + SL_SHADER_MAX_VARYING_VECTORS * 2;
 
         const float32x4_t bc  = vld1q_f32(baryCoords);
         const float32x4_t bc0 = vdupq_n_f32(vgetq_lane_f32(bc, 0));
@@ -116,8 +131,8 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
         }
 
     #else
-        const math::vec4* inVaryings1 = inVaryings0 + SL_SHADER_MAX_VARYING_VECTORS;
-        const math::vec4* inVaryings2 = inVaryings0 + SL_SHADER_MAX_VARYING_VECTORS * 2;
+        const math::vec4* LS_RESTRICT_PTR inVaryings1 = inVaryings0 + SL_SHADER_MAX_VARYING_VECTORS;
+        const math::vec4* LS_RESTRICT_PTR inVaryings2 = inVaryings0 + SL_SHADER_MAX_VARYING_VECTORS * 2;
 
         const float bc0 = baryCoords[0];
         const float bc1 = baryCoords[1];
@@ -233,11 +248,6 @@ void SL_FragmentProcessor::render_point(
     fragParams.coord.depth = fragCoord[2];
     fragParams.pUniforms = pUniforms;
 
-    for (unsigned i = SL_SHADER_MAX_VARYING_VECTORS; i--;)
-    {
-        mVaryings[i] = mBins[binId].mVaryings[i];
-    }
-
     if (depthTest == SL_DEPTH_TEST_ON)
     {
 #if SL_REVERSED_Z_RENDERING
@@ -250,7 +260,11 @@ void SL_FragmentProcessor::render_point(
         }
     }
 
-    fragParams.pVaryings = mVaryings;
+    for (unsigned i = SL_SHADER_MAX_VARYING_VECTORS; i--;)
+    {
+        fragParams.pVaryings[i] = mBins[binId].mVaryings[i];
+    }
+
     const uint_fast32_t haveOutputs = pShader(fragParams);
 
     if (blend)
@@ -461,12 +475,11 @@ void SL_FragmentProcessor::render_line(
         if (noDepthTest || (float)depthBuf->raw_texel<depth_type>((uint16_t)xi, (uint16_t)yi) >= z)
 #endif
         {
-            interpolate_line_varyings(interp, numVaryings, inVaryings, mVaryings);
+            interpolate_line_varyings(interp, numVaryings, inVaryings, fragParams.pVaryings);
 
             fragParams.coord.x     = (uint16_t)xi;
             fragParams.coord.y     = (uint16_t)yi;
             fragParams.coord.depth = z;
-            fragParams.pVaryings   = mVaryings;
             const uint_fast32_t haveOutputs = shader(fragParams);
 
             if (blend)
@@ -805,76 +818,61 @@ void SL_FragmentProcessor::flush_fragments(
 {
     const SL_UniformBuffer* pUniforms   = mShader->mUniforms;
     const SL_FragmentShader fragShader  = mShader->mFragShader;
-    const uint_fast32_t     numVaryings = fragShader.numVaryings;
-    const uint_fast32_t     numOutputs  = fragShader.numOutputs;
-    const SL_BlendMode      blendMode   = fragShader.blend;
-    const uint_fast32_t     depthMask   = fragShader.depthMask == SL_DEPTH_MASK_ON;
-    const auto              pShader     = fragShader.shader;
-    SL_Framebuffer*         fbo         = mFbo;
-    SL_Texture*             pDepthBuf   = fbo->get_depth_buffer();
-    const math::vec4* const inVaryings  = pBin->mVaryings;
+    SL_Texture*             pDepthBuf   = mFbo->get_depth_buffer();
 
     SL_FragmentParam fragParams;
     fragParams.pUniforms = pUniforms;
-    fragParams.pVaryings = mVaryings;
 
-    // Interpolate varying variables using the barycentric coordinates. I'm
-    // interpolating here to maintain cache coherence.
-    math::vec4* pVaryings = mVaryings;
-    for (uint_fast32_t i = 0; i < numQueuedFrags; ++i, pVaryings += SL_SHADER_MAX_VARYING_VECTORS)
-    {
-        const math::vec4& bc = outCoords->bc[i];
-        interpolate_tri_varyings(bc.v, numVaryings, inVaryings, pVaryings);
-    }
-
-    if (LS_LIKELY(blendMode == SL_BLEND_OFF))
+    if (LS_LIKELY(fragShader.blend == SL_BLEND_OFF))
     {
         for (uint32_t i = 0; i < numQueuedFrags; ++i)
         {
+            const math::vec4& bc = outCoords->bc[i];
             fragParams.coord = outCoords->coord[i];
 
-            uint_fast32_t haveOutputs = pShader(fragParams);
+            interpolate_tri_varyings(bc.v, fragShader.numVaryings, pBin->mVaryings, fragParams.pVaryings);
+
+            uint_fast32_t haveOutputs = fragShader.shader(fragParams);
 
             // branchless select
-            switch (-haveOutputs & numOutputs)
+            switch (-haveOutputs & fragShader.numOutputs)
             {
-                case 4: fbo->put_pixel(3, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3]);
-                case 3: fbo->put_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2]);
-                case 2: fbo->put_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1]);
-                case 1: fbo->put_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0]);
+                case 4: mFbo->put_pixel(3, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3]);
+                case 3: mFbo->put_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2]);
+                case 2: mFbo->put_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1]);
+                case 1: mFbo->put_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0]);
 
-                    if (depthMask)
+                    if (fragShader.depthMask == SL_DEPTH_MASK_ON)
                     {
                         pDepthBuf->raw_texel<depth_type>(fragParams.coord.x, fragParams.coord.y) = (depth_type)fragParams.coord.depth;
                     }
             }
-
-            fragParams.pVaryings += SL_SHADER_MAX_VARYING_VECTORS;
         }
     }
     else
     {
         for (uint32_t i = 0; i < numQueuedFrags; ++i)
         {
+            const math::vec4& bc = outCoords->bc[i];
             fragParams.coord = outCoords->coord[i];
 
-            uint_fast32_t haveOutputs = pShader(fragParams);
+            interpolate_tri_varyings(bc.v, fragShader.numVaryings, pBin->mVaryings, fragParams.pVaryings);
+
+            uint_fast32_t haveOutputs = fragShader.shader(fragParams);
 
             // branchless select
-            switch (-haveOutputs & numOutputs)
+            switch (-haveOutputs & fragShader.numOutputs)
             {
-                case 4: fbo->put_alpha_pixel(3, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3], blendMode);
-                case 3: fbo->put_alpha_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], blendMode);
-                case 2: fbo->put_alpha_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], blendMode);
-                case 1: fbo->put_alpha_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], blendMode);
+                case 4: mFbo->put_alpha_pixel(3, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3], fragShader.blend);
+                case 3: mFbo->put_alpha_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], fragShader.blend);
+                case 2: mFbo->put_alpha_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], fragShader.blend);
+                case 1: mFbo->put_alpha_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], fragShader.blend);
 
-                    if (depthMask)
+                    if (fragShader.depthMask == SL_DEPTH_MASK_ON)
                     {
                         pDepthBuf->raw_texel<depth_type>(fragParams.coord.x, fragParams.coord.y) = (depth_type)fragParams.coord.depth;
                     }
             }
-
-            fragParams.pVaryings += SL_SHADER_MAX_VARYING_VECTORS;
         }
     }
 }

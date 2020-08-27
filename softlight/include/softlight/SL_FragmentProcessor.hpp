@@ -53,7 +53,6 @@ struct SL_FragmentProcessor
     const SL_Shader* mShader;
     SL_Framebuffer* mFbo;
     const SL_FragmentBin* mBins;
-    ls::math::vec4* mVaryings;
     SL_FragCoord* mQueues;
 
     // 432 bits = 54 bytes
