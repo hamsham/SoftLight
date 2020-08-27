@@ -588,7 +588,7 @@ void SL_VertexProcessor::flush_bins() const noexcept
     const bool noBlending = mShader->mFragShader.blend == SL_BLEND_OFF;
 
     const uint_fast64_t tileId = mFragProcessors->count.fetch_add(1ull, std::memory_order_acq_rel);
-    mBinsReady[mThreadId].count.store((int32_t)mThreadId, std::memory_order_release);
+    mBinsReady[tileId].count.store((int32_t)mThreadId, std::memory_order_release);
 
     SL_FragmentProcessor fragTask{
         (uint16_t)tileId,
@@ -598,8 +598,8 @@ void SL_VertexProcessor::flush_bins() const noexcept
         mShader,
         mFbo,
         mFragBins + mThreadId * SL_SHADER_MAX_BINNED_PRIMS,
-        mVaryings + tileId * SL_SHADER_MAX_VARYING_VECTORS * SL_SHADER_MAX_QUEUED_FRAGS,
-        mFragQueues + tileId
+        mVaryings + mThreadId * SL_SHADER_MAX_VARYING_VECTORS * SL_SHADER_MAX_QUEUED_FRAGS,
+        mFragQueues + mThreadId
     };
 
     // Execute the fragment processor if possible
@@ -617,7 +617,7 @@ void SL_VertexProcessor::flush_bins() const noexcept
 
     for (uint32_t t = 0; t < (uint32_t)mNumThreads; ++t)
     {
-        if (noBlending && mBinsReady[t].count.load(std::memory_order_consume) == (int32_t)mThreadId)
+        if (noBlending && t == tileId)
         {
             continue;
         }
