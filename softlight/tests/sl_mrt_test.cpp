@@ -104,30 +104,20 @@ SL_VertexShader mrt_vert_shader()
 --------------------------------------*/
 bool _mrt_frag_shader(SL_FragmentParam& fragParams)
 {
-    const MeshTestUniforms* pUniforms = fragParams.pUniforms->as<MeshTestUniforms>();
-    const math::vec4&       pos       = fragParams.pVaryings[0];
-    const math::vec4&       uv        = fragParams.pVaryings[1];
-    const math::vec4&       norm      = math::normalize(fragParams.pVaryings[2]);
-    const SL_Texture*       albedo    = pUniforms->pTexture;
+    const MeshTestUniforms* pUniforms  = fragParams.pUniforms->as<MeshTestUniforms>();
+    const SL_Texture*       albedo     = pUniforms->pTexture;
+    const math::vec4&       pos        = fragParams.pVaryings[0];
+    const math::vec4&       uv         = fragParams.pVaryings[1];
+    const math::vec4&       norm       = math::normalize(fragParams.pVaryings[2]);
+    math::vec3_t<uint8_t>&& pixel8     = sl_sample_nearest<SL_ColorRGB8, SL_WrapMode::EDGE>(*albedo, uv[0], uv[1]);
+    math::vec4&&            pixel      = color_cast<float, uint8_t>(math::vec4_cast<uint8_t>(pixel8, 255));
+    const float             lightAngle = math::dot(math::vec4{0.f, 0.f, 1.f, 0.f}, norm);
+    const math::vec4&&      output     = pixel * lightAngle;
 
-    // normalize the texture colors to within (0.f, 1.f)
-    math::vec3_t<uint8_t>&& pixel8 = sl_sample_trilinear<SL_ColorRGB8, SL_WrapMode::EDGE>(*albedo, uv[0], uv[1]);
-
-    // Diffuse light calculation
-    const float lightAngle = math::max(math::dot(math::vec4{0.f, 0.f, 1.f, 0.f}, norm), 0.f);
-
-    // CPU Cache load effects make it faster to read the texture data after
-    // accounting for some latency.
-    math::vec4_t<uint8_t>&& pixelF = math::vec4_cast<uint8_t>(pixel8, 255);
-    math::vec4&&            pixel  = color_cast<float, uint8_t>(pixelF);
-
-    const math::vec4&& composite = pixel * lightAngle;
-    const math::vec4&& output = math::clamp(composite, math::vec4{0.f}, math::vec4{1.f});
-
-    fragParams.pOutputs[0] = output;
-    fragParams.pOutputs[1] = pos;
-    fragParams.pOutputs[2] = uv;
-    fragParams.pOutputs[3] = norm;
+    fragParams.pOutputs[0] = math::clamp(output, math::vec4{0.f}, math::vec4{1.f});
+    fragParams.pOutputs[1] = math::clamp(pos,    math::vec4{0.f}, math::vec4{1.f});
+    fragParams.pOutputs[2] = math::clamp(uv,     math::vec4{0.f}, math::vec4{1.f});
+    fragParams.pOutputs[3] = math::clamp(norm,   math::vec4{0.f}, math::vec4{1.f});
 
     return true;
 }
@@ -377,7 +367,7 @@ int main()
     int                totalFrames    = 0;
     float              secondsCounter = 0.f;
     float              tickTime       = 0.f;
-    unsigned           activeColor    = 1;
+    unsigned           activeColor    = 5;
 
     viewMatrix.type(SL_TransformType::SL_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
     viewMatrix.extract_transforms(math::look_at(math::vec3{10.f, 30.f, 70.f}, math::vec3{0.f, 20.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
