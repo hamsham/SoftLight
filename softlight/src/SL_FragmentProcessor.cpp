@@ -82,8 +82,8 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
         __m256 a, b, c, d, e, f, v0, v1, v2, v3, v4, v5;
 
         a = _mm256_load_ps(i0);
-        c = _mm256_load_ps(i2);
         b = _mm256_load_ps(i1);
+        c = _mm256_load_ps(i2);
         d = _mm256_load_ps(i0 + 8);
         e = _mm256_load_ps(i1 + 8);
         f = _mm256_load_ps(i2 + 8);
@@ -753,9 +753,9 @@ void SL_FragmentProcessor::render_triangle_simd(const SL_Texture* depthBuffer) c
                         const math::vec4&& persp4        = math::rcp(homogenous * bc);
 
                         const unsigned rasterCount       = math::popcnt_u32(depthTest & 0x0F);
-                        const unsigned storeMask1        = math::popcnt_i32((unsigned)depthTest & 0x01u) + numQueuedFrags;
-                        const unsigned storeMask2        = math::popcnt_i32((unsigned)depthTest & 0x03u) + numQueuedFrags;
-                        const unsigned storeMask3        = math::popcnt_i32((unsigned)depthTest & 0x07u) + numQueuedFrags;
+                        const unsigned storeMask1        = math::popcnt_u32((unsigned)depthTest & 0x01u) + numQueuedFrags;
+                        const unsigned storeMask2        = math::popcnt_u32((unsigned)depthTest & 0x03u) + numQueuedFrags;
+                        const unsigned storeMask3        = math::popcnt_u32((unsigned)depthTest & 0x07u) + numQueuedFrags;
 
                         outCoords->bc[numQueuedFrags]    = (bc.m[0] * homogenous) * persp4[0];
                         outCoords->bc[storeMask1]        = (bc.m[1] * homogenous) * persp4[1];
