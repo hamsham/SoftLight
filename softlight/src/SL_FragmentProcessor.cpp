@@ -70,39 +70,38 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
     #if defined(LS_ARCH_X86)
         (void)numVaryings;
 
-        float* const LS_RESTRICT_PTR o = reinterpret_cast<float*>(outVaryings);
-
         const float* LS_RESTRICT_PTR i0 = reinterpret_cast<const float*>(inVaryings0);
         const float* LS_RESTRICT_PTR i1 = reinterpret_cast<const float*>(inVaryings0 + SL_SHADER_MAX_VARYING_VECTORS);
         const float* LS_RESTRICT_PTR i2 = reinterpret_cast<const float*>(inVaryings0 + SL_SHADER_MAX_VARYING_VECTORS * 2);
+        float* const LS_RESTRICT_PTR o = reinterpret_cast<float*>(outVaryings);
 
         __m128 a, b, c, d, v0, v1, v2, v3;
 
-        const __m128 bc0 = _mm_broadcast_ss(baryCoords+0);
         a = _mm_load_ps(i0 + 0);
         b = _mm_load_ps(i0 + 4);
         c = _mm_load_ps(i0 + 8);
         d = _mm_load_ps(i0 + 12);
+        const __m128 bc0 = _mm_broadcast_ss(baryCoords+0);
         v0 = _mm_mul_ps(bc0, a);
         v1 = _mm_mul_ps(bc0, b);
         v2 = _mm_mul_ps(bc0, c);
         v3 = _mm_mul_ps(bc0, d);
 
-        const __m128 bc1 = _mm_broadcast_ss(baryCoords+1);
         a = _mm_load_ps(i1 + 0);
         b = _mm_load_ps(i1 + 4);
         c = _mm_load_ps(i1 + 8);
         d = _mm_load_ps(i1 + 12);
+        const __m128 bc1 = _mm_broadcast_ss(baryCoords+1);
         v0 = _mm_fmadd_ps(bc1, a, v0);
         v1 = _mm_fmadd_ps(bc1, b, v1);
         v2 = _mm_fmadd_ps(bc1, c, v2);
         v3 = _mm_fmadd_ps(bc1, d, v3);
 
-        const __m128 bc2 = _mm_broadcast_ss(baryCoords+2);
         a = _mm_load_ps(i2 + 0);
         b = _mm_load_ps(i2 + 4);
         c = _mm_load_ps(i2 + 8);
         d = _mm_load_ps(i2 + 12);
+        const __m128 bc2 = _mm_broadcast_ss(baryCoords+2);
         v0 = _mm_fmadd_ps(bc2, a, v0);
         v1 = _mm_fmadd_ps(bc2, b, v1);
         v2 = _mm_fmadd_ps(bc2, c, v2);
