@@ -59,7 +59,6 @@ namespace utils = ls::utils;
 struct MeshTestUniforms
 {
     math::mat4        mvMatrix;
-    math::mat4        mvRotationMatrix;
     math::mat4        mvpMatrix;
     const SL_Texture* pTexture;
 };
@@ -80,7 +79,7 @@ math::vec4 _mrt_vert_shader(SL_VertexParam& param)
 
     param.pVaryings[0] = pUniforms->mvMatrix * vert;
     param.pVaryings[1] = uv;
-    param.pVaryings[2] = pUniforms->mvRotationMatrix * norm;
+    param.pVaryings[2] = pUniforms->mvMatrix * norm;
 
     return pUniforms->mvpMatrix * vert;
 }
@@ -228,7 +227,6 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     MeshTestUniforms* pUniforms = ubo.as<MeshTestUniforms>();
 
     pUniforms->mvMatrix = math::mat4{1.f};
-    pUniforms->mvRotationMatrix = math::mat4{1.f};
     pUniforms->mvpMatrix = math::mat4{1.f};
     size_t testShaderId = context.create_shader(vertShader, fragShader, uboId);
 
@@ -266,7 +264,6 @@ void mesh_test_render(SL_SceneGraph* pGraph, const math::mat4& projectionMat, co
         const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
 
         pUniforms->mvMatrix = viewMat * modelMat;
-        pUniforms->mvRotationMatrix = math::mat4{math::mat3{viewMat}} * modelMat;
         pUniforms->mvpMatrix   = vpMatrix * modelMat;
 
         for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
