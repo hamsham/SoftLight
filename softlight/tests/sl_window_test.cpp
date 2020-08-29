@@ -115,7 +115,11 @@ int main()
       }
       else if (evt.type == SL_WinEventType::WIN_EVENT_MOUSE_ENTER || evt.type == SL_WinEventType::WIN_EVENT_MOUSE_LEAVE)
       {
-        std::cout << "Mouse Enter/Leave: " << evt.mousePos.x << 'x' << evt.mousePos.y << std::endl;
+          std::cout << "Mouse Enter/Leave: " << evt.mousePos.x << 'x' << evt.mousePos.y << std::endl;
+      }
+      else if (evt.type == SL_WinEventType::WIN_EVENT_MOUSE_MOVED)
+      {
+          std::cout << "Mouse moved: " << evt.mousePos.x << 'x' << evt.mousePos.y << std::endl;
       }
       else if (evt.type == SL_WinEventType::WIN_EVENT_MOVED)
       {

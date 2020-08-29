@@ -4,6 +4,7 @@
 
 #include <pthread.h> // pthread_mutex_t, pthread_mutex_lock()
 
+#include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Log.h"
 
 #include "softlight/SL_Color.hpp"
@@ -15,9 +16,9 @@
 
 
 /*-----------------------------------------------------------------------------
-    Application Initilization
+    Application Initialization
 -----------------------------------------------------------------------------*/
-int sl_window_init_app(void)
+int sl_window_init_app()
 {
     static int amInited = 0;
     static pthread_mutex_t mtxInit = PTHREAD_MUTEX_INITIALIZER;
@@ -27,10 +28,11 @@ int sl_window_init_app(void)
     {
         [NSApplication sharedApplication];
         [NSApp finishLaunching];
+        amInited = true;
     }
     pthread_mutex_unlock(&mtxInit);
 
-    return 0;
+    return amInited;
 }
 
 
@@ -41,6 +43,7 @@ int sl_window_init_app(void)
 @interface SL_CocoaWindow: NSWindow
 {
     NSAutoreleasePool* mPool;
+    NSTrackingArea* mTracking;
 }
 @end
 
@@ -53,12 +56,35 @@ int sl_window_init_app(void)
     if (self = [super initWithContentRect:contentRect styleMask:style backing:backingStoreType defer:flag])
     {
         mPool = [[NSAutoreleasePool alloc] init];
-
-        NSTrackingArea* area = [[[NSTrackingArea alloc] initWithRect:[[self contentView] frame] options:(NSTrackingMouseEnteredAndExited|NSTrackingInVisibleRect|NSTrackingActiveAlways) owner:self userInfo:nil] autorelease];
-        [[self contentView] addTrackingArea:area];
+        mTracking = 0;
+        [self updateTrackingRect];
     }
 
     return self;
+}
+
+-(void)updateTrackingRect
+{
+    NSView* view = [self contentView];
+    if (!view)
+    {
+        return;
+    }
+
+    if (mTracking)
+    {
+        [view removeTrackingArea:mTracking];
+        mTracking = nil;
+    }
+
+    NSTrackingAreaOptions options = (NSTrackingAreaOptions)NSTrackingMouseEnteredAndExited|NSTrackingInVisibleRect|NSTrackingActiveAlways|NSTrackingMouseMoved;
+    NSTrackingArea* area = [[[NSTrackingArea alloc] initWithRect:[view frame] options:options owner:self userInfo:nil] autorelease];
+    [view addTrackingArea:area];
+}
+
+-(void)dealloc
+{
+    [super dealloc];
 }
 
 -(void)drain
@@ -67,22 +93,9 @@ int sl_window_init_app(void)
     mPool = [[NSAutoreleasePool alloc] init];
 }
 
--(void)mouseEntered:(NSEvent *)evt
+-(BOOL)canBecomeKeyWindow
 {
-    NSPoint   mousePos = [evt locationInWindow];
-    NSInteger x        = (NSInteger)mousePos.x;
-    NSInteger y        = (NSInteger)mousePos.y;
-    NSEvent*  moveEvt  = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:CGPointMake(0.0, 0.0) modifierFlags:(NSEventModifierFlags)0 timestamp:0.0 windowNumber:[self windowNumber] context:nil subtype:SL_WinEventType::WIN_EVENT_MOUSE_ENTER data1:x data2:y];
-    [self postEvent:moveEvt atStart:NO];
-}
-
--(void)mouseExited:(NSEvent *)evt
-{
-    NSPoint   mousePos = [evt locationInWindow];
-    NSInteger x        = (NSInteger)mousePos.x;
-    NSInteger y        = (NSInteger)mousePos.y;
-    NSEvent*  moveEvt  = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:CGPointMake(0.0, 0.0) modifierFlags:(NSEventModifierFlags)0 timestamp:0.0 windowNumber:[self windowNumber] context:nil subtype:SL_WinEventType::WIN_EVENT_MOUSE_LEAVE data1:x data2:y];
-    [self postEvent:moveEvt atStart:NO];
+    return YES;
 }
 
 @end
@@ -123,6 +136,8 @@ int sl_window_init_app(void)
 
 - (void)windowDidResize:(NSNotification*)notification
 {
+    [(SL_CocoaWindow*)pWindow updateTrackingRect];
+
     (void)notification;
     NSRect    frame     = [pWindow frame];
     NSInteger w         = (NSInteger)frame.size.width;
@@ -337,10 +352,9 @@ int SL_RenderWindowCocoa::init(unsigned width, unsigned height) noexcept
     LS_LOG_MSG("SL_RenderWindowCocoa ", this, " initializing");
     sl_window_init_app();
 
-    NSUInteger windowStyle = NSWindowStyleMaskTitled  | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable;
-    NSRect     screenRect  = [[NSScreen mainScreen] frame];
-    NSRect     windowRect  = NSMakeRect(screenRect.origin.x+(screenRect.size.width-width)*0.5, screenRect.origin.y+(screenRect.size.height-height)*0.5, width, height);
-    NSWindow*  window      = [[SL_CocoaWindow alloc] initWithContentRect:windowRect styleMask:(NSWindowStyleMask)windowStyle backing:(NSBackingStoreType)1 defer:NO];
+    NSUInteger windowStyle = NSWindowStyleMaskTitled  | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskFullSizeContentView;
+    NSRect     windowRect  = NSMakeRect(0.0, 0.0, width, height);
+    SL_CocoaWindow* window  = [[SL_CocoaWindow alloc] initWithContentRect:windowRect styleMask:(NSWindowStyleMask)windowStyle backing:(NSBackingStoreType)1 defer:NO];
 
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
 
@@ -363,6 +377,7 @@ int SL_RenderWindowCocoa::init(unsigned width, unsigned height) noexcept
     [window setTitle:@"SoftLight"];
     [window setBackgroundColor:NSColor.blackColor];
     [window setAcceptsMouseMovedEvents:YES];
+    [window center];
     [window makeKeyAndOrderFront:nil];
 
     mCurrentState = WindowStateInfo::WINDOW_STARTED;
@@ -403,7 +418,10 @@ int SL_RenderWindowCocoa::destroy() noexcept
 
         if (mLastEvent)
         {
-            [(NSEvent*)mLastEvent release];
+            NSEvent* evt = (NSEvent*)mLastEvent;
+            [NSApp sendEvent:evt];
+            [evt release];
+            //[(NSEvent*)mLastEvent release];
             mLastEvent = nullptr;
         }
 
@@ -563,7 +581,7 @@ bool SL_RenderWindowCocoa::set_position(int x, int y) noexcept
     frame.origin = CGPointMake((CGFloat)x, (CGFloat)y);
     [pWindow setFrame:frame display:YES animate:YES];
 
-    NSEvent* moveEvt = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:CGPointMake(0.0, 0.0) modifierFlags:(NSEventModifierFlags)0 timestamp:0.0 windowNumber:[pWindow windowNumber] context:nil subtype:SL_WinEventType::WIN_EVENT_MOUSE_MOVED data1:(NSInteger)x data2:(NSInteger)y];
+    NSEvent* moveEvt = [NSEvent otherEventWithType:NSEventTypeApplicationDefined location:CGPointMake(0.0, 0.0) modifierFlags:(NSEventModifierFlags)0 timestamp:0.0 windowNumber:[pWindow windowNumber] context:nil subtype:SL_WinEventType::WIN_EVENT_MOVED data1:(NSInteger)x data2:(NSInteger)y];
     [pWindow postEvent:moveEvt atStart:NO];
 
     return true;
@@ -766,7 +784,7 @@ bool SL_RenderWindowCocoa::peek_event(SL_WindowEvent* const pEvent) noexcept
             case SL_WinEventType::WIN_EVENT_CLOSING:
                 mCurrentState = WindowStateInfo::WINDOW_CLOSING;
                 pEvent->type = SL_WinEventType::WIN_EVENT_CLOSING;
-                break;
+                return true;
 
             case SL_WinEventType::WIN_EVENT_RESIZED:
                 pEvent->type = SL_WinEventType::WIN_EVENT_RESIZED;
@@ -775,7 +793,7 @@ bool SL_RenderWindowCocoa::peek_event(SL_WindowEvent* const pEvent) noexcept
                 pEvent->window.y = (int16_t)winY;
                 pEvent->window.width = (uint16_t)[evt data1];
                 pEvent->window.height = (uint16_t)[evt data2];
-                break;
+                return true;
 
             case SL_WinEventType::WIN_EVENT_MOVED:
                 pEvent->type = SL_WinEventType::WIN_EVENT_MOVED;
@@ -785,34 +803,21 @@ bool SL_RenderWindowCocoa::peek_event(SL_WindowEvent* const pEvent) noexcept
                 pEvent->window.y = (int16_t)winY;
                 pEvent->window.width = (uint16_t)winW;
                 pEvent->window.height = (uint16_t)winH;
-                break;
+                return true;
 
             case SL_WinEventType::WIN_EVENT_EXPOSED:
                 pEvent->type = SL_WinEventType::WIN_EVENT_EXPOSED;
-                break;
+                return true;
 
             case SL_WinEventType::WIN_EVENT_HIDDEN:
                 pEvent->type = SL_WinEventType::WIN_EVENT_HIDDEN;
-                break;
-
-            case SL_WinEventType::WIN_EVENT_MOUSE_ENTER:
-                pEvent->type = SL_WinEventType::WIN_EVENT_MOUSE_ENTER;
-                pEvent->mousePos.x = (int16_t)[evt data1];
-                pEvent->mousePos.y = (int16_t)[evt data2];
-                break;
-
-            case SL_WinEventType::WIN_EVENT_MOUSE_LEAVE:
-                pEvent->type = SL_WinEventType::WIN_EVENT_MOUSE_LEAVE;
-                pEvent->mousePos.x = (int16_t)[evt data1];
-                pEvent->mousePos.y = (int16_t)[evt data2];
-                break;
+                return true;
 
             default:
-                pEvent->type = SL_WinEventType::WIN_EVENT_UNKNOWN;
-                break;
+                LS_DEBUG_ASSERT(false); // did I miss one?
+                return pEvent->type = SL_WinEventType::WIN_EVENT_UNKNOWN;
+                return false;
         }
-
-        return true;
     }
 
     switch (type)
@@ -835,6 +840,20 @@ bool SL_RenderWindowCocoa::peek_event(SL_WindowEvent* const pEvent) noexcept
             pEvent->keyboard.capsLock = (uint8_t)(0 != (modFlags & NSEventModifierFlagCapsLock));
             pEvent->keyboard.numLock = (uint8_t)(0 != (modFlags & NSEventModifierFlagNumericPad));
             pEvent->keyboard.scrollLock = (uint8_t)(0 != (modFlags & NSEventModifierFlagFunction));
+            break;
+
+        case NSEventTypeMouseEntered:
+            pEvent->type = SL_WinEventType::WIN_EVENT_MOUSE_ENTER;
+            mousePos = [evt locationInWindow];
+            pEvent->mousePos.x = (int16_t)mousePos.x;
+            pEvent->mousePos.y = (int16_t)mousePos.y;
+            break;
+
+        case NSEventTypeMouseExited:
+            pEvent->type = SL_WinEventType::WIN_EVENT_MOUSE_LEAVE;
+            mousePos = [evt locationInWindow];
+            pEvent->mousePos.x = (int16_t)mousePos.x;
+            pEvent->mousePos.y = (int16_t)mousePos.y;
             break;
 
         case NSEventTypeLeftMouseDown:
@@ -933,6 +952,7 @@ bool SL_RenderWindowCocoa::peek_event(SL_WindowEvent* const pEvent) noexcept
 bool SL_RenderWindowCocoa::pop_event(SL_WindowEvent* const pEvent) noexcept
 {
     bool ret = peek_event(pEvent);
+    [NSApp sendEvent:(NSEvent*)mLastEvent];
     mLastEvent = nullptr;
     return ret;
 }
