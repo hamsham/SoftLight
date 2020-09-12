@@ -463,7 +463,7 @@ SL_ImgFile& SL_ImgFile::operator=(SL_ImgFile&& img)
 /*-------------------------------------
  * Loading
 -------------------------------------*/
-SL_ImgFile::img_status_t SL_ImgFile::load(const char* filename)
+SL_ImgFile::ImgStatus SL_ImgFile::load(const char* filename)
 {
     LS_LOG_MSG("Attempting to load the image ", filename);
     unload();
@@ -471,7 +471,7 @@ SL_ImgFile::img_status_t SL_ImgFile::load(const char* filename)
     if (!filename || !filename[0])
     {
         LS_LOG_ERR("\tFailed to load an image as no filename was provided.\n");
-        return img_status_t::INVALID_FILE_NAME;
+        return ImgStatus::INVALID_FILE_NAME;
     }
 
     // Set FreeImage's error function
@@ -483,7 +483,7 @@ SL_ImgFile::img_status_t SL_ImgFile::load(const char* filename)
     if (fileFormat == FIF_UNKNOWN)
     {
         LS_LOG_ERR("\tUnable to determine the file mType for ", filename, ".\n");
-        return img_status_t::INVALID_FILE_TYPE;
+        return ImgStatus::INVALID_FILE_TYPE;
     }
 
     if (FreeImage_FIFSupportsReading(fileFormat) == false)
@@ -491,7 +491,7 @@ SL_ImgFile::img_status_t SL_ImgFile::load(const char* filename)
         LS_LOG_ERR(
             "\tSupport for the mType of file used by ", filename,
             " is not currently implemented.\n");
-        return img_status_t::UNSUPPORTED_FILE_TYPE;
+        return ImgStatus::UNSUPPORTED_FILE_TYPE;
     }
 
     // Preliminary setup passed. Attempt to load the file data
@@ -505,7 +505,7 @@ SL_ImgFile::img_status_t SL_ImgFile::load(const char* filename)
         LS_LOG_ERR(
             "\tUnable to load the image ", filename,
             " due to an internal library error.\n");
-        return img_status_t::INTERNAL_ERROR;
+        return ImgStatus::INTERNAL_ERROR;
     }
 
     const SL_DataType dataType = get_bitmap_size(fileData);
@@ -513,7 +513,7 @@ SL_ImgFile::img_status_t SL_ImgFile::load(const char* filename)
     {
         LS_LOG_ERR('\t', filename, " contains an unsupported pixel format.\n");
         FreeImage_Unload(fileData);
-        return img_status_t::UNSUPPORTED_FORMAT;
+        return ImgStatus::UNSUPPORTED_FORMAT;
     }
 
     this->mImgData = fileData;
@@ -525,14 +525,14 @@ SL_ImgFile::img_status_t SL_ImgFile::load(const char* filename)
 
     LS_LOG_MSG("\tSuccessfully loaded ", filename, ".\n");
 
-    return img_status_t::FILE_LOAD_SUCCESS;
+    return ImgStatus::FILE_LOAD_SUCCESS;
 }
 
 
 /*-------------------------------------
  * Loading
 -------------------------------------*/
-SL_ImgFile::img_status_t SL_ImgFile::load_memory_stream(const void* pImgBits, SL_ColorDataType type, unsigned w, unsigned h)
+SL_ImgFile::ImgStatus SL_ImgFile::load_memory_stream(const void* pImgBits, SL_ColorDataType type, unsigned w, unsigned h)
 {
     LS_LOG_MSG("Importing image from memory.");
     unload();
@@ -540,7 +540,7 @@ SL_ImgFile::img_status_t SL_ImgFile::load_memory_stream(const void* pImgBits, SL
     if (!pImgBits || type == SL_ColorDataType::SL_COLOR_INVALID)
     {
         LS_LOG_ERR("\tFailed to load an image as no valid image data was provided.\n");
-        return img_status_t::INVALID_FILE_TYPE;
+        return ImgStatus::INVALID_FILE_TYPE;
     }
 
     // Set FreeImage's error function
@@ -552,7 +552,7 @@ SL_ImgFile::img_status_t SL_ImgFile::load_memory_stream(const void* pImgBits, SL
     if (fiType == FIT_UNKNOWN)
     {
         LS_LOG_ERR("\tUnable to convert the in-memory image from ", type, " to a suitable FreeImage type.\n");
-        return img_status_t::INVALID_FILE_TYPE;
+        return ImgStatus::INVALID_FILE_TYPE;
     }
 
     // Preliminary setup passed. Attempt to load the file data
@@ -568,7 +568,7 @@ SL_ImgFile::img_status_t SL_ImgFile::load_memory_stream(const void* pImgBits, SL
     if (!fileData)
     {
         LS_LOG_ERR("\tUnable to load an image from memory due to an internal library error.\n");
-        return img_status_t::INTERNAL_ERROR;
+        return ImgStatus::INTERNAL_ERROR;
     }
 
     this->mImgData = fileData;
@@ -580,7 +580,7 @@ SL_ImgFile::img_status_t SL_ImgFile::load_memory_stream(const void* pImgBits, SL
 
     LS_LOG_MSG("\tSuccessfully loaded an image from memory.\n");
 
-    return img_status_t::FILE_LOAD_SUCCESS;
+    return ImgStatus::FILE_LOAD_SUCCESS;
 }
 
 
@@ -608,7 +608,7 @@ void SL_ImgFile::unload()
 /*-------------------------------------
  * saving
 -------------------------------------*/
-bool SL_ImgFile::save(const char* filename, img_file_t format) const
+bool SL_ImgFile::save(const char* filename, SL_ImgFileType format) const
 {
     if (!mImgData)
     {
@@ -620,48 +620,48 @@ bool SL_ImgFile::save(const char* filename, img_file_t format) const
 
     switch (format)
     {
-        case img_file_t::IMG_FILE_BMP: fiFormat = FIF_BMP;
+        case SL_ImgFileType::IMG_FILE_BMP: fiFormat = FIF_BMP;
             flags = BMP_SAVE_RLE;
             break;
 
-        case img_file_t::IMG_FILE_EXR: fiFormat = FIF_EXR;
+        case SL_ImgFileType::IMG_FILE_EXR: fiFormat = FIF_EXR;
             break;
 
-        case img_file_t::IMG_FILE_GIF: fiFormat = FIF_GIF;
+        case SL_ImgFileType::IMG_FILE_GIF: fiFormat = FIF_GIF;
             break;
 
-        case img_file_t::IMG_FILE_HDR: fiFormat = FIF_HDR;
+        case SL_ImgFileType::IMG_FILE_HDR: fiFormat = FIF_HDR;
             break;
 
-        case img_file_t::IMG_FILE_ICO: fiFormat = FIF_ICO;
+        case SL_ImgFileType::IMG_FILE_ICO: fiFormat = FIF_ICO;
             break;
 
-        case img_file_t::IMG_FILE_JPG: fiFormat = FIF_JPEG;
+        case SL_ImgFileType::IMG_FILE_JPG: fiFormat = FIF_JPEG;
             flags = JPEG_QUALITYSUPERB | JPEG_OPTIMIZE;
             break;
 
-        case img_file_t::IMG_FILE_J2K: fiFormat = FIF_J2K;
+        case SL_ImgFileType::IMG_FILE_J2K: fiFormat = FIF_J2K;
             break;
 
-        case img_file_t::IMG_FILE_PNG: fiFormat = FIF_PNG;
+        case SL_ImgFileType::IMG_FILE_PNG: fiFormat = FIF_PNG;
             flags = PNG_Z_DEFAULT_COMPRESSION;
             break;
 
-        case img_file_t::IMG_FILE_PPM: fiFormat = FIF_PPM;
+        case SL_ImgFileType::IMG_FILE_PPM: fiFormat = FIF_PPM;
             break;
 
-        case img_file_t::IMG_FILE_TGA: fiFormat = FIF_TARGA;
+        case SL_ImgFileType::IMG_FILE_TGA: fiFormat = FIF_TARGA;
             flags = TARGA_SAVE_RLE;
             break;
 
-        case img_file_t::IMG_FILE_TIF: fiFormat = FIF_TIFF;
+        case SL_ImgFileType::IMG_FILE_TIF: fiFormat = FIF_TIFF;
             flags = TIFF_DEFLATE;
             break;
 
-        //case img_file_t::IMG_FILE_WBP: fiFormat = FIF_WEBP;
+        //case SL_ImgFileType::IMG_FILE_WBP: fiFormat = FIF_WEBP;
         //    break;
 
-        case img_file_t::IMG_FILE_XPM: fiFormat = FIF_XPM;
+        case SL_ImgFileType::IMG_FILE_XPM: fiFormat = FIF_XPM;
             break;
 
         default: fiFormat = FIF_PNG;
