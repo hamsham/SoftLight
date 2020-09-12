@@ -158,9 +158,24 @@ class SL_ImgFile final {
          * A C-style string containing the relative path name to a file that
          * should be loadable into memory.
          *
-         * @return true if the file was successfully loaded. False if not.
+         * @return FILE_LOAD_SUCCESS if the file was successfully loaded or an
+         * error code from img_status_t if not.
          */
         img_status_t load(const char* filename);
+
+        /**
+         * @brief Load an image from memory
+         *
+         * @param pImgBits
+         * A pointer to raw image data located in memory.
+         *
+         * @type
+         * The color type of the image in memory.
+         *
+         * @return FILE_LOAD_SUCCESS if the file was successfully loaded or an
+         * error code from img_status_t if not.
+         */
+        img_status_t load_memory_stream(const void* pImgBits, SL_ColorDataType type, unsigned w, unsigned h);
 
         /**
          * @brief Save an image file in a specific format
