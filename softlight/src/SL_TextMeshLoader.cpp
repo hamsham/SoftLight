@@ -557,7 +557,7 @@ unsigned SL_TextMeshLoader::allocate_cpu_data(
         sceneData.mNumNodeMeshes.push_back(numSubmeshes);
     }
 
-    numBytes += sizeof(SL_Mesh) * meshes.size();
+    numBytes += (unsigned)(sizeof(SL_Mesh) * meshes.size());
 
     if (loadBounds)
     {

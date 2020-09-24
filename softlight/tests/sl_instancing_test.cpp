@@ -510,9 +510,9 @@ int main()
                         break;
 
                     case SL_KeySymbol::KEY_SYM_1:
-                        instancesX = math::max<size_t>(1, instancesX-1);
-                        instancesY = math::max<size_t>(1, instancesY-1);
-                        instancesZ = math::max<size_t>(1, instancesZ-1);
+                        instancesX = math::max<unsigned>(1, instancesX-1);
+                        instancesY = math::max<unsigned>(1, instancesY-1);
+                        instancesZ = math::max<unsigned>(1, instancesZ-1);
                         update_instance_count(pGraph, instancesX, instancesY, instancesZ);
                         viewPos = math::vec3{(float)instancesX, (float)instancesY, (float)instancesZ} * 30.f;
                         camTrans.extract_transforms(math::look_at(viewPos, math::vec3{0.f, 0.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
@@ -520,9 +520,9 @@ int main()
                         break;
 
                     case SL_KeySymbol::KEY_SYM_2:
-                        instancesX = math::min<size_t>(std::numeric_limits<size_t>::max(), instancesX+1);
-                        instancesY = math::min<size_t>(std::numeric_limits<size_t>::max(), instancesY+1);
-                        instancesZ = math::min<size_t>(std::numeric_limits<size_t>::max(), instancesZ+1);
+                        instancesX = math::min<unsigned>(std::numeric_limits<unsigned>::max(), instancesX+1);
+                        instancesY = math::min<unsigned>(std::numeric_limits<unsigned>::max(), instancesY+1);
+                        instancesZ = math::min<unsigned>(std::numeric_limits<unsigned>::max(), instancesZ+1);
                         update_instance_count(pGraph, instancesX, instancesY, instancesZ);
                         viewPos = math::vec3{(float)instancesX, (float)instancesY, (float)instancesZ} * 30.f;
                         camTrans.extract_transforms(math::look_at(viewPos, math::vec3{0.f, 0.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
