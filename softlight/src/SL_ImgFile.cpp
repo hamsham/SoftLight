@@ -551,7 +551,7 @@ SL_ImgFile::ImgStatus SL_ImgFile::load_memory_stream(const void* pImgBits, SL_Co
 
     if (fiType == FIT_UNKNOWN)
     {
-        LS_LOG_ERR("\tUnable to convert the in-memory image from ", type, " to a suitable FreeImage type.\n");
+        LS_LOG_ERR("\tUnable to convert the in-memory image from ", (int)type, " to a suitable FreeImage type.\n");
         return ImgStatus::INVALID_FILE_TYPE;
     }
 
