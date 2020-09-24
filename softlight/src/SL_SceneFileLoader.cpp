@@ -1007,7 +1007,7 @@ void SL_SceneFileLoader::import_texture_path(
 -------------------------------------*/
 SL_Texture* SL_SceneFileLoader::load_texture_at_path(const std::string& path, SL_ImgFile& imgLoader) noexcept
 {
-    if (imgLoader.load(path.c_str()) != SL_ImgFile::img_status_t::FILE_LOAD_SUCCESS)
+    if (imgLoader.load(path.c_str()) != SL_ImgFile::ImgStatus::FILE_LOAD_SUCCESS)
     {
         return nullptr;
     }

@@ -18,7 +18,7 @@ struct FIBITMAP;
 /**----------------------------------------------------------------------------
  * Enumerations for saving image files.
 -----------------------------------------------------------------------------*/
-enum class img_file_t {
+enum class SL_ImgFileType {
     IMG_FILE_BMP,
     IMG_FILE_EXR,
     IMG_FILE_GIF,
@@ -50,7 +50,7 @@ class SL_ImgFile final {
 
     // Public static interfaces
     public:
-        enum img_status_t {
+        enum ImgStatus {
             FILE_LOAD_SUCCESS       = 0,
             FILE_NOT_FOUND          = -1,
             INVALID_FILE_NAME       = -2,
@@ -158,9 +158,24 @@ class SL_ImgFile final {
          * A C-style string containing the relative path name to a file that
          * should be loadable into memory.
          *
-         * @return true if the file was successfully loaded. False if not.
+         * @return FILE_LOAD_SUCCESS if the file was successfully loaded or an
+         * error code from ImgStatus if not.
          */
-        img_status_t load(const char* filename);
+        ImgStatus load(const char* filename);
+
+        /**
+         * @brief Load an image from memory
+         *
+         * @param pImgBits
+         * A pointer to raw image data located in memory.
+         *
+         * @type
+         * The color type of the image in memory.
+         *
+         * @return FILE_LOAD_SUCCESS if the file was successfully loaded or an
+         * error code from ImgStatus if not.
+         */
+        ImgStatus load_memory_stream(const void* pImgBits, SL_ColorDataType type, unsigned w, unsigned h);
 
         /**
          * @brief Save an image file in a specific format
@@ -170,12 +185,12 @@ class SL_ImgFile final {
          * should be saved to the computer.
          *
          * @param filetype
-         * An img_file_t, representing the file format that should be used when
-         * saving image data.
+         * An SL_ImgFileType, representing the file format that should be used
+         * when saving image data.
          *
          * @return true if the file was successfully saved. False if not.
          */
-        bool save(const char* filename, img_file_t filetype = img_file_t::IMG_FILE_PNG) const;
+        bool save(const char* filename, SL_ImgFileType filetype = SL_ImgFileType::IMG_FILE_PNG) const;
 
         /**
          * @brief Unload
