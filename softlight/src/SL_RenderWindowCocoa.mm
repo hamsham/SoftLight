@@ -98,6 +98,12 @@ int sl_window_init_app()
     return YES;
 }
 
+- (void)keyDown:(NSEvent *)event
+{
+    //[super keyDown:event];
+    (void)event;
+}
+
 @end
 
 
