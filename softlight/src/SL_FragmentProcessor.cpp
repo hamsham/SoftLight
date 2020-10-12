@@ -636,57 +636,60 @@ void SL_FragmentProcessor::render_triangle(const SL_Texture* depthBuffer) const 
         for (int32_t y = scanLineOffset; y < bboxMaxY; y += increment)
         {
             // calculate the bounds of the current scan-line
-            const float        yf     = (float)y;
-            const math::vec4&& bcY    = math::fmadd(bcClipSpace[1], math::vec4{yf}, bcClipSpace[2]);
+            const float yf = (float)y;
+            const math::vec4&& bcY = math::fmadd(bcClipSpace[1], math::vec4{yf}, bcClipSpace[2]);
 
             // In this rasterizer, we're only rendering the absolute pixels
             // contained within the triangle edges. However this will serve as a
             // guard against any pixels we don't want to render.
-            int32_t xMin;
+            int32_t x;
             int32_t xMax;
-            scanline.step(yf, xMin, xMax);
+            scanline.step(yf, x, xMax);
 
-            int32_t x = xMin;
-            math::vec4 xf{(float)x};
-
-            const depth_type* pDepth = depthBuffer->row_pointer<depth_type>(y) + xMin;
-
-            for (; x < xMax; ++x, xf += 1.f, ++pDepth)
+            if (x < xMax)
             {
-                // calculate barycentric coordinates
-                math::vec4&& bc = math::fmadd(bcClipSpace[0], xf, bcY);
-                const float  z  = math::dot(depth, bc);
-                const float  d  = _sl_get_depth_texel<depth_type>(pDepth);
+                const depth_type* pDepth = depthBuffer->row_pointer<depth_type>(y) + x;
 
-                #if SL_REVERSED_Z_RENDERING
-                    const int_fast32_t&& depthTest = math::sign_mask(d-z) | depthTesting;
-                #else
-                    const int_fast32_t&& depthTest = math::sign_mask(z-d) | depthTesting;
-                #endif
-
-                if (LS_UNLIKELY(!depthTest))
+                do
                 {
-                    continue;
+                    // calculate barycentric coordinates
+                    const math::vec4&& xf{(float)x};
+                    const float d = _sl_get_depth_texel<depth_type>(pDepth);
+                    math::vec4&& bc = math::fmadd(bcClipSpace[0], xf, bcY);
+                    const float z = math::dot(depth, bc);
+
+                    #if SL_REVERSED_Z_RENDERING
+                        const int_fast32_t&& depthTest = math::sign_mask(d - z) | depthTesting;
+                    #else
+                        const int_fast32_t&& depthTest = math::sign_mask(z-d) | depthTesting;
+                    #endif
+
+                    if (LS_LIKELY(depthTest))
+                    {
+                        // perspective correction
+                        const float persp = math::dot(bc, homogenous);
+                        bc *= homogenous;
+                        outCoords->bc[numQueuedFrags] = bc * math::rcp(persp);
+                        outCoords->coord[numQueuedFrags] = {(uint16_t)x, (uint16_t)y, z};
+
+                        ++numQueuedFrags;
+
+                        if (LS_UNLIKELY(numQueuedFrags == SL_SHADER_MAX_QUEUED_FRAGS))
+                        {
+                            numQueuedFrags = 0;
+                            flush_fragments<depth_type>(pBin, SL_SHADER_MAX_QUEUED_FRAGS, outCoords);
+                        }
+                    }
+
+                    ++x;
+                    ++pDepth;
                 }
-
-                // perspective correction
-                const float persp = math::dot(bc, homogenous);
-                bc *= homogenous;
-                outCoords->bc[numQueuedFrags] = bc * math::rcp(persp);
-                outCoords->coord[numQueuedFrags] = {(uint16_t)x, (uint16_t)y, z};
-
-                ++numQueuedFrags;
-
-                if (numQueuedFrags == SL_SHADER_MAX_QUEUED_FRAGS)
-                {
-                    numQueuedFrags = 0;
-                    flush_fragments<depth_type>(pBin, SL_SHADER_MAX_QUEUED_FRAGS, outCoords);
-                }
+                while (x < xMax);
             }
         }
 
         // cleanup remaining fragments
-        if (numQueuedFrags > 0)
+        if (LS_LIKELY(numQueuedFrags > 0))
         {
             flush_fragments<depth_type>(pBin, numQueuedFrags, outCoords);
         }
@@ -698,6 +701,8 @@ void SL_FragmentProcessor::render_triangle(const SL_Texture* depthBuffer) const 
 /*-------------------------------------
  * Render a triangle using 4 elements at a time
 -------------------------------------*/
+#if !defined(LS_ARCH_X86)
+
 template <typename depth_type>
 void SL_FragmentProcessor::render_triangle_simd(const SL_Texture* depthBuffer) const noexcept
 {
@@ -731,7 +736,6 @@ void SL_FragmentProcessor::render_triangle_simd(const SL_Texture* depthBuffer) c
         {
             // calculate the bounds of the current scan-line
             const float yf = (float)y;
-            const math::vec4&& bcY = math::fmadd(bcClipSpace[1], math::vec4{yf}, bcClipSpace[2]);
 
             // In this rasterizer, we're only rendering the absolute pixels
             // contained within the triangle edges. However this will serve as a
@@ -740,17 +744,18 @@ void SL_FragmentProcessor::render_triangle_simd(const SL_Texture* depthBuffer) c
             int32_t xMax;
             scanline.step(yf, xMin, xMax);
 
-            const depth_type* pDepth = depthBuffer->row_pointer<depth_type>((uintptr_t)y) + xMin;
-            math::vec4i       x4     = math::vec4i{0, 1, 2, 3} + xMin;
-            const math::vec4i xMax4  {xMax};
-
-            if (LS_LIKELY(x4.v[0] < xMax))
+            if (LS_UNLIKELY(xMin < xMax))
             {
+                const depth_type* pDepth = depthBuffer->row_pointer<depth_type>((uintptr_t)y) + xMin;
+                const math::vec4&& bcY = math::fmadd(bcClipSpace[1], math::vec4{yf}, bcClipSpace[2]);
+                math::vec4i       x4     = math::vec4i{0, 1, 2, 3} + xMin;
+                const math::vec4i xMax4  {xMax};
+
                 do
                 {
                     // calculate barycentric coordinates and perform a depth test
                     const int32_t      xBound = math::sign_mask(x4-xMax4);
-                    const math::vec4&& d      = _sl_get_depth_texel4(pDepth);
+                    const math::vec4&& d      = _sl_get_depth_texel4<depth_type>(pDepth);
                     math::mat4&&       bc     = math::outer((math::vec4)x4, bcClipSpace[0]) + bcY;
                     const math::vec4&& z      = depth * bc;
 
@@ -762,22 +767,32 @@ void SL_FragmentProcessor::render_triangle_simd(const SL_Texture* depthBuffer) c
 
                     if (LS_LIKELY(0 != depthTest))
                     {
-                        const math::vec4&& persp4        = math::rcp(homogenous * bc);
-
                         const unsigned rasterCount       = math::popcnt_u32(depthTest & 0x0F);
                         const unsigned storeMask1        = math::popcnt_u32((unsigned)depthTest & 0x01u) + numQueuedFrags;
                         const unsigned storeMask2        = math::popcnt_u32((unsigned)depthTest & 0x03u) + numQueuedFrags;
                         const unsigned storeMask3        = math::popcnt_u32((unsigned)depthTest & 0x07u) + numQueuedFrags;
 
-                        outCoords->bc[numQueuedFrags]    = (bc.m[0] * homogenous) * persp4[0];
-                        outCoords->bc[storeMask1]        = (bc.m[1] * homogenous) * persp4[1];
-                        outCoords->bc[storeMask2]        = (bc.m[2] * homogenous) * persp4[2];
-                        outCoords->bc[storeMask3]        = (bc.m[3] * homogenous) * persp4[3];
-
                         outCoords->coord[numQueuedFrags] = SL_FragCoordXYZ{(uint16_t)x4.v[0], (uint16_t)y, z.v[0]};
                         outCoords->coord[storeMask1]     = SL_FragCoordXYZ{(uint16_t)x4.v[1], (uint16_t)y, z.v[1]};
                         outCoords->coord[storeMask2]     = SL_FragCoordXYZ{(uint16_t)x4.v[2], (uint16_t)y, z.v[2]};
                         outCoords->coord[storeMask3]     = SL_FragCoordXYZ{(uint16_t)x4.v[3], (uint16_t)y, z.v[3]};
+
+                        math::vec4 persp4 = homogenous * bc;
+                        bc[0] = bc[0] * homogenous;
+                        bc[1] = bc[1] * homogenous;
+                        bc[2] = bc[2] * homogenous;
+                        bc[3] = bc[3] * homogenous;
+
+                        persp4 = math::rcp(persp4);
+                        bc[0] = bc[0] * persp4[0];
+                        bc[1] = bc[1] * persp4[1];
+                        bc[2] = bc[2] * persp4[2];
+                        bc[3] = bc[3] * persp4[3];
+
+                        outCoords->bc[numQueuedFrags] = bc[0];
+                        outCoords->bc[storeMask1]     = bc[1];
+                        outCoords->bc[storeMask2]     = bc[2];
+                        outCoords->bc[storeMask3]     = bc[3];
 
                         numQueuedFrags += rasterCount;
                         if (LS_UNLIKELY(numQueuedFrags > SL_SHADER_MAX_QUEUED_FRAGS - 4))
@@ -803,6 +818,156 @@ void SL_FragmentProcessor::render_triangle_simd(const SL_Texture* depthBuffer) c
         }
     }
 }
+
+
+
+#else
+
+
+
+template <typename depth_type>
+void SL_FragmentProcessor::render_triangle_simd(const SL_Texture* depthBuffer) const noexcept
+{
+    const SL_FragmentBin* pBin         = mBins;
+    SL_FragCoord*         outCoords    = mQueues;
+    const int32_t         yOffset      = (int32_t)mThreadId;
+    const int32_t         increment    = (int32_t)mNumProcessors;
+    const __m128          depthTesting = _mm_castsi128_ps(_mm_set1_epi32(-(mShader->fragment_shader().depthTest == SL_DEPTH_TEST_OFF)));
+    SL_ScanlineBounds     scanline;
+
+    for (uint64_t binId = 0; binId < mNumBins; ++binId, ++pBin)
+    {
+        unsigned numQueuedFrags = 0;
+
+        const __m128 points0 = _mm_load_ps(reinterpret_cast<const float*>(pBin->mScreenCoords+0));
+        const __m128 points1 = _mm_load_ps(reinterpret_cast<const float*>(pBin->mScreenCoords+1));
+        const __m128 points2 = _mm_load_ps(reinterpret_cast<const float*>(pBin->mScreenCoords+2));
+
+        const __m128 d01 = _mm_unpackhi_ps(points0, points1);
+        const ls::math::vec4 depth{_mm_insert_ps(d01, points2, 0xA8)};
+
+        const __m128 h01 = _mm_insert_ps(_mm_permute_ps(points0, 0xFF), points1, 0xD0);
+        const ls::math::vec4 homogenous{_mm_insert_ps(h01, points2, 0xE8)};
+
+        const int32_t     bboxMinY       = _mm_extract_epi32(_mm_cvtps_epi32(_mm_min_ps(_mm_min_ps(points0, points1), points2)), 1);
+        const int32_t     bboxMaxY       = _mm_extract_epi32(_mm_cvtps_epi32(_mm_max_ps(_mm_max_ps(points0, points1), points2)), 1);
+        const int32_t     scanLineOffset = bboxMinY + sl_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
+        const math::vec4* bcClipSpace    = pBin->mBarycentricCoords;
+
+        scanline.init(math::vec4{points0}, math::vec4{points1}, math::vec4{points2});
+
+        int32_t y = scanLineOffset;
+        if (LS_UNLIKELY(y >= bboxMaxY))
+        {
+            continue;
+        }
+
+        do
+        {
+            // calculate the bounds of the current scan-line
+            const float yf = (float)y;
+
+            // In this rasterizer, we're only rendering the absolute pixels
+            // contained within the triangle edges. However this will serve as a
+            // guard against any pixels we don't want to render.
+            int32_t xMin;
+            int32_t xMax;
+            scanline.step(yf, xMin, xMax);
+
+            if (LS_LIKELY(xMin < xMax))
+            {
+                const depth_type*  pDepth = depthBuffer->row_pointer<depth_type>((uintptr_t)y) + xMin;
+                const math::vec4&& bcY    = math::fmadd(bcClipSpace[1], math::vec4{yf}, bcClipSpace[2]);
+                __m128i            x4     = _mm_add_epi32(_mm_set_epi32(3, 2, 1, 0), _mm_set1_epi32(xMin));
+                const __m128i      xMax4  = _mm_set1_epi32(xMax);
+
+                do
+                {
+                    // calculate barycentric coordinates and perform a depth test
+                    const math::vec4&& d      = _sl_get_depth_texel4<depth_type>(pDepth);
+                    const __m128       xBound = _mm_castsi128_ps(_mm_cmplt_epi32(x4, xMax4));
+                    math::mat4&&       bc     = math::outer(math::vec4{_mm_cvtepi32_ps(x4)}, bcClipSpace[0]) + bcY;
+                    const math::vec4&& z      = depth * bc;
+
+                    #if SL_REVERSED_Z_RENDERING
+                        const int32_t depthTest = _mm_movemask_ps(_mm_and_ps(xBound, _mm_or_ps(_mm_cmplt_ps(d.simd, z.simd), depthTesting)));
+                    #else
+                        const int32_t depthTest = _mm_movemask_ps(_mm_and_ps(xBound, _mm_or_ps(_mm_cmplt_ps(z.simd, d.simd), depthTesting)));
+                    #endif
+
+                    if (LS_UNLIKELY(0 != depthTest))
+                    {
+                        __m128 persp4 = (homogenous * bc).simd;
+
+                        const unsigned storeMask1  = math::popcnt_u32((unsigned)depthTest & 0x01u) + numQueuedFrags;
+                        const unsigned storeMask2  = math::popcnt_u32((unsigned)depthTest & 0x03u) + numQueuedFrags;
+                        const unsigned storeMask3  = math::popcnt_u32((unsigned)depthTest & 0x07u) + numQueuedFrags;
+                        const unsigned rasterCount = math::popcnt_u32(depthTest & 0x0F);
+
+                        persp4 = _mm_rcp_ps(persp4);
+                        
+                        //const __m128 xy = _mm_castsi128_ps(_mm_or_si128(_mm_and_si128(x4, _mm_set1_epi32(0x0000FFFF)), _mm_slli_epi32(_mm_set1_epi32(y), 16)));
+                        const __m128 xy = _mm_castsi128_ps(_mm_or_si128(x4, _mm_slli_epi32(_mm_set1_epi32(y), 16)));
+                        const __m128 xyz0 = _mm_unpacklo_ps(xy, z.simd);
+                        const __m128 xyz1 = _mm_unpackhi_ps(xy, z.simd);
+
+                        {
+                            const __m128 persp0 = _mm_broadcastss_ps(persp4);
+                            const __m128 bc0 = _mm_mul_ps(bc[0].simd, homogenous.simd);
+                            bc[0].simd = _mm_mul_ps(bc0, persp0);
+                            _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + numQueuedFrags), bc[0].simd);
+                            _mm_storel_pi(reinterpret_cast<__m64*>(outCoords->coord + numQueuedFrags), xyz0);
+                        }
+                        {
+                            const __m128 persp1 = _mm_permute_ps(persp4, 0x55);
+                            const __m128 bc1 = _mm_mul_ps(bc[1].simd, homogenous.simd);
+                            bc[1].simd = _mm_mul_ps(bc1, persp1);
+                            _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + storeMask1), bc[1].simd);
+                            _mm_storeh_pi(reinterpret_cast<__m64*>(outCoords->coord + storeMask1), xyz0);
+                        }
+                        {
+                            const __m128 persp2 = _mm_permute_ps(persp4, 0xAA);
+                            const __m128 bc2 = _mm_mul_ps(bc[2].simd, homogenous.simd);
+                            bc[2].simd = _mm_mul_ps(bc2, persp2);
+                            _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + storeMask2), bc[2].simd);
+                            _mm_storel_pi(reinterpret_cast<__m64*>(outCoords->coord + storeMask2), xyz1);
+                        }
+                        {
+                            const __m128 persp3 = _mm_permute_ps(persp4, 0xFF);
+                            const __m128 bc3 = _mm_mul_ps(bc[3].simd, homogenous.simd);
+                            bc[3].simd = _mm_mul_ps(bc3, persp3);
+                            _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + storeMask3), bc[3].simd);
+                            _mm_storeh_pi(reinterpret_cast<__m64*>(outCoords->coord + storeMask3), xyz1);
+                        }
+
+                        numQueuedFrags += rasterCount;
+                        if (LS_UNLIKELY(numQueuedFrags > SL_SHADER_MAX_QUEUED_FRAGS - 4))
+                        {
+                            flush_fragments<depth_type>(pBin, numQueuedFrags, outCoords);
+                            numQueuedFrags = 0;
+                        }
+                    }
+
+                    x4 = _mm_add_epi32(x4, _mm_set1_epi32(4));
+                    pDepth += 4;
+                }
+                while (_mm_movemask_ps(_mm_castsi128_ps(_mm_cmpgt_epi32(xMax4, x4))));
+            }
+
+            y += increment;
+        }
+        while (LS_UNLIKELY(y < bboxMaxY));
+
+        if (LS_LIKELY(0 < numQueuedFrags))
+        {
+            flush_fragments<depth_type>(pBin, numQueuedFrags, outCoords);
+        }
+    }
+}
+
+
+
+#endif
 
 
 
