@@ -59,12 +59,11 @@ namespace utils = ls::utils;
 -----------------------------------------------------------------------------*/
 struct MeshTestUniforms
 {
-    const SL_Texture* pTexture;
-    math::vec4        lightPos;
-    SL_ColorRGBAf     lightCol;
     math::mat4        modelMatrix;
     math::mat4        mvpMatrix;
-    bool              edgeFilter;
+    math::vec4        lightPos;
+    SL_ColorRGBAf     lightCol;
+    const SL_Texture* pTexture;
 };
 
 
@@ -178,7 +177,7 @@ SL_VertexShader ycocg_vert_shader()
 
 
 /*--------------------------------------
- * Fragment Shader
+ * Edge-filtered Fragment Shader
 --------------------------------------*/
 inline LS_INLINE float filter_luminance(float a, const math::vec4& ax, const math::vec4& ay) noexcept
 {
@@ -219,54 +218,36 @@ inline LS_INLINE float adjust_chroma(const SL_Texture* tex, uint16_t x, uint16_t
     return filter_luminance(lum, ax, ay);
 }
 
-bool _ycocg_frag_shader(SL_FragmentParam& fragParams)
+bool _filtered_ycocg_frag_shader(SL_FragmentParam& fragParams)
 {
     const MeshTestUniforms* pUniforms = fragParams.pUniforms->as<MeshTestUniforms>();
     const SL_Texture*       albedo    = pUniforms->pTexture;
     const uint16_t          x0        = fragParams.coord.x;
     const uint16_t          y0        = fragParams.coord.y;
-    const bool              amOdd     = ((x0 & 1) == (y0 & 1));
     constexpr float         norm255   = 1.f / 255.f;
     const math::vec2&&      pixel0    = (math::vec2)albedo->texel<math::vec2_t<uint8_t>>(x0, y0) * norm255;
 
-    float y = pixel0[0];
-    float co, cg;
-
-    // early-out for black pixels
+    const float y = pixel0[0];
     if (y == 0.f)
     {
         fragParams.pOutputs[0] = math::vec4{0.f, 0.f, 0.f, 1.f};
         return true;
     }
 
-    if (pUniforms->edgeFilter)
-    {
-        co = pixel0[1];
-        cg = adjust_chroma(albedo, x0, y0, y);//+norm255);
-    }
-    else
-    {
-        const uint16_t x1 = x0 > 0 ? (x0 - 1) : x0;
-        const math::vec2&& pixel1 = (math::vec2)albedo->texel<math::vec2_t<uint8_t>>(x1, y0) * norm255;
-        co = pixel0[1];
-        cg = pixel1[1];
-    }
 
-    if (amOdd)
-    {
-        const float temp = co;
-        co = cg;
-        cg = temp;
-    }
+    const float co    = pixel0[1];
+    const float cg    = adjust_chroma(albedo, x0, y0, y);//+norm255);
+    const bool  amOdd = ((x0 & 1) == (y0 & 1));
+    const float outCo = amOdd ? cg : co;
+    const float outCg = amOdd ? co : cg;
 
-    fragParams.pOutputs[0] = rgb_cast<float>(SL_ColorYCoCgAf{y, co, cg, 1.f});
-
+    fragParams.pOutputs[0] = rgb_cast<float>(SL_ColorYCoCgAf{y, outCo, outCg, 1.f});
     return true;
 }
 
 
 
-SL_FragmentShader ycocg_frag_shader()
+SL_FragmentShader filtered_ycocg_frag_shader()
 {
     SL_FragmentShader shader;
     shader.numVaryings = 0;
@@ -274,7 +255,53 @@ SL_FragmentShader ycocg_frag_shader()
     shader.blend       = SL_BLEND_OFF;
     shader.depthTest   = SL_DEPTH_TEST_OFF;
     shader.depthMask   = SL_DEPTH_MASK_OFF;
-    shader.shader      = _ycocg_frag_shader;
+    shader.shader      = _filtered_ycocg_frag_shader;
+
+    return shader;
+}
+
+
+
+/*--------------------------------------
+ * Unfiltered Fragment Shader
+--------------------------------------*/
+bool _unfiltered_ycocg_frag_shader(SL_FragmentParam& fragParams)
+{
+    const MeshTestUniforms* pUniforms = fragParams.pUniforms->as<MeshTestUniforms>();
+    const SL_Texture*       albedo    = pUniforms->pTexture;
+    const uint16_t          x0        = fragParams.coord.x;
+    const uint16_t          y0        = fragParams.coord.y;
+    constexpr float         norm255   = 1.f / 255.f;
+    const math::vec2&&      pixel0    = (math::vec2)albedo->texel<math::vec2_t<uint8_t>>(x0, y0) * norm255;
+
+    const float y = pixel0[0];
+    if (y == 0.f)
+    {
+        fragParams.pOutputs[0] = math::vec4{0.f, 0.f, 0.f, 1.f};
+        return true;
+    }
+
+    const bool         amOdd  = ((x0 & 1) == (y0 & 1));
+    const uint16_t     x1     = x0 > 0 ? (x0 - 1) : x0;
+    const math::vec2&& pixel1 = (math::vec2)albedo->texel<math::vec2_t<uint8_t>>(x1, y0) * norm255;
+    const float        co     = amOdd ? pixel1[1] : pixel0[1];
+    const float        cg     = amOdd ? pixel0[1] : pixel1[1];
+
+    fragParams.pOutputs[0] = rgb_cast<float>(SL_ColorYCoCgAf{y, co, cg, 1.f});
+    return true;
+}
+
+
+
+SL_FragmentShader unfiltered_ycocg_frag_shader()
+{
+    SL_FragmentShader shader;
+    shader.numVaryings = 0;
+    shader.numOutputs  = 1;
+    shader.blend       = SL_BLEND_OFF;
+    shader.depthTest   = SL_DEPTH_TEST_OFF;
+    shader.depthMask   = SL_DEPTH_MASK_OFF;
+    shader.shader      = _unfiltered_ycocg_frag_shader;
 
     return shader;
 }
@@ -464,7 +491,8 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     const SL_VertexShader&&   vertShader0 = mesh_test_vert_shader();
     const SL_FragmentShader&& fragShader0 = mesh_test_frag_shader();
     const SL_VertexShader&&   vertShader1 = ycocg_vert_shader();
-    const SL_FragmentShader&& fragShader1 = ycocg_frag_shader();
+    const SL_FragmentShader&& fragShader1 = unfiltered_ycocg_frag_shader();
+    const SL_FragmentShader&& fragShader2 = filtered_ycocg_frag_shader();
 
     size_t uboId = context.create_ubo();
     SL_UniformBuffer& ubo = context.ubo(uboId);
@@ -474,15 +502,19 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     pUniforms->lightCol = math::vec4{0.125f, 0.09f, 0.08f, 1.f};
     pUniforms->modelMatrix = math::mat4{1.f};
     pUniforms->mvpMatrix = math::mat4{1.f};
-    pUniforms->edgeFilter = true;
     size_t testShaderId0 = context.create_shader(vertShader0,  fragShader0,  uboId);
     size_t testShaderId1 = context.create_shader(vertShader1,  fragShader1,  uboId);
+    size_t testShaderId2 = context.create_shader(vertShader1,  fragShader2,  uboId);
 
     assert(testShaderId0 == 0);
     (void)testShaderId0;
 
     assert(testShaderId1 == 1);
     (void)testShaderId1;
+
+    assert(testShaderId2 == 2);
+    (void)testShaderId2;
+
     (void)retCode;
 
     return pGraph;
@@ -493,7 +525,7 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
 /*-----------------------------------------------------------------------------
  * Render a scene
 -----------------------------------------------------------------------------*/
-void mesh_test_render(SL_SceneGraph* pGraph, const math::mat4& vpMatrix)
+void mesh_test_render(SL_SceneGraph* pGraph, const math::mat4& vpMatrix, bool useEdgeFiltering)
 {
     SL_Context&       context   = pGraph->mContext;
     MeshTestUniforms* pUniforms = context.ubo(0).as<MeshTestUniforms>();
@@ -520,7 +552,7 @@ void mesh_test_render(SL_SceneGraph* pGraph, const math::mat4& vpMatrix)
             const size_t          nodeMeshId = meshIds[meshId];
             const SL_Mesh&        m          = pGraph->mMeshes[nodeMeshId];
             const SL_Material&    material   = pGraph->mMaterials[m.materialId];
-            pUniforms->pTexture = material.pTextures[SL_MATERIAL_TEXTURE_AMBIENT];
+            pUniforms->pTexture = material.pTextures[SL_MATERIAL_TEXTURE_DIFFUSE];
 
             // NOTE: Always validate your IDs in production
             const size_t shaderId = 0;
@@ -535,7 +567,7 @@ void mesh_test_render(SL_SceneGraph* pGraph, const math::mat4& vpMatrix)
     pUniforms->pTexture = material.pTextures[m.materialId];
 
     // NOTE: Always validate your IDs in production
-    const size_t shaderId = 1;
+    const size_t shaderId = useEdgeFiltering ? 2 : 1;
     const size_t fboid    = 1;
 
     context.draw(m, shaderId, fboid);
@@ -587,6 +619,7 @@ int main()
     int                totalFrames    = 0;
     float              secondsCounter = 0.f;
     float              tickTime       = 0.f;
+    bool               useEdgeFilter  = true;
 
     viewMatrix.type(SL_TransformType::SL_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
     viewMatrix.extract_transforms(math::look_at(math::vec3{10.f, 30.f, 70.f}, math::vec3{0.f, 20.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
@@ -626,15 +659,11 @@ int main()
                 }
                 else if (keySym == SL_KeySymbol::KEY_SYM_1)
                 {
-                    SL_UniformBuffer& ubo = context.ubo(0);
-                    MeshTestUniforms* pUniforms = ubo.as<MeshTestUniforms>();
-                    pUniforms->edgeFilter = true;
+                    useEdgeFilter = true;
                 }
                 else if (keySym == SL_KeySymbol::KEY_SYM_2)
                 {
-                    SL_UniformBuffer& ubo = context.ubo(0);
-                    MeshTestUniforms* pUniforms = ubo.as<MeshTestUniforms>();
-                    pUniforms->edgeFilter = false;
+                    useEdgeFilter = false;
                 }
             }
             else if (evt.type == SL_WinEventType::WIN_EVENT_CLOSING)
@@ -654,7 +683,7 @@ int main()
 
             context.clear_framebuffer(0, 0, SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0}, 0.0);
 
-            mesh_test_render(pGraph.get(), projMatrix* viewMatrix.transform());
+            mesh_test_render(pGraph.get(), projMatrix* viewMatrix.transform(), useEdgeFilter);
 
             context.blit(*pRenderBuf, 2);
             pWindow->render(*pRenderBuf);
