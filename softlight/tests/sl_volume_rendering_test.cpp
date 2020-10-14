@@ -7,6 +7,7 @@
 #include "lightsky/math/vec_utils.h"
 #include "lightsky/math/mat_utils.h"
 #include "lightsky/math/quat_utils.h"
+#include "lightsky/math/PerlinNoise.h"
 
 #include "lightsky/utils/Copy.h"
 #include "lightsky/utils/Pointer.h"
@@ -568,7 +569,7 @@ void render_volume(SL_SceneGraph* pGraph, const SL_Transform& viewMatrix, const 
 -------------------------------------*/
 void update_cam_position(SL_Transform& camTrans, float tickTime, utils::Pointer<bool[]>& pKeys)
 {
-    const float camSpeed = 10.f;
+    const float camSpeed = 1.f;
 
     if (pKeys[SL_KeySymbol::KEY_SYM_w] || pKeys[SL_KeySymbol::KEY_SYM_W])
     {
