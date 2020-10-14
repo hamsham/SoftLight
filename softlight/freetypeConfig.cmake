@@ -36,7 +36,7 @@ if (NOT FREETYPE_INCLUDE_DIRS OR NOT FREETYPE_LIBRARIES)
         PREFIX
             ${EXTERNAL_PROJECT_PREFIX}
         GIT_REPOSITORY
-            "https://git.savannah.nongnu.org/r/freetype/freetype2.git"
+            "https://github.com/freetype/freetype2.git"
         GIT_SHALLOW
             TRUE
         GIT_PROGRESS
