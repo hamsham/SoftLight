@@ -90,7 +90,7 @@ SL_VertexShader volume_vert_shader()
 {
     SL_VertexShader shader;
     shader.numVaryings = 0;
-    shader.cullMode = SL_CULL_BACK_FACE;
+    shader.cullMode = SL_CULL_FRONT_FACE;
     shader.shader = _volume_vert_shader;
 
     return shader;
@@ -101,7 +101,7 @@ SL_VertexShader volume_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-inline bool intersect_ray_box(
+inline LS_INLINE bool intersect_ray_box(
     const math::vec4& rayPos,
     const math::vec4& rayDir,
     float& texNear,
@@ -128,16 +128,17 @@ inline bool intersect_ray_box(
 
 
 
-inline math::vec4 calc_normal(const SL_Texture* tex, const math::vec4& p, float stepLen) noexcept
+inline LS_INLINE math::vec4 calc_normal(const SL_Texture* tex, const math::vec4& p) noexcept
 {
+    constexpr float stepLen = 1.f / 128.f;
     const math::vec4&& a = p + math::vec4{stepLen, 0.f, 0.f, 0.f};
     const math::vec4&& b = p + math::vec4{0.f, stepLen, 0.f, 0.f};
     const math::vec4&& c = p + math::vec4{0.f, 0.f, stepLen, 0.f};
 
     return math::normalize((math::vec4)math::vec4_t<int>{
-        sl_sample_nearest<SL_ColorR8, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(*tex, a[0], a[1], a[2]).r,
-        sl_sample_nearest<SL_ColorR8, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(*tex, b[0], b[1], b[2]).r,
-        sl_sample_nearest<SL_ColorR8, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(*tex, c[0], c[1], c[2]).r,
+        sl_sample_bilinear<SL_ColorRType<char>, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(*tex, a[0], a[1], a[2]).r,
+        sl_sample_bilinear<SL_ColorRType<char>, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(*tex, b[0], b[1], b[2]).r,
+        sl_sample_bilinear<SL_ColorRType<char>, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(*tex, c[0], c[1], c[2]).r,
         0
     });
 }
@@ -146,7 +147,8 @@ inline math::vec4 calc_normal(const SL_Texture* tex, const math::vec4& p, float 
 
 bool _volume_frag_shader(SL_FragmentParam& fragParam)
 {
-    constexpr float       step      = 1.f / 128.f;
+    constexpr unsigned numSteps = 256;
+    constexpr float step = 1.f / (float)numSteps;
 
     const VolumeUniforms* pUniforms = fragParam.pUniforms->as<VolumeUniforms>();
     const float           focalLen  = math::rcp<float>(math::tan(pUniforms->viewAngle * 0.5f));
@@ -166,42 +168,50 @@ bool _volume_frag_shader(SL_FragmentParam& fragParam)
         return false;
     }
 
-    math::vec4&& rayStart  = (camPos + rayDir * nearPos + 1.f) * 0.5f;
-    math::vec4&& rayStop   = (camPos + rayDir * farPos + 1.f) * 0.5f;
-    math::vec4&& ray       = rayStop - rayStart;
-    float        rayLen    = math::length(ray);
-    math::vec4&& rayStep   = (ray / rayLen) * step;
+    math::vec4&& rayStart  = (camPos + rayDir * farPos + 1.f) * 0.5f;
+    math::vec4&& rayStop   = (camPos + rayDir * nearPos + 1.f) * 0.5f;
+    math::vec4&& ray       = rayStart - rayStop;
+    math::vec4&& rayStep   = ray * step;
     math::vec4   rayPos    = rayStart;
     math::vec4   dstTexel  = {0.f};
     unsigned     intensity;
     float        srcAlpha;
 
-    while (dstTexel < 1.f && rayLen > 0.f)
+    for (unsigned i = 0; i < numSteps; ++i)
     {
         // Get a pixel with minimal filtering before attempting to do anything more expensive
         intensity = sl_sample_trilinear<SL_ColorR8, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(*volumeTex, rayPos[0], rayPos[1], rayPos[2]).r;
 
         // regular opacity (doesn't take ray steps into account).
-        srcAlpha = alphaTex->raw_texel<float>(intensity);
+        //srcAlpha = alphaTex->raw_texel<float>(intensity);
+        srcAlpha = sl_sample_nearest<SL_ColorRf, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(*alphaTex, (float)intensity / 255.f, 0.f).r;
 
         if (intensity >= 17 && srcAlpha > 0.f)
         {
-            const math::vec4&& norm = calc_normal(volumeTex, rayPos, step);
-            const float diffuse = math::clamp(math::dot(norm, math::vec4{0.f, 0.f, 1.f, 0.f}), 0.f, 1.f);
-
             // corrected opacity, from:
             // https://github.com/chrislu/schism/blob/master/projects/examples/ex_volume_ray_cast/src/renderer/shader/volume_ray_cast.glslf
-            //srcAlpha = 1.f - math::pow(1.f - srcAlpha, math::length(rayPos-rayStart));
+            //srcAlpha = 1.f - math::pow(1.f - srcAlpha, math::length(rayPos-rayStop));
 
-            const float    blend     = ((1.f-dstTexel[3]) * srcAlpha);
-            SL_ColorRGBf   volColor  = colorTex->raw_texel<SL_ColorRGBf>(intensity); // 0 - 255
-            math::vec4&&   composite = math::vec4_cast(volColor, 1.f) * diffuse * blend;
+            const math::vec4&& norm = calc_normal(volumeTex, rayPos);
+            const float luminance = math::clamp(math::dot(norm, math::vec4{0.f, 1.f, 1.f, 0.f}), 0.f, 1.f);
 
-            dstTexel += composite;
+            const math::vec4 diffuse{luminance, luminance, luminance, 1.f};
+            const math::vec4 srcA{srcAlpha};
+
+            const float blend = 1.f-srcAlpha;
+            //SL_ColorRGBAf&& volColor = colorTex->raw_texel<SL_ColorRGBAf>(intensity);
+            SL_ColorRGBAf&& volColor = sl_sample_nearest<SL_ColorRGBAf, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(*colorTex, (float)intensity / 255.f, 0.f);
+            math::vec4&& composite = volColor * diffuse * srcA;
+
+            dstTexel = (dstTexel * blend) + composite;
         }
 
-        rayLen -= step;
-        rayPos += rayStep;
+        if (dstTexel >= 1.f)
+        {
+            break;
+        }
+
+        rayPos -= rayStep;
     }
 
     // output composition
@@ -219,7 +229,7 @@ SL_FragmentShader volume_frag_shader()
     shader.numOutputs = 1;
     shader.blend = SL_BLEND_PREMULTIPLED_ALPHA;
     shader.depthMask = SL_DEPTH_MASK_OFF;
-    shader.depthTest = SL_DEPTH_TEST_ON;
+    shader.depthTest = SL_DEPTH_TEST_OFF;
     shader.shader = _volume_frag_shader;
 
     return shader;
@@ -404,11 +414,11 @@ int create_opacity_map(SL_SceneGraph& graph, const size_t volumeTexIndex)
     #if 1
     add_transfer_func(0,  17,  0.f);
     add_transfer_func(17, 29,  0.05f);
-    add_transfer_func(29, 40,  0.002f);
+    add_transfer_func(29, 40,  0.02f);
     add_transfer_func(40, 50,  0.05f);
-    add_transfer_func(50, 60,  0.003f);
+    add_transfer_func(50, 60,  0.03f);
     add_transfer_func(60, 75,  0.05f);
-    add_transfer_func(75, 255, 0.001f);
+    add_transfer_func(75, 255, 0.01f);
     #else
     add_transfer_func(0,  17,  0.f);
     add_transfer_func(17, 40,  0.025f);
@@ -434,17 +444,17 @@ int create_color_map(SL_SceneGraph& graph, const size_t volumeTexIndex)
     const uint16_t h = 1;
     const uint16_t d = 1;
 
-    if (0 != colorTex.init(SL_COLOR_RGB_FLOAT, w, h, d))
+    if (0 != colorTex.init(SL_COLOR_RGBA_FLOAT, w, h, d))
     {
         std::cerr << "Error: Unable to allocate memory for the color transfer functions." << std::endl;
         return 1;
     }
 
-    const auto add_transfer_func = [&colorTex](const uint16_t begin, const uint16_t end, const SL_ColorRGBType<float> color)->void
+    const auto add_transfer_func = [&colorTex](const uint16_t begin, const uint16_t end, const SL_ColorRGBAType<float> color)->void
     {
         for (uint16_t i = begin; i < end; ++i)
         {
-            colorTex.raw_texel<SL_ColorRGBf>(i, 0, 0) = color;
+            colorTex.raw_texel<SL_ColorRGBAf>(i, 0, 0) = color;
         }
     };
 
@@ -455,11 +465,11 @@ int create_color_map(SL_SceneGraph& graph, const size_t volumeTexIndex)
     add_transfer_func(50, 75,  SL_ColorRGBType<float>{1.f,   1.f,  1.f});
     add_transfer_func(75, 255, SL_ColorRGBType<float>{0.6f,  0.6f, 0.6f});
     */
-    add_transfer_func(0,  17,  SL_ColorRGBType<float>{0.f,   0.f,  0.f});
-    add_transfer_func(17, 40,  SL_ColorRGBType<float>{0.2f,  0.2f, 0.5f});
-    add_transfer_func(40, 50,  SL_ColorRGBType<float>{0.1f,  0.3f, 0.4f});
-    add_transfer_func(50, 75,  SL_ColorRGBType<float>{1.f,   1.f,  1.f});
-    add_transfer_func(75, 255, SL_ColorRGBType<float>{0.6f,  0.6f, 0.6f});
+    add_transfer_func(0,  17,  SL_ColorRGBAType<float>{0.f,   0.f,  0.f,  1.f});
+    add_transfer_func(17, 40,  SL_ColorRGBAType<float>{0.2f,  0.2f, 0.5f, 1.f});
+    add_transfer_func(40, 50,  SL_ColorRGBAType<float>{0.1f,  0.3f, 0.4f, 1.f});
+    add_transfer_func(50, 75,  SL_ColorRGBAType<float>{1.f,   1.f,  1.f,  1.f});
+    add_transfer_func(75, 255, SL_ColorRGBAType<float>{0.6f,  0.6f, 0.6f, 1.f});
 
     return 0;
 }
