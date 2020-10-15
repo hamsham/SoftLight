@@ -6,8 +6,6 @@
 
 #include "lightsky/math/vec_utils.h"
 #include "lightsky/math/mat_utils.h"
-#include "lightsky/math/quat_utils.h"
-#include "lightsky/math/PerlinNoise.h"
 
 #include "lightsky/utils/Copy.h"
 #include "lightsky/utils/Pointer.h"
@@ -16,7 +14,6 @@
 #include "softlight/SL_BoundingBox.hpp"
 #include "softlight/SL_Camera.hpp"
 #include "softlight/SL_Context.hpp"
-#include "softlight/SL_ImgFilePPM.hpp"
 #include "softlight/SL_IndexBuffer.hpp"
 #include "softlight/SL_Framebuffer.hpp"
 #include "softlight/SL_KeySym.hpp"
@@ -33,11 +30,11 @@
 #include "softlight/SL_WindowEvent.hpp"
 
 #ifndef IMAGE_WIDTH
-    #define IMAGE_WIDTH 800
+    #define IMAGE_WIDTH 1280
 #endif /* IMAGE_WIDTH */
 
 #ifndef IMAGE_HEIGHT
-    #define IMAGE_HEIGHT 600
+    #define IMAGE_HEIGHT 1024
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SL_TEST_MAX_THREADS
@@ -314,7 +311,7 @@ int scene_load_cube(SL_SceneGraph& graph)
 
     size_t vboId = context.create_vbo();
     SL_VertexBuffer& vbo = context.vbo(vboId);
-    retCode = vbo.init(numVerts*stride*3);
+    retCode = vbo.init(numVerts*stride);
     if (retCode != 0)
     {
         std::cerr << "Error while creating a VBO: " << retCode << std::endl;
@@ -324,8 +321,8 @@ int scene_load_cube(SL_SceneGraph& graph)
     size_t vaoId = context.create_vao();
     SL_VertexArray& vao = context.vao(vaoId);
     vao.set_vertex_buffer(vboId);
-    retCode = vao.set_num_bindings(3);
-    if (retCode != 3)
+    retCode = vao.set_num_bindings(1);
+    if (retCode != 1)
     {
         std::cerr << "Error while setting the number of VAO bindings: " << retCode << std::endl;
         abort();
@@ -374,25 +371,7 @@ int scene_load_cube(SL_SceneGraph& graph)
     vao.set_binding(0, numVboBytes, stride, SL_Dimension::VERTEX_DIMENSION_3, SL_DataType::VERTEX_DATA_FLOAT);
     numVboBytes += sizeof(verts);
 
-    // Ensure UVs are only between 0-1.
-    for (size_t i = 0; i < numVerts; ++i)
-    {
-        verts[i] = 0.5f + verts[i] * 0.5f;
-    }
-    vbo.assign(verts, numVboBytes, sizeof(verts));
-    vao.set_binding(1, numVboBytes, stride, SL_Dimension::VERTEX_DIMENSION_3, SL_DataType::VERTEX_DATA_FLOAT);
-    numVboBytes += sizeof(verts);
-
-    // Normalizing the vertex positions should allow for smooth shading.
-    for (size_t i = 0; i < numVerts; ++i)
-    {
-        verts[i] = math::normalize(verts[i] - 0.5f);
-    }
-    vbo.assign(verts, numVboBytes, sizeof(verts));
-    vao.set_binding(2, numVboBytes, stride, SL_Dimension::VERTEX_DIMENSION_3, SL_DataType::VERTEX_DATA_FLOAT);
-    numVboBytes += sizeof(verts);
-
-    assert(numVboBytes == (numVerts*stride*3));
+    assert(numVboBytes == (numVerts*stride));
 
     graph.mMeshes.emplace_back(SL_Mesh());
     SL_Mesh& mesh = graph.mMeshes.back();
@@ -516,11 +495,11 @@ utils::Pointer<SL_SceneGraph> init_volume_context()
     context.num_threads(SL_TEST_MAX_THREADS);
 
     SL_Texture& tex = context.texture(texId);
-    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_FLOAT, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_FLOAT, IMAGE_WIDTH/2, IMAGE_HEIGHT/2, 1);
     assert(retCode == 0);
 
     SL_Texture& depth = context.texture(depthId);
-    retCode = depth.init(SL_ColorDataType::SL_COLOR_R_FLOAT, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = depth.init(SL_ColorDataType::SL_COLOR_R_FLOAT, IMAGE_WIDTH/2, IMAGE_HEIGHT/2, 1);
     assert(retCode == 0);
 
     SL_Framebuffer& fbo = context.framebuffer(fboId);
@@ -649,9 +628,9 @@ int main()
     ls::utils::Pointer<SL_SceneGraph>   pGraph     {std::move(init_volume_context())};
     SL_Context&                         context    = pGraph->mContext;
     VolumeUniforms*                     pUniforms = context.ubo(0).as<VolumeUniforms>();
-    ls::utils::Pointer<bool[]>          pKeySyms   {new bool[256]};
+    ls::utils::Pointer<bool[]>          pKeySyms   {new bool[65536]};
 
-    std::fill_n(pKeySyms.get(), 256, false);
+    std::fill_n(pKeySyms.get(), 65536 , false);
 
     int shouldQuit = pWindow->init(IMAGE_WIDTH, IMAGE_HEIGHT);
 
@@ -660,12 +639,13 @@ int main()
     float currSeconds = 0.f;
     float dx = 0.f;
     float dy = 0.f;
+    bool autorotate = true;
     unsigned numThreads = context.num_threads();
 
     math::mat4 vpMatrix;
     SL_Transform camTrans;
     camTrans.type(SL_TransformType::SL_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
-    camTrans.extract_transforms(math::look_from(math::vec3{-2.f}, math::vec3{0.f}, math::vec3{0.f, -1.f, 0.f}));
+    camTrans.extract_transforms(math::look_from(math::vec3{-2.f, -1.f, -2.f}, math::vec3{0.f}, math::vec3{0.f, -1.f, 0.f}));
 
     if (shouldQuit)
     {
@@ -685,8 +665,8 @@ int main()
     }
     else
     {
-        pUniforms->windowSize = math::vec2{(float)pWindow->width(), (float)pWindow->height()};
-        pWindow->set_keys_repeat(false); // text mode
+        pUniforms->windowSize = math::vec2{(float)context.texture(0).width(), (float)context.texture(0).height()};
+        pWindow->set_keys_repeat(true); // non-text mode
         timer.start();
     }
 
@@ -699,7 +679,22 @@ int main()
         {
             pWindow->pop_event(&evt);
 
-            if (evt.type == SL_WinEventType::WIN_EVENT_KEY_DOWN)
+            if (evt.type == SL_WinEventType::WIN_EVENT_MOUSE_BUTTON_DOWN)
+            {
+                autorotate = false;
+            }
+            else if (evt.type == SL_WinEventType::WIN_EVENT_MOUSE_BUTTON_UP)
+            {
+                autorotate = true;
+            }
+            else if (evt.type == SL_WinEventType::WIN_EVENT_MOUSE_MOVED && !autorotate)
+            {
+                SL_MousePosEvent& mouse = evt.mousePos;
+                dx = (float)mouse.dx / (float)pWindow->width();
+                dy = (float)mouse.dy / (float)pWindow->height();
+                camTrans.rotate(math::vec3{2.f*dx, -2.f*dy, 0.f});
+            }
+            else if (evt.type == SL_WinEventType::WIN_EVENT_KEY_DOWN)
             {
                 const SL_KeySymbol keySym = evt.keyboard.keysym;
                 pKeySyms[keySym] = true;
@@ -735,12 +730,6 @@ int main()
                         context.num_threads(numThreads);
                         break;
 
-                    case SL_KeySymbol::KEY_SYM_F1:
-                        pWindow->set_mouse_capture(!pWindow->is_mouse_captured());
-                        pWindow->set_keys_repeat(!pWindow->keys_repeat()); // no text mode
-                        std::cout << "Mouse Capture: " << pWindow->is_mouse_captured() << std::endl;
-                        break;
-
                     case SL_KeySymbol::KEY_SYM_ESCAPE:
                         std::cout << "Escape button pressed. Exiting." << std::endl;
                         shouldQuit = true;
@@ -754,16 +743,6 @@ int main()
             {
                 std::cout << "Window close event caught. Exiting." << std::endl;
                 shouldQuit = true;
-            }
-            else if (evt.type == SL_WinEventType::WIN_EVENT_MOUSE_MOVED)
-            {
-                if (pWindow->is_mouse_captured())
-                {
-                    SL_MousePosEvent& mouse = evt.mousePos;
-                    dx = ((float)mouse.dx / (float)pWindow->width()) * 0.25f;
-                    dy = ((float)mouse.dy / (float)pWindow->height()) * -0.25f;
-                    camTrans.rotate(math::vec3{dx, dy, 0.f});
-                }
             }
         }
         else
@@ -783,14 +762,16 @@ int main()
 
             update_cam_position(camTrans, tickTime, pKeySyms);
 
+            if (autorotate)
+            {
+                camTrans.rotate(math::vec3{tickTime*0.5f, 0.f, 0.f});
+            }
+
             if (camTrans.is_dirty())
             {
                 camTrans.apply_transform();
 
                 constexpr float    viewAngle  = math::radians(45.f);
-                //const float        w          = 0.001f * (float)pWindow->width();
-                //const float        h          = 0.001f * (float)pWindow->height();
-                //const math::mat4&& projMatrix = math::ortho(-w, w, -h, h, 0.0001f, 0.1f);
                 const math::mat4&& projMatrix = math::infinite_perspective(viewAngle, (float)pWindow->width() / (float)pWindow->height(), 0.001f);
 
                 pUniforms->viewAngle = viewAngle;
@@ -799,12 +780,12 @@ int main()
 
             if (pWindow->width() != pRenderBuf->width() || pWindow->height() != pRenderBuf->height())
             {
-                context.texture(0).init(SL_ColorDataType::SL_COLOR_RGBA_FLOAT, (uint16_t)pWindow->width(), (uint16_t)pWindow->height(), 1);
-                context.texture(1).init(SL_ColorDataType::SL_COLOR_R_FLOAT,    (uint16_t)pWindow->width(), (uint16_t)pWindow->height(), 1);
+                context.texture(0).init(SL_ColorDataType::SL_COLOR_RGBA_FLOAT, (uint16_t)pWindow->width()/2, (uint16_t)pWindow->height()/2, 1);
+                context.texture(1).init(SL_ColorDataType::SL_COLOR_R_FLOAT,    (uint16_t)pWindow->width()/2, (uint16_t)pWindow->height()/2, 1);
 
                 pRenderBuf->terminate();
                 pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
-                pUniforms->windowSize = math::vec2{(float)pWindow->width(), (float)pWindow->height()};
+                pUniforms->windowSize = math::vec2{(float)context.texture(0).width(), (float)context.texture(0).height()};
             }
 
             pGraph->update();
