@@ -128,7 +128,7 @@ inline LS_INLINE bool intersect_ray_box(
 
 
 
-inline LS_INLINE math::vec4 calc_normal(const SL_Texture* tex, const math::vec4& p) noexcept
+inline LS_INLINE math::vec4 calc_normal(const SL_Texture& tex, const math::vec4& p) noexcept
 {
     constexpr float stepLen = 1.f / 128.f;
     const math::vec4&& a = p + math::vec4{stepLen, 0.f, 0.f, 0.f};
@@ -136,11 +136,33 @@ inline LS_INLINE math::vec4 calc_normal(const SL_Texture* tex, const math::vec4&
     const math::vec4&& c = p + math::vec4{0.f, 0.f, stepLen, 0.f};
 
     return math::normalize((math::vec4)math::vec4_t<int>{
-        sl_sample_bilinear<SL_ColorRType<char>, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(*tex, a[0], a[1], a[2]).r,
-        sl_sample_bilinear<SL_ColorRType<char>, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(*tex, b[0], b[1], b[2]).r,
-        sl_sample_bilinear<SL_ColorRType<char>, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(*tex, c[0], c[1], c[2]).r,
+        sl_sample_bilinear<SL_ColorRType<char>, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(tex, a[0], a[1], a[2]).r,
+        sl_sample_bilinear<SL_ColorRType<char>, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(tex, b[0], b[1], b[2]).r,
+        sl_sample_bilinear<SL_ColorRType<char>, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(tex, c[0], c[1], c[2]).r,
         0
     });
+}
+
+
+
+inline LS_INLINE bool can_skip_render(const SL_Texture& volumeTex, const math::vec4& ray, math::vec4 rayPos) noexcept
+{
+    constexpr unsigned numTestSteps = 32;
+    const math::vec4&& rayStep = ray * (1.f/(float)numTestSteps);
+
+    for (unsigned i = 0; i < numTestSteps; ++i)
+    {
+        const SL_ColorR8&& intensity = sl_sample_nearest<SL_ColorR8, SL_WrapMode::EDGE>(volumeTex, rayPos[0], rayPos[1], rayPos[2]);
+
+        if (intensity.r >= 17)
+        {
+            return false;
+        }
+
+        rayPos -= rayStep;
+    }
+
+    return true;
 }
 
 
@@ -153,9 +175,9 @@ bool _volume_frag_shader(SL_FragmentParam& fragParam)
     const VolumeUniforms* pUniforms = fragParam.pUniforms->as<VolumeUniforms>();
     const float           focalLen  = math::rcp<float>(math::tan(pUniforms->viewAngle * 0.5f));
     const math::vec2&&    winDimens = (math::vec2)math::vec2i{fragParam.coord.x, fragParam.coord.y} * math::rcp(pUniforms->windowSize);
-    const SL_Texture*     volumeTex = pUniforms->pCubeMap;
-    const SL_Texture*     alphaTex  = pUniforms->pOpacityMap;
-    const SL_Texture*     colorTex  = pUniforms->pColorMap;
+    const SL_Texture&     volumeTex = *pUniforms->pCubeMap;
+    const SL_Texture&     alphaTex  = *pUniforms->pOpacityMap;
+    const SL_Texture&     colorTex  = *pUniforms->pColorMap;
     const math::vec4&     spacing   = pUniforms->spacing;
     const math::vec4&     camPos    = pUniforms->camPos;
     const math::vec4&&    viewDir   = math::vec4{2.f * winDimens[0] - 1.f, 2.f * winDimens[1] - 1.f, -focalLen, 0.f} / spacing;
@@ -177,38 +199,41 @@ bool _volume_frag_shader(SL_FragmentParam& fragParam)
     unsigned     intensity;
     float        srcAlpha;
 
+    // Test pixels with minimal filtering before attempting to do anything
+    // more expensive
+    if (can_skip_render(volumeTex, ray, rayStart))
+    {
+        return false;
+    }
+
     for (unsigned i = 0; i < numSteps; ++i)
     {
-        // Get a pixel with minimal filtering before attempting to do anything more expensive
-        intensity = sl_sample_trilinear<SL_ColorR8, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(*volumeTex, rayPos[0], rayPos[1], rayPos[2]).r;
-
-        // regular opacity (doesn't take ray steps into account).
-        //srcAlpha = alphaTex->raw_texel<float>(intensity);
-        srcAlpha = sl_sample_nearest<SL_ColorRf, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(*alphaTex, (float)intensity / 255.f, 0.f).r;
-
-        if (intensity >= 17 && srcAlpha > 0.f)
+        intensity = sl_sample_trilinear<SL_ColorR8, SL_WrapMode::EDGE>(volumeTex, rayPos[0], rayPos[1], rayPos[2]).r;
+        if (intensity >= 17)
         {
-            // corrected opacity, from:
-            // https://github.com/chrislu/schism/blob/master/projects/examples/ex_volume_ray_cast/src/renderer/shader/volume_ray_cast.glslf
-            //srcAlpha = 1.f - math::pow(1.f - srcAlpha, math::length(rayPos-rayStop));
+            //const float intesityF = (float)intensity * (1.f / 255.f);
 
-            const math::vec4&& norm = calc_normal(volumeTex, rayPos);
-            const float luminance = math::clamp(math::dot(norm, math::vec4{0.f, 1.f, 1.f, 0.f}), 0.f, 1.f);
+            // regular opacity (doesn't take ray steps into account).
+            srcAlpha = alphaTex.raw_texel<float>(intensity);
+            //srcAlpha = sl_sample_bilinear<SL_ColorRf, SL_WrapMode::EDGE>(alphaTex, intesityF, 0.f).r;
+            if (srcAlpha > 0.f)
+            {
+                // corrected opacity, from:
+                // https://github.com/chrislu/schism/blob/master/projects/examples/ex_volume_ray_cast/src/renderer/shader/volume_ray_cast.glslf
+                srcAlpha = 1.f - math::pow(1.f - srcAlpha, math::length(rayPos - rayStop));
 
-            const math::vec4 diffuse{luminance, luminance, luminance, 1.f};
-            const math::vec4 srcA{srcAlpha};
+                const math::vec4&& norm      = calc_normal(volumeTex, rayPos);
+                const float        luminance = math::clamp(math::dot(norm, math::vec4{0.f, 1.f, 1.f, 0.f}), 0.f, 1.f);
+                const math::vec4&& diffuse   = {luminance, luminance, luminance, 1.f};
+                const math::vec4&& srcA      = {srcAlpha};
+                const math::vec4&& blend     = {math::vec4{1.f} - srcA};
 
-            const float blend = 1.f-srcAlpha;
-            //SL_ColorRGBAf&& volColor = colorTex->raw_texel<SL_ColorRGBAf>(intensity);
-            SL_ColorRGBAf&& volColor = sl_sample_nearest<SL_ColorRGBAf, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(*colorTex, (float)intensity / 255.f, 0.f);
-            math::vec4&& composite = volColor * diffuse * srcA;
+                const SL_ColorRGBAf volColor = colorTex.raw_texel<SL_ColorRGBAf>(intensity);
+                //const SL_ColorRGBAf&& volColor = sl_sample_bilinear<SL_ColorRGBAf, SL_WrapMode::EDGE>(colorTex, intesityF, 0.f);
+                const math::vec4&& composite = volColor * diffuse * srcA;
 
-            dstTexel = (dstTexel * blend) + composite;
-        }
-
-        if (dstTexel >= 1.f)
-        {
-            break;
+                dstTexel = (dstTexel * blend) + composite;
+            }
         }
 
         rayPos -= rayStep;
