@@ -1,19 +1,7 @@
 
-#include <thread> // std::this_thread::yield()
-
-#include "lightsky/setup/Compiler.h"
+#include "lightsky/setup/Arch.h"
+#include "lightsky/setup/CPU.h"
 #include "lightsky/setup/Macros.h"
-#include "lightsky/setup/OS.h"
-
-#include "lightsky/utils/Log.h"
-
-#ifdef LS_OS_UNIX
-    #include <time.h> // nanosleep, time_spec
-#endif
-
-#if defined(LS_COMPILER_CLANG) && defined(LS_ARCH_AARCH64)
-    #include <arm_acle.h>
-#endif
 
 #include "lightsky/utils/Assertions.h" // LS_DEBUG_ASSERT
 
@@ -607,13 +595,6 @@ void SL_VertexProcessor::flush_bins() const noexcept
         fragTask.execute();
     }
 
-    #if defined(LS_OS_UNIX) && !defined(LS_ARCH_X86)
-        struct timespec sleepAmt;
-        sleepAmt.tv_sec = 0;
-        sleepAmt.tv_nsec = 1;
-        (void)sleepAmt;
-    #endif
-
     for (uint32_t t = 0; t < (uint32_t)mNumThreads; ++t)
     {
         if (noBlending && t == tileId)
@@ -624,17 +605,7 @@ void SL_VertexProcessor::flush_bins() const noexcept
         // wait for the next available set of bins
         while (LS_LIKELY(mBinsReady[t].count.load(std::memory_order_consume) < 0))
         {
-            #if defined(LS_ARCH_X86)
-                _mm_pause();
-            #elif defined(LS_COMPILER_CLANG) && defined(LS_ARCH_AARCH64)
-                __yield();
-            #elif defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
-                clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
-            #elif defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
-                nanosleep(&sleepAmt, nullptr);
-            #else
-                std::this_thread::yield();
-            #endif
+            ls::setup::cpu_yield();
         }
 
         uint32_t currentThread = (uint32_t)mBinsReady[t].count.load(std::memory_order_consume);
@@ -666,17 +637,7 @@ void SL_VertexProcessor::flush_bins() const noexcept
         // Wait for the last thread to reset the number of available bins.
         while (LS_LIKELY(mFragProcessors->count.load(std::memory_order_consume) >= (uint_fast64_t)mNumThreads))
         {
-            #if defined(LS_ARCH_X86)
-                _mm_pause();
-            #elif defined(LS_COMPILER_CLANG) && defined(LS_ARCH_AARCH64)
-                __yield();
-            #elif defined(LS_OS_LINUX) || defined(LS_OS_ANDROID)
-                clock_nanosleep(CLOCK_MONOTONIC, 0, &sleepAmt, nullptr);
-            #elif defined(LS_OS_OSX) || defined(LS_OS_IOS) || defined(LS_OS_IOS_SIM)
-                nanosleep(&sleepAmt, nullptr);
-            #else
-                std::this_thread::yield();
-            #endif
+            ls::setup::cpu_yield();
         }
     }
 }
@@ -1335,11 +1296,7 @@ void SL_VertexProcessor::execute() noexcept
         }
         else
         {
-            #if defined(LS_ARCH_X86)
-                _mm_pause();
-            #elif defined(LS_COMPILER_CLANG) && defined(LS_ARCH_AARCH64)
-                __yield();
-            #endif
+            ls::setup::cpu_yield();
         }
     }
     while (mBusyProcessors->count.load(std::memory_order_consume));
