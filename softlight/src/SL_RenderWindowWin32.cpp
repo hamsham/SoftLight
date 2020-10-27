@@ -854,12 +854,11 @@ bool SL_RenderWindowWin32::peek_event(SL_WindowEvent* const pEvent) noexcept
         pEvent->mouseButton.y = (int16_t)GET_Y_LPARAM(mLastMsg.lParam);
         break;
 
-    case WM_MOUSEHWHEEL:
+    case WM_MOUSEWHEEL:
         pEvent->type = SL_WinEventType::WIN_EVENT_MOUSE_WHEEL_MOVED;
-        pEvent->wheel.x = 0;
-        pEvent->wheel.y = (int16_t)GET_WHEEL_DELTA_WPARAM(mLastMsg.wParam) / WHEEL_DELTA;
-        pEvent->wheel.up = GET_WHEEL_DELTA_WPARAM(mLastMsg.wParam) >= 0;
-        pEvent->wheel.down = GET_WHEEL_DELTA_WPARAM(mLastMsg.wParam) < 0;
+        pEvent->wheel.direction = (float)GET_WHEEL_DELTA_WPARAM(mLastMsg.wParam) / (float)WHEEL_DELTA;
+        pEvent->wheel.x = (int16_t)GET_X_LPARAM(mLastMsg.lParam);
+        pEvent->wheel.y = (int16_t)GET_Y_LPARAM(mLastMsg.lParam);
         break;
 
     case WM_MOUSEMOVE:
