@@ -926,10 +926,9 @@ bool SL_RenderWindowCocoa::peek_event(SL_WindowEvent* const pEvent) noexcept
 
         case NSEventTypeScrollWheel:
             pEvent->type = SL_WinEventType::WIN_EVENT_MOUSE_WHEEL_MOVED;
-            pEvent->wheel.x = (int16_t)[evt deltaX];
-            pEvent->wheel.y = (int16_t)[evt deltaY];
-            pEvent->wheel.up = (4 == [evt buttonNumber]);
-            pEvent->wheel.down = (5 == [evt buttonNumber]);
+            pEvent->wheel.direction = (float)[evt deltaY];
+            pEvent->wheel.x = (int16_t)[evt locationInWindow].x;
+            pEvent->wheel.y = (int16_t)[evt locationInWindow].y;
             break;
 
         case NSEventTypeMouseMoved:

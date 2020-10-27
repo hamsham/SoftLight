@@ -76,10 +76,9 @@ struct alignas(8) SL_MouseButtonEvent
 -------------------------------------*/
 struct alignas(8) SL_WheelEvent
 {
+    float direction;
     int16_t x;
     int16_t y;
-    int16_t up;
-    int16_t down;
 };
 
 /*-------------------------------------

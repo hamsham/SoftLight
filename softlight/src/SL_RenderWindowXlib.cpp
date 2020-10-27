@@ -892,10 +892,9 @@ bool SL_RenderWindowXlib::peek_event(SL_WindowEvent* const pEvent) noexcept
                 case Button4:
                 case Button5:
                     pEvent->type = SL_WinEventType::WIN_EVENT_MOUSE_WHEEL_MOVED;
+                    pEvent->wheel.direction = (pButton->button == Button4 ? 1.f : -1.f);
                     pEvent->wheel.x = (int16_t)pButton->x;
                     pEvent->wheel.y = (int16_t)pButton->y;
-                    pEvent->wheel.up = (pButton->button == Button4);
-                    pEvent->wheel.down = (pButton->button == Button5);
                     break;
 
                 default:

@@ -871,10 +871,9 @@ bool SL_RenderWindowXCB::peek_event(SL_WindowEvent* const pEvent) noexcept
                 case XCB_BUTTON_INDEX_4:
                 case XCB_BUTTON_INDEX_5:
                     pEvent->type = SL_WinEventType::WIN_EVENT_MOUSE_WHEEL_MOVED;
+                    pEvent->wheel.direction = (pButtonPress->detail == XCB_BUTTON_INDEX_4) ? 1.f : -1.f;
                     pEvent->wheel.x = (int16_t)pButtonPress->event_x;
                     pEvent->wheel.y = (int16_t)pButtonPress->event_y;
-                    pEvent->wheel.up = (pButtonPress->detail == XCB_BUTTON_INDEX_4);
-                    pEvent->wheel.down = (pButtonPress->detail == XCB_BUTTON_INDEX_5);
                     break;
 
                 default:
@@ -913,10 +912,9 @@ bool SL_RenderWindowXCB::peek_event(SL_WindowEvent* const pEvent) noexcept
                 case XCB_BUTTON_INDEX_4:
                 case XCB_BUTTON_INDEX_5:
                     pEvent->type = SL_WinEventType::WIN_EVENT_MOUSE_WHEEL_MOVED;
+                    pEvent->wheel.direction = (pButtonRelease->detail == XCB_BUTTON_INDEX_4) ? 1.f : -1.f;
                     pEvent->wheel.x = (int16_t)pButtonRelease->event_x;
                     pEvent->wheel.y = (int16_t)pButtonRelease->event_y;
-                    pEvent->wheel.up = (pButtonRelease->detail == XCB_BUTTON_INDEX_4);
-                    pEvent->wheel.down = (pButtonRelease->detail == XCB_BUTTON_INDEX_5);
                     break;
 
                 default:

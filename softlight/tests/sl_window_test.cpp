@@ -111,7 +111,7 @@ int main()
       }
       else if (evt.type == SL_WinEventType::WIN_EVENT_MOUSE_WHEEL_MOVED)
       {
-        std::cout << "Mouse wheel moved: " << evt.wheel.up << ' ' << evt.wheel.down << std::endl;
+        std::cout << "Mouse wheel moved: " << evt.wheel.x << ' ' << evt.wheel.y << ' ' << evt.wheel.direction << std::endl;
       }
       else if (evt.type == SL_WinEventType::WIN_EVENT_MOUSE_ENTER || evt.type == SL_WinEventType::WIN_EVENT_MOUSE_LEAVE)
       {
