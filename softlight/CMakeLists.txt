@@ -150,6 +150,7 @@ set(SL_LIB_HEADERS
     include/softlight/SL_KeySym.hpp
     include/softlight/SL_Material.hpp
     include/softlight/SL_Mesh.hpp
+    include/softlight/SL_Octree.hpp
     include/softlight/SL_PackedVertex.hpp
     include/softlight/SL_Plane.hpp
     include/softlight/SL_ProcessorPool.hpp

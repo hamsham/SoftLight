@@ -190,3 +190,5 @@ sl_add_test(sl_text_test             sl_text_test.cpp)
 sl_add_test(sl_volume_rendering_test sl_volume_rendering_test.cpp)
 sl_add_test(sl_window_test           sl_window_test.cpp)
 sl_add_test(sl_z_curve_test          sl_z_curve_test.cpp)
+
+sl_add_test(sl_octree_test sl_octree_test.cpp)
