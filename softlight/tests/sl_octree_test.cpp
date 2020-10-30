@@ -1,6 +1,5 @@
 
 #include <iostream>
-#include <vector>
 
 #include "softlight/SL_Octree.hpp"
 
@@ -44,7 +43,7 @@ int main()
 
     std::cout << "\nIterating: " << std::endl;
 
-    octree.iterate([](const OctreeType* pTree)->bool {
+    octree.iterate([](const OctreeType* pTree, size_t depth)->bool {
         const ls::math::vec4& pos = pTree->origin();
         bool amPositive = 0x07 != (0x07 & ls::math::sign_mask(pos));
 
@@ -55,7 +54,7 @@ int main()
 
         if (pTree->size())
         {
-            std::cout << "\tFound objects at " << pos[0] << ',' << pos[1] << ',' << pos[2] << std::endl;
+            std::cout << "\tFound objects at depth " << depth << " with position: (" << pos[0] << ',' << pos[1] << ',' << pos[2] << ')' << std::endl;
         }
 
         for (int data : pTree->data())

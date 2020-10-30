@@ -30,6 +30,25 @@
 template <typename T, size_t MaxDepth, class Allocator = std::allocator<T>>
 class SL_Octree
 {
+  public:
+    /**
+     * @brief Generic definition of a callback function to be called when
+     * iterating through a constant container.
+     *
+     * The first parameter is the object which is being iterated over. The
+     * second parameter contains the current depth.
+     */
+    using ConstIterCallbackType = bool(const SL_Octree<T, MaxDepth, Allocator>*, size_t);
+
+    /**
+     * @brief Generic definition of a callback function to be called when
+     * iterating through the container.
+     *
+     * The first parameter is the object which is being iterated over. The
+     * second parameter contains the current depth.
+     */
+    using IterCallbackType = bool(SL_Octree<T, MaxDepth, Allocator>*, size_t);
+
   private:
     ls::math::vec4 mOrigin;
 
@@ -42,19 +61,11 @@ class SL_Octree
   private:
     bool emplace_internal(const ls::math::vec4& location, float radius, T&& value, size_t depth) noexcept;
 
+    void iterate_internal(ConstIterCallbackType iterCallback, size_t depth) const noexcept;
+
+    void iterate_internal(IterCallbackType iterCallback, size_t depth) noexcept;
+
   public:
-    /**
-     * @brief Generic definition of a callback function to be called when
-     * iterating through a constant container.
-     */
-    using ConstIterCallbackType = bool(const SL_Octree<T, MaxDepth, Allocator>*);
-
-    /**
-     * @brief Generic definition of a callback function to be called when
-     * iterating through the container.
-     */
-    using IterCallbackType = bool(SL_Octree<T, MaxDepth, Allocator>*);
-
     /**
      * @brief Destructor.
      *
@@ -847,12 +858,12 @@ inline SL_Octree<T, MaxDepth, Allocator>* SL_Octree<T, MaxDepth, Allocator>::fin
 
 
 /*-------------------------------------
- * Depth-first iteration (const)
+ * Internal Depth-first iteration (const)
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-void SL_Octree<T, MaxDepth, Allocator>::iterate(SL_Octree::ConstIterCallbackType iterCallback) const noexcept
+void SL_Octree<T, MaxDepth, Allocator>::iterate_internal(SL_Octree::ConstIterCallbackType iterCallback, size_t depth) const noexcept
 {
-    if (!iterCallback(this))
+    if (!iterCallback(this, depth))
     {
         return;
     }
@@ -861,9 +872,42 @@ void SL_Octree<T, MaxDepth, Allocator>::iterate(SL_Octree::ConstIterCallbackType
     {
         if (pNode)
         {
-            pNode->iterate(iterCallback);
+            pNode->iterate_internal(iterCallback, depth+1);
         }
     }
+}
+
+
+
+/*-------------------------------------
+ * Internal Depth-first iteration
+-------------------------------------*/
+template <typename T, size_t MaxDepth, class Allocator>
+void SL_Octree<T, MaxDepth, Allocator>::iterate_internal(SL_Octree::IterCallbackType iterCallback, size_t depth) noexcept
+{
+    if (!iterCallback(this, depth))
+    {
+        return;
+    }
+
+    for (const SL_Octree<T, MaxDepth, Allocator>* pNode : mNodes)
+    {
+        if (pNode)
+        {
+            pNode->iterate_internal(iterCallback, depth+1);
+        }
+    }
+}
+
+
+
+/*-------------------------------------
+ * Depth-first iteration (const)
+-------------------------------------*/
+template <typename T, size_t MaxDepth, class Allocator>
+inline void SL_Octree<T, MaxDepth, Allocator>::iterate(SL_Octree::ConstIterCallbackType iterCallback) const noexcept
+{
+    this->iterate_internal(iterCallback, 0);
 }
 
 
@@ -872,20 +916,9 @@ void SL_Octree<T, MaxDepth, Allocator>::iterate(SL_Octree::ConstIterCallbackType
  * Depth-first iteration
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-void SL_Octree<T, MaxDepth, Allocator>::iterate(SL_Octree::IterCallbackType iterCallback) noexcept
+inline void SL_Octree<T, MaxDepth, Allocator>::iterate(SL_Octree::IterCallbackType iterCallback) noexcept
 {
-    if (!iterCallback(this))
-    {
-        return;
-    }
-
-    for (const SL_Octree<T, MaxDepth, Allocator>* pNode : mNodes)
-    {
-        if (pNode)
-        {
-            pNode->iterate(iterCallback);
-        }
-    }
+    this->iterate_internal(iterCallback, 0);
 }
 
 
