@@ -43,7 +43,7 @@ int main()
 
     std::cout << "\nIterating: " << std::endl;
 
-    octree.iterate([](const OctreeType* pTree, size_t depth)->bool {
+    octree.iterate_bottom_up([](const OctreeType* pTree, size_t depth)->bool {
         const ls::math::vec4& pos = pTree->origin();
         bool amPositive = 0x07 != (0x07 & ls::math::sign_mask(pos));
 

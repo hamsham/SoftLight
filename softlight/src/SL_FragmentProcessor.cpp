@@ -555,20 +555,20 @@ void SL_FragmentProcessor::render_wireframe(const SL_Texture* depthBuffer) const
             // In this rasterizer, we're only rendering the absolute pixels
             // contained within the triangle edges. However this will serve as a
             // guard against any pixels we don't want to render.
-            int32_t xMin;
-            int32_t xMax;
-            scanline.step(yf, xMin, xMax);
-            int32_t x = xMin;
+            int32_t xMinMax[2];
+            scanline.step(yf, xMinMax[0], xMinMax[1]);
+            xMinMax[1] -= 1;
 
             const depth_type* const pDepth = depthBuffer->row_pointer<depth_type>(y);
 
-            for (; x < xMax; x += xMax-xMin)
+            for (unsigned i = 0; i < 2; ++i)
             {
                 // calculate barycentric coordinates
-                const float  xf = (float)x;
-                math::vec4&& bc = math::fmadd(bcClipSpace[0], math::vec4{xf, xf, xf, 0.f}, bcY);
-                const float  z  = math::dot(depth, bc);
-                const float  d  = _sl_get_depth_texel<depth_type>(pDepth+x);
+                const int32_t x  = xMinMax[i];
+                const float   xf = (float)x;
+                math::vec4&&  bc = math::fmadd(bcClipSpace[0], math::vec4{xf, xf, xf, 0.f}, bcY);
+                const float   z  = math::dot(depth, bc);
+                const float   d  = _sl_get_depth_texel<depth_type>(pDepth+x);
 
                 #if SL_REVERSED_Z_RENDERING
                     const int_fast32_t&& depthTest = math::sign_mask(d-z) | depthTesting;
