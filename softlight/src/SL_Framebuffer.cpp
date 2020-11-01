@@ -177,13 +177,13 @@ inline void assign_alpha_pixel(
 
     // This method of blending uses premultiplied alpha. I will need to support
     // configurable blend modes later.
-    const float srcAlpha = rgba[3];
+    const math::vec4 srcAlpha = rgba[3];
     const math::vec4&& modulation = math::vec4{1.f} - rgba[3];
 
     if (blendMode == SL_BLEND_ALPHA)
     {
         const math::vec4&& dstMod = modulation * d.rgba[3];
-        d.rgba[3] = dstMod[3] + srcAlpha;
+        d.rgba[3] = dstMod[3] + srcAlpha[3];
         d.rgb = math::vec3_cast(math::fmadd(s.rgba, srcAlpha, (d.rgba * dstMod)) * math::rcp(d.rgba[3]));
     }
     else if (blendMode == SL_BLEND_PREMULTIPLED_ALPHA)
@@ -192,7 +192,7 @@ inline void assign_alpha_pixel(
     }
     else if (blendMode == SL_BLEND_ADDITIVE)
     {
-        d.rgba = math::fmadd(s.rgba, math::vec4{srcAlpha}, d.rgba);
+        d.rgba = math::fmadd(s.rgba, srcAlpha, d.rgba);
     }
     else if (blendMode == SL_BLEND_SCREEN)
     {
