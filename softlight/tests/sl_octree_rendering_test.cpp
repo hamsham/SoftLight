@@ -42,6 +42,10 @@
     #define SL_TEST_MAX_THREADS (ls::math::max<unsigned>(std::thread::hardware_concurrency(), 2u) - 1u)
 #endif /* SL_TEST_MAX_THREADS */
 
+#ifndef SL_BENCHMARK_SCENE
+    #define SL_BENCHMARK_SCENE 0
+#endif /* SL_BENCHMARK_SCENE */
+
 namespace math = ls::math;
 namespace utils = ls::utils;
 
@@ -222,11 +226,11 @@ utils::Pointer<SL_SceneGraph> init_context()
     context.num_threads(SL_TEST_MAX_THREADS);
 
     SL_Texture& tex = context.texture(texId);
-    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_FLOAT, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     assert(retCode == 0);
 
     SL_Texture& depth = context.texture(depthId);
-    retCode = depth.init(SL_ColorDataType::SL_COLOR_R_FLOAT, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = depth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     assert(retCode == 0);
 
     SL_Framebuffer& fbo = context.framebuffer(fboId);
@@ -384,6 +388,7 @@ int main()
 
     ls::utils::Clock<float> timer;
     unsigned currFrames = 0;
+    unsigned totalFrames = 0;
     float currSeconds = 0.f;
     float dx = 0.f;
     float dy = 0.f;
@@ -511,6 +516,7 @@ int main()
             const float tickTime = timer.tick_time().count();
 
             ++currFrames;
+            ++totalFrames;
             currSeconds += tickTime;
 
             if (currSeconds >= 0.5f)
@@ -519,6 +525,13 @@ int main()
                 currFrames = 0;
                 currSeconds = 0.f;
             }
+
+            #if SL_BENCHMARK_SCENE
+                if (totalFrames >= 1200)
+                {
+                    shouldQuit = true;
+                }
+            #endif
 
             update_cam_position(camTrans, tickTime, pKeySyms);
 
