@@ -140,6 +140,8 @@ configure_file(testdata/lorem_ipsum.txt testdata/lorem_ipsum.txt COPYONLY)
 
 #configure_file(testdata/dragon.obj                testdata/dragon.obj                  COPYONLY)
 
+configure_file(testdata/towerG.obj testdata/towerG.obj COPYONLY)
+
 
 
 # -------------------------------------
@@ -183,12 +185,13 @@ sl_add_test(sl_octree_test           sl_octree_test.cpp)
 sl_add_test(sl_octree_rendering_test sl_octree_rendering_test.cpp)
 sl_add_test(sl_packed_normal_test    sl_packed_normal_test.cpp)
 sl_add_test(sl_scanline_offset_test  sl_scanline_offset_test.cpp)
+sl_add_test(sl_sdf_image_test        sl_sdf_image_test.cpp sl_sdf_generator.hpp sl_sdf_generator.cpp)
 sl_add_test(sl_scene_info_test       sl_scene_info_test.cpp)
 sl_add_test(sl_screen_tile_test      sl_screen_tile_test.cpp)
 sl_add_test(sl_skybox_test           sl_skybox_test.cpp)
+sl_add_test(sl_text_test             sl_text_test.cpp)
 sl_add_test(sl_vertex_chunking_test  sl_vertex_chunking_test.cpp)
 sl_add_test(sl_vertex_info           sl_vertex_info.cpp)
-sl_add_test(sl_text_test             sl_text_test.cpp)
 sl_add_test(sl_volume_rendering_test sl_volume_rendering_test.cpp)
 sl_add_test(sl_window_test           sl_window_test.cpp)
 sl_add_test(sl_z_curve_test          sl_z_curve_test.cpp)

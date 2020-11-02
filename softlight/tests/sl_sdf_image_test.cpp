@@ -17,10 +17,9 @@
 #include "softlight/SL_Framebuffer.hpp"
 #include "softlight/SL_IndexBuffer.hpp"
 #include "softlight/SL_KeySym.hpp"
-#include "softlight/SL_Material.hpp"
 #include "softlight/SL_Mesh.hpp"
+#include "softlight/SL_PackedVertex.hpp"
 #include "softlight/SL_RenderWindow.hpp"
-#include "softlight/SL_Sampler.hpp"
 #include "softlight/SL_SceneFileLoader.hpp"
 #include "softlight/SL_Texture.hpp"
 #include "softlight/SL_Transform.hpp"
@@ -29,6 +28,8 @@
 #include "softlight/SL_VertexBuffer.hpp"
 #include "softlight/SL_WindowBuffer.hpp"
 #include "softlight/SL_WindowEvent.hpp"
+
+#include "sl_sdf_generator.hpp"
 
 namespace math = ls::math;
 namespace utils = ls::utils;
@@ -58,9 +59,8 @@ namespace utils = ls::utils;
 -----------------------------------------------------------------------------*/
 struct MeshTestUniforms
 {
-    math::mat4        mvMatrix;
-    math::mat4        mvpMatrix;
-    const SL_Texture* pTexture;
+    math::mat4 mvMatrix;
+    math::mat4 mvpMatrix;
 };
 
 
@@ -68,30 +68,28 @@ struct MeshTestUniforms
 /*--------------------------------------
  * Vertex Shader
 --------------------------------------*/
-math::vec4 _mrt_vert_shader(SL_VertexParam& param)
+math::vec4 _mesh_vert_shader(SL_VertexParam& param)
 {
-    typedef utils::Tuple<math::vec3, math::vec2, math::vec3> Vertex;
+    typedef utils::Tuple<math::vec3, SL_PackedVertex_2_10_10_10> Vertex;
+
     const MeshTestUniforms* pUniforms = param.pUniforms->as<MeshTestUniforms>();
     const Vertex*           v         = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));
     const math::vec4&&      vert      = math::vec4_cast(v->const_element<0>(), 1.f);
-    const math::vec4&&      uv        = math::vec4_cast(v->const_element<1>(), 0.f, 0.f);
-    const math::vec4&&      norm      = math::vec4_cast(v->const_element<2>(), 0.f);
+    const math::vec4&&      norm      = (math::vec4)v->const_element<1>();
 
-    param.pVaryings[0] = pUniforms->mvMatrix * vert;
-    param.pVaryings[1] = uv;
-    param.pVaryings[2] = pUniforms->mvMatrix * norm;
+    param.pVaryings[0] = pUniforms->mvMatrix * norm;
 
     return pUniforms->mvpMatrix * vert;
 }
 
 
 
-SL_VertexShader mrt_vert_shader()
+SL_VertexShader mesh_vert_shader()
 {
     SL_VertexShader shader;
-    shader.numVaryings = 3;
+    shader.numVaryings = 1;
     shader.cullMode    = SL_CULL_BACK_FACE;
-    shader.shader      = _mrt_vert_shader;
+    shader.shader      = _mesh_vert_shader;
 
     return shader;
 }
@@ -101,37 +99,28 @@ SL_VertexShader mrt_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-bool _mrt_frag_shader(SL_FragmentParam& fragParams)
+bool _mesh_frag_shader(SL_FragmentParam& fragParams)
 {
-    const MeshTestUniforms* pUniforms  = fragParams.pUniforms->as<MeshTestUniforms>();
-    const SL_Texture*       albedo     = pUniforms->pTexture;
-    const math::vec4&       pos        = fragParams.pVaryings[0];
-    const math::vec4&       uv         = fragParams.pVaryings[1];
-    const math::vec4&       norm       = math::normalize(fragParams.pVaryings[2]);
-    math::vec3_t<uint8_t>&& pixel8     = sl_sample_nearest<SL_ColorRGB8, SL_WrapMode::EDGE>(*albedo, uv[0], uv[1]);
-    math::vec4&&            pixel      = color_cast<float, uint8_t>(math::vec4_cast<uint8_t>(pixel8, 255));
-    const float             lightAngle = math::dot(math::vec4{0.f, 0.f, 1.f, 0.f}, norm);
-    const math::vec4&&      output     = pixel * lightAngle;
+    const math::vec4&  norm       = math::normalize(fragParams.pVaryings[0]);
+    const float        lightAngle = math::clamp(math::dot(math::vec4{0.f, 0.f, 1.f, 0.f}, norm), 0.f, 1.f);
+    const math::vec4&& output     = math::vec4{1.f} * lightAngle;
 
-    fragParams.pOutputs[0] = math::clamp(output, math::vec4{0.f}, math::vec4{1.f});
-    fragParams.pOutputs[1] = math::clamp(pos,    math::vec4{0.f}, math::vec4{1.f});
-    fragParams.pOutputs[2] = math::clamp(uv,     math::vec4{0.f}, math::vec4{1.f});
-    fragParams.pOutputs[3] = math::clamp(norm,   math::vec4{0.f}, math::vec4{1.f});
+    fragParams.pOutputs[0] = math::step(math::vec4{0.5f}, output);
 
     return true;
 }
 
 
 
-SL_FragmentShader mrt_frag_shader()
+SL_FragmentShader mesh_frag_shader()
 {
     SL_FragmentShader shader;
-    shader.numVaryings = 3;
-    shader.numOutputs  = 4;
+    shader.numVaryings = 1;
+    shader.numOutputs  = 1;
     shader.blend       = SL_BLEND_OFF;
     shader.depthTest   = SL_DEPTH_TEST_ON;
     shader.depthMask   = SL_DEPTH_MASK_ON;
-    shader.shader      = _mrt_frag_shader;
+    shader.shader      = _mesh_frag_shader;
 
     return shader;
 }
@@ -149,78 +138,58 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     utils::Pointer<SL_SceneGraph> pGraph{new SL_SceneGraph{}};
     SL_Context& context = pGraph->mContext;
 
-    size_t depthId = context.create_texture();
-
-    size_t texRgbId  = context.create_texture();
-    size_t texPosId  = context.create_texture();
-    size_t texUvId   = context.create_texture();
-    size_t texNormId = context.create_texture();
-    size_t fboId     = context.create_framebuffer();
-
-    SL_Texture& texDepth = context.texture(depthId);
-    retCode = texDepth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
-
-    SL_Texture& texRgb = context.texture(texRgbId);
-    retCode = texRgb.init(SL_ColorDataType::SL_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
-
-    SL_Texture& texPos = context.texture(texPosId);
-    retCode = texPos.init(SL_ColorDataType::SL_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
-
-    SL_Texture& texUv = context.texture(texUvId);
-    retCode = texUv.init(SL_ColorDataType::SL_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
-
-    SL_Texture& texNorm = context.texture(texNormId);
-    retCode = texNorm.init(SL_ColorDataType::SL_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
-
+    size_t fboId = context.create_framebuffer();
     SL_Framebuffer& fbo = context.framebuffer(fboId);
-    retCode = fbo.reserve_color_buffers(4);
+    retCode = fbo.reserve_color_buffers(1);
+    assert(retCode == 0);
+
+    size_t texRgbId = context.create_texture();
+    SL_Texture& texRgb = context.texture(texRgbId);
+    retCode = texRgb.init(SL_ColorDataType::SL_COLOR_R_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     assert(retCode == 0);
 
     retCode = fbo.attach_color_buffer(0, texRgb);
     assert(retCode == 0);
 
-    retCode = fbo.attach_color_buffer(1, texPos);
-    assert(retCode == 0);
-
-    retCode = fbo.attach_color_buffer(2, texUv);
-    assert(retCode == 0);
-
-    retCode = fbo.attach_color_buffer(3, texNorm);
+    size_t depthId  = context.create_texture();
+    SL_Texture& texDepth = context.texture(depthId);
+    retCode = texDepth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     assert(retCode == 0);
 
     retCode = fbo.attach_depth_buffer(texDepth);
     assert(retCode == 0);
 
-    constexpr std::array<size_t, 4> attachIds{0, 1, 2, 3};
-    constexpr std::array<SL_ColorRGBAd, 4> colors{
-        SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0},
-        SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0},
-        SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0},
-        SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0}
-    };
-    context.clear_framebuffer(0, attachIds, colors, 0.0);
+    context.clear_framebuffer(0, 0, SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0}, 0.0);
 
     retCode = fbo.valid();
     assert(retCode == 0);
 
-    retCode = meshLoader.load("testdata/african_head/african_head.obj");
+    // texture 2
+    size_t sdfId  = context.create_texture();
+    SL_Texture& texSdf = context.texture(sdfId);
+    retCode = texSdf.init(SL_ColorDataType::SDFDataType, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    assert(retCode == 0);
+
+    // texture 3
+    size_t sdfId1  = context.create_texture();
+    SL_Texture& texSdf1 = context.texture(sdfId1);
+    retCode = texSdf1.init(SL_ColorDataType::SDFScratchDataType, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    assert(retCode == 0);
+
+    SL_SceneLoadOpts&& opts = sl_default_scene_load_opts();
+    opts.packNormals = true;
+    retCode = meshLoader.load("testdata/towerG.obj", opts);
     assert(retCode != 0);
 
     retCode = pGraph->import(meshLoader.data());
     assert(retCode == 0);
 
     // Always make sure the scene graph is updated before rendering
-    pGraph->mCurrentTransforms[1].move(math::vec3{0.f, 30.f, 0.f});
-    pGraph->mCurrentTransforms[1].scale(math::vec3{5.f});
+    pGraph->mCurrentTransforms[1].scale(math::vec3{4.f});
     pGraph->update();
 
-    const SL_VertexShader&&   vertShader = mrt_vert_shader();
-    const SL_FragmentShader&& fragShader = mrt_frag_shader();
+    const SL_VertexShader&&   vertShader = mesh_vert_shader();
+    const SL_FragmentShader&& fragShader = mesh_frag_shader();
 
     size_t uboId = context.create_ubo();
     SL_UniformBuffer& ubo = context.ubo(uboId);
@@ -264,14 +233,12 @@ void mesh_test_render(SL_SceneGraph* pGraph, const math::mat4& projectionMat, co
         const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
 
         pUniforms->mvMatrix = viewMat * modelMat;
-        pUniforms->mvpMatrix   = vpMatrix * modelMat;
+        pUniforms->mvpMatrix = vpMatrix * modelMat;
 
         for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
         {
-            const size_t          nodeMeshId = meshIds[meshId];
-            const SL_Mesh&        m          = pGraph->mMeshes[nodeMeshId];
-            const SL_Material&    material   = pGraph->mMaterials[m.materialId];
-            pUniforms->pTexture = material.pTextures[SL_MATERIAL_TEXTURE_AMBIENT];
+            const size_t   nodeMeshId = meshIds[meshId];
+            const SL_Mesh& m          = pGraph->mMeshes[nodeMeshId];
 
             // NOTE: Always validate your IDs in production
             constexpr size_t shaderId = 0;
@@ -285,44 +252,6 @@ void mesh_test_render(SL_SceneGraph* pGraph, const math::mat4& projectionMat, co
 
 
 /*-----------------------------------------------------------------------------
- * Handle blitting to the backbuffer
------------------------------------------------------------------------------*/
-void blit_backbuffer(SL_WindowBuffer* backBuffer, SL_Context& context, unsigned colorId) noexcept
-{
-    if (colorId < 5)
-    {
-        context.blit(*backBuffer, colorId);
-        return;
-    }
-
-    context.blit(
-        *backBuffer, 1,
-        0, 0, backBuffer->width(), backBuffer->height(),
-        0, 0, backBuffer->width()/2, backBuffer->height()/2
-    );
-
-    context.blit(
-        *backBuffer, 2,
-        0, 0, backBuffer->width(), backBuffer->height(),
-        backBuffer->width()/2, 0, backBuffer->width(), backBuffer->height()/2
-    );
-
-    context.blit(
-        *backBuffer, 3,
-        0, 0, backBuffer->width(), backBuffer->height(),
-        0, backBuffer->height()/2, backBuffer->width()/2, backBuffer->height()
-    );
-
-    context.blit(
-        *backBuffer, 4,
-        0, 0, backBuffer->width(), backBuffer->height(),
-        backBuffer->width()/2, backBuffer->height()/2, backBuffer->width(), backBuffer->height()
-    );
-}
-
-
-
-/*-----------------------------------------------------------------------------
  * Render a scene
 -----------------------------------------------------------------------------*/
 int main()
@@ -330,7 +259,7 @@ int main()
     int retCode = 0;
     (void)retCode;
 
-    utils::Pointer<SL_RenderWindow> pWindow{std::move(SL_RenderWindow::create())};
+    utils::Pointer<SL_RenderWindow> pWindow{SL_RenderWindow::create()};
     utils::Pointer<SL_WindowBuffer> pRenderBuf{SL_WindowBuffer::create()};
     if (pWindow->init(IMAGE_WIDTH, IMAGE_HEIGHT))
     {
@@ -353,7 +282,7 @@ int main()
     pWindow->set_keys_repeat(false); // text mode
     pWindow->set_mouse_capture(false);
 
-    utils::Pointer<SL_SceneGraph>    pGraph{std::move(mesh_test_create_context())};
+    utils::Pointer<SL_SceneGraph>    pGraph{mesh_test_create_context()};
     ls::utils::Clock<float>          timer;
     SL_Transform                     viewMatrix;
     SL_WindowEvent                   evt;
@@ -364,10 +293,9 @@ int main()
     int                totalFrames    = 0;
     float              secondsCounter = 0.f;
     float              tickTime       = 0.f;
-    unsigned           activeColor    = 5;
 
     viewMatrix.type(SL_TransformType::SL_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
-    viewMatrix.extract_transforms(math::look_at(math::vec3{10.f, 30.f, 70.f}, math::vec3{0.f, 20.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
+    viewMatrix.extract_transforms(math::look_at(math::vec3{0.f, 40.f, 70.f}, math::vec3{0.f, 40.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
     viewMatrix.apply_transform();
 
     timer.start();
@@ -391,8 +319,6 @@ int main()
                 context.texture(0).init(context.texture(0).type(), pWindow->width(), pWindow->height());
                 context.texture(1).init(context.texture(1).type(), pWindow->width(), pWindow->height());
                 context.texture(2).init(context.texture(2).type(), pWindow->width(), pWindow->height());
-                context.texture(3).init(context.texture(2).type(), pWindow->width(), pWindow->height());
-                context.texture(4).init(context.texture(2).type(), pWindow->width(), pWindow->height());
 
                 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
             }
@@ -403,14 +329,6 @@ int main()
                 {
                     LS_LOG_MSG("Escape button pressed. Exiting.");
                     shouldQuit = true;
-                }
-                else if (keySym == SL_KeySymbol::KEY_SYM_LEFT)
-                {
-                    activeColor = (activeColor-1 >= 1) ? (activeColor-1) : 5;
-                }
-                else if (keySym == SL_KeySymbol::KEY_SYM_RIGHT)
-                {
-                    activeColor = (activeColor+1 <= 5) ? (activeColor+1) : 1;
                 }
             }
             else if (evt.type == SL_WinEventType::WIN_EVENT_CLOSING)
@@ -428,18 +346,12 @@ int main()
             viewMatrix.rotate(math::vec3{-0.5f*tickTime, 0.f, 0.f});
             viewMatrix.apply_transform();
 
-            constexpr std::array<size_t, 4> attachIds{0, 1, 2, 3};
-            constexpr std::array<SL_ColorRGBAd, 4> colors{
-                SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0},
-                SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0},
-                SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0},
-                SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0}
-            };
-            context.clear_framebuffer(0, attachIds, colors, 0.0);
+            context.clear_framebuffer(0, 0, SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0}, 0.0);
 
             mesh_test_render(pGraph.get(), projMatrix, viewMatrix.transform());
 
-            blit_backbuffer(pRenderBuf, context, activeColor);
+            sl_create_sdf(context.texture(0), context.texture(2), context.texture(3));
+            context.blit(*pRenderBuf, 2);
             pWindow->render(*pRenderBuf);
 
             ++numFrames;
