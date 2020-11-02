@@ -178,7 +178,7 @@ inline void assign_alpha_pixel(
     // This method of blending uses premultiplied alpha. I will need to support
     // configurable blend modes later.
     const math::vec4 srcAlpha = rgba[3];
-    const math::vec4&& modulation = math::vec4{1.f} - rgba[3];
+    const math::vec4&& modulation = math::vec4{1.f - rgba[3]};
 
     if (blendMode == SL_BLEND_ALPHA)
     {
