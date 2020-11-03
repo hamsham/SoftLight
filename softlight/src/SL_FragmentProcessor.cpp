@@ -530,7 +530,7 @@ void SL_FragmentProcessor::render_wireframe(const SL_Texture* depthBuffer) const
     SL_FragCoord*         outCoords    = mQueues;
     const int32_t         yOffset      = (int32_t)mThreadId;
     const int32_t         increment    = (int32_t)mNumProcessors;
-    const int32_t         depthTesting = mShader->fragment_shader().depthTest == SL_DEPTH_TEST_ON;
+    const int32_t         depthTesting = mShader->fragment_shader().depthTest == SL_DEPTH_TEST_OFF;
     SL_ScanlineBounds     scanline;
 
     for (uint64_t binId = 0; binId < mNumBins; ++binId, ++pBin)
