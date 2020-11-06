@@ -162,19 +162,19 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     assert(retCode == 0);
 
     SL_Texture& texRgb = context.texture(texRgbId);
-    retCode = texRgb.init(SL_ColorDataType::SL_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = texRgb.init(SL_ColorDataType::SL_COLOR_RGB_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     assert(retCode == 0);
 
     SL_Texture& texPos = context.texture(texPosId);
-    retCode = texPos.init(SL_ColorDataType::SL_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = texPos.init(SL_ColorDataType::SL_COLOR_RGB_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     assert(retCode == 0);
 
     SL_Texture& texUv = context.texture(texUvId);
-    retCode = texUv.init(SL_ColorDataType::SL_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = texUv.init(SL_ColorDataType::SL_COLOR_RG_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     assert(retCode == 0);
 
     SL_Texture& texNorm = context.texture(texNormId);
-    retCode = texNorm.init(SL_ColorDataType::SL_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = texNorm.init(SL_ColorDataType::SL_COLOR_RGB_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     assert(retCode == 0);
 
     SL_Framebuffer& fbo = context.framebuffer(fboId);
