@@ -27,6 +27,14 @@ int main()
         << '\n'
         << std::endl;
 
+    OctreeType** subNodes = octree.sub_nodes();
+    size_t numSubNodes = 0;
+    for (size_t i = 0; i < 8; ++i)
+    {
+        numSubNodes += subNodes[i] != nullptr;
+    }
+    std::cout << "Found " << numSubNodes << " top-level sub-nodes." << std::endl;
+
     const ls::math::vec3 subTreePos{-4.f, -36.f, -12.f};
     SL_Octree<int, 16>* pSubtree = octree.find(subTreePos);
     std::cout

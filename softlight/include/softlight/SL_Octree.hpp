@@ -161,7 +161,7 @@ class SL_Octree
      *
      * @return A pointer to a list of 8 constant sub-trees.
      */
-    const SL_Octree<T, MaxDepth, Allocator>** sub_nodes() const noexcept;
+    const SL_Octree<T, MaxDepth, Allocator>* const* sub_nodes() const noexcept;
 
     /**
      * @brief Retrieve the internal sub-trees.
@@ -592,7 +592,7 @@ inline float SL_Octree<T, MaxDepth, Allocator>::radius() const noexcept
  * Get the sub-nodes (const)
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-inline const SL_Octree<T, MaxDepth, Allocator>** SL_Octree<T, MaxDepth, Allocator>::sub_nodes() const noexcept
+inline const SL_Octree<T, MaxDepth, Allocator>* const* SL_Octree<T, MaxDepth, Allocator>::sub_nodes() const noexcept
 {
     return mNodes;
 }
