@@ -27,7 +27,7 @@ int main()
         << '\n'
         << std::endl;
 
-    OctreeType** subNodes = octree.sub_nodes();
+    const  OctreeType* const* subNodes = octree.sub_nodes();
     size_t numSubNodes = 0;
     for (size_t i = 0; i < 8; ++i)
     {
