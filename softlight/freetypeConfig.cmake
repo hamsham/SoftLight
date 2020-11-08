@@ -4,8 +4,9 @@
 # #####################################
 find_package(Freetype)
 
-    #include_directories(${FREETYPE_INCLUDE_DIRS})
-if (NOT FREETYPE_INCLUDE_DIRS OR NOT FREETYPE_LIBRARIES)
+option(BUILD_FREETYPE "Force FreeType to build from source." OFF)
+
+if (BUILD_FREETYPE OR NOT FREETYPE_INCLUDE_DIRS OR NOT FREETYPE_LIBRARIES)
     message("-- Building Freetype from source")
 
     set(FREETYPE_BRANCH "master" CACHE STRING "Git branch or tag for checking out FreeType.")
