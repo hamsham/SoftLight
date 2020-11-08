@@ -6,17 +6,10 @@ find_package(FreeImage MODULE)
 # #####################################
 # External build for FreeImage
 # #####################################
-if (FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NOTFOUND OR FREEIMAGE_LIBRARY STREQUAL FREEIMAGE_LIBRARY-NOTFOUND)
-    set(NEED_BUILD_FREEIMAGE TRUE)
-else()
-    set(NEED_BUILD_FREEIMAGE FALSE)
-endif()
+option(BUILD_FREEIMAGE "Force FreeImage to build from source." OFF)
 
-set(BUILD_FREEIMAGE "Force FreeImage to build from source." CACHE BOOL ${NEED_BUILD_FREEIMAGE})
+if (BUILD_FREEIMAGE OR FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NOTFOUND OR FREEIMAGE_LIBRARY STREQUAL FREEIMAGE_LIBRARY-NOTFOUND)
 
-
-
-if (BUILD_FREEIMAGE)
     message("-- Building FreeImage from source")
   
     set(FREEIMAGE_VERSION "3.18.0" CACHE STRING "Version of the FreeImage static library to be built.")
