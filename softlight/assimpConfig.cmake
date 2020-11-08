@@ -6,12 +6,19 @@ find_package(assimp MODULE)
 # #####################################
 # External build for ASSIMP
 # #####################################
-option(BUILD_ASSIMP "Force ASSIMP to build from source." OFF)
+if (NOT ASSIMP_INCLUDE_DIR OR NOT ASSIMP_LIBRARIES)
+    set(NEED_BUILD_ASSIMP TRUE)
+else()
+    set(NEED_BUILD_ASSIMP FALSE)
+endif()
 
-if (BUILD_ASSIMP OR NOT ASSIMP_INCLUDE_DIR OR NOT ASSIMP_LIBRARIES)
+set(BUILD_ASSIMP "Force ASSIMP to build from source." CACHE BOOL ${NEED_BUILD_ASSIMP})
 
+
+
+if (BUILD_ASSIMP)
     message("-- Building ASSIMP from source")
-  
+
     set(ASSIMP_BRANCH "master" CACHE STRING "Git branch or tag for checking out Assimp.")
     mark_as_advanced(ASSIMP_BRANCH)
 
@@ -113,7 +120,5 @@ if (BUILD_ASSIMP OR NOT ASSIMP_INCLUDE_DIR OR NOT ASSIMP_LIBRARIES)
 
     add_dependencies(assimp IrrXML)
     set(ASSIMP_LIBRARIES assimp)
-
-
 
 endif ()
