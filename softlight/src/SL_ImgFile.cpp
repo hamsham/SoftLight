@@ -558,7 +558,7 @@ SL_ImgFile::ImgStatus SL_ImgFile::load_memory_stream(const void* pImgBits, SL_Co
     // Preliminary setup passed. Attempt to load the file data
 
     // Use some predefined image flags
-    unsigned byteDepth = sl_bytes_per_color(type);
+    unsigned byteDepth = (unsigned)sl_bytes_per_color(type);
     unsigned bitDepth = byteDepth*CHAR_BIT;
     unsigned rMask = sl_r_mask_to_freeimage(type);
     unsigned gMask = sl_g_mask_to_freeimage(type);
