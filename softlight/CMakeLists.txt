@@ -122,10 +122,6 @@ include(freetypeConfig.cmake)
 # -------------------------------------
 # Source Paths
 # -------------------------------------
-include_directories(include)
-
-
-
 set(SL_LIB_HEADERS
     include/softlight/SL_Animation.hpp
     include/softlight/SL_AnimationChannel.hpp
@@ -337,11 +333,11 @@ elseif (PREFER_COCOA)
 
 endif()
 
-target_include_directories(
-    ${PROJECT_NAME}
-        PRIVATE
-            ${FREEIMAGE_INCLUDE_PATH}
-            ${FREETYPE_INCLUDE_DIRS}
+target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>)
+
+target_include_directories(${PROJECT_NAME} SYSTEM BEFORE
+    PRIVATE ${FREEIMAGE_INCLUDE_PATH}
+    PRIVATE ${FREETYPE_INCLUDE_DIRS}
 )
 
 
