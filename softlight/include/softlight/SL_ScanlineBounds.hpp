@@ -49,13 +49,23 @@ constexpr LS_INLINE data_t sl_scanline_offset(
 
 inline LS_INLINE void sl_sort_minmax(__m128& a, __m128& b)  noexcept
 {
-    const __m128 ay    = _mm_permute_ps(a, 0x55);
-    const __m128 by    = _mm_permute_ps(b, 0x55);
-    const __m128 masks = _mm_cmplt_ps(ay, by);
-    const __m128 at   = a;
-    const __m128 bt   = b;
-    a = _mm_blendv_ps(at, bt, masks);
-    b = _mm_blendv_ps(bt, at, masks);
+    #ifdef LS_X86_AVX
+        const __m128 ay    = _mm_permute_ps(a, 0x55);
+        const __m128 by    = _mm_permute_ps(b, 0x55);
+        const __m128 masks = _mm_cmplt_ps(ay, by);
+        const __m128 at   = a;
+        const __m128 bt   = b;
+        a = _mm_blendv_ps(at, bt, masks);
+        b = _mm_blendv_ps(bt, at, masks);
+    #else
+        const __m128 ay   = _mm_shuffle_ps(a, a, 0x55);
+        const __m128 by   = _mm_shuffle_ps(b, b, 0x55);
+        const __m128 mask = _mm_cmplt_ps(ay, by);
+        const __m128 at   = _mm_or_ps(_mm_and_ps(mask,    b), _mm_andnot_ps(mask, a));
+        const __m128 bt   = _mm_or_ps(_mm_andnot_ps(mask, b), _mm_and_ps(mask,    a));
+        a = at;
+        b = bt;
+    #endif
 }
 
 #elif defined(LS_ARCH_ARM)
@@ -130,13 +140,13 @@ struct alignas(sizeof(float)*4) SL_ScanlineBounds
 
     inline void LS_INLINE step(const float yf, int32_t& xMin, int32_t& xMax) const noexcept
     {
-        #if defined(LS_ARCH_X86)
+        #if defined(LS_X86_AVX)
             const __m128 yv         = _mm_set_ss(yf);
             const __m128 v01        = _mm_set_ss(v0y);
             const __m128 v11        = _mm_set_ss(v1y);
             const __m128 p201       = _mm_set_ss(p20y);
             const __m128 d0         = _mm_sub_ss(yv, v01);
-            const __m128 alpha      = _mm_mul_ps(d0, p201);
+            const __m128 alpha      = _mm_mul_ss(d0, p201);
             const __m128 d1         = _mm_sub_ss(yv, v11);
 
             const __m128 v00        = _mm_set_ss(v0x);
@@ -148,6 +158,29 @@ struct alignas(sizeof(float)*4) SL_ScanlineBounds
             const __m128 pdv0       = _mm_fmadd_ss( p1001, d0,    v00);
             const __m128 pdv1       = _mm_fmadd_ss( p2101, d1,    v10);
             const __m128 hi         = _mm_blendv_ps(pdv0,  pdv1,  d1);
+
+            xMin = _mm_cvtss_si32(_mm_min_ss(lo, hi));
+            xMax = _mm_cvtss_si32(_mm_max_ss(lo, hi));
+
+        #elif defined(LS_X86_SSE2)
+            const __m128 yv         = _mm_set_ss(yf);
+            const __m128 v01        = _mm_set_ss(v0y);
+            const __m128 v11        = _mm_set_ss(v1y);
+            const __m128 p201       = _mm_set_ss(p20y);
+            const __m128 d0         = _mm_sub_ss(yv, v01);
+            const __m128 alpha      = _mm_mul_ss(d0, p201);
+            const __m128 d1         = _mm_sub_ss(yv, v11);
+
+            const __m128 v00        = _mm_set_ss(v0x);
+            const __m128 p200       = _mm_set_ss(p20x);
+            const __m128 lo         = _mm_add_ss(_mm_mul_ss(p200,  alpha), v00);
+            const __m128 p1001      = _mm_set_ss(p10xy);
+            const __m128 pdv0       = _mm_add_ss(_mm_mul_ss(p1001, d0),    v00);
+            const __m128 cmpMask    = _mm_srai_epi32(_mm_castps_si128(d1), 31);
+            const __m128 v10        = _mm_set_ss(v1x);
+            const __m128 p2101      = _mm_set_ss(p21xy);
+            const __m128 pdv1       = _mm_add_ss(_mm_mul_ss(p2101, d1),    v10);
+            const __m128 hi         = _mm_or_ps(_mm_andnot_ps(cmpMask, pdv0), _mm_and_ps(cmpMask, pdv1));
 
             xMin = _mm_cvtss_si32(_mm_min_ss(lo, hi));
             xMax = _mm_cvtss_si32(_mm_max_ss(lo, hi));

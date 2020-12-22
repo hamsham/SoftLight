@@ -115,11 +115,20 @@ inline LS_INLINE void _copy_transformed_vert(SL_TransformedVert& out, const SL_T
 --------------------------------------*/
 inline LS_INLINE math::vec4 sl_perspective_divide(const math::vec4& v) noexcept
 {
-    #if defined(LS_ARCH_X86)
+    #if defined(LS_X86_SSE4_1)
         const __m128 p    = _mm_load_ps(reinterpret_cast<const float*>(&v));
-        const __m128 wInv = _mm_rcp_ps(_mm_permute_ps(p, 0xFF));
+        const __m128 wInv = _mm_rcp_ps(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(p), 0xFF)));
         const __m128 vMul = _mm_mul_ps(p, wInv);
         return math::vec4{_mm_blend_ps(wInv, vMul, 0x07)};
+
+    #elif defined(LS_X86_SSSE3)
+        const __m128 p    = _mm_load_ps(reinterpret_cast<const float*>(&v));
+        const __m128 w    = _mm_shuffle_ps(p, p, 0xFF);
+        const __m128 wInv = _mm_rcp_ps(w);
+        const __m128 vMul = _mm_mul_ps(p, wInv);
+        const __m128i wi  = _mm_shuffle_epi8(_mm_castps_si128(wInv), _mm_set_epi8(15, 14, 13, 12, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1));
+        const __m128i vi  = _mm_shuffle_epi8(_mm_castps_si128(vMul), _mm_set_epi8(-1, -1, -1, -1, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0));
+        return math::vec4{_mm_or_ps(_mm_castsi128_ps(vi), _mm_castsi128_ps(wi))};
 
     #elif defined(LS_ARCH_ARM)
         const uint32x4_t blendMask{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000000};
@@ -143,14 +152,14 @@ inline LS_INLINE math::vec4 sl_perspective_divide(const math::vec4& v) noexcept
 --------------------------------------*/
 inline LS_INLINE void sl_perspective_divide3(math::vec4& LS_RESTRICT_PTR v0, math::vec4& LS_RESTRICT_PTR v1, math::vec4& LS_RESTRICT_PTR v2) noexcept
 {
-    #if defined(LS_ARCH_X86)
+    #if defined(LS_X86_AVX)
         const __m128 p0    = _mm_load_ps(reinterpret_cast<const float*>(&v0));
         const __m128 p1    = _mm_load_ps(reinterpret_cast<const float*>(&v1));
         const __m128 p2    = _mm_load_ps(reinterpret_cast<const float*>(&v2));
 
-        const __m128 wInv0 = _mm_rcp_ps(_mm_permute_ps(p0, 0xFF));
-        const __m128 wInv1 = _mm_rcp_ps(_mm_permute_ps(p1, 0xFF));
-        const __m128 wInv2 = _mm_rcp_ps(_mm_permute_ps(p2, 0xFF));
+        const __m128 wInv0 = _mm_rcp_ps(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(p0), 0xFF)));
+        const __m128 wInv1 = _mm_rcp_ps(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(p1), 0xFF)));
+        const __m128 wInv2 = _mm_rcp_ps(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(p2), 0xFF)));
 
         const __m128 vMul0 = _mm_mul_ps(p0, wInv0);
         const __m128 vMul1 = _mm_mul_ps(p1, wInv1);
@@ -159,6 +168,31 @@ inline LS_INLINE void sl_perspective_divide3(math::vec4& LS_RESTRICT_PTR v0, mat
         _mm_store_ps(reinterpret_cast<float*>(&v0), _mm_blend_ps(wInv0, vMul0, 0x07));
         _mm_store_ps(reinterpret_cast<float*>(&v1), _mm_blend_ps(wInv1, vMul1, 0x07));
         _mm_store_ps(reinterpret_cast<float*>(&v2), _mm_blend_ps(wInv2, vMul2, 0x07));
+
+    #elif defined(LS_X86_SSSE3)
+        const __m128 p0    = _mm_load_ps(reinterpret_cast<const float*>(&v0));
+        const __m128 p1    = _mm_load_ps(reinterpret_cast<const float*>(&v1));
+        const __m128 p2    = _mm_load_ps(reinterpret_cast<const float*>(&v2));
+
+        const __m128 wInv0 = _mm_rcp_ps(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(p0), 0xFF)));
+        const __m128 wInv1 = _mm_rcp_ps(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(p1), 0xFF)));
+        const __m128 wInv2 = _mm_rcp_ps(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(p2), 0xFF)));
+
+        const __m128 vMul0 = _mm_mul_ps(p0, wInv0);
+        const __m128 vMul1 = _mm_mul_ps(p1, wInv1);
+        const __m128 vMul2 = _mm_mul_ps(p2, wInv2);
+
+        const __m128i wi0  = _mm_shuffle_epi8(_mm_castps_si128(wInv0), _mm_set_epi8(15, 14, 13, 12, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1));
+        const __m128i wi1  = _mm_shuffle_epi8(_mm_castps_si128(wInv1), _mm_set_epi8(15, 14, 13, 12, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1));
+        const __m128i wi2  = _mm_shuffle_epi8(_mm_castps_si128(wInv2), _mm_set_epi8(15, 14, 13, 12, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1));
+
+        const __m128i vi0  = _mm_shuffle_epi8(_mm_castps_si128(vMul0), _mm_set_epi8(-1, -1, -1, -1, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0));
+        const __m128i vi1  = _mm_shuffle_epi8(_mm_castps_si128(vMul1), _mm_set_epi8(-1, -1, -1, -1, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0));
+        const __m128i vi2  = _mm_shuffle_epi8(_mm_castps_si128(vMul2), _mm_set_epi8(-1, -1, -1, -1, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0));
+
+        _mm_store_ps(reinterpret_cast<float*>(&v0), _mm_or_ps(_mm_castsi128_ps(vi0), _mm_castsi128_ps(wi0)));
+        _mm_store_ps(reinterpret_cast<float*>(&v1), _mm_or_ps(_mm_castsi128_ps(vi1), _mm_castsi128_ps(wi1)));
+        _mm_store_ps(reinterpret_cast<float*>(&v2), _mm_or_ps(_mm_castsi128_ps(vi2), _mm_castsi128_ps(wi2)));
 
     #elif defined(LS_ARCH_ARM)
         const uint32x4_t blendMask{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000000};
@@ -199,7 +233,7 @@ inline LS_INLINE void sl_perspective_divide3(math::vec4& LS_RESTRICT_PTR v0, mat
 --------------------------------------*/
 inline LS_INLINE void sl_world_to_screen_coords_divided(math::vec4& v, const float widthScale, const float heightScale) noexcept
 {
-    #if defined(LS_ARCH_X86)
+    #if defined(LS_X86_SSE4_1)
         const __m128 p   = _mm_load_ps(reinterpret_cast<const float*>(&v));
         const __m128 wh0 = _mm_set_ps(0.f, 0.f, heightScale, widthScale);
         const __m128 wh1 = _mm_set_ps(1.f, 1.f, heightScale, widthScale);
@@ -250,7 +284,7 @@ inline LS_INLINE void sl_world_to_screen_coords_divided3(
     const float heightScale
 ) noexcept
 {
-    #if defined(LS_ARCH_X86)
+    #if defined(LS_X86_SSE4_1)
         const __m128 wh0 = _mm_set_ps(0.f, 0.f, heightScale, widthScale);
         const __m128 wh1 = _mm_set_ps(1.f, 1.f, heightScale, widthScale);
 
@@ -405,7 +439,7 @@ inline LS_INLINE float face_determinant(
     // 3D homogeneous determinant of the 3 vertices of a triangle. The
     // Z-component of each 3D vertex is replaced by the 4D W-component.
 
-    #if defined(LS_ARCH_X86)
+    #if defined(LS_X86_SSE4_1)
         constexpr int shuffleMask120 = 0x8D; // indices: <base> + (2, 0, 3, 1): 10001101
         constexpr int shuffleMask201 = 0x93; // indices: <base> + (2, 1, 0, 3): 10010011
 
@@ -493,10 +527,10 @@ inline LS_INLINE SL_ClipStatus face_visible(
     const math::vec4& LS_RESTRICT_PTR clip2
 ) noexcept
 {
-    #if defined(LS_ARCH_X86)
-        const __m128 w0p = _mm_permute_ps(clip0.simd, 0xFF);
-        const __m128 w1p = _mm_permute_ps(clip1.simd, 0xFF);
-        const __m128 w2p = _mm_permute_ps(clip2.simd, 0xFF);
+    #if defined(LS_X86_SSE)
+        const __m128 w0p = _mm_shuffle_ps(clip0.simd, clip0.simd, 0xFF);
+        const __m128 w1p = _mm_shuffle_ps(clip1.simd, clip1.simd, 0xFF);
+        const __m128 w2p = _mm_shuffle_ps(clip2.simd, clip2.simd, 0xFF);
 
         const __m128 sign = _mm_set1_ps(-0.f);
         const __m128 ge0 = _mm_and_ps(_mm_cmple_ps(_mm_or_ps(w0p, sign), clip0.simd), _mm_cmpge_ps(w0p, clip0.simd));

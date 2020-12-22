@@ -65,11 +65,21 @@ struct alignas(sizeof(int32_t)) SL_PackedVertex_2_10_10_10
     explicit inline LS_INLINE operator ls::math::vec4() const noexcept
     {
         // BEWARE: Undefined behavior ahead
-        #if defined(LS_ARCH_X86)
+        #if defined(LS_X86_AVX2)
             const __m128i elems    = _mm_castps_si128(_mm_broadcast_ss(reinterpret_cast<const float*>(this)));
             const __m128i shifted  = _mm_sllv_epi32(elems,   _mm_set_epi32(0, 2, 12, 22));
             const __m128i extended = _mm_srav_epi32(shifted, _mm_set_epi32(30, 22, 22, 22));
             return ls::math::vec4{_mm_mul_ps(_mm_cvtepi32_ps(extended), _mm_set1_ps(1.f/511.f))};
+
+        #elif defined(LS_X86_SSE2)
+            const __m128i elems    = _mm_castps_si128(_mm_load1_ps(reinterpret_cast<const float*>(this)));
+            const __m128i a        = _mm_shuffle_epi8(_mm_slli_epi32(elems, 2),  _mm_set_epi8(-1, -1, -1, -1, 15, 14, 13, 12, -1, -1, -1, -1, -1, -1, -1, -1));
+            const __m128i b        = _mm_shuffle_epi8(_mm_slli_epi32(elems, 12), _mm_set_epi8(-1, -1, -1, -1, -1, -1, -1, -1, 15, 14, 13, 12, -1, -1, -1, -1));
+            const __m128i c        = _mm_shuffle_epi8(_mm_slli_epi32(elems, 22), _mm_set_epi8(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 15, 14, 13, 12));
+            const __m128i shifted  = _mm_or_si128(_mm_or_si128(c, b),  a);
+            const __m128i extended = _mm_srai_epi32(shifted, 22);
+            return ls::math::vec4{_mm_mul_ps(_mm_cvtepi32_ps(extended), _mm_set1_ps(1.f/511.f))};
+
         #elif defined(LS_ARCH_ARM)
             const int32x4_t leftShifts{22, 12, 2, 0};
             const int32x4_t rightShifts{-22, -22, -22, -30};
@@ -79,6 +89,7 @@ struct alignas(sizeof(int32_t)) SL_PackedVertex_2_10_10_10
             return ls::math::vec4{vmulq_f32(vcvtq_f32_s32(extended), vdupq_n_f32(1.f/511.f))};
         #else
             return ls::math::vec4{(float)x, (float)y, (float)z, 0.f} * ls::math::vec4{1.f / 511.f, 1.f / 511.f, 1.f / 511.f, 0.f};
+
         #endif
     }
 };
