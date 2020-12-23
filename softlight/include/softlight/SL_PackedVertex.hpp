@@ -71,7 +71,7 @@ struct alignas(sizeof(int32_t)) SL_PackedVertex_2_10_10_10
             const __m128i extended = _mm_srav_epi32(shifted, _mm_set_epi32(30, 22, 22, 22));
             return ls::math::vec4{_mm_mul_ps(_mm_cvtepi32_ps(extended), _mm_set1_ps(1.f/511.f))};
 
-        #elif defined(LS_X86_SSE2)
+        #elif defined(LS_X86_SSSE3)
             const __m128i elems    = _mm_castps_si128(_mm_load1_ps(reinterpret_cast<const float*>(this)));
             const __m128i a        = _mm_shuffle_epi8(_mm_slli_epi32(elems, 2),  _mm_set_epi8(-1, -1, -1, -1, 15, 14, 13, 12, -1, -1, -1, -1, -1, -1, -1, -1));
             const __m128i b        = _mm_shuffle_epi8(_mm_slli_epi32(elems, 12), _mm_set_epi8(-1, -1, -1, -1, -1, -1, -1, -1, 15, 14, 13, 12, -1, -1, -1, -1));
