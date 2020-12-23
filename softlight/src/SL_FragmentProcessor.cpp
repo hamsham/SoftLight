@@ -1029,20 +1029,20 @@ void SL_FragmentProcessor::flush_fragments(
 
             interpolate_tri_varyings(bc.v, fragShader.numVaryings, pBin->mVaryings, fragParams.pVaryings);
 
-            uint_fast32_t haveOutputs = fragShader.shader(fragParams);
+            uint_fast32_t haveOutputs = (uint_fast32_t)(-(int_fast32_t)fragShader.shader(fragParams));
 
             // branchless select
-            switch (-haveOutputs & fragShader.numOutputs)
+            switch (haveOutputs & fragShader.numOutputs)
             {
                 case 4: mFbo->put_pixel(3, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3]);
                 case 3: mFbo->put_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2]);
                 case 2: mFbo->put_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1]);
                 case 1: mFbo->put_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0]);
+            }
 
-                    if (fragShader.depthMask == SL_DEPTH_MASK_ON)
-                    {
-                        pDepthBuf->raw_texel<depth_type>(fragParams.coord.x, fragParams.coord.y) = (depth_type)fragParams.coord.depth;
-                    }
+            if (haveOutputs & (fragShader.depthMask == SL_DEPTH_MASK_ON))
+            {
+                pDepthBuf->raw_texel<depth_type>(fragParams.coord.x, fragParams.coord.y) = (depth_type)fragParams.coord.depth;
             }
         }
     }
@@ -1055,20 +1055,20 @@ void SL_FragmentProcessor::flush_fragments(
 
             interpolate_tri_varyings(bc.v, fragShader.numVaryings, pBin->mVaryings, fragParams.pVaryings);
 
-            uint_fast32_t haveOutputs = fragShader.shader(fragParams);
+            uint_fast32_t haveOutputs = (uint_fast32_t)(-(int_fast32_t)fragShader.shader(fragParams));
 
             // branchless select
-            switch (-haveOutputs & fragShader.numOutputs)
+            switch (haveOutputs & fragShader.numOutputs)
             {
                 case 4: mFbo->put_alpha_pixel(3, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3], fragShader.blend);
                 case 3: mFbo->put_alpha_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], fragShader.blend);
                 case 2: mFbo->put_alpha_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], fragShader.blend);
                 case 1: mFbo->put_alpha_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], fragShader.blend);
+            }
 
-                    if (fragShader.depthMask == SL_DEPTH_MASK_ON)
-                    {
-                        pDepthBuf->raw_texel<depth_type>(fragParams.coord.x, fragParams.coord.y) = (depth_type)fragParams.coord.depth;
-                    }
+            if (haveOutputs & (fragShader.depthMask == SL_DEPTH_MASK_ON))
+            {
+                pDepthBuf->raw_texel<depth_type>(fragParams.coord.x, fragParams.coord.y) = (depth_type)fragParams.coord.depth;
             }
         }
     }
