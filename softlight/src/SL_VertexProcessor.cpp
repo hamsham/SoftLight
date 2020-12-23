@@ -607,31 +607,36 @@ inline LS_INLINE SL_ClipStatus face_visible(
 void SL_VertexProcessor::flush_bins() const noexcept
 {
     // Allow the other threads to know this thread is ready for processing
-    const bool noBlending = mShader->mFragShader.blend == SL_BLEND_OFF;
+    //const bool noBlending = mShader->mFragShader.blend == SL_BLEND_OFF;
+
+    uint32_t numLocalBins = mBinsUsed[mThreadId].count;
+    const uint32_t localThreadId = mThreadId;
 
     const uint_fast64_t tileId = mFragProcessors->count.fetch_add(1ull, std::memory_order_acq_rel);
-    mBinsReady[tileId].count.store((int32_t)mThreadId, std::memory_order_release);
+    mBinsReady[tileId].count.store((int32_t)localThreadId, std::memory_order_release);
 
     SL_FragmentProcessor fragTask{
         (uint16_t)tileId,
         mRenderMode,
         (uint32_t)mNumThreads,
-        mBinsUsed[mThreadId].count,
+        numLocalBins,
         mShader,
         mFbo,
-        mFragBins + mThreadId * SL_SHADER_MAX_BINNED_PRIMS,
-        mFragQueues + mThreadId
+        mFragBins + localThreadId * SL_SHADER_MAX_BINNED_PRIMS,
+        mFragQueues + localThreadId
     };
 
     // Execute the fragment processor if possible
-    if (noBlending && mBinsUsed[mThreadId].count)
+    /*
+    if (noBlending && numLocalBins)
     {
         fragTask.execute();
     }
+    */
 
     for (uint32_t t = 0; t < (uint32_t)mNumThreads; ++t)
     {
-        if (noBlending && t == tileId)
+        if (t == tileId)
         {
             continue;
         }
@@ -639,7 +644,14 @@ void SL_VertexProcessor::flush_bins() const noexcept
         // wait for the next available set of bins
         while (LS_LIKELY(mBinsReady[t].count.load(std::memory_order_consume) < 0))
         {
-            ls::setup::cpu_yield();
+            //ls::setup::cpu_yield();
+            if (numLocalBins)
+            {
+                --numLocalBins;
+                fragTask.mNumBins = 1;
+                fragTask.mBins = numLocalBins + mFragBins + localThreadId * SL_SHADER_MAX_BINNED_PRIMS;
+                fragTask.execute();
+            }
         }
 
         uint32_t currentThread = (uint32_t)mBinsReady[t].count.load(std::memory_order_consume);
@@ -651,6 +663,13 @@ void SL_VertexProcessor::flush_bins() const noexcept
 
         fragTask.mNumBins = binsUsed;
         fragTask.mBins = mFragBins + currentThread * SL_SHADER_MAX_BINNED_PRIMS;
+        fragTask.execute();
+    }
+
+    if (numLocalBins)
+    {
+        fragTask.mNumBins = numLocalBins;
+        fragTask.mBins = mFragBins + localThreadId * SL_SHADER_MAX_BINNED_PRIMS;
         fragTask.execute();
     }
 
@@ -671,7 +690,7 @@ void SL_VertexProcessor::flush_bins() const noexcept
         // Wait for the last thread to reset the number of available bins.
         while (LS_LIKELY(mFragProcessors->count.load(std::memory_order_consume) >= (uint_fast64_t)mNumThreads))
         {
-            ls::setup::cpu_yield();
+            //ls::setup::cpu_yield();
         }
     }
 }
