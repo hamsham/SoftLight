@@ -4,6 +4,7 @@
 #include "lightsky/setup/Macros.h"
 
 #include "lightsky/utils/Assertions.h" // LS_DEBUG_ASSERT
+#include "lightsky/utils/Sort.hpp"
 
 #include "lightsky/math/mat_utils.h"
 
@@ -24,6 +25,34 @@
  * Anonymous Helper Functions
 -----------------------------------------------------------------------------*/
 namespace math = ls::math;
+
+
+
+/*-------------------------------------
+ * Radix sort adapter for depth-sorting opaque geometry
+-------------------------------------*/
+template <typename data_type>
+struct SL_UnblendedRadixSorter
+{
+    constexpr unsigned long long operator()(const SL_FragmentBin& val) const noexcept
+    {
+        return (unsigned long long)(*reinterpret_cast<const int32_t*>(val.mScreenCoords[0].v+2));
+    }
+};
+
+
+
+// Comparison operator for sorting fragments by depth
+inline LS_INLINE bool operator < (const SL_FragmentBin& a, const SL_FragmentBin& b) noexcept
+{
+    return *reinterpret_cast<const int32_t*>(a.mScreenCoords[0].v+2) < *reinterpret_cast<const int32_t*>(b.mScreenCoords[0].v+2);
+}
+
+// Comparison operator for sorting blended fragments by depth
+inline LS_INLINE bool operator > (const SL_FragmentBin& a, const SL_FragmentBin& b) noexcept
+{
+    return *reinterpret_cast<const int32_t*>(a.mScreenCoords[0].v+2) > *reinterpret_cast<const int32_t*>(b.mScreenCoords[0].v+2);
+}
 
 
 
@@ -606,91 +635,76 @@ inline LS_INLINE SL_ClipStatus face_visible(
 -------------------------------------*/
 void SL_VertexProcessor::flush_bins() const noexcept
 {
-    // Allow the other threads to know this thread is ready for processing
-    //const bool noBlending = mShader->mFragShader.blend == SL_BLEND_OFF;
+    // Allow the other threads to know when they're ready for processing
+    const int_fast64_t    numThreads = (int_fast64_t)mNumThreads;
+    const int_fast64_t    syncPoint1 = -numThreads - 1;
+    const int_fast64_t    tileId     = mFragProcessors->count.fetch_add(1ll, std::memory_order_acq_rel);
+    const SL_FragmentBin* pBins      = mFragBins;
 
-    uint32_t numLocalBins = mBinsUsed[mThreadId].count;
-    const uint32_t localThreadId = mThreadId;
+    // Sort the bins based on their depth.
+    if (tileId == numThreads-1u)
+    {
+        const uint_fast64_t maxElements = math::min<uint64_t>(mBinsUsed->count.load(std::memory_order_consume), SL_SHADER_MAX_BINNED_PRIMS);
 
-    const uint_fast64_t tileId = mFragProcessors->count.fetch_add(1ull, std::memory_order_acq_rel);
-    mBinsReady[tileId].count.store((int32_t)localThreadId, std::memory_order_release);
+        // Blended fragments get sorted back-to-front for correct coloring.
+        if (LS_LIKELY(mShader->fragment_shader().blend == SL_BLEND_OFF))
+        {
+            ls::utils::sort_radix<SL_BinCounter<uint32_t>>(mBinIds, mTempBinIds, maxElements, [&](const SL_BinCounter<uint32_t>& val) noexcept->unsigned long long
+            {
+                // flip sign, otherwise the sorting goes from back-to-front
+                // due to the sortable nature of floats.
+                return (unsigned long long) -(*reinterpret_cast<const int32_t*>(pBins[val.count].mScreenCoords[0].v+3));
+            });
+        }
+        else
+        {
+            ls::utils::sort_radix<SL_BinCounter<uint32_t>>(mBinIds, mTempBinIds, maxElements, [&](const SL_BinCounter<uint32_t>& val) noexcept->unsigned long long
+            {
+                return (unsigned long long)pBins[val.count].primIndex;
+            });
+        }
+
+        // Let all threads know they can process fragments.
+        mFragProcessors->count.store(syncPoint1, std::memory_order_release);
+    }
+    else
+    {
+        while (mFragProcessors->count.load(std::memory_order_consume) > 0)
+        {
+            ls::setup::cpu_yield();
+        }
+    }
 
     SL_FragmentProcessor fragTask{
         (uint16_t)tileId,
         mRenderMode,
         (uint32_t)mNumThreads,
-        numLocalBins,
+        math::min<uint32_t>(mBinsUsed->count.load(std::memory_order_consume), SL_SHADER_MAX_BINNED_PRIMS),
         mShader,
         mFbo,
-        mFragBins + localThreadId * SL_SHADER_MAX_BINNED_PRIMS,
-        mFragQueues + localThreadId
+        mBinIds,
+        mFragBins,
+        mFragQueues + tileId
     };
 
-    // Execute the fragment processor if possible
-    /*
-    if (noBlending && numLocalBins)
-    {
-        fragTask.execute();
-    }
-    */
-
-    for (uint32_t t = 0; t < (uint32_t)mNumThreads; ++t)
-    {
-        if (t == tileId)
-        {
-            continue;
-        }
-
-        // wait for the next available set of bins
-        while (LS_LIKELY(mBinsReady[t].count.load(std::memory_order_consume) < 0))
-        {
-            //ls::setup::cpu_yield();
-            if (numLocalBins)
-            {
-                --numLocalBins;
-                fragTask.mNumBins = 1;
-                fragTask.mBins = numLocalBins + mFragBins + localThreadId * SL_SHADER_MAX_BINNED_PRIMS;
-                fragTask.execute();
-            }
-        }
-
-        uint32_t currentThread = (uint32_t)mBinsReady[t].count.load(std::memory_order_consume);
-        uint32_t binsUsed = mBinsUsed[currentThread].count;
-        if (!binsUsed)
-        {
-            continue;
-        }
-
-        fragTask.mNumBins = binsUsed;
-        fragTask.mBins = mFragBins + currentThread * SL_SHADER_MAX_BINNED_PRIMS;
-        fragTask.execute();
-    }
-
-    if (numLocalBins)
-    {
-        fragTask.mNumBins = numLocalBins;
-        fragTask.mBins = mFragBins + localThreadId * SL_SHADER_MAX_BINNED_PRIMS;
-        fragTask.execute();
-    }
+    fragTask.execute();
 
     // Indicate to all threads we can now process more vertices
-    const uint_fast64_t syncPoint = (uint_fast64_t)mNumThreads * 2ull - 1ull;
-    if (syncPoint == mFragProcessors->count.fetch_add(1, std::memory_order_acq_rel))
-    {
-        for (uint32_t t = 0; t < (uint32_t)mNumThreads; ++t)
-        {
-            mBinsReady[t].count.store(-1, std::memory_order_release);
-            mBinsUsed[t].count = 0;
-        }
+    const int_fast64_t syncPoint2 = mFragProcessors->count.fetch_add(1, std::memory_order_acq_rel);
 
-        mFragProcessors->count.store(0ull, std::memory_order_release);
-    }
-    else
+    // Wait for the last thread to reset the number of available bins.
+    while (mFragProcessors->count.load(std::memory_order_consume) < 0)
     {
-        // Wait for the last thread to reset the number of available bins.
-        while (LS_LIKELY(mFragProcessors->count.load(std::memory_order_consume) >= (uint_fast64_t)mNumThreads))
+        if (syncPoint2 == -2)
         {
-            //ls::setup::cpu_yield();
+            mBinsUsed->count.store(0, std::memory_order_release);
+            mFragProcessors->count.store(0, std::memory_order_release);
+            break;
+        }
+        else
+        {
+            // wait until all fragments are rendered across the other threads
+            ls::setup::cpu_yield();
         }
     }
 }
@@ -702,6 +716,7 @@ void SL_VertexProcessor::flush_bins() const noexcept
 --------------------------------------*/
 template <int renderMode>
 void SL_VertexProcessor::push_bin(
+    size_t primIndex,
     float fboW,
     float fboH,
     const SL_TransformedVert& a,
@@ -709,8 +724,9 @@ void SL_VertexProcessor::push_bin(
     const SL_TransformedVert& c
 ) const noexcept
 {
+    SL_BinCounterAtomic<uint32_t>* const pLocks = mBinsUsed;
+    SL_FragmentBin* const pFragBins = mFragBins;
     const uint_fast32_t numVaryings = mShader->get_num_varyings();
-    const uint32_t binId = mBinsUsed[mThreadId].count;
 
     const math::vec4& p0 = a.vert;
     const math::vec4& p1 = b.vert;
@@ -760,7 +776,14 @@ void SL_VertexProcessor::push_bin(
         return;
     }
 
-    SL_FragmentBin* const pFragBins = mFragBins + mThreadId * SL_SHADER_MAX_BINNED_PRIMS;
+    // Check if the output bin is full
+    uint_fast64_t binId;
+
+    // Attempt to grab a bin index. Flush the bins if they've filled up.
+    while ((binId = pLocks->count.fetch_add(1, std::memory_order_acq_rel)) >= SL_SHADER_MAX_BINNED_PRIMS)
+    {
+        flush_bins();
+    }
 
     // place a triangle into the next available bin
     SL_FragmentBin& bin = pFragBins[binId];
@@ -822,17 +845,14 @@ void SL_VertexProcessor::push_bin(
             LS_UNREACHABLE();
     }
 
-    // Check if the output bin is full
-    mBinsUsed[mThreadId].count = binId+1;
-    if (LS_UNLIKELY(binId == SL_SHADER_MAX_BINNED_PRIMS-1))
-    {
-        flush_bins();
-    }
+    bin.primIndex = primIndex;
+    mBinIds[binId].count = binId;
 }
 
 
 
 template void SL_VertexProcessor::push_bin<RENDER_MODE_POINTS>(
+    size_t,
     float,
     float,
     const SL_TransformedVert&,
@@ -841,6 +861,7 @@ template void SL_VertexProcessor::push_bin<RENDER_MODE_POINTS>(
 ) const noexcept;
 
 template void SL_VertexProcessor::push_bin<RENDER_MODE_LINES>(
+    size_t,
     float,
     float,
     const SL_TransformedVert&,
@@ -849,6 +870,7 @@ template void SL_VertexProcessor::push_bin<RENDER_MODE_LINES>(
 ) const noexcept;
 
 template void SL_VertexProcessor::push_bin<RENDER_MODE_TRIANGLES>(
+    size_t,
     float,
     float,
     const SL_TransformedVert&,
@@ -883,6 +905,7 @@ template void SL_VertexProcessor::push_bin<RENDER_MODE_TRIANGLES>(
  *  end for
 -------------------------------------*/
 void SL_VertexProcessor::clip_and_process_tris(
+    size_t primIndex,
     float fboW,
     float fboH,
     const SL_TransformedVert& a,
@@ -1018,7 +1041,7 @@ void SL_VertexProcessor::clip_and_process_tris(
         p2.vert = newVerts[k];
         _copy_verts(numVarys, newVarys+(k*SL_SHADER_MAX_VARYING_VECTORS), p2.varyings);
 
-        push_bin<SL_RenderMode::RENDER_MODE_TRIANGLES>(fboW, fboH, p0, p1, p2);
+        push_bin<SL_RenderMode::RENDER_MODE_TRIANGLES>(primIndex, fboW, fboH, p0, p1, p2);
     }
 }
 
@@ -1076,7 +1099,7 @@ void SL_VertexProcessor::process_points(const SL_Mesh& m, size_t instanceId) noe
         if (pVert0.vert[3] > 0.f)
         {
             sl_world_to_screen_coords(pVert0.vert, widthScale, heightScale);
-            push_bin<SL_RenderMode::RENDER_MODE_POINTS>(fboW, fboH, pVert0, pVert0, pVert0);
+            push_bin<SL_RenderMode::RENDER_MODE_POINTS>(i, fboW, fboH, pVert0, pVert0, pVert0);
         }
     }
 }
@@ -1147,7 +1170,7 @@ void SL_VertexProcessor::process_lines(const SL_Mesh& m, size_t instanceId) noex
             sl_world_to_screen_coords(pVert0.vert, widthScale, heightScale);
             sl_world_to_screen_coords(pVert1.vert, widthScale, heightScale);
 
-            push_bin<SL_RenderMode::RENDER_MODE_LINES>(fboW, fboH, pVert0, pVert1, pVert1);
+            push_bin<SL_RenderMode::RENDER_MODE_LINES>(i, fboW, fboH, pVert0, pVert1, pVert1);
         }
     }
 }
@@ -1240,11 +1263,11 @@ void SL_VertexProcessor::process_tris(const SL_Mesh& m, size_t instanceId) noexc
         {
             sl_perspective_divide3(pVert0.vert, pVert1.vert, pVert2.vert);
             sl_world_to_screen_coords_divided3(pVert0.vert, pVert1.vert, pVert2.vert, widthScale, heightScale);
-            push_bin<SL_RenderMode::RENDER_MODE_TRIANGLES>(fboW, fboH, pVert0, pVert1, pVert2);
+            push_bin<SL_RenderMode::RENDER_MODE_TRIANGLES>(i, fboW, fboH, pVert0, pVert1, pVert2);
         }
         else if (visStatus == SL_TRIANGLE_PARTIALLY_VISIBLE)
         {
-            clip_and_process_tris(fboW, fboH, pVert0, pVert1, pVert2);
+            clip_and_process_tris(i, fboW, fboH, pVert0, pVert1, pVert2);
         }
     }
 }
@@ -1335,11 +1358,6 @@ void SL_VertexProcessor::execute() noexcept
         }
     }
 
-    if (mBinsUsed[mThreadId].count)
-    {
-        flush_bins();
-    }
-
     mBusyProcessors->count.fetch_sub(1, std::memory_order_acq_rel);
     do
     {
@@ -1353,4 +1371,9 @@ void SL_VertexProcessor::execute() noexcept
         }
     }
     while (mBusyProcessors->count.load(std::memory_order_consume));
+
+    if (mBinsUsed->count.load(std::memory_order_consume))
+    {
+        flush_bins();
+    }
 }

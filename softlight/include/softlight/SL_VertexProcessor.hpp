@@ -65,7 +65,7 @@ struct SL_VertexProcessor
     uint16_t mNumThreads;
 
     // 64-128 bits
-    SL_BinCounterAtomic<uint_fast64_t>* mFragProcessors;
+    SL_BinCounterAtomic<int_fast64_t>* mFragProcessors;
     SL_BinCounterAtomic<uint_fast64_t>* mBusyProcessors;
 
     // 96-192 bits
@@ -83,9 +83,10 @@ struct SL_VertexProcessor
     // 32-64 bits
     const SL_Mesh* mMeshes;
 
-    // 32-64 bits
-    SL_BinCounterAtomic<int32_t>* mBinsReady;
-    SL_BinCounter<uint32_t>* mBinsUsed;
+    // 64-128 bits
+    SL_BinCounterAtomic<uint32_t>* mBinsUsed;
+    SL_BinCounter<uint32_t>* mBinIds;
+    SL_BinCounter<uint32_t>* mTempBinIds;
 
     // 96-192 bits
     SL_FragmentBin* mFragBins;
@@ -99,6 +100,7 @@ struct SL_VertexProcessor
 
     template <int renderMode>
     void push_bin(
+        size_t primIndex,
         float fboW,
         float fboH,
         const SL_TransformedVert& a,
@@ -107,6 +109,7 @@ struct SL_VertexProcessor
     ) const noexcept;
 
     void clip_and_process_tris(
+        size_t primIndex,
         float fboW,
         float fboH,
         const SL_TransformedVert& a,
@@ -127,6 +130,7 @@ struct SL_VertexProcessor
 
 extern template
 void SL_VertexProcessor::push_bin<RENDER_MODE_POINTS>(
+    size_t,
     float,
     float,
     const SL_TransformedVert&,
@@ -136,6 +140,7 @@ void SL_VertexProcessor::push_bin<RENDER_MODE_POINTS>(
 
 extern template
 void SL_VertexProcessor::push_bin<RENDER_MODE_LINES>(
+    size_t,
     float,
     float,
     const SL_TransformedVert&,
@@ -145,6 +150,7 @@ void SL_VertexProcessor::push_bin<RENDER_MODE_LINES>(
 
 extern template
 void SL_VertexProcessor::push_bin<RENDER_MODE_TRIANGLES>(
+    size_t,
     float,
     float,
     const SL_TransformedVert&,

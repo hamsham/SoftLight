@@ -12,7 +12,6 @@
 #include "softlight/SL_Framebuffer.hpp" // SL_Framebuffer
 #include "softlight/SL_ScanlineBounds.hpp"
 #include "softlight/SL_Shader.hpp" // SL_FragmentShader
-#include "softlight/SL_ShaderUtil.hpp" // sl_scanline_offset()
 #include "softlight/SL_ShaderProcessor.hpp" // SL_FragmentBin
 #include "softlight/SL_Texture.hpp"
 
@@ -557,15 +556,21 @@ void SL_FragmentProcessor::render_line(
 template <typename depth_type>
 void SL_FragmentProcessor::render_wireframe(const SL_Texture* depthBuffer) const noexcept
 {
-    const SL_FragmentBin* pBin         = mBins;
+    const SL_BinCounter<uint32_t>* pBinIds = mBinIds;
+    const SL_FragmentBin* pBins = mBins;
+    const uint32_t numBins = (uint32_t)mNumBins;
+
     SL_FragCoord*         outCoords    = mQueues;
     const int32_t         yOffset      = (int32_t)mThreadId;
     const int32_t         increment    = (int32_t)mNumProcessors;
-    const int32_t         depthTesting = mShader->fragment_shader().depthTest == SL_DEPTH_TEST_OFF;
+    const int32_t         depthTesting = -(mShader->fragment_shader().depthTest == SL_DEPTH_TEST_OFF) & 0x0F;
     SL_ScanlineBounds     scanline;
 
-    for (uint64_t binId = 0; binId < mNumBins; ++binId, ++pBin)
+    for (uint32_t i = 0; i < numBins; ++i)
     {
+        const uint32_t binId = pBinIds[i].count;
+        const SL_FragmentBin* pBin = pBins+binId;
+
         uint32_t          numQueuedFrags = 0;
         const math::vec4* pPoints        = pBin->mScreenCoords;
         const math::vec4* bcClipSpace    = pBin->mBarycentricCoords;
@@ -592,10 +597,10 @@ void SL_FragmentProcessor::render_wireframe(const SL_Texture* depthBuffer) const
 
             const depth_type* const pDepth = depthBuffer->row_pointer<depth_type>(y);
 
-            for (unsigned i = 0; i < 2; ++i)
+            for (unsigned ix = 0; ix < 2; ++ix)
             {
                 // calculate barycentric coordinates
-                const int32_t x  = xMinMax[i];
+                const int32_t x  = xMinMax[ix];
                 const float   xf = (float)x;
                 math::vec4&&  bc = math::fmadd(bcClipSpace[0], math::vec4{xf, xf, xf, 0.f}, bcY);
                 const float   z  = math::dot(depth, bc);
@@ -644,15 +649,21 @@ void SL_FragmentProcessor::render_wireframe(const SL_Texture* depthBuffer) const
 template <typename depth_type>
 void SL_FragmentProcessor::render_triangle(const SL_Texture* depthBuffer) const noexcept
 {
-    const SL_FragmentBin* pBin         = mBins;
+    const SL_BinCounter<uint32_t>* pBinIds = mBinIds;
+    const SL_FragmentBin* pBins = mBins;
+    const uint32_t numBins = (uint32_t)mNumBins;
+
     SL_FragCoord*         outCoords    = mQueues;
     const int32_t         yOffset      = (int32_t)mThreadId;
     const int32_t         increment    = (int32_t)mNumProcessors;
-    const int32_t         depthTesting = mShader->fragment_shader().depthTest == SL_DEPTH_TEST_OFF;
+    const int32_t         depthTesting = -(mShader->fragment_shader().depthTest == SL_DEPTH_TEST_OFF) & 0x0F;
     SL_ScanlineBounds     scanline;
 
-    for (uint64_t binId = 0; binId < mNumBins; ++binId, ++pBin)
+    for (uint32_t i = 0; i < numBins; ++i)
     {
+        const uint32_t binId = pBinIds[i].count;
+        const SL_FragmentBin* pBin = pBins+binId;
+
         uint32_t          numQueuedFrags = 0;
         const math::vec4* pPoints        = pBin->mScreenCoords;
         const math::vec4* bcClipSpace    = pBin->mBarycentricCoords;
@@ -739,15 +750,21 @@ void SL_FragmentProcessor::render_triangle(const SL_Texture* depthBuffer) const 
 template <typename depth_type>
 void SL_FragmentProcessor::render_triangle_simd(const SL_Texture* depthBuffer) const noexcept
 {
-    const SL_FragmentBin* pBin         = mBins;
+    const SL_BinCounter<uint32_t>* pBinIds = mBinIds;
+    const SL_FragmentBin* pBins = mBins;
+    const uint32_t numBins = (uint32_t)mNumBins;
+
     SL_FragCoord*         outCoords    = mQueues;
     const int32_t         yOffset      = (int32_t)mThreadId;
     const int32_t         increment    = (int32_t)mNumProcessors;
     const __m128          depthTesting = _mm_castsi128_ps(_mm_set1_epi32(-(mShader->fragment_shader().depthTest == SL_DEPTH_TEST_OFF)));
     SL_ScanlineBounds     scanline;
 
-    for (uint64_t binId = 0; binId < mNumBins; ++binId, ++pBin)
+    for (uint32_t i = 0; i < numBins; ++i)
     {
+        const uint32_t binId = pBinIds[i].count;
+        const SL_FragmentBin* pBin = pBins+binId;
+
         unsigned numQueuedFrags = 0;
 
         const __m128 points0 = _mm_load_ps(reinterpret_cast<const float*>(pBin->mScreenCoords+0));
@@ -885,15 +902,21 @@ void SL_FragmentProcessor::render_triangle_simd(const SL_Texture* depthBuffer) c
 template <typename depth_type>
 void SL_FragmentProcessor::render_triangle_simd(const SL_Texture* depthBuffer) const noexcept
 {
-    const SL_FragmentBin* pBin         = mBins;
+    const SL_BinCounter<uint32_t>* pBinIds = mBinIds;
+    const SL_FragmentBin* pBins = mBins;
+    const uint32_t numBins = (uint32_t)mNumBins;
+
     SL_FragCoord*         outCoords    = mQueues;
     const int32_t         yOffset      = (int32_t)mThreadId;
     const int32_t         increment    = (int32_t)mNumProcessors;
     const int32_t         depthTesting = -(mShader->fragment_shader().depthTest == SL_DEPTH_TEST_OFF) & 0x0F;
     SL_ScanlineBounds     scanline;
 
-    for (uint64_t binId = 0; binId < mNumBins; ++binId, ++pBin)
+    for (uint32_t i = 0; i < numBins; ++i)
     {
+        const uint32_t binId = pBinIds[i].count;
+        const SL_FragmentBin* pBin = pBins+binId;
+
         unsigned          numQueuedFrags = 0;
         const math::vec4* pPoints        = pBin->mScreenCoords;
         const math::vec4  depth          {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};

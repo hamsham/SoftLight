@@ -213,7 +213,7 @@ enum SL_ShaderLimits
 
     // Maximum number of vertex groups which get binned before being sent to a
     // fragment processor.
-    SL_SHADER_MAX_BINNED_PRIMS    = 1024,
+    SL_SHADER_MAX_BINNED_PRIMS    = 8192,
 };
 
 
@@ -223,19 +223,17 @@ enum SL_ShaderLimits
  * Padded data types to avoid false sharing
 -----------------------------------------------------------------------------*/
 template <typename data_t>
-struct alignas(sizeof(data_t)) SL_BinCounter
+struct alignas(64) SL_BinCounter
 {
     typename ls::setup::EnableIf<ls::setup::IsIntegral<data_t>::value, data_t>::type count;
-    uint8_t padding[128-sizeof(data_t)];
 };
 
 
 
 template <typename data_t>
-struct alignas(sizeof(data_t)) SL_BinCounterAtomic
+struct alignas(64) SL_BinCounterAtomic
 {
     std::atomic<typename ls::setup::EnableIf<ls::setup::IsIntegral<data_t>::value, data_t>::type> count;
-    uint8_t padding[128-sizeof(data_t)];
 };
 
 
@@ -254,7 +252,8 @@ struct alignas(sizeof(ls::math::vec4)) SL_FragmentBin
     // 4-byte floats * 4-element vector * 3-vectors-per-tri * 4 varyings-per-vertex = 192 bytes
     ls::math::vec4 mVaryings[SL_SHADER_MAX_SCREEN_COORDS * SL_SHADER_MAX_VARYING_VECTORS];
 
-    // 288 bytes = 2304 bits
+    uint_fast64_t primIndex;
+    // 296 bytes = 2372 bits
 };
 
 

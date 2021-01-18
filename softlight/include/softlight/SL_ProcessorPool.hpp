@@ -59,13 +59,15 @@ class SL_ProcessorPool
     typedef ls::utils::WorkerThread<SL_ShaderProcessor> ThreadedWorker;
 
   private:
-    SL_BinCounterAtomic<uint_fast64_t> mFragSemaphore;
+    SL_BinCounterAtomic<int_fast64_t> mFragSemaphore;
 
     SL_BinCounterAtomic<uint_fast64_t> mShadingSemaphore;
 
-    ls::utils::Pointer<SL_BinCounterAtomic<int32_t>[], ls::utils::AlignedDeleter> mBinsReady;
+    ls::utils::Pointer<SL_BinCounter<uint32_t>[], ls::utils::AlignedDeleter> mBinIds;
 
-    ls::utils::Pointer<SL_BinCounter<uint32_t>[], ls::utils::AlignedDeleter> mBinsUsed;
+    ls::utils::Pointer<SL_BinCounter<uint32_t>[], ls::utils::AlignedDeleter> mTempBinIds;
+
+    SL_BinCounterAtomic<uint32_t> mBinsUsed;
 
     ls::utils::Pointer<SL_FragmentBin[], ls::utils::AlignedDeleter> mFragBins;
 

@@ -5,6 +5,7 @@
 #include "lightsky/math/vec4.h"
 
 #include "softlight/SL_Mesh.hpp" // SL_RenderMode
+#include "softlight/SL_ShaderUtil.hpp" // sl_scanline_offset(), SL_BinCounter
 
 
 
@@ -52,6 +53,7 @@ struct SL_FragmentProcessor
     // 256 bits
     const SL_Shader* mShader;
     SL_Framebuffer* mFbo;
+    SL_BinCounter<uint32_t>* mBinIds;
     const SL_FragmentBin* mBins;
     SL_FragCoord* mQueues;
 
