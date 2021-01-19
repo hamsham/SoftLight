@@ -30,6 +30,17 @@ namespace math = ls::math;
 
 
 /*-------------------------------------
+ * Intermediate representation of a vertex after it's been run through a shader.
+-------------------------------------*/
+struct alignas(alignof(ls::math::vec4)) SL_TransformedVert
+{
+    ls::math::vec4 vert;
+    ls::math::vec4 varyings[SL_SHADER_MAX_VARYING_VECTORS];
+};
+
+
+
+/*-------------------------------------
  * Radix sort adapter for depth-sorting opaque geometry
 -------------------------------------*/
 template <typename data_type>
@@ -631,14 +642,6 @@ inline LS_INLINE SL_ClipStatus face_visible(
 /*-----------------------------------------------------------------------------
  * SL_VertexProcessor Class
 -----------------------------------------------------------------------------*/
-struct alignas(alignof(ls::math::vec4)) SL_TransformedVert
-{
-    ls::math::vec4 vert;
-    ls::math::vec4 varyings[SL_SHADER_MAX_VARYING_VECTORS];
-};
-
-
-
 /*-------------------------------------
  * Execute a fragment processor
 -------------------------------------*/
@@ -744,9 +747,6 @@ void SL_VertexProcessor::push_bin(
     float bboxMinY;
     float bboxMaxX;
     float bboxMaxY;
-
-    // calculate the bounds of the tile which a certain thread will be
-    // responsible for
 
     // render points through whichever tile/thread they appear in
     switch (renderMode)

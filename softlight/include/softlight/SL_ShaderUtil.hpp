@@ -225,7 +225,7 @@ template <typename data_t>
 union alignas(16) SL_BinCounter
 {
     typename ls::setup::EnableIf<ls::setup::IsIntegral<data_t>::value, data_t>::type count;
-    unsigned char padding[64-sizeof(data_t)];
+    unsigned char padding[16-sizeof(data_t)];
 };
 
 
@@ -234,7 +234,7 @@ template <typename data_t>
 union alignas(16) SL_BinCounterAtomic
 {
     std::atomic<typename ls::setup::EnableIf<ls::setup::IsIntegral<data_t>::value, data_t>::type> count;
-    unsigned char padding[64-sizeof(data_t)];
+    unsigned char padding[16-sizeof(data_t)];
 };
 
 
