@@ -32,12 +32,6 @@ union vec4_t;
 } // math namespace
 } // ls namespace
 
-template <typename data_t>
-struct SL_BinCounter;
-
-template <typename data_t>
-struct SL_BinCounterAtomic;
-
 class SL_Context;
 struct SL_FragCoord;
 struct SL_FragmentBin;

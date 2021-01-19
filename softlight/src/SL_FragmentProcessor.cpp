@@ -13,6 +13,7 @@
 #include "softlight/SL_ScanlineBounds.hpp"
 #include "softlight/SL_Shader.hpp" // SL_FragmentShader
 #include "softlight/SL_ShaderProcessor.hpp" // SL_FragmentBin
+#include "softlight/SL_ShaderUtil.hpp" // sl_scanline_offset(), SL_BinCounter
 #include "softlight/SL_Texture.hpp"
 
 

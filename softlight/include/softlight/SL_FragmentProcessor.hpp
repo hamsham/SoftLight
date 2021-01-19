@@ -5,7 +5,6 @@
 #include "lightsky/math/vec4.h"
 
 #include "softlight/SL_Mesh.hpp" // SL_RenderMode
-#include "softlight/SL_ShaderUtil.hpp" // sl_scanline_offset(), SL_BinCounter
 
 
 
@@ -19,6 +18,9 @@ namespace ls
         struct Half;
     }
 }
+
+template <typename data_t>
+union SL_BinCounter;
 
 struct SL_FragCoord; // SL_ShaderProcessor.hpp
 struct SL_FragmentBin; // SL_ShaderProcessor.hpp

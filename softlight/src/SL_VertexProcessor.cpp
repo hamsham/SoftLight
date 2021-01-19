@@ -15,6 +15,7 @@
 #include "softlight/SL_IndexBuffer.hpp"
 #include "softlight/SL_Shader.hpp"
 #include "softlight/SL_ShaderProcessor.hpp"
+#include "softlight/SL_ShaderUtil.hpp" // SL_BinCounter
 #include "softlight/SL_VertexArray.hpp"
 #include "softlight/SL_VertexBuffer.hpp"
 #include "softlight/SL_VertexProcessor.hpp"
@@ -630,6 +631,14 @@ inline LS_INLINE SL_ClipStatus face_visible(
 /*-----------------------------------------------------------------------------
  * SL_VertexProcessor Class
 -----------------------------------------------------------------------------*/
+struct alignas(alignof(ls::math::vec4)) SL_TransformedVert
+{
+    ls::math::vec4 vert;
+    ls::math::vec4 varyings[SL_SHADER_MAX_VARYING_VECTORS];
+};
+
+
+
 /*-------------------------------------
  * Execute a fragment processor
 -------------------------------------*/

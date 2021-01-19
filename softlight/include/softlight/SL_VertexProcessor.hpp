@@ -5,7 +5,6 @@
 #include <atomic>
 
 #include "softlight/SL_Mesh.hpp"
-#include "softlight/SL_ShaderUtil.hpp"
 
 
 
@@ -22,16 +21,17 @@ namespace ls
 } // end ls namespace
 
 template <typename data_t>
-struct SL_BinCounter;
+union SL_BinCounter;
 
 template <typename data_t>
-struct SL_BinCounterAtomic;
+union SL_BinCounterAtomic;
 
 class SL_Context; // SL_Context.hpp
 struct SL_FragmentBin; // SL_ShaderProcessor.hpp
 struct SL_FragCoord;
 class SL_Framebuffer;
 class SL_Shader; // SL_Shader.hpp
+struct SL_TransformedVert;
 
 
 
@@ -43,14 +43,6 @@ enum SL_ClipStatus
     SL_TRIANGLE_NOT_VISIBLE       = 0x00,
     SL_TRIANGLE_PARTIALLY_VISIBLE = 0x01,
     SL_TRIANGLE_FULLY_VISIBLE     = 0x03,
-};
-
-
-
-struct alignas(alignof(ls::math::vec4)) SL_TransformedVert
-{
-    ls::math::vec4 vert;
-    ls::math::vec4 varyings[SL_SHADER_MAX_VARYING_VECTORS];
 };
 
 
