@@ -19,7 +19,7 @@ class SL_PTVCache
 
     static_assert(ls::math::is_pow2<size_t>(PTV_CACHE_SIZE), "Vertex cache size must be a power of 2.");
 
-    alignas(alignof(ls::math::vec4)) size_t mIndices[PTV_CACHE_SIZE];
+    size_t mIndices[PTV_CACHE_SIZE];
 
     SL_VertexParam& mParam;
 
