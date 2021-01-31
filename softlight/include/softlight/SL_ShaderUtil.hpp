@@ -258,7 +258,7 @@ static_assert(sizeof(SL_TransformedVert) == sizeof(ls::math::vec4)*5, "Unexpecte
 /*-----------------------------------------------------------------------------
  * Intermediate Fragment Storage for Binning
 -----------------------------------------------------------------------------*/
-struct alignas(sizeof(ls::math::vec4)*2) SL_FragmentBin
+struct alignas(sizeof(ls::math::vec4)) SL_FragmentBin
 {
     // 4-byte floats * 4-element vector * 3 vectors-per-tri = 48 bytes
     ls::math::vec4 mScreenCoords[SL_SHADER_MAX_SCREEN_COORDS];
@@ -269,11 +269,13 @@ struct alignas(sizeof(ls::math::vec4)*2) SL_FragmentBin
     // 4-byte floats * 4-element vector * 3-vectors-per-tri * 4 varyings-per-vertex = 192 bytes
     ls::math::vec4 mVaryings[SL_SHADER_MAX_SCREEN_COORDS * SL_SHADER_MAX_VARYING_VECTORS];
 
+    // 8 bytes
     uint_fast64_t primIndex;
-    // 296 bytes = 2372 bits
+
+    // 304 bytes = 2432 bits
 };
 
-static_assert(sizeof(SL_FragmentBin) == sizeof(ls::math::vec4)*20, "Unexpected size of SL_FragmentBin. Please update all varying memcpy routines.");
+static_assert(sizeof(SL_FragmentBin) == sizeof(ls::math::vec4)*19, "Unexpected size of SL_FragmentBin. Please update all varying memcpy routines.");
 
 
 /*-----------------------------------------------------------------------------
