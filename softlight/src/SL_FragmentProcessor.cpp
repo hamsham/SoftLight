@@ -151,13 +151,33 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
         const float32x4_t bc0 = vdupq_n_f32(vgetq_lane_f32(bc, 0));
         const float32x4_t bc1 = vdupq_n_f32(vgetq_lane_f32(bc, 1));
         const float32x4_t bc2 = vdupq_n_f32(vgetq_lane_f32(bc, 2));
+        float32x4_t v0, v1, v2;
 
-        for (uint_fast32_t i = numVaryings; i--;)
+        switch (numVaryings)
         {
-            const float32x4_t v0 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings0++)), bc0);
-            const float32x4_t v1 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings1++)), bc1);
-            const float32x4_t v2 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings2++)), bc2);
-            vst1q_f32(reinterpret_cast<float*>(outVaryings++), vaddq_f32(v2, vaddq_f32(v1, v0)));
+            case 4:
+                v0 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings0+3)), bc0);
+                v1 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings1+3)), bc1);
+                v2 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings2+3)), bc2);
+                vst1q_f32(reinterpret_cast<float*>(outVaryings+3), vaddq_f32(v2, vaddq_f32(v1, v0)));
+
+            case 3:
+                v0 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings0+2)), bc0);
+                v1 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings1+2)), bc1);
+                v2 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings2+2)), bc2);
+                vst1q_f32(reinterpret_cast<float*>(outVaryings+2), vaddq_f32(v2, vaddq_f32(v1, v0)));
+
+            case 2:
+                v0 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings0+1)), bc0);
+                v1 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings1+1)), bc1);
+                v2 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings2+1)), bc2);
+                vst1q_f32(reinterpret_cast<float*>(outVaryings+1), vaddq_f32(v2, vaddq_f32(v1, v0)));
+
+            case 1:
+                v0 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings0)), bc0);
+                v1 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings1)), bc1);
+                v2 = vmulq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings2)), bc2);
+                vst1q_f32(reinterpret_cast<float*>(outVaryings), vaddq_f32(v2, vaddq_f32(v1, v0)));
         }
 
     #else

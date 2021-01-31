@@ -4,16 +4,17 @@
 #include <memory> // std::nothrow
 #include <string>
 #include <cstring> // strcmp()
-#include <lightsky/math/Math.h>
 
-#include "lightsky/setup/OS.h"
+#include "lightsky/setup/OS.h" // LS_OS_WINDOWS
 
 #include "lightsky/utils/Log.h"
 
+#include "lightsky/math/Math.h"
 #include "lightsky/math/scalar_utils.h"
 
 #include "softlight/SL_BoundingBox.hpp"
 #include "softlight/SL_Camera.hpp"
+#include "softlight/SL_Config.hpp" // SL_VERTEX_CACHING_ENABLED
 #include "softlight/SL_ImgFile.hpp"
 #include "softlight/SL_IndexBuffer.hpp"
 #include "softlight/SL_SceneFileLoader.hpp"
@@ -259,6 +260,8 @@ bool SL_SceneFilePreload::load(const std::string& filename, SL_SceneLoadOpts opt
     //fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, AI_SLM_DEFAULT_MAX_TRIANGLES);
     fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, std::numeric_limits<int32_t>::max());
     //fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_VERTEX_LIMIT, std::numeric_limits<uint16_t>::max());
+
+    fileImporter.SetPropertyInteger(AI_CONFIG_PP_ICL_PTCACHE_SIZE, SL_VERTEX_CACHE_SIZE);
 
     unsigned defaultFlags = SCENE_FILE_IMPORT_FLAGS;
     if (opts.genTangents)

@@ -13,7 +13,6 @@
 
 #include "softlight/SL_Animation.hpp"
 #include "softlight/SL_Color.hpp"
-#include "softlight/SL_Config.hpp" // SL_VERTEX_CACHING_ENABLED
 #include "softlight/SL_Mesh.hpp"
 #include "softlight/SL_SceneNode.hpp"
 
@@ -54,6 +53,7 @@ enum : unsigned int
         //| aiProcess_GenSmoothNormals
         //| aiProcess_GenNormals
         | aiProcess_Triangulate // the renderer can only handle triangles
+        | aiProcess_ImproveCacheLocality
         | 0
 };
 

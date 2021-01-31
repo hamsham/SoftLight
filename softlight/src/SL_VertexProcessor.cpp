@@ -8,7 +8,6 @@
 
 #include "lightsky/math/mat_utils.h"
 
-#include "softlight/SL_Config.hpp"
 #include "softlight/SL_Context.hpp"
 #include "softlight/SL_FragmentProcessor.hpp"
 #include "softlight/SL_Framebuffer.hpp"
@@ -18,6 +17,7 @@
 #include "softlight/SL_ShaderUtil.hpp" // SL_BinCounter
 #include "softlight/SL_VertexArray.hpp"
 #include "softlight/SL_VertexBuffer.hpp"
+#include "softlight/SL_VertexCache.hpp"
 #include "softlight/SL_VertexProcessor.hpp"
 
 
@@ -29,125 +29,8 @@ namespace math = ls::math;
 
 
 
-/*-------------------------------------
- * Intermediate representation of a vertex after it's been run through a shader.
--------------------------------------*/
-struct alignas(alignof(ls::math::vec4)) SL_TransformedVert
-{
-    ls::math::vec4 vert;
-    ls::math::vec4 varyings[SL_SHADER_MAX_VARYING_VECTORS];
-};
-
-
-
-/*-------------------------------------
- * Radix sort adapter for depth-sorting opaque geometry
--------------------------------------*/
-template <typename data_type>
-struct SL_UnblendedRadixSorter
-{
-    constexpr unsigned long long operator()(const SL_FragmentBin& val) const noexcept
-    {
-        return (unsigned long long)(*reinterpret_cast<const int32_t*>(val.mScreenCoords[0].v+2));
-    }
-};
-
-
-
-// Comparison operator for sorting fragments by depth
-inline LS_INLINE bool operator < (const SL_FragmentBin& a, const SL_FragmentBin& b) noexcept
-{
-    return *reinterpret_cast<const int32_t*>(a.mScreenCoords[0].v+2) < *reinterpret_cast<const int32_t*>(b.mScreenCoords[0].v+2);
-}
-
-// Comparison operator for sorting blended fragments by depth
-inline LS_INLINE bool operator > (const SL_FragmentBin& a, const SL_FragmentBin& b) noexcept
-{
-    return *reinterpret_cast<const int32_t*>(a.mScreenCoords[0].v+2) > *reinterpret_cast<const int32_t*>(b.mScreenCoords[0].v+2);
-}
-
-
-
 namespace
 {
-
-
-
-#if SL_VERTEX_CACHING_ENABLED
-class SL_PTVCache
-{
-  public:
-    enum : size_t
-    {
-        PTV_CACHE_SIZE = SL_VERTEX_CACHE_SIZE,
-        PTV_CACHE_MISS = ~(size_t)0,
-    };
-
-    alignas(sizeof(math::vec4)) size_t mIndices[PTV_CACHE_SIZE];
-
-    SL_VertexParam& mParam;
-
-    ls::math::vec4_t<float> (*mShader)(SL_VertexParam&);
-
-    alignas(sizeof(math::vec4)) SL_TransformedVert mVertices[PTV_CACHE_SIZE];
-
-    SL_PTVCache(const SL_PTVCache&)            = delete;
-    SL_PTVCache(SL_PTVCache&&)                 = delete;
-    SL_PTVCache& operator=(const SL_PTVCache&) = delete;
-    SL_PTVCache& operator=(SL_PTVCache&&)      = delete;
-
-    SL_PTVCache(ls::math::vec4_t<float> (*pShader)(SL_VertexParam&), SL_VertexParam& inParam) noexcept :
-        mIndices{},
-        mParam{inParam},
-        mShader{pShader},
-        mVertices{}
-    {
-        for (size_t& index : mIndices)
-        {
-            index = PTV_CACHE_MISS;
-        }
-    }
-
-    inline LS_INLINE SL_TransformedVert* query_and_update(size_t key) noexcept
-    {
-        size_t i = key % PTV_CACHE_SIZE;
-
-        if (LS_LIKELY(mIndices[i] != key))
-        {
-            mIndices[i] = key;
-            mParam.vertId = key;
-            mParam.pVaryings = mVertices[i].varyings;
-            mVertices[i].vert = mShader(mParam);
-        }
-
-        return mVertices+i;
-    }
-};
-
-
-
-inline LS_INLINE void _copy_transformed_vert(SL_TransformedVert& out, const SL_TransformedVert* pIn) noexcept
-{
-    #if defined(LS_ARCH_X86)
-        _mm_store_si128(reinterpret_cast<__m128i*>(&out)+0, _mm_lddqu_si128(reinterpret_cast<const __m128i*>(pIn)+0));
-        _mm_store_si128(reinterpret_cast<__m128i*>(&out)+1, _mm_lddqu_si128(reinterpret_cast<const __m128i*>(pIn)+1));
-        _mm_store_si128(reinterpret_cast<__m128i*>(&out)+2, _mm_lddqu_si128(reinterpret_cast<const __m128i*>(pIn)+2));
-        _mm_store_si128(reinterpret_cast<__m128i*>(&out)+3, _mm_lddqu_si128(reinterpret_cast<const __m128i*>(pIn)+3));
-        _mm_store_si128(reinterpret_cast<__m128i*>(&out)+4, _mm_lddqu_si128(reinterpret_cast<const __m128i*>(pIn)+4));
-    #elif defined(LS_ARCH_ARM)
-        vst1q_f32(reinterpret_cast<float*>(&out)+0,  vld1q_f32(reinterpret_cast<const float*>(pIn)+0));
-        vst1q_f32(reinterpret_cast<float*>(&out)+4,  vld1q_f32(reinterpret_cast<const float*>(pIn)+4));
-        vst1q_f32(reinterpret_cast<float*>(&out)+8,  vld1q_f32(reinterpret_cast<const float*>(pIn)+8));
-        vst1q_f32(reinterpret_cast<float*>(&out)+12, vld1q_f32(reinterpret_cast<const float*>(pIn)+12));
-        vst1q_f32(reinterpret_cast<float*>(&out)+16, vld1q_f32(reinterpret_cast<const float*>(pIn)+16));
-    #else
-        out = *pIn;
-    #endif
-}
-
-
-
-#endif // SL_VERTEX_CACHING_ENABLED
 
 
 
@@ -827,11 +710,27 @@ void SL_VertexProcessor::push_bin(
     switch (renderMode)
     {
         case SL_RenderMode::RENDER_MODE_TRIANGLES:
-            for (i = 0; i < numVaryings; ++i)
+            switch (numVaryings)
             {
-                bin.mVaryings[i+SL_SHADER_MAX_VARYING_VECTORS*0] = a.varyings[i];
-                bin.mVaryings[i+SL_SHADER_MAX_VARYING_VECTORS*1] = b.varyings[i];
-                bin.mVaryings[i+SL_SHADER_MAX_VARYING_VECTORS*2] = c.varyings[i];
+                case 4:
+                    bin.mVaryings[3+SL_SHADER_MAX_VARYING_VECTORS*0] = a.varyings[3];
+                    bin.mVaryings[3+SL_SHADER_MAX_VARYING_VECTORS*1] = b.varyings[3];
+                    bin.mVaryings[3+SL_SHADER_MAX_VARYING_VECTORS*2] = c.varyings[3];
+
+                case 3:
+                    bin.mVaryings[2+SL_SHADER_MAX_VARYING_VECTORS*0] = a.varyings[2];
+                    bin.mVaryings[2+SL_SHADER_MAX_VARYING_VECTORS*1] = b.varyings[2];
+                    bin.mVaryings[2+SL_SHADER_MAX_VARYING_VECTORS*2] = c.varyings[2];
+
+                case 2:
+                    bin.mVaryings[1+SL_SHADER_MAX_VARYING_VECTORS*0] = a.varyings[1];
+                    bin.mVaryings[1+SL_SHADER_MAX_VARYING_VECTORS*1] = b.varyings[1];
+                    bin.mVaryings[1+SL_SHADER_MAX_VARYING_VECTORS*2] = c.varyings[1];
+
+                case 1:
+                    bin.mVaryings[0+SL_SHADER_MAX_VARYING_VECTORS*0] = a.varyings[0];
+                    bin.mVaryings[0+SL_SHADER_MAX_VARYING_VECTORS*1] = b.varyings[0];
+                    bin.mVaryings[0+SL_SHADER_MAX_VARYING_VECTORS*2] = c.varyings[0];
             }
             break;
 
@@ -1098,7 +997,7 @@ void SL_VertexProcessor::process_points(const SL_Mesh& m, size_t instanceId) noe
     {
         #if SL_VERTEX_CACHING_ENABLED
             const size_t vertId = usingIndices ? get_next_vertex(pIbo, i) : i;
-            pVert0 = *ptvCache.query_and_update(vertId);
+            ptvCache.query_and_update(vertId, pVert0);
         #else
             params.vertId    = usingIndices ? get_next_vertex(pIbo, i) : i;
             params.pVaryings = pVert0.varyings;
@@ -1162,8 +1061,8 @@ void SL_VertexProcessor::process_lines(const SL_Mesh& m, size_t instanceId) noex
         #if SL_VERTEX_CACHING_ENABLED
             const size_t vertId0 = usingIndices ? get_next_vertex(pIbo, index0) : index0;
             const size_t vertId1 = usingIndices ? get_next_vertex(pIbo, index1) : index1;
-            pVert0 = *ptvCache.query_and_update(vertId0);
-            pVert1 = *ptvCache.query_and_update(vertId1);
+            ptvCache.query_and_update(vertId0, pVert0);
+            ptvCache.query_and_update(vertId1, pVert1);
         #else
             params.vertId    = usingIndices ? get_next_vertex(pIbo, index0) : index0;
             params.pVaryings = pVert0.varyings;
@@ -1232,9 +1131,9 @@ void SL_VertexProcessor::process_tris(const SL_Mesh& m, size_t instanceId) noexc
         const math::vec3_t<size_t>&& vertId = usingIndices ? get_next_vertex3(pIbo, i) : math::vec3_t<size_t>{i, i+1, i+2};
 
         #if SL_VERTEX_CACHING_ENABLED
-            _copy_transformed_vert(pVert0, ptvCache.query_and_update(vertId[0]));
-            _copy_transformed_vert(pVert1, ptvCache.query_and_update(vertId[1]));
-            _copy_transformed_vert(pVert2, ptvCache.query_and_update(vertId[2]));
+            ptvCache.query_and_update(vertId[0], pVert0);
+            ptvCache.query_and_update(vertId[1], pVert1);
+            ptvCache.query_and_update(vertId[2], pVert2);
         #else
             params.vertId    = vertId.v[0];
             params.pVaryings = pVert0.varyings;

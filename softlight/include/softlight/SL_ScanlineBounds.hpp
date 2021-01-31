@@ -11,8 +11,6 @@
 #include "lightsky/math/scalar_utils.h"
 #include "lightsky/math/vec_utils.h"
 
-#include "softlight/SL_Config.hpp"
-
 
 
 /**------------------------------------

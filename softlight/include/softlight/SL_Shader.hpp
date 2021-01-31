@@ -1,4 +1,7 @@
 
+/**
+ * @file Publicly-exposed shader functions & types
+ */
 #ifndef SL_SHADER_HPP
 #define SL_SHADER_HPP
 

@@ -168,6 +168,7 @@ set(SL_LIB_HEADERS
     include/softlight/SL_UniformBuffer.hpp
     include/softlight/SL_VertexArray.hpp
     include/softlight/SL_VertexBuffer.hpp
+    include/softlight/SL_VertexCache.hpp
     include/softlight/SL_VertexProcessor.hpp
     include/softlight/SL_WindowBuffer.hpp
     include/softlight/SL_WindowEvent.hpp)

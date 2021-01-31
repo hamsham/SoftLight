@@ -1,4 +1,8 @@
 
+/**
+ * @file Internal functions, types, and helper modules shared between shader
+ * pipelines.
+ */
 #ifndef SL_SHADERUTIL_HPP
 #define SL_SHADERUTIL_HPP
 
@@ -10,8 +14,6 @@
 
 #include "lightsky/math/scalar_utils.h"
 #include "lightsky/math/vec4.h"
-
-#include "softlight/SL_ScanlineBounds.hpp"
 
 
 
@@ -240,9 +242,23 @@ union alignas(16) SL_BinCounterAtomic
 
 
 /*-----------------------------------------------------------------------------
+ * Intermediate representation of a vertex after it's been run through a
+ * shader.
+-----------------------------------------------------------------------------*/
+struct alignas(alignof(ls::math::vec4)) SL_TransformedVert
+{
+    ls::math::vec4 vert;
+    ls::math::vec4 varyings[SL_SHADER_MAX_VARYING_VECTORS];
+};
+
+static_assert(sizeof(SL_TransformedVert) == sizeof(ls::math::vec4)*5, "Unexpected size of SL_TransformedVert. Please update the vertex cache copy routines.");
+
+
+
+/*-----------------------------------------------------------------------------
  * Intermediate Fragment Storage for Binning
 -----------------------------------------------------------------------------*/
-struct alignas(sizeof(ls::math::vec4)) SL_FragmentBin
+struct alignas(sizeof(ls::math::vec4)*2) SL_FragmentBin
 {
     // 4-byte floats * 4-element vector * 3 vectors-per-tri = 48 bytes
     ls::math::vec4 mScreenCoords[SL_SHADER_MAX_SCREEN_COORDS];
@@ -257,6 +273,7 @@ struct alignas(sizeof(ls::math::vec4)) SL_FragmentBin
     // 296 bytes = 2372 bits
 };
 
+static_assert(sizeof(SL_FragmentBin) == sizeof(ls::math::vec4)*20, "Unexpected size of SL_FragmentBin. Please update all varying memcpy routines.");
 
 
 /*-----------------------------------------------------------------------------
