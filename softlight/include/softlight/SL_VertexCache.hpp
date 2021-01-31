@@ -1,0 +1,8 @@
+//
+// Created by hammy on 1/22/21.
+//
+
+#ifndef SOFTLIGHT_SL_VERTEXCACHE_HPP
+#define SOFTLIGHT_SL_VERTEXCACHE_HPP
+
+#endif //SOFTLIGHT_SL_VERTEXCACHE_HPP
