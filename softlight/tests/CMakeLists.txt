@@ -20,7 +20,9 @@ configure_file(testdata/heart/heart.obj           testdata/heart/heart.obj      
 configure_file(testdata/heart/heart.mtl           testdata/heart/heart.mtl           COPYONLY)
 configure_file(testdata/heart/Heart_env.png       testdata/heart/Heart_env.png       COPYONLY)
 configure_file(testdata/heart/HeartUtuwaFrame.png testdata/heart/HeartUtuwaFrame.png COPYONLY)
-#
+configure_file(testdata/towerG.obj                testdata/towerG.obj                COPYONLY)
+configure_file(testdata/earth.png                 testdata/earth.png                 COPYONLY)
+
 configure_file(testdata/bob/Bob.md5anim       testdata/bob/Bob.md5anim       COPYONLY)
 configure_file(testdata/bob/Bob.md5mesh       testdata/bob/Bob.md5mesh       COPYONLY)
 configure_file(testdata/bob/bob.source.txt    testdata/bob/bob.source.txt    COPYONLY)
@@ -29,11 +31,11 @@ configure_file(testdata/bob/guard1_face.png   testdata/bob/guard1_face.png   COP
 configure_file(testdata/bob/guard1_helmet.png testdata/bob/guard1_helmet.png COPYONLY)
 configure_file(testdata/bob/iron_grill.png    testdata/bob/iron_grill.png    COPYONLY)
 configure_file(testdata/bob/round_grill.png   testdata/bob/round_grill.png   COPYONLY)
-#
+
 configure_file(testdata/african_head/african_head.obj testdata/african_head/african_head.obj COPYONLY)
 configure_file(testdata/african_head/african_head.mtl testdata/african_head/african_head.mtl COPYONLY)
 configure_file(testdata/african_head/african_head.ppm testdata/african_head/african_head.ppm COPYONLY)
-#
+
 #configure_file(testdata/base_model/base_model.dae                   testdata/base_model/base_model.dae                   COPYONLY)
 #configure_file("testdata/base_model/Material.001 Diffuse Color.png" "testdata/base_model/Material.001 Diffuse Color.png" COPYONLY)
 #configure_file("testdata/base_model/Material.002 Diffuse Color.png" "testdata/base_model/Material.002 Diffuse Color.png" COPYONLY)
@@ -140,8 +142,6 @@ configure_file(testdata/lorem_ipsum.txt testdata/lorem_ipsum.txt COPYONLY)
 
 #configure_file(testdata/dragon.obj                testdata/dragon.obj                  COPYONLY)
 
-configure_file(testdata/towerG.obj testdata/towerG.obj COPYONLY)
-
 
 
 # -------------------------------------
@@ -188,6 +188,7 @@ sl_add_test(sl_scanline_offset_test  sl_scanline_offset_test.cpp)
 sl_add_test(sl_sdf_image_test        sl_sdf_image_test.cpp sl_sdf_generator.hpp sl_sdf_generator.cpp)
 sl_add_test(sl_scene_info_test       sl_scene_info_test.cpp)
 sl_add_test(sl_screen_tile_test      sl_screen_tile_test.cpp)
+sl_add_test(sl_shading_test          sl_shading_test.cpp)
 sl_add_test(sl_skybox_test           sl_skybox_test.cpp)
 sl_add_test(sl_text_test             sl_text_test.cpp)
 sl_add_test(sl_vertex_chunking_test  sl_vertex_chunking_test.cpp)
