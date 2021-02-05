@@ -81,9 +81,9 @@ inline LS_INLINE void sl_perspective_divide3(math::vec4& LS_RESTRICT_PTR v0, mat
         const __m128 p1    = _mm_load_ps(reinterpret_cast<const float*>(&v1));
         const __m128 p2    = _mm_load_ps(reinterpret_cast<const float*>(&v2));
 
-        const __m128 wInv0 = _mm_rcp_ps(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(p0), 0xFF)));
-        const __m128 wInv1 = _mm_rcp_ps(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(p1), 0xFF)));
-        const __m128 wInv2 = _mm_rcp_ps(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(p2), 0xFF)));
+        const __m128 wInv0 = _mm_rcp_ps(_mm_permute_ps(p0, 0xFF));
+        const __m128 wInv1 = _mm_rcp_ps(_mm_permute_ps(p1, 0xFF));
+        const __m128 wInv2 = _mm_rcp_ps(_mm_permute_ps(p2, 0xFF));
 
         const __m128 vMul0 = _mm_mul_ps(p0, wInv0);
         const __m128 vMul1 = _mm_mul_ps(p1, wInv1);
