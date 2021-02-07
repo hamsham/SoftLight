@@ -125,19 +125,20 @@ inline LS_INLINE bool intersect_ray_box(
 
 
 
+template <unsigned step = 64>
 inline LS_INLINE math::vec4 calc_normal(const SL_Texture& tex, const math::vec4& p) noexcept
 {
-    constexpr float stepLen = 1.f / 128.f;
-    const math::vec4&& a = p + math::vec4{stepLen, 0.f, 0.f, 0.f};
-    const math::vec4&& b = p + math::vec4{0.f, stepLen, 0.f, 0.f};
-    const math::vec4&& c = p + math::vec4{0.f, 0.f, stepLen, 0.f};
+    constexpr float stepLen = 1.f / (float)step;
+    const math::vec4&& a = p - math::vec4{stepLen, 0.f, 0.f, 0.f};
+    const math::vec4&& b = p - math::vec4{0.f, stepLen, 0.f, 0.f};
+    const math::vec4&& c = p - math::vec4{0.f, 0.f, stepLen, 0.f};
 
-    return math::normalize((math::vec4)math::vec4_t<int>{
-        sl_sample_bilinear<SL_ColorRType<char>, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(tex, a[0], a[1], a[2]).r,
-        sl_sample_bilinear<SL_ColorRType<char>, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(tex, b[0], b[1], b[2]).r,
-        sl_sample_bilinear<SL_ColorRType<char>, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(tex, c[0], c[1], c[2]).r,
-        0
-    });
+    return (math::normalize((math::vec4)math::vec4_t<unsigned int>{
+        sl_sample_trilinear<SL_ColorRType<unsigned char>, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(tex, a[0], a[1], a[2]).r,
+        sl_sample_trilinear<SL_ColorRType<unsigned char>, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(tex, b[0], b[1], b[2]).r,
+        sl_sample_trilinear<SL_ColorRType<unsigned char>, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(tex, c[0], c[1], c[2]).r,
+        0u
+    }) * 2.f) - math::vec4{1.f, 1.f, 1.f, 0.f};
 }
 
 
@@ -177,7 +178,7 @@ bool _volume_frag_shader(SL_FragmentParam& fragParam)
     const SL_Texture&     colorTex  = *pUniforms->pColorMap;
     const math::vec4&     spacing   = pUniforms->spacing;
     const math::vec4&     camPos    = pUniforms->camPos;
-    const math::vec4&&    viewDir   = math::vec4{2.f * winDimens[0] - 1.f, 2.f * winDimens[1] - 1.f, -focalLen, 0.f} / spacing;
+    const math::vec4&&    viewDir   = math::vec4{2.f * winDimens[0] - 1.f, 2.f * winDimens[1] - 1.f, -focalLen, 0.f} * math::rcp(spacing);
     math::vec4&&          rayDir    = viewDir * pUniforms->viewMatrix;
     float                 nearPos;
     float                 farPos;
@@ -187,14 +188,14 @@ bool _volume_frag_shader(SL_FragmentParam& fragParam)
         return false;
     }
 
-    math::vec4&& rayStart  = (camPos + rayDir * farPos + 1.f) * 0.5f;
-    math::vec4&& rayStop   = (camPos + rayDir * nearPos + 1.f) * 0.5f;
-    math::vec4&& ray       = rayStart - rayStop;
-    math::vec4&& rayStep   = ray * step;
-    math::vec4   rayPos    = rayStart;
-    math::vec4   dstTexel  = {0.f};
-    unsigned     intensity;
-    float        srcAlpha;
+    const math::vec4&& rayStart  = (camPos + rayDir * farPos + 1.f) * 0.5f;
+    const math::vec4&& rayStop   = (camPos + rayDir * nearPos + 1.f) * 0.5f;
+    const math::vec4&& ray       = rayStart - rayStop;
+    const math::vec4&& rayStep   = ray * step;
+    math::vec4         rayPos    = rayStart;
+    math::vec4         dstTexel  = {0.f};
+    unsigned           intensity;
+    float              srcAlpha;
 
     // Test pixels with minimal filtering before attempting to do anything
     // more expensive
@@ -203,33 +204,31 @@ bool _volume_frag_shader(SL_FragmentParam& fragParam)
         return false;
     }
 
-    for (unsigned i = 0; i < numSteps; ++i)
+    (void)colorTex;
+
+    for (unsigned i = 0; i < numSteps && dstTexel[3] < 1.f; ++i)
     {
         intensity = sl_sample_trilinear<SL_ColorR8, SL_WrapMode::EDGE>(volumeTex, rayPos[0], rayPos[1], rayPos[2]).r;
         if (intensity >= 17)
         {
-            //const float intesityF = (float)intensity * (1.f / 255.f);
-
             // regular opacity (doesn't take ray steps into account).
-            srcAlpha = alphaTex.raw_texel<float>(intensity);
-            //srcAlpha = sl_sample_bilinear<SL_ColorRf, SL_WrapMode::EDGE>(alphaTex, intesityF, 0.f).r;
+            srcAlpha = alphaTex.raw_texel<float>(intensity);// * ((1.f+(float)i) * step);
             if (srcAlpha > 0.f)
             {
+                const math::vec4&& norm      = calc_normal<numSteps>(volumeTex, rayPos);
+                const float        luminance = 2.f * math::clamp(math::dot(norm, math::vec4{1.f, 0.f, 1.f, 0.f}), 0.f, 1.f);
+                //const math::vec3&& volColor  = math::vec3_cast(norm) * luminance;
+                //const math::vec3&& volColor  = math::vec3_cast(norm);
+                //const math::vec3&& volColor  = math::vec3{(float)intensity/256.f};
+                //const math::vec3&& volColor  = colorTex.raw_texel<SL_ColorRGBf>(intensity);
+                const math::vec3&& volColor  = colorTex.raw_texel<SL_ColorRGBf>(intensity) * luminance;
+                const math::vec4&& srcRGBA   = math::vec4_cast(volColor, 1.f);
+
                 // corrected opacity, from:
                 // https://github.com/chrislu/schism/blob/master/projects/examples/ex_volume_ray_cast/src/renderer/shader/volume_ray_cast.glslf
                 srcAlpha = 1.f - math::pow(1.f - srcAlpha, math::length(rayPos - rayStop));
 
-                const math::vec4&& norm      = calc_normal(volumeTex, rayPos);
-                const float        luminance = math::clamp(math::dot(norm, math::vec4{0.f, 1.f, 1.f, 0.f}), 0.f, 1.f);
-                const math::vec4&& diffuse   = {luminance, luminance, luminance, 1.f};
-                const math::vec4&& srcA      = {srcAlpha};
-                const math::vec4&& blend     = {math::vec4{1.f} - srcA};
-
-                const SL_ColorRGBAf volColor = colorTex.raw_texel<SL_ColorRGBAf>(intensity);
-                //const SL_ColorRGBAf&& volColor = sl_sample_bilinear<SL_ColorRGBAf, SL_WrapMode::EDGE>(colorTex, intesityF, 0.f);
-                const math::vec4&& composite = volColor * diffuse * srcA;
-
-                dstTexel = (dstTexel * blend) + composite;
+                dstTexel = (srcRGBA*srcAlpha) + (dstTexel - dstTexel*srcAlpha);
             }
         }
 
@@ -407,6 +406,8 @@ int create_opacity_map(SL_SceneGraph& graph, const size_t volumeTexIndex)
         return 1;
     }
 
+    ls::utils::fast_memset(opacityTex.data(), 0, opacityTex.width()*opacityTex.height()*opacityTex.bpp());
+
     const auto add_transfer_func = [&opacityTex](const uint16_t begin, const uint16_t end, const float opacity)->void
     {
         for (uint16_t i = begin; i < end; ++i)
@@ -417,12 +418,12 @@ int create_opacity_map(SL_SceneGraph& graph, const size_t volumeTexIndex)
 
     #if 1
     add_transfer_func(0,  17,  0.f);
-    add_transfer_func(17, 29,  0.05f);
-    add_transfer_func(29, 40,  0.02f);
+    add_transfer_func(17, 29,  0.02f);
+    add_transfer_func(29, 40,  0.12f);
     add_transfer_func(40, 50,  0.05f);
     add_transfer_func(50, 60,  0.03f);
-    add_transfer_func(60, 75,  0.05f);
-    add_transfer_func(75, 255, 0.01f);
+    add_transfer_func(60, 75,  0.004f);
+    add_transfer_func(75, 255, 0.001f);
     #else
     add_transfer_func(0,  17,  0.f);
     add_transfer_func(17, 40,  0.025f);
@@ -448,17 +449,19 @@ int create_color_map(SL_SceneGraph& graph, const size_t volumeTexIndex)
     const uint16_t h = 1;
     const uint16_t d = 1;
 
-    if (0 != colorTex.init(SL_COLOR_RGBA_FLOAT, w, h, d))
+    if (0 != colorTex.init(SL_COLOR_RGB_FLOAT, w, h, d))
     {
         std::cerr << "Error: Unable to allocate memory for the color transfer functions." << std::endl;
         return 1;
     }
 
-    const auto add_transfer_func = [&colorTex](const uint16_t begin, const uint16_t end, const SL_ColorRGBAType<float> color)->void
+    ls::utils::fast_memset(colorTex.data(), 0, colorTex.width()*colorTex.height()*colorTex.bpp());
+
+    const auto add_transfer_func = [&colorTex](const uint16_t begin, const uint16_t end, const SL_ColorRGBType<float> color)->void
     {
         for (uint16_t i = begin; i < end; ++i)
         {
-            colorTex.raw_texel<SL_ColorRGBAf>(i, 0, 0) = color;
+            colorTex.raw_texel<SL_ColorRGBf>(i, 0, 0) = color;
         }
     };
 
@@ -469,11 +472,11 @@ int create_color_map(SL_SceneGraph& graph, const size_t volumeTexIndex)
     add_transfer_func(50, 75,  SL_ColorRGBType<float>{1.f,   1.f,  1.f});
     add_transfer_func(75, 255, SL_ColorRGBType<float>{0.6f,  0.6f, 0.6f});
     */
-    add_transfer_func(0,  17,  SL_ColorRGBAType<float>{0.f,   0.f,  0.f,  1.f});
-    add_transfer_func(17, 40,  SL_ColorRGBAType<float>{0.2f,  0.2f, 0.5f, 1.f});
-    add_transfer_func(40, 50,  SL_ColorRGBAType<float>{0.1f,  0.3f, 0.4f, 1.f});
-    add_transfer_func(50, 75,  SL_ColorRGBAType<float>{1.f,   1.f,  1.f,  1.f});
-    add_transfer_func(75, 255, SL_ColorRGBAType<float>{0.6f,  0.6f, 0.6f, 1.f});
+    add_transfer_func(0,  17,  SL_ColorRGBType<float>{0.f,   0.f,  0.f,});
+    add_transfer_func(17, 40,  SL_ColorRGBType<float>{0.2f,  0.2f, 0.5f});
+    add_transfer_func(40, 50,  SL_ColorRGBType<float>{0.1f,  0.3f, 0.4f});
+    add_transfer_func(50, 75,  SL_ColorRGBType<float>{1.f,   1.f,  1.f,});
+    add_transfer_func(75, 255, SL_ColorRGBType<float>{0.6f,  0.6f, 0.6f});
 
     return 0;
 }
@@ -499,7 +502,7 @@ utils::Pointer<SL_SceneGraph> init_volume_context()
     assert(retCode == 0);
 
     SL_Texture& depth = context.texture(depthId);
-    retCode = depth.init(SL_ColorDataType::SL_COLOR_R_FLOAT, IMAGE_WIDTH/2, IMAGE_HEIGHT/2, 1);
+    retCode = depth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH/2, IMAGE_HEIGHT/2, 1);
     assert(retCode == 0);
 
     SL_Framebuffer& fbo = context.framebuffer(fboId);
@@ -781,7 +784,7 @@ int main()
             if (pWindow->width() != pRenderBuf->width() || pWindow->height() != pRenderBuf->height())
             {
                 context.texture(0).init(SL_ColorDataType::SL_COLOR_RGBA_FLOAT, (uint16_t)pWindow->width()/2, (uint16_t)pWindow->height()/2, 1);
-                context.texture(1).init(SL_ColorDataType::SL_COLOR_R_FLOAT,    (uint16_t)pWindow->width()/2, (uint16_t)pWindow->height()/2, 1);
+                context.texture(1).init(SL_ColorDataType::SL_COLOR_R_16U,      (uint16_t)pWindow->width()/2, (uint16_t)pWindow->height()/2, 1);
 
                 pRenderBuf->terminate();
                 pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
