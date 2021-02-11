@@ -388,15 +388,13 @@ int scene_load_cube(SL_SceneGraph& graph)
 /*-----------------------------------------------------------------------------
  * Create the Transfer Functions
 -----------------------------------------------------------------------------*/
-int create_opacity_map(SL_SceneGraph& graph, const size_t volumeTexIndex)
+int create_opacity_map(SL_SceneGraph& graph)
 {
     SL_Context&            context    = graph.mContext;
     const size_t           texId      = context.create_texture();
     SL_Texture&            opacityTex = context.texture(texId);
-    const SL_Texture&      volumeTex  = context.texture(volumeTexIndex);
-    const SL_ColorDataType volumeType = volumeTex.type();
 
-    const uint16_t w = (uint16_t)((1 << (sl_bytes_per_color(volumeType)*CHAR_BIT)) - 1);
+    const uint16_t w = 256;
     const uint16_t h = 1;
     const uint16_t d = 1;
 
@@ -437,15 +435,13 @@ int create_opacity_map(SL_SceneGraph& graph, const size_t volumeTexIndex)
 
 
 
-int create_color_map(SL_SceneGraph& graph, const size_t volumeTexIndex)
+int create_color_map(SL_SceneGraph& graph)
 {
     SL_Context&            context    = graph.mContext;
     const size_t           texId      = context.create_texture();
     SL_Texture&            colorTex   = context.texture(texId);
-    const SL_Texture&      volumeTex  = context.texture(volumeTexIndex);
-    const SL_ColorDataType volumeType = volumeTex.type();
 
-    const uint16_t w = (uint16_t)((1 << (sl_bytes_per_color(volumeType)*CHAR_BIT)) - 1);
+    const uint16_t w = 256;
     const uint16_t h = 1;
     const uint16_t d = 1;
 
@@ -524,10 +520,10 @@ utils::Pointer<SL_SceneGraph> init_volume_context()
     retCode = read_volume_file(*pGraph); // creates volume at texture index 2
     assert(retCode == 0);
 
-    retCode = create_opacity_map(*pGraph, 2); // creates volume at texture index 3
+    retCode = create_opacity_map(*pGraph); // creates volume at texture index 3
     assert(retCode == 0);
 
-    retCode = create_color_map(*pGraph, 2); // creates volume at texture index 4
+    retCode = create_color_map(*pGraph); // creates volume at texture index 4
     assert(retCode == 0);
 
     retCode = scene_load_cube(*pGraph);
