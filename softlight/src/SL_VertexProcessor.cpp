@@ -535,27 +535,36 @@ void SL_VertexProcessor::flush_bins() const noexcept
     const int_fast64_t    syncPoint1 = -numThreads - 1;
     const int_fast64_t    tileId     = mFragProcessors->count.fetch_add(1ll, std::memory_order_acq_rel);
     const SL_FragmentBin* pBins      = mFragBins;
+    uint_fast64_t         maxElements;
+    int_fast64_t          syncPoint2;
 
     // Sort the bins based on their depth.
-    if (tileId == numThreads-1u)
+    if (LS_UNLIKELY(tileId == numThreads-1u))
     {
-        const uint_fast64_t maxElements = math::min<uint64_t>(mBinsUsed->count.load(std::memory_order_consume), SL_SHADER_MAX_BINNED_PRIMS);
+        maxElements = math::min<uint64_t>(mBinsUsed->count.load(std::memory_order_consume), SL_SHADER_MAX_BINNED_PRIMS);
 
-        // Blended fragments get sorted back-to-front for correct coloring.
-        if (LS_LIKELY(mShader->fragment_shader().blend == SL_BLEND_OFF))
+        // Try to perform depth sorting once, and only once, per opaque draw
+        // call to reduce depth-buffer access during rasterization. Sorting
+        // primitives multiple times here in the vertex processor will
+        // increase latency before invoking the fragment processor.
+        const bool canDepthSort = maxElements < SL_SHADER_MAX_BINNED_PRIMS;
+
+        // Blended fragments get sorted by their primitive index for
+        // consistency.
+        if (LS_UNLIKELY(mShader->fragment_shader().blend != SL_BLEND_OFF))
+        {
+            ls::utils::sort_radix<SL_BinCounter<uint32_t>>(mBinIds, mTempBinIds, maxElements, [&](const SL_BinCounter<uint32_t>& val) noexcept->unsigned long long
+            {
+                return (unsigned long long)pBins[val.count].primIndex;
+            });
+        }
+        else if (canDepthSort)
         {
             ls::utils::sort_radix<SL_BinCounter<uint32_t>>(mBinIds, mTempBinIds, maxElements, [&](const SL_BinCounter<uint32_t>& val) noexcept->unsigned long long
             {
                 // flip sign, otherwise the sorting goes from back-to-front
                 // due to the sortable nature of floats.
                 return (unsigned long long) -(*reinterpret_cast<const int32_t*>(pBins[val.count].mScreenCoords[0].v+3));
-            });
-        }
-        else
-        {
-            ls::utils::sort_radix<SL_BinCounter<uint32_t>>(mBinIds, mTempBinIds, maxElements, [&](const SL_BinCounter<uint32_t>& val) noexcept->unsigned long long
-            {
-                return (unsigned long long)pBins[val.count].primIndex;
             });
         }
 
@@ -568,13 +577,15 @@ void SL_VertexProcessor::flush_bins() const noexcept
         {
             ls::setup::cpu_yield();
         }
+
+        maxElements = math::min<uint64_t>(mBinsUsed->count.load(std::memory_order_consume), SL_SHADER_MAX_BINNED_PRIMS);
     }
 
     SL_FragmentProcessor fragTask{
         (uint16_t)tileId,
         mRenderMode,
         (uint32_t)mNumThreads,
-        math::min<uint32_t>(mBinsUsed->count.load(std::memory_order_consume), SL_SHADER_MAX_BINNED_PRIMS),
+        (uint32_t)maxElements,
         mShader,
         mFbo,
         mBinIds,
@@ -585,7 +596,7 @@ void SL_VertexProcessor::flush_bins() const noexcept
     fragTask.execute();
 
     // Indicate to all threads we can now process more vertices
-    const int_fast64_t syncPoint2 = mFragProcessors->count.fetch_add(1, std::memory_order_acq_rel);
+    syncPoint2 = mFragProcessors->count.fetch_add(1, std::memory_order_acq_rel);
 
     // Wait for the last thread to reset the number of available bins.
     while (mFragProcessors->count.load(std::memory_order_consume) < 0)

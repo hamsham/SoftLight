@@ -224,19 +224,79 @@ enum SL_ShaderLimits
  * Padded data types to avoid false sharing
 -----------------------------------------------------------------------------*/
 template <typename data_t>
-union alignas(sizeof(data_t)) SL_BinCounter
+union alignas(alignof(ls::math::vec4)) SL_BinCounter
 {
     typename ls::setup::EnableIf<ls::setup::IsIntegral<data_t>::value, data_t>::type count;
-    unsigned char padding[16-sizeof(data_t)];
+    unsigned char padding[sizeof(ls::math::vec4)];
+
+    constexpr LS_INLINE SL_BinCounter(const data_t& n) noexcept :
+        count{n}
+    {}
+
+    constexpr LS_INLINE SL_BinCounter(const SL_BinCounter& bc) noexcept :
+        count{bc.count}
+    {}
+
+    constexpr LS_INLINE SL_BinCounter(SL_BinCounter&& bc) noexcept :
+        count{bc.count}
+    {}
+
+    inline LS_INLINE SL_BinCounter& operator=(const data_t& n) noexcept
+    {
+        count = n;
+        return *this;
+    }
+
+    inline LS_INLINE SL_BinCounter& operator=(const SL_BinCounter& bc) noexcept
+    {
+        count = bc.count;
+        return *this;
+    }
+
+    inline LS_INLINE SL_BinCounter& operator=(SL_BinCounter&& bc) noexcept
+    {
+        count = bc.count;
+        return *this;
+    }
 };
 
 
 
 template <typename data_t>
-union alignas(sizeof(data_t)) SL_BinCounterAtomic
+union alignas(alignof(ls::math::vec4)) SL_BinCounterAtomic
 {
     std::atomic<typename ls::setup::EnableIf<ls::setup::IsIntegral<data_t>::value, data_t>::type> count;
-    unsigned char padding[16-sizeof(data_t)];
+    unsigned char padding[sizeof(ls::math::vec4)];
+
+    constexpr LS_INLINE SL_BinCounterAtomic(const data_t& n) noexcept :
+        count{n}
+    {}
+
+    constexpr LS_INLINE SL_BinCounterAtomic(const SL_BinCounterAtomic& bc) noexcept :
+        count{bc.count}
+    {}
+
+    constexpr LS_INLINE SL_BinCounterAtomic(SL_BinCounterAtomic&& bc) noexcept :
+        count{bc.count}
+    {}
+
+    inline LS_INLINE SL_BinCounterAtomic& operator=(const data_t& n) noexcept
+    {
+        count.store(n, std::memory_order_acq_rel);
+        return *this;
+    }
+
+    inline LS_INLINE SL_BinCounterAtomic& operator=(const SL_BinCounterAtomic& bc) noexcept
+    {
+        count = bc.count;
+        return *this;
+    }
+
+    inline LS_INLINE SL_BinCounterAtomic& operator=(SL_BinCounterAtomic&& bc) noexcept
+    {
+        count = bc.count;
+        return *this;
+    }
 };
 
 
@@ -257,8 +317,10 @@ static_assert(sizeof(SL_TransformedVert) == sizeof(ls::math::vec4)*5, "Unexpecte
 
 /*-----------------------------------------------------------------------------
  * Intermediate Fragment Storage for Binning
+ *
+ * Aligned to 32 bytes to ensure aligned loads/stores when using AVX
 -----------------------------------------------------------------------------*/
-struct alignas(sizeof(ls::math::vec4)) SL_FragmentBin
+struct alignas(sizeof(ls::math::vec4)*2) SL_FragmentBin
 {
     // 4-byte floats * 4-element vector * 3 vectors-per-tri = 48 bytes
     ls::math::vec4 mScreenCoords[SL_SHADER_MAX_SCREEN_COORDS];
@@ -270,12 +332,16 @@ struct alignas(sizeof(ls::math::vec4)) SL_FragmentBin
     ls::math::vec4 mVaryings[SL_SHADER_MAX_SCREEN_COORDS * SL_SHADER_MAX_VARYING_VECTORS];
 
     // 8 bytes
-    uint_fast64_t primIndex;
+    alignas(alignof(ls::math::vec4)) uint_fast64_t primIndex;
+
+    // 12 bytes of padding to reduce false-sharing
+    alignas(alignof(ls::math::vec4)) char padding[sizeof(ls::math::vec4)-sizeof(primIndex)];
 
     // 304 bytes = 2432 bits
 };
 
-static_assert(sizeof(SL_FragmentBin) == sizeof(ls::math::vec4)*19, "Unexpected size of SL_FragmentBin. Please update all varying memcpy routines.");
+static_assert(sizeof(SL_FragmentBin) == sizeof(ls::math::vec4)*20, "Unexpected size of SL_FragmentBin. Please update all varying memcpy routines.");
+
 
 
 /*-----------------------------------------------------------------------------

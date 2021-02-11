@@ -19,9 +19,6 @@ namespace ls
 namespace utils
 {
 template <class T>
-class Worker;
-
-template <class T>
 class WorkerThread;
 } // utils namespace
 
