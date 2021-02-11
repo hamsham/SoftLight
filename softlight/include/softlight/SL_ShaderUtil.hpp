@@ -335,7 +335,7 @@ struct alignas(sizeof(ls::math::vec4)*2) SL_FragmentBin
     alignas(alignof(ls::math::vec4)) uint_fast64_t primIndex;
 
     // 12 bytes of padding to reduce false-sharing
-    alignas(alignof(ls::math::vec4)) char padding[sizeof(ls::math::vec4)-sizeof(primIndex)];
+    alignas(alignof(ls::math::vec4)) char padding[sizeof(ls::math::vec4)];
 
     // 304 bytes = 2432 bits
 };
