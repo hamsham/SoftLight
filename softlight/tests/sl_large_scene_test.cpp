@@ -683,8 +683,9 @@ void render_scene(SL_SceneGraph* pGraph, unsigned w, unsigned h, const math::mat
             continue;
         }
 
-        const math::mat4& modelMat = pGraph->mModelMatrices[n.nodeId];
-        const size_t numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
+        const math::mat4&  modelMat      = pGraph->mModelMatrices[n.nodeId];
+        const math::mat4&& mv            = camTrans.transform() * modelMat;
+        const size_t       numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
 
         pUniforms->modelMatrix = modelMat;
         pUniforms->mvpMatrix   = vp * modelMat;
@@ -692,7 +693,6 @@ void render_scene(SL_SceneGraph* pGraph, unsigned w, unsigned h, const math::mat
         const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
         for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
         {
-            const math::mat4&&    mv         = camTrans.transform() * modelMat;
             const size_t          nodeMeshId = meshIds[meshId];
             const SL_Mesh&        m          = pGraph->mMeshes[nodeMeshId];
             const SL_BoundingBox& box        = pGraph->mMeshBounds[nodeMeshId];
