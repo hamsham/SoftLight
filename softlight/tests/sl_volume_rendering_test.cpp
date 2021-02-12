@@ -55,14 +55,11 @@ namespace utils = ls::utils;
 --------------------------------------*/
 struct VolumeUniforms
 {
-    float             viewAngle;
-    math::vec2        windowSize;
     const SL_Texture* pCubeMap;
     const SL_Texture* pOpacityMap;
     const SL_Texture* pColorMap;
     math::vec4        spacing;
     math::vec4        camPos;
-    math::mat4        viewMatrix;
     math::mat4        mvpMatrix;
 };
 
@@ -74,11 +71,15 @@ struct VolumeUniforms
 math::vec4 _volume_vert_shader(SL_VertexParam& param)
 {
     const VolumeUniforms* pUniforms = param.pUniforms->as<VolumeUniforms>();
-    const math::vec3&     vert      = *(param.pVbo->element<const math::vec3>(param.pVao->offset(0, param.vertId)));
     const math::vec4      spacing   = pUniforms->spacing;
-    const math::vec4      worldPos  = math::vec4{vert[0], vert[1], vert[2], 1.f};
+    const math::vec3&     vert      = *(param.pVbo->element<const math::vec3>(param.pVao->offset(0, param.vertId)));
+    const math::mat4&&    modelMat  = math::scale(math::mat4{1.f}, math::vec3_cast(spacing));
+    const math::vec4&&    pos       = modelMat * math::vec4_cast(vert, 1.f);
 
-    return pUniforms->mvpMatrix * (worldPos * spacing);
+    param.pVaryings[0] = pos;
+    param.pVaryings[1] = pos - pUniforms->camPos;
+
+    return pUniforms->mvpMatrix * pos;
 }
 
 
@@ -86,8 +87,8 @@ math::vec4 _volume_vert_shader(SL_VertexParam& param)
 SL_VertexShader volume_vert_shader()
 {
     SL_VertexShader shader;
-    shader.numVaryings = 0;
-    shader.cullMode = SL_CULL_FRONT_FACE;
+    shader.numVaryings = 2;
+    shader.cullMode = SL_CULL_BACK_FACE;
     shader.shader = _volume_vert_shader;
 
     return shader;
@@ -101,12 +102,13 @@ SL_VertexShader volume_vert_shader()
 inline LS_INLINE bool intersect_ray_box(
     const math::vec4& rayPos,
     const math::vec4& rayDir,
+    const math::vec4& spacing,
     float& texNear,
     float& texFar) noexcept
 {
     const math::vec4&& invR    = math::rcp(rayDir);
-    const math::vec4&& tbot    = invR * (math::vec4{-1.f}-rayPos);
-    const math::vec4&& ttop    = invR * (math::vec4{1.f}-rayPos);
+    const math::vec4&& tbot    = invR * (-spacing-rayPos);
+    const math::vec4&& ttop    = invR * (spacing-rayPos);
 
     const math::vec4&& tmin    = math::min(ttop, tbot);
     const math::vec2   minXX   = {tmin[0], tmin[0]};
@@ -171,44 +173,45 @@ bool _volume_frag_shader(SL_FragmentParam& fragParam)
     constexpr float step = 1.f / (float)numSteps;
 
     const VolumeUniforms* pUniforms = fragParam.pUniforms->as<VolumeUniforms>();
-    const float           focalLen  = math::rcp<float>(math::tan(pUniforms->viewAngle * 0.5f));
-    const math::vec2&&    winDimens = (math::vec2)math::vec2i{fragParam.coord.x, fragParam.coord.y} * math::rcp(pUniforms->windowSize);
+    const math::vec4&     spacing   = pUniforms->spacing;
+    const math::vec4&&    scaling   = math::rcp(spacing);
     const SL_Texture&     volumeTex = *pUniforms->pCubeMap;
     const SL_Texture&     alphaTex  = *pUniforms->pOpacityMap;
     const SL_Texture&     colorTex  = *pUniforms->pColorMap;
-    const math::vec4&     spacing   = pUniforms->spacing;
-    const math::vec4&     camPos    = pUniforms->camPos;
-    const math::vec4&&    viewDir   = math::vec4{2.f * winDimens[0] - 1.f, 2.f * winDimens[1] - 1.f, -focalLen, 0.f} * math::rcp(spacing);
-    math::vec4&&          rayDir    = viewDir * pUniforms->viewMatrix;
+    //const math::vec4&     pos       = fragParam.pVaryings[0];
+    const math::vec4&     pos       = fragParam.pVaryings[0] * scaling;
+    const math::vec4&&    rayDir    = math::normalize(fragParam.pVaryings[1]);
     float                 nearPos;
     float                 farPos;
 
-    if (!intersect_ray_box(camPos, rayDir, nearPos, farPos))
+    const bool intersectInternalBox = intersect_ray_box(pos, rayDir, spacing, nearPos, farPos);
+    if (!intersectInternalBox)
     {
         return false;
     }
 
-    const math::vec4&& rayStart  = (camPos + rayDir * farPos + 1.f) * 0.5f;
-    const math::vec4&& rayStop   = (camPos + rayDir * nearPos + 1.f) * 0.5f;
-    const math::vec4&& ray       = rayStart - rayStop;
+    const math::vec4&& rayFar    = (pos + rayDir * farPos + 1.f) * 0.5f;
+    const math::vec4&& rayNear   = (pos + rayDir * nearPos + 1.f) * 0.5f;
+    const math::vec4&& ray       = rayFar - rayNear;
     const math::vec4&& rayStep   = ray * step;
-    math::vec4         rayPos    = rayStart;
+    math::vec4         rayPos    = rayFar;
     math::vec4         dstTexel  = {0.f};
     unsigned           intensity;
     float              srcAlpha;
 
     // Test pixels with minimal filtering before attempting to do anything
     // more expensive
-    if (can_skip_render(volumeTex, ray, rayStart))
+    if (can_skip_render(volumeTex, ray, rayFar))
     {
         return false;
     }
 
     (void)colorTex;
 
-    for (unsigned i = 0; i < numSteps && dstTexel[3] < 1.f; ++i)
+    for (unsigned i = 0; (i < numSteps) && (dstTexel[3] < 1.f); ++i)
     {
         intensity = sl_sample_trilinear<SL_ColorR8, SL_WrapMode::EDGE>(volumeTex, rayPos[0], rayPos[1], rayPos[2]).r;
+
         if (intensity >= 17)
         {
             // regular opacity (doesn't take ray steps into account).
@@ -226,7 +229,7 @@ bool _volume_frag_shader(SL_FragmentParam& fragParam)
 
                 // corrected opacity, from:
                 // https://github.com/chrislu/schism/blob/master/projects/examples/ex_volume_ray_cast/src/renderer/shader/volume_ray_cast.glslf
-                srcAlpha = 1.f - math::pow(1.f - srcAlpha, math::length(rayPos - rayStop));
+                srcAlpha = 1.f - math::pow(1.f - srcAlpha, math::length(rayPos - rayNear));
 
                 dstTexel = (srcRGBA*srcAlpha) + (dstTexel - dstTexel*srcAlpha);
             }
@@ -246,7 +249,7 @@ bool _volume_frag_shader(SL_FragmentParam& fragParam)
 SL_FragmentShader volume_frag_shader()
 {
     SL_FragmentShader shader;
-    shader.numVaryings = 0;
+    shader.numVaryings = 2;
     shader.numOutputs = 1;
     shader.blend = SL_BLEND_PREMULTIPLED_ALPHA;
     shader.depthMask = SL_DEPTH_MASK_OFF;
@@ -300,7 +303,7 @@ int read_volume_file(SL_SceneGraph& graph)
 /*-------------------------------------
  * Load a cube mesh
 -------------------------------------*/
-int scene_load_cube(SL_SceneGraph& graph)
+int scene_load_cube(SL_SceneGraph& graph, const math::vec3 spacing = math::vec3{1.f, 1.f, 1.f})
 {
     int retCode = 0;
     SL_Context& context = graph.mContext;
@@ -328,49 +331,50 @@ int scene_load_cube(SL_SceneGraph& graph)
     }
 
     math::vec3 verts[numVerts];
-    verts[0]  = math::vec3{-1.f, -1.f, 1.f};
-    verts[1]  = math::vec3{1.f, -1.f, 1.f};
-    verts[2]  = math::vec3{1.f, 1.f, 1.f};
-    verts[3]  = math::vec3{1.f, 1.f, 1.f};
-    verts[4]  = math::vec3{-1.f, 1.f, 1.f};
-    verts[5]  = math::vec3{-1.f, -1.f, 1.f};
-    verts[6]  = math::vec3{1.f, -1.f, 1.f};
-    verts[7]  = math::vec3{1.f, -1.f, -1.f};
-    verts[8]  = math::vec3{1.f, 1.f, -1.f};
-    verts[9]  = math::vec3{1.f, 1.f, -1.f};
-    verts[10] = math::vec3{1.f, 1.f, 1.f};
-    verts[11] = math::vec3{1.f, -1.f, 1.f};
-    verts[12] = math::vec3{-1.f, 1.f, -1.f};
-    verts[13] = math::vec3{1.f, 1.f, -1.f};
-    verts[14] = math::vec3{1.f, -1.f, -1.f};
-    verts[15] = math::vec3{1.f, -1.f, -1.f};
-    verts[16] = math::vec3{-1.f, -1.f, -1.f};
-    verts[17] = math::vec3{-1.f, 1.f, -1.f};
-    verts[18] = math::vec3{-1.f, -1.f, -1.f};
-    verts[19] = math::vec3{-1.f, -1.f, 1.f};
-    verts[20] = math::vec3{-1.f, 1.f, 1.f};
-    verts[21] = math::vec3{-1.f, 1.f, 1.f};
-    verts[22] = math::vec3{-1.f, 1.f, -1.f};
-    verts[23] = math::vec3{-1.f, -1.f, -1.f};
-    verts[24] = math::vec3{-1.f, -1.f, -1.f};
-    verts[25] = math::vec3{1.f, -1.f, -1.f};
-    verts[26] = math::vec3{1.f, -1.f, 1.f};
-    verts[27] = math::vec3{1.f, -1.f, 1.f};
-    verts[28] = math::vec3{-1.f, -1.f, 1.f};
-    verts[29] = math::vec3{-1.f, -1.f, -1.f};
-    verts[30] = math::vec3{-1.f, 1.f, 1.f};
-    verts[31] = math::vec3{1.f, 1.f, 1.f};
-    verts[32] = math::vec3{1.f, 1.f, -1.f};
-    verts[33] = math::vec3{1.f, 1.f, -1.f};
-    verts[34] = math::vec3{-1.f, 1.f, -1.f};
-    verts[35] = math::vec3{-1.f, 1.f, 1.f};
+    
+    verts[0]  = math::vec3{-spacing[0], -spacing[1],  spacing[2]};
+    verts[1]  = math::vec3{ spacing[0], -spacing[1],  spacing[2]};
+    verts[2]  = math::vec3{ spacing[0],  spacing[1],  spacing[2]};
+    verts[3]  = math::vec3{ spacing[0],  spacing[1],  spacing[2]};
+    verts[4]  = math::vec3{-spacing[0],  spacing[1],  spacing[2]};
+    verts[5]  = math::vec3{-spacing[0], -spacing[1],  spacing[2]};
+    verts[6]  = math::vec3{ spacing[0], -spacing[1],  spacing[2]};
+    verts[7]  = math::vec3{ spacing[0], -spacing[1], -spacing[2]};
+    verts[8]  = math::vec3{ spacing[0],  spacing[1], -spacing[2]};
+    verts[9]  = math::vec3{ spacing[0],  spacing[1], -spacing[2]};
+    verts[10] = math::vec3{ spacing[0],  spacing[1],  spacing[2]};
+    verts[11] = math::vec3{ spacing[0], -spacing[1],  spacing[2]};
+    verts[12] = math::vec3{-spacing[0],  spacing[1], -spacing[2]};
+    verts[13] = math::vec3{ spacing[0],  spacing[1], -spacing[2]};
+    verts[14] = math::vec3{ spacing[0], -spacing[1], -spacing[2]};
+    verts[15] = math::vec3{ spacing[0], -spacing[1], -spacing[2]};
+    verts[16] = math::vec3{-spacing[0], -spacing[1], -spacing[2]};
+    verts[17] = math::vec3{-spacing[0],  spacing[1], -spacing[2]};
+    verts[18] = math::vec3{-spacing[0], -spacing[1], -spacing[2]};
+    verts[19] = math::vec3{-spacing[0], -spacing[1],  spacing[2]};
+    verts[20] = math::vec3{-spacing[0],  spacing[1],  spacing[2]};
+    verts[21] = math::vec3{-spacing[0],  spacing[1],  spacing[2]};
+    verts[22] = math::vec3{-spacing[0],  spacing[1], -spacing[2]};
+    verts[23] = math::vec3{-spacing[0], -spacing[1], -spacing[2]};
+    verts[24] = math::vec3{-spacing[0], -spacing[1], -spacing[2]};
+    verts[25] = math::vec3{ spacing[0], -spacing[1], -spacing[2]};
+    verts[26] = math::vec3{ spacing[0], -spacing[1],  spacing[2]};
+    verts[27] = math::vec3{ spacing[0], -spacing[1],  spacing[2]};
+    verts[28] = math::vec3{-spacing[0], -spacing[1],  spacing[2]};
+    verts[29] = math::vec3{-spacing[0], -spacing[1], -spacing[2]};
+    verts[30] = math::vec3{-spacing[0],  spacing[1],  spacing[2]};
+    verts[31] = math::vec3{ spacing[0],  spacing[1],  spacing[2]};
+    verts[32] = math::vec3{ spacing[0],  spacing[1], -spacing[2]};
+    verts[33] = math::vec3{ spacing[0],  spacing[1], -spacing[2]};
+    verts[34] = math::vec3{-spacing[0],  spacing[1], -spacing[2]};
+    verts[35] = math::vec3{-spacing[0],  spacing[1],  spacing[2]};
 
     // Create the vertex buffer
     vbo.assign(verts, numVboBytes, sizeof(verts));
     vao.set_binding(0, numVboBytes, stride, SL_Dimension::VERTEX_DIMENSION_3, SL_DataType::VERTEX_DATA_FLOAT);
-    numVboBytes += sizeof(verts);
+    numVboBytes = sizeof(verts);
 
-    assert(numVboBytes == (numVerts*stride));
+    LS_ASSERT(numVboBytes == (numVerts*stride));
 
     graph.mMeshes.emplace_back(SL_Mesh());
     SL_Mesh& mesh = graph.mMeshes.back();
@@ -526,7 +530,7 @@ utils::Pointer<SL_SceneGraph> init_volume_context()
     retCode = create_color_map(*pGraph); // creates volume at texture index 4
     assert(retCode == 0);
 
-    retCode = scene_load_cube(*pGraph);
+    retCode = scene_load_cube(*pGraph, math::vec3{1.f, 1.f, 1.f});
     assert(retCode == 0);
 
     const SL_VertexShader&&   volVertShader = volume_vert_shader();
@@ -567,9 +571,8 @@ void render_volume(SL_SceneGraph* pGraph, const SL_Transform& viewMatrix, const 
     VolumeUniforms*    pUniforms = context.ubo(0).as<VolumeUniforms>();
     const math::vec3&& camPos    = viewMatrix.absolute_position();
     const math::mat4   modelMat  = math::mat4{1.f};
-    pUniforms->spacing           = {1.f, 2.f, 2.f, 1.f};
+    pUniforms->spacing           = {1.f, 1.f, 1.f, 1.f};
     pUniforms->camPos            = math::vec4{camPos[0], camPos[1], camPos[2], 0.f};
-    pUniforms->viewMatrix        = viewMatrix.transform();
     pUniforms->mvpMatrix         = vpMatrix * modelMat;
 
     context.draw(pGraph->mMeshes.back(), 0, 0);
@@ -626,7 +629,6 @@ int main()
     ls::utils::Pointer<SL_WindowBuffer> pRenderBuf {SL_WindowBuffer::create()};
     ls::utils::Pointer<SL_SceneGraph>   pGraph     {std::move(init_volume_context())};
     SL_Context&                         context    = pGraph->mContext;
-    VolumeUniforms*                     pUniforms = context.ubo(0).as<VolumeUniforms>();
     ls::utils::Pointer<bool[]>          pKeySyms   {new bool[65536]};
 
     std::fill_n(pKeySyms.get(), 65536 , false);
@@ -664,7 +666,6 @@ int main()
     }
     else
     {
-        pUniforms->windowSize = math::vec2{(float)context.texture(0).width(), (float)context.texture(0).height()};
         pWindow->set_keys_repeat(true); // non-text mode
         timer.start();
     }
@@ -770,10 +771,10 @@ int main()
             {
                 camTrans.apply_transform();
 
-                constexpr float    viewAngle  = math::radians(45.f);
+                constexpr float    viewAngle  = math::radians(60.f);
                 const math::mat4&& projMatrix = math::infinite_perspective(viewAngle, (float)pWindow->width() / (float)pWindow->height(), 0.001f);
+                //const math::mat4&& projMatrix = math::ortho(-4.f, 4.f, -3.f, 3.f, 0.01f, 100.f);
 
-                pUniforms->viewAngle = viewAngle;
                 vpMatrix = projMatrix * camTrans.transform();
             }
 
@@ -784,7 +785,6 @@ int main()
 
                 pRenderBuf->terminate();
                 pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
-                pUniforms->windowSize = math::vec2{(float)context.texture(0).width(), (float)context.texture(0).height()};
             }
 
             pGraph->update();
