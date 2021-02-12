@@ -332,10 +332,10 @@ struct alignas(sizeof(ls::math::vec4)*2) SL_FragmentBin
     ls::math::vec4 mVaryings[SL_SHADER_MAX_SCREEN_COORDS * SL_SHADER_MAX_VARYING_VECTORS];
 
     // 8 bytes
-    alignas(alignof(ls::math::vec4)) uint_fast64_t primIndex;
+    uint_fast64_t primIndex;
 
     // 12 bytes of padding to reduce false-sharing
-    alignas(alignof(ls::math::vec4)) char padding[sizeof(ls::math::vec4)];
+    char padding[sizeof(ls::math::vec4)];
 
     // 304 bytes = 2432 bits
 };
