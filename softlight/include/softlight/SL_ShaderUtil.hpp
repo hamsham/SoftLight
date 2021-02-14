@@ -224,7 +224,7 @@ enum SL_ShaderLimits
  * Padded data types to avoid false sharing
 -----------------------------------------------------------------------------*/
 template <typename data_t>
-union alignas(alignof(ls::math::vec4)) SL_BinCounter
+union alignas(sizeof(ls::math::vec4)) SL_BinCounter
 {
     typename ls::setup::EnableIf<ls::setup::IsIntegral<data_t>::value, data_t>::type count;
     unsigned char padding[sizeof(ls::math::vec4)];
@@ -263,7 +263,7 @@ union alignas(alignof(ls::math::vec4)) SL_BinCounter
 
 
 template <typename data_t>
-union alignas(alignof(ls::math::vec4)) SL_BinCounterAtomic
+union alignas(sizeof(ls::math::vec4)) SL_BinCounterAtomic
 {
     std::atomic<typename ls::setup::EnableIf<ls::setup::IsIntegral<data_t>::value, data_t>::type> count;
     unsigned char padding[sizeof(ls::math::vec4)];

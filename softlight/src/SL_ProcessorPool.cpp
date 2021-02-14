@@ -26,30 +26,6 @@ class SL_Framebuffer;
 
 
 
-
-/*-----------------------------------------------------------------------------
- * Anonymous helper functions
------------------------------------------------------------------------------*/
-namespace
-{
-
-
-/*--------------------------------------
- * Custom aligned-allocator to resolve allocation alignment issues between
- * GCC and MSVC.
---------------------------------------*/
-template <typename data_t>
-static inline data_t* _aligned_alloc(size_t numElements) noexcept
-{
-    return reinterpret_cast<data_t*>(ls::utils::aligned_malloc(sizeof(data_t) * numElements));
-}
-
-
-
-} // end anonymous namespace
-
-
-
 /*-----------------------------------------------------------------------------
  * SL_ProcessorPool Class
 -----------------------------------------------------------------------------*/
@@ -70,14 +46,14 @@ SL_ProcessorPool::~SL_ProcessorPool() noexcept
  * Constructor
 --------------------------------------*/
 SL_ProcessorPool::SL_ProcessorPool(unsigned numThreads) noexcept :
-    mFragSemaphore{{0}},
-    mShadingSemaphore{{0}},
-    mBinIds{_aligned_alloc<SL_BinCounter<uint32_t>>(SL_SHADER_MAX_BINNED_PRIMS)},
-    mTempBinIds{_aligned_alloc<SL_BinCounter<uint32_t>>(SL_SHADER_MAX_BINNED_PRIMS)},
-    mBinsUsed{{0u}},
-    mFragBins{_aligned_alloc<SL_FragmentBin>(SL_SHADER_MAX_BINNED_PRIMS)},
-    mFragQueues{_aligned_alloc<SL_FragCoord>(numThreads)},
-    mWorkers{numThreads > 1 ? _aligned_alloc<SL_ProcessorPool::ThreadedWorker>(numThreads - 1) : nullptr},
+    mFragSemaphore{ls::utils::make_unique_aligned_pointer<SL_BinCounterAtomic<int_fast64_t>>()},
+    mShadingSemaphore{ls::utils::make_unique_aligned_pointer<SL_BinCounterAtomic<uint_fast64_t>>()},
+    mBinIds{ls::utils::make_unique_aligned_array<SL_BinCounter<uint32_t>>(SL_SHADER_MAX_BINNED_PRIMS)},
+    mTempBinIds{ls::utils::make_unique_aligned_array<SL_BinCounter<uint32_t>>(SL_SHADER_MAX_BINNED_PRIMS)},
+    mBinsUsed{ls::utils::make_unique_aligned_pointer<SL_BinCounterAtomic<uint32_t>>()},
+    mFragBins{ls::utils::make_unique_aligned_array<SL_FragmentBin>(SL_SHADER_MAX_BINNED_PRIMS)},
+    mFragQueues{ls::utils::make_unique_aligned_array<SL_FragCoord>(numThreads)},
+    mWorkers{numThreads > 1 ? ls::utils::make_unique_aligned_array<SL_ProcessorPool::ThreadedWorker>(numThreads - 1) : nullptr},
     mNumThreads{numThreads}
 {
     LS_ASSERT(numThreads > 0);
@@ -105,14 +81,14 @@ SL_ProcessorPool::SL_ProcessorPool() noexcept :
  * Copy Constructor
 --------------------------------------*/
 SL_ProcessorPool::SL_ProcessorPool(const SL_ProcessorPool& p) noexcept :
-    mFragSemaphore{{0}},
-    mShadingSemaphore{{0}},
-    mBinIds{_aligned_alloc<SL_BinCounter<uint32_t>>(SL_SHADER_MAX_BINNED_PRIMS)},
-    mTempBinIds{_aligned_alloc<SL_BinCounter<uint32_t>>(SL_SHADER_MAX_BINNED_PRIMS)},
-    mBinsUsed{{0u}},
-    mFragBins{_aligned_alloc<SL_FragmentBin>(SL_SHADER_MAX_BINNED_PRIMS)},
-    mFragQueues{_aligned_alloc<SL_FragCoord>(p.mNumThreads)},
-    mWorkers{p.mNumThreads > 1 ? _aligned_alloc<SL_ProcessorPool::ThreadedWorker>(p.mNumThreads - 1) : nullptr},
+    mFragSemaphore{ls::utils::make_unique_aligned_pointer<SL_BinCounterAtomic<int_fast64_t>>()},
+    mShadingSemaphore{ls::utils::make_unique_aligned_pointer<SL_BinCounterAtomic<uint_fast64_t>>()},
+    mBinIds{ls::utils::make_unique_aligned_array<SL_BinCounter<uint32_t>>(SL_SHADER_MAX_BINNED_PRIMS)},
+    mTempBinIds{ls::utils::make_unique_aligned_array<SL_BinCounter<uint32_t>>(SL_SHADER_MAX_BINNED_PRIMS)},
+    mBinsUsed{ls::utils::make_unique_aligned_pointer<SL_BinCounterAtomic<uint32_t>>()},
+    mFragBins{ls::utils::make_unique_aligned_array<SL_FragmentBin>(SL_SHADER_MAX_BINNED_PRIMS)},
+    mFragQueues{ls::utils::make_unique_aligned_array<SL_FragCoord>(p.mNumThreads)},
+    mWorkers{p.mNumThreads > 1 ? ls::utils::make_unique_aligned_array<SL_ProcessorPool::ThreadedWorker>(p.mNumThreads - 1) : nullptr},
     mNumThreads{p.mNumThreads}
 {
     for (unsigned i = 0; i < p.mNumThreads-1u; ++i)
@@ -129,11 +105,11 @@ SL_ProcessorPool::SL_ProcessorPool(const SL_ProcessorPool& p) noexcept :
  * Move Constructor
 --------------------------------------*/
 SL_ProcessorPool::SL_ProcessorPool(SL_ProcessorPool&& p) noexcept :
-    mFragSemaphore{{0}},
-    mShadingSemaphore{{0}},
+    mFragSemaphore{std::move(p.mFragSemaphore)},
+    mShadingSemaphore{std::move(p.mShadingSemaphore)},
     mBinIds{std::move(p.mBinIds)},
     mTempBinIds{std::move(p.mTempBinIds)},
-    mBinsUsed{{0u}},
+    mBinsUsed{std::move(p.mBinsUsed)},
     mFragBins{std::move(p.mFragBins)},
     mFragQueues{std::move(p.mFragQueues)},
     mWorkers{std::move(p.mWorkers)},
@@ -171,18 +147,11 @@ SL_ProcessorPool& SL_ProcessorPool::operator=(SL_ProcessorPool&& p) noexcept
         return *this;
     }
 
-    mFragSemaphore.count.store(p.mFragSemaphore.count.load());
-    p.mFragSemaphore.count.store(0);
-
-    mShadingSemaphore.count.store(p.mShadingSemaphore.count.load());
-    p.mShadingSemaphore.count.store(0);
-
+    mFragSemaphore = std::move(p.mFragSemaphore);
+    mShadingSemaphore = std::move(p.mShadingSemaphore);
     mBinIds = std::move(p.mBinIds);
     mTempBinIds = std::move(p.mTempBinIds);
-
-    mBinsUsed.count.store(0u);
-    p.mBinsUsed.count.store(0u);
-
+    mBinsUsed = std::move(p.mBinsUsed);
     mFragBins = std::move(p.mFragBins);
     mFragQueues = std::move(p.mFragQueues);
 
@@ -254,12 +223,17 @@ unsigned SL_ProcessorPool::concurrency(unsigned inNumThreads) noexcept
         mWorkers[i].~WorkerThread();
     }
 
-    mBinIds.reset(_aligned_alloc<SL_BinCounter<uint32_t>>(SL_SHADER_MAX_BINNED_PRIMS));
-    mTempBinIds.reset(_aligned_alloc<SL_BinCounter<uint32_t>>(SL_SHADER_MAX_BINNED_PRIMS));
-    mBinsUsed.count.store(0u);
-    mFragBins.reset(_aligned_alloc<SL_FragmentBin>(SL_SHADER_MAX_BINNED_PRIMS));
-    mFragQueues.reset(_aligned_alloc<SL_FragCoord>(inNumThreads));
-    mWorkers.reset(inNumThreads > 1 ? _aligned_alloc<SL_ProcessorPool::ThreadedWorker>(inNumThreads - 1) : nullptr);
+    mBinIds = ls::utils::make_unique_aligned_array<SL_BinCounter<uint32_t>>(SL_SHADER_MAX_BINNED_PRIMS);
+    mTempBinIds = ls::utils::make_unique_aligned_array<SL_BinCounter<uint32_t>>(SL_SHADER_MAX_BINNED_PRIMS);
+    mBinsUsed = ls::utils::make_unique_aligned_pointer<SL_BinCounterAtomic<uint32_t>>();
+    mFragBins = ls::utils::make_unique_aligned_array<SL_FragmentBin>(SL_SHADER_MAX_BINNED_PRIMS);
+    mFragQueues = ls::utils::make_unique_aligned_array<SL_FragCoord>(inNumThreads);
+
+    mWorkers.reset();
+    if (inNumThreads > 1)
+    {
+        mWorkers = ls::utils::make_unique_aligned_array<SL_ProcessorPool::ThreadedWorker>(inNumThreads - 1);
+    }
 
     for (unsigned i = 0; i < inNumThreads-1u; ++i)
     {
@@ -289,8 +263,8 @@ unsigned SL_ProcessorPool::concurrency(unsigned inNumThreads) noexcept
 void SL_ProcessorPool::run_shader_processors(const SL_Context& c, const SL_Mesh& m, size_t numInstances, const SL_Shader& s, SL_Framebuffer& fbo) noexcept
 {
     // Reserve enough space for each thread to contain all triangles
-    mFragSemaphore.count.store(0);
-    mShadingSemaphore.count.store(mNumThreads);
+    mFragSemaphore->count.store(0);
+    mShadingSemaphore->count.store(mNumThreads);
     clear_fragment_bins();
 
     SL_ShaderProcessor task;
@@ -299,8 +273,8 @@ void SL_ProcessorPool::run_shader_processors(const SL_Context& c, const SL_Mesh&
     SL_VertexProcessor& vertTask = task.mVertProcessor;
     vertTask.mThreadId       = 0;
     vertTask.mNumThreads     = (int16_t)mNumThreads;
-    vertTask.mFragProcessors = &mFragSemaphore;
-    vertTask.mBusyProcessors = &mShadingSemaphore;
+    vertTask.mFragProcessors = mFragSemaphore.get();
+    vertTask.mBusyProcessors = mShadingSemaphore.get();
     vertTask.mShader         = &s;
     vertTask.mContext        = &c;
     vertTask.mFbo            = &fbo;
@@ -308,7 +282,7 @@ void SL_ProcessorPool::run_shader_processors(const SL_Context& c, const SL_Mesh&
     vertTask.mNumMeshes      = 1;
     vertTask.mNumInstances   = numInstances;
     vertTask.mMeshes         = &m;
-    vertTask.mBinsUsed       = &mBinsUsed;
+    vertTask.mBinsUsed       = mBinsUsed.get();
     vertTask.mBinIds         = mBinIds.get();
     vertTask.mTempBinIds     = mTempBinIds.get();
     vertTask.mFragBins       = mFragBins.get();
@@ -342,8 +316,8 @@ void SL_ProcessorPool::run_shader_processors(const SL_Context& c, const SL_Mesh&
 void SL_ProcessorPool::run_shader_processors(const SL_Context& c, const SL_Mesh* meshes, size_t numMeshes, const SL_Shader& s, SL_Framebuffer& fbo) noexcept
 {
     // Reserve enough space for each thread to contain all triangles
-    mFragSemaphore.count.store(0);
-    mShadingSemaphore.count.store(mNumThreads);
+    mFragSemaphore->count.store(0);
+    mShadingSemaphore->count.store(mNumThreads);
     clear_fragment_bins();
 
     SL_ShaderProcessor task;
@@ -352,8 +326,8 @@ void SL_ProcessorPool::run_shader_processors(const SL_Context& c, const SL_Mesh*
     SL_VertexProcessor& vertTask = task.mVertProcessor;
     vertTask.mThreadId       = 0;
     vertTask.mNumThreads     = (int16_t)mNumThreads;
-    vertTask.mFragProcessors = &mFragSemaphore;
-    vertTask.mBusyProcessors = &mShadingSemaphore;
+    vertTask.mFragProcessors = mFragSemaphore.get();
+    vertTask.mBusyProcessors = mShadingSemaphore.get();
     vertTask.mShader         = &s;
     vertTask.mContext        = &c;
     vertTask.mFbo            = &fbo;
@@ -361,7 +335,7 @@ void SL_ProcessorPool::run_shader_processors(const SL_Context& c, const SL_Mesh*
     vertTask.mNumMeshes      = numMeshes;
     vertTask.mNumInstances   = 1;
     vertTask.mMeshes         = meshes;
-    vertTask.mBinsUsed       = &mBinsUsed;
+    vertTask.mBinsUsed       = mBinsUsed.get();
     vertTask.mBinIds         = mBinIds.get();
     vertTask.mTempBinIds     = mTempBinIds.get();
     vertTask.mFragBins       = mFragBins.get();
@@ -395,7 +369,7 @@ void SL_ProcessorPool::run_shader_processors(const SL_Context& c, const SL_Mesh*
 -------------------------------------*/
 void SL_ProcessorPool::clear_fragment_bins() noexcept
 {
-    mBinsUsed.count = 0;
+    mBinsUsed->count = 0;
 }
 
 

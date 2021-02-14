@@ -50,21 +50,21 @@ class SL_ProcessorPool
     typedef ls::utils::WorkerThread<SL_ShaderProcessor> ThreadedWorker;
 
   private:
-    SL_BinCounterAtomic<int_fast64_t> mFragSemaphore;
+    ls::utils::UniqueAlignedPointer<SL_BinCounterAtomic<int_fast64_t>> mFragSemaphore;
 
-    SL_BinCounterAtomic<uint_fast64_t> mShadingSemaphore;
+    ls::utils::UniqueAlignedPointer<SL_BinCounterAtomic<uint_fast64_t>> mShadingSemaphore;
 
-    ls::utils::Pointer<SL_BinCounter<uint32_t>[], ls::utils::AlignedDeleter> mBinIds;
+    ls::utils::UniqueAlignedArray<SL_BinCounter<uint32_t>> mBinIds;
 
-    ls::utils::Pointer<SL_BinCounter<uint32_t>[], ls::utils::AlignedDeleter> mTempBinIds;
+    ls::utils::UniqueAlignedArray<SL_BinCounter<uint32_t>> mTempBinIds;
 
-    SL_BinCounterAtomic<uint32_t> mBinsUsed;
+    ls::utils::UniqueAlignedPointer<SL_BinCounterAtomic<uint32_t>> mBinsUsed;
 
-    ls::utils::Pointer<SL_FragmentBin[], ls::utils::AlignedDeleter> mFragBins;
+    ls::utils::UniqueAlignedArray<SL_FragmentBin> mFragBins;
 
-    ls::utils::Pointer<SL_FragCoord[], ls::utils::AlignedDeleter> mFragQueues;
+    ls::utils::UniqueAlignedArray<SL_FragCoord> mFragQueues;
 
-    ls::utils::Pointer<ThreadedWorker[], ls::utils::AlignedDeleter> mWorkers;
+    ls::utils::UniqueAlignedArray<ThreadedWorker> mWorkers;
 
     unsigned mNumThreads;
 
