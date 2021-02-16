@@ -80,7 +80,7 @@ struct alignas(sizeof(int32_t)) SL_PackedVertex_2_10_10_10
             const __m128i extended = _mm_srai_epi32(shifted, 22);
             return ls::math::vec4{_mm_mul_ps(_mm_cvtepi32_ps(extended), _mm_set1_ps(1.f/511.f))};
 
-        #elif defined(LS_ARCH_ARM)
+        #elif defined(LS_ARM_NEON)
             const int32x4_t leftShifts{22, 12, 2, 0};
             const int32x4_t rightShifts{-22, -22, -22, -30};
             const int32x4_t elems    = vmovq_n_s32(*reinterpret_cast<const int32_t*>(this));

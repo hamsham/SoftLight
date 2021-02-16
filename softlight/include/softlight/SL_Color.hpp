@@ -1127,7 +1127,7 @@ inline SL_ColorTypeYCoCgA<float> ycocg_cast(const SL_ColorRGBAType<float>& p) no
     return ret;
 }
 
-#elif defined(LS_ARCH_ARM)
+#elif defined(LS_ARM_NEON)
 inline SL_ColorTypeYCoCgA<float> ycocg_cast(const SL_ColorRGBAType<float>& p) noexcept
 {
     constexpr float32x4_t a{1.f,  0.25f, 0.5f,  0.25f};

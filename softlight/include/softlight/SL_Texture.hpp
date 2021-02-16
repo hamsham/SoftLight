@@ -647,7 +647,7 @@ inline LS_INLINE const ls::math::vec4_t<float> SL_Texture::texel4<float, SL_Texe
 
     #if defined(LS_ARCH_X86)
         return ls::math::vec4_t<float>{_mm_loadu_ps(pTexels)};
-    #elif defined(LS_ARCH_ARM)
+    #elif defined(LS_ARM_NEON)
         return ls::math::vec4_t<float>{vld1q_f32(pTexels)};
     #else
         return *reinterpret_cast<const ls::math::vec4_t<float>*>(pTexels);
@@ -740,7 +740,7 @@ inline LS_INLINE ls::math::vec4_t<float> SL_Texture::raw_texel4<float>(uint16_t 
 
     #if defined(LS_ARCH_X86)
         return ls::math::vec4_t<float>{_mm_loadu_ps(pBuffer)};
-    #elif defined(LS_ARCH_ARM)
+    #elif defined(LS_ARM_NEON)
         return ls::math::vec4_t<float>{vld1q_f32(pBuffer)};
     #else
         return *reinterpret_cast<const ls::math::vec4_t<float>*>(pBuffer);
@@ -770,7 +770,7 @@ inline LS_INLINE ls::math::vec4_t<float> SL_Texture::raw_texel4<float>(uint16_t 
 
     #if defined(LS_ARCH_X86)
         return ls::math::vec4_t<float>{_mm_loadu_ps(pBuffer)};
-    #elif defined(LS_ARCH_ARM)
+    #elif defined(LS_ARM_NEON)
         return ls::math::vec4_t<float>{vld1q_f32(pBuffer)};
     #else
         return *reinterpret_cast<const ls::math::vec4_t<float>*>(pBuffer);

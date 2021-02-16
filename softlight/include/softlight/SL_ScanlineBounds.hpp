@@ -66,7 +66,7 @@ inline LS_INLINE void sl_sort_minmax(__m128& a, __m128& b)  noexcept
     #endif
 }
 
-#elif defined(LS_ARCH_ARM)
+#elif defined(LS_ARM_NEON)
 
 inline LS_INLINE void sl_sort_minmax(float32x4_t& a, float32x4_t& b)  noexcept
 {
@@ -115,7 +115,7 @@ struct alignas(sizeof(float)*4) SL_ScanlineBounds
 
     inline void LS_INLINE init(ls::math::vec4 p0, ls::math::vec4 p1, ls::math::vec4 p2) noexcept
     {
-        #if defined(LS_ARCH_X86) || defined(LS_ARCH_ARM)
+        #if defined(LS_ARCH_X86) || defined(LS_ARM_NEON)
             sl_sort_minmax(p0.simd, p1.simd);
             sl_sort_minmax(p0.simd, p2.simd);
             sl_sort_minmax(p1.simd, p2.simd);
@@ -183,7 +183,7 @@ struct alignas(sizeof(float)*4) SL_ScanlineBounds
             xMin = _mm_cvtss_si32(_mm_min_ss(lo, hi));
             xMax = _mm_cvtss_si32(_mm_max_ss(lo, hi));
 
-        #elif defined(LS_ARCH_ARM)
+        #elif defined(LS_ARM_NEON)
             const float32x2_t yv         = vdup_n_f32(yf);
             const float32x2_t v01        = vdup_n_f32(v0y);
             const float32x2_t v11        = vdup_n_f32(v1y);

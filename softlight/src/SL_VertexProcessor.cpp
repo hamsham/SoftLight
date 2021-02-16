@@ -54,7 +54,7 @@ inline LS_INLINE math::vec4 sl_perspective_divide(const math::vec4& v) noexcept
         const __m128i vi  = _mm_shuffle_epi8(_mm_castps_si128(vMul), _mm_set_epi8(-1, -1, -1, -1, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0));
         return math::vec4{_mm_or_ps(_mm_castsi128_ps(vi), _mm_castsi128_ps(wi))};
 
-    #elif defined(LS_ARCH_ARM)
+    #elif defined(LS_ARM_NEON)
         const uint32x4_t blendMask{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000000};
         const float32x4_t w = vdupq_n_f32(vgetq_lane_f32(v.simd, 3));
         const float32x4_t wInv = vrecpeq_f32(w);
@@ -118,7 +118,7 @@ inline LS_INLINE void sl_perspective_divide3(math::vec4& LS_RESTRICT_PTR v0, mat
         _mm_store_ps(reinterpret_cast<float*>(&v1), _mm_or_ps(_mm_castsi128_ps(vi1), _mm_castsi128_ps(wi1)));
         _mm_store_ps(reinterpret_cast<float*>(&v2), _mm_or_ps(_mm_castsi128_ps(vi2), _mm_castsi128_ps(wi2)));
 
-    #elif defined(LS_ARCH_ARM)
+    #elif defined(LS_ARM_NEON)
         const uint32x4_t blendMask{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000000};
 
         const float32x4_t w0 = vdupq_n_f32(vgetq_lane_f32(v0.simd, 3));
@@ -177,7 +177,7 @@ inline LS_INLINE void sl_world_to_screen_coords_divided(math::vec4& v, const flo
         scl = vmaxq_f32(vdupq_n_f32(0.f), vrndmq_f32(scl));
         vst1q_f32(reinterpret_cast<float*>(&v), vbslq_f32(blendMask, p, scl));
 
-    #elif defined(LS_ARCH_ARM)
+    #elif defined(LS_ARM_NEON)
         const uint32x4_t blendMask{0x00000000, 0x00000000, 0xFFFFFFFF, 0xFFFFFFFF};
         const float32x4_t wh0{widthScale, heightScale, 0.f, 0.f};
         const float32x4_t wh1{widthScale, heightScale, 1.f, 1.f};
@@ -249,7 +249,7 @@ inline LS_INLINE void sl_world_to_screen_coords_divided3(
         scl2 = vmaxq_f32(vdupq_n_f32(0.f), vrndmq_f32(scl2));
         vst1q_f32(reinterpret_cast<float*>(&p2), vbslq_f32(blendMask, v2, scl2));
 
-    #elif defined(LS_ARCH_ARM)
+    #elif defined(LS_ARM_NEON)
         const float32x4_t wh0{widthScale, heightScale, 0.f, 0.f};
         const float32x4_t wh1{widthScale, heightScale, 1.f, 1.f};
         const uint32x4_t blendMask{0x00000000, 0x00000000, 0xFFFFFFFF, 0xFFFFFFFF};
@@ -391,7 +391,7 @@ inline LS_INLINE float face_determinant(
         const __m128 w = _mm_permute_ps(mul2, 0xAA);
         return _mm_cvtss_f32(_mm_add_ss(w, lo));
 
-    #elif defined(LS_ARCH_ARM) // based on the AVX implementation
+    #elif defined(LS_ARM_NEON) // based on the AVX implementation
         const float32x4_t col4 = vcombine_f32(vget_low_f32(p0.simd), vrev64_f32(vget_high_f32(p0.simd)));
 
         const float32x2x2_t p1_120 = vzip_f32(vget_low_f32(p1.simd), vget_high_f32(p1.simd));
@@ -471,7 +471,7 @@ inline LS_INLINE SL_ClipStatus face_visible(
 
         return (SL_ClipStatus)(visI | partI);
 
-    #elif defined(LS_ARCH_ARM)
+    #elif defined(LS_ARM_NEON)
         const float32x4_t w0p = vdupq_lane_f32(vget_high_f32(clip0.simd), 1);
         const float32x4_t w1p = vdupq_lane_f32(vget_high_f32(clip1.simd), 1);
         const float32x4_t w2p = vdupq_lane_f32(vget_high_f32(clip2.simd), 1);

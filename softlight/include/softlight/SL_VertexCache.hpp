@@ -84,7 +84,7 @@ inline LS_INLINE void SL_PTVCache::query_and_update(size_t key, SL_TransformedVe
         _mm_store_ps(reinterpret_cast<float*>(&out)+12, _mm_load_ps(reinterpret_cast<const float*>(pIn)+12));
         _mm_store_ps(reinterpret_cast<float*>(&out)+16, _mm_load_ps(reinterpret_cast<const float*>(pIn)+16));
 
-    #elif defined(LS_ARCH_ARM)
+    #elif defined(LS_ARM_NEON)
         vst1q_f32(reinterpret_cast<float*>(&out)+0,  vld1q_f32(reinterpret_cast<const float*>(pIn)+0));
         vst1q_f32(reinterpret_cast<float*>(&out)+4,  vld1q_f32(reinterpret_cast<const float*>(pIn)+4));
         vst1q_f32(reinterpret_cast<float*>(&out)+8,  vld1q_f32(reinterpret_cast<const float*>(pIn)+8));

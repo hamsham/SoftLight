@@ -143,7 +143,7 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
         _mm_store_ps(o + 8,  v2);
         _mm_store_ps(o + 12, v3);
 
-    #elif defined(LS_ARCH_ARM)
+    #elif defined(LS_ARM_NEON)
         const math::vec4* LS_RESTRICT_PTR inVaryings1 = inVaryings0 + SL_SHADER_MAX_VARYING_VECTORS;
         const math::vec4* LS_RESTRICT_PTR inVaryings2 = inVaryings0 + SL_SHADER_MAX_VARYING_VECTORS * 2;
 
@@ -242,7 +242,7 @@ inline LS_INLINE math::vec4 _sl_get_depth_texel4<float>(const float* pDepth)
     return math::vec4{_mm_loadu_ps(pDepth)};
 }
 
-#elif defined(LS_ARCH_ARM)
+#elif defined(LS_ARM_NEON)
 template <>
 inline LS_INLINE math::vec4 _sl_get_depth_texel4<math::half>(const math::half* pDepth)
 {
