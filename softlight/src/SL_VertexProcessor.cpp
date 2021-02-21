@@ -37,74 +37,29 @@ namespace
 /*--------------------------------------
  * Convert world coordinates to screen coordinates (temporary until NDC clipping is added)
 --------------------------------------*/
-inline LS_INLINE math::vec4 sl_perspective_divide(const math::vec4& v) noexcept
-{
-    #if defined(LS_X86_SSE4_1)
-        const __m128 p    = _mm_load_ps(reinterpret_cast<const float*>(&v));
-        const __m128 wInv = _mm_rcp_ps(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(p), 0xFF)));
-        const __m128 vMul = _mm_mul_ps(p, wInv);
-        return math::vec4{_mm_blend_ps(wInv, vMul, 0x07)};
-
-    #elif defined(LS_X86_SSSE3)
-        const __m128 p    = _mm_load_ps(reinterpret_cast<const float*>(&v));
-        const __m128 w    = _mm_shuffle_ps(p, p, 0xFF);
-        const __m128 wInv = _mm_rcp_ps(w);
-        const __m128 vMul = _mm_mul_ps(p, wInv);
-        const __m128i wi  = _mm_shuffle_epi8(_mm_castps_si128(wInv), _mm_set_epi8(15, 14, 13, 12, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1));
-        const __m128i vi  = _mm_shuffle_epi8(_mm_castps_si128(vMul), _mm_set_epi8(-1, -1, -1, -1, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0));
-        return math::vec4{_mm_or_ps(_mm_castsi128_ps(vi), _mm_castsi128_ps(wi))};
-
-    #elif defined(LS_ARM_NEON)
-        const uint32x4_t blendMask{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000000};
-        const float32x4_t w = vdupq_n_f32(vgetq_lane_f32(v.simd, 3));
-        const float32x4_t wInv = vrecpeq_f32(w);
-        const float32x4_t vMul = vmulq_f32(v.simd, vmulq_f32(vrecpsq_f32(w, wInv), wInv));
-        return math::vec4{vbslq_f32(blendMask, vMul, wInv)};
-
-    #else
-        const math::vec4&& wInv = math::rcp(math::vec4{v[3]});
-        const math::vec4&& vMul = v * wInv;
-        return math::vec4{vMul[0], vMul[1], vMul[2], wInv[0]};
-
-    #endif
-}
-
-
-
-/*--------------------------------------
- * Convert world coordinates to screen coordinates (temporary until NDC clipping is added)
---------------------------------------*/
 inline LS_INLINE void sl_perspective_divide3(math::vec4& LS_RESTRICT_PTR v0, math::vec4& LS_RESTRICT_PTR v1, math::vec4& LS_RESTRICT_PTR v2) noexcept
 {
-    #if defined(LS_X86_AVX)
-        const __m128 p0    = _mm_load_ps(reinterpret_cast<const float*>(&v0));
-        const __m128 p1    = _mm_load_ps(reinterpret_cast<const float*>(&v1));
-        const __m128 p2    = _mm_load_ps(reinterpret_cast<const float*>(&v2));
+    #if defined(LS_X86_SSE4_1)
+        const __m128 wInv0 = _mm_rcp_ps(_mm_shuffle_ps(v0.simd, v0.simd, 0xFF));
+        const __m128 wInv1 = _mm_rcp_ps(_mm_shuffle_ps(v1.simd, v1.simd, 0xFF));
+        const __m128 wInv2 = _mm_rcp_ps(_mm_shuffle_ps(v2.simd, v2.simd, 0xFF));
 
-        const __m128 wInv0 = _mm_rcp_ps(_mm_permute_ps(p0, 0xFF));
-        const __m128 wInv1 = _mm_rcp_ps(_mm_permute_ps(p1, 0xFF));
-        const __m128 wInv2 = _mm_rcp_ps(_mm_permute_ps(p2, 0xFF));
+        const __m128 vMul0 = _mm_mul_ps(v0.simd, wInv0);
+        const __m128 vMul1 = _mm_mul_ps(v1.simd, wInv1);
+        const __m128 vMul2 = _mm_mul_ps(v2.simd, wInv2);
 
-        const __m128 vMul0 = _mm_mul_ps(p0, wInv0);
-        const __m128 vMul1 = _mm_mul_ps(p1, wInv1);
-        const __m128 vMul2 = _mm_mul_ps(p2, wInv2);
-
-        _mm_store_ps(reinterpret_cast<float*>(&v0), _mm_blend_ps(wInv0, vMul0, 0x07));
-        _mm_store_ps(reinterpret_cast<float*>(&v1), _mm_blend_ps(wInv1, vMul1, 0x07));
-        _mm_store_ps(reinterpret_cast<float*>(&v2), _mm_blend_ps(wInv2, vMul2, 0x07));
+        v0.simd = _mm_blend_ps(wInv0, vMul0, 0x07);
+        v1.simd = _mm_blend_ps(wInv1, vMul1, 0x07);
+        v2.simd = _mm_blend_ps(wInv2, vMul2, 0x07);
 
     #elif defined(LS_X86_SSSE3)
-        const __m128 p0    = _mm_load_ps(reinterpret_cast<const float*>(&v0));
-        const __m128 p1    = _mm_load_ps(reinterpret_cast<const float*>(&v1));
-        const __m128 p2    = _mm_load_ps(reinterpret_cast<const float*>(&v2));
+        const __m128 wInv0 = _mm_rcp_ps(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(v0.simd), 0xFF)));
+        const __m128 wInv1 = _mm_rcp_ps(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(v1.simd), 0xFF)));
+        const __m128 wInv2 = _mm_rcp_ps(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(v2.simd), 0xFF)));
 
-        const __m128 wInv0 = _mm_rcp_ps(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(p0), 0xFF)));
-        const __m128 wInv1 = _mm_rcp_ps(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(p1), 0xFF)));
-        const __m128 wInv2 = _mm_rcp_ps(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(p2), 0xFF)));
-
-        const __m128 vMul0 = _mm_mul_ps(p0, wInv0);
-        const __m128 vMul1 = _mm_mul_ps(p1, wInv1);
-        const __m128 vMul2 = _mm_mul_ps(p2, wInv2);
+        const __m128 vMul0 = _mm_mul_ps(v0.simd, wInv0);
+        const __m128 vMul1 = _mm_mul_ps(v1.simd, wInv1);
+        const __m128 vMul2 = _mm_mul_ps(v2.simd, wInv2);
 
         const __m128i wi0  = _mm_shuffle_epi8(_mm_castps_si128(wInv0), _mm_set_epi8(15, 14, 13, 12, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1));
         const __m128i wi1  = _mm_shuffle_epi8(_mm_castps_si128(wInv1), _mm_set_epi8(15, 14, 13, 12, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1));
@@ -114,12 +69,13 @@ inline LS_INLINE void sl_perspective_divide3(math::vec4& LS_RESTRICT_PTR v0, mat
         const __m128i vi1  = _mm_shuffle_epi8(_mm_castps_si128(vMul1), _mm_set_epi8(-1, -1, -1, -1, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0));
         const __m128i vi2  = _mm_shuffle_epi8(_mm_castps_si128(vMul2), _mm_set_epi8(-1, -1, -1, -1, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0));
 
-        _mm_store_ps(reinterpret_cast<float*>(&v0), _mm_or_ps(_mm_castsi128_ps(vi0), _mm_castsi128_ps(wi0)));
-        _mm_store_ps(reinterpret_cast<float*>(&v1), _mm_or_ps(_mm_castsi128_ps(vi1), _mm_castsi128_ps(wi1)));
-        _mm_store_ps(reinterpret_cast<float*>(&v2), _mm_or_ps(_mm_castsi128_ps(vi2), _mm_castsi128_ps(wi2)));
+        v0.simd = _mm_or_ps(_mm_castsi128_ps(vi0), _mm_castsi128_ps(wi0));
+        v1.simd = _mm_or_ps(_mm_castsi128_ps(vi1), _mm_castsi128_ps(wi1));
+        v2.simd = _mm_or_ps(_mm_castsi128_ps(vi2), _mm_castsi128_ps(wi2));
 
     #elif defined(LS_ARM_NEON)
-        const uint32x4_t blendMask{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000000};
+        //const uint32x4_t blendMask{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000000};
+        const uint32x4_t blendMask = vsetq_lane_u32(0, vdupq_n_u32(0xFFFFFFFF), 3);
 
         const float32x4_t w0 = vdupq_n_f32(vgetq_lane_f32(v0.simd, 3));
         const float32x4_t wInv0 = vrecpeq_f32(w0);
@@ -155,51 +111,6 @@ inline LS_INLINE void sl_perspective_divide3(math::vec4& LS_RESTRICT_PTR v0, mat
 /*--------------------------------------
  * Convert world coordinates to screen coordinates (temporary until NDC clipping is added)
 --------------------------------------*/
-inline LS_INLINE void sl_world_to_screen_coords_divided(math::vec4& v, const float widthScale, const float heightScale) noexcept
-{
-    #if defined(LS_X86_SSE4_1)
-        const __m128 p   = _mm_load_ps(reinterpret_cast<const float*>(&v));
-        const __m128 wh0 = _mm_set_ps(0.f, 0.f, heightScale, widthScale);
-        const __m128 wh1 = _mm_set_ps(1.f, 1.f, heightScale, widthScale);
-
-        __m128 scl = _mm_fmadd_ps(wh1, p, wh0);
-        scl = _mm_max_ps(_mm_floor_ps(scl), _mm_setzero_ps());
-        _mm_store_ps(reinterpret_cast<float*>(&v), _mm_blend_ps(scl, p, 0x0C));
-
-    #elif defined(LS_ARCH_AARCH64)
-        const float32x4_t p = vld1q_f32(reinterpret_cast<const float*>(&v));
-
-        const uint32x4_t blendMask{0x00000000, 0x00000000, 0xFFFFFFFF, 0xFFFFFFFF};
-        const float32x4_t wh0{widthScale, heightScale, 0.f, 0.f};
-        const float32x4_t wh1{widthScale, heightScale, 1.f, 1.f};
-
-        float32x4_t scl = vmlaq_f32(wh0, p, wh1);
-        scl = vmaxq_f32(vdupq_n_f32(0.f), vrndmq_f32(scl));
-        vst1q_f32(reinterpret_cast<float*>(&v), vbslq_f32(blendMask, p, scl));
-
-    #elif defined(LS_ARM_NEON)
-        const uint32x4_t blendMask{0x00000000, 0x00000000, 0xFFFFFFFF, 0xFFFFFFFF};
-        const float32x4_t wh0{widthScale, heightScale, 0.f, 0.f};
-        const float32x4_t wh1{widthScale, heightScale, 1.f, 1.f};
-
-        const float32x4_t p = vld1q_f32(reinterpret_cast<const float*>(&v));
-        float32x4_t scl = vmlaq_f32(wh0, p, wh1);
-        scl = vmaxq_f32(vdupq_n_f32(0.f), vcvtq_f32_s32(vcvtq_s32_f32(scl)));
-        vst1q_f32(reinterpret_cast<float*>(&v), vbslq_f32(blendMask, p, scl));
-
-    #else
-        v[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  v[0], widthScale)));
-        v[1] = math::max(0.f, math::floor(math::fmadd(heightScale, v[1], heightScale)));
-        //v = math::fmadd(math::vec4{widthScale, heightScale, 1.f, 1.f}, v, math::vec4{widthScale, heightScale, 0.f, 0.f});
-
-    #endif
-}
-
-
-
-/*--------------------------------------
- * Convert world coordinates to screen coordinates (temporary until NDC clipping is added)
---------------------------------------*/
 inline LS_INLINE void sl_world_to_screen_coords_divided3(
     math::vec4& LS_RESTRICT_PTR p0,
     math::vec4& LS_RESTRICT_PTR p1,
@@ -209,65 +120,78 @@ inline LS_INLINE void sl_world_to_screen_coords_divided3(
 ) noexcept
 {
     #if defined(LS_X86_SSE4_1)
-        const __m128 wh0 = _mm_set_ps(0.f, 0.f, heightScale, widthScale);
-        const __m128 wh1 = _mm_set_ps(1.f, 1.f, heightScale, widthScale);
+        const __m128 wh = _mm_unpacklo_ps(_mm_set1_ps(widthScale), _mm_set1_ps(heightScale));
 
-        const __m128 v0 = _mm_load_ps(reinterpret_cast<float*>(&p0));
-        const __m128 v1 = _mm_load_ps(reinterpret_cast<float*>(&p1));
-        const __m128 v2 = _mm_load_ps(reinterpret_cast<float*>(&p2));
-
-        __m128 scl0 = _mm_fmadd_ps(wh1, v0, wh0);
-        __m128 scl1 = _mm_fmadd_ps(wh1, v1, wh0);
-        __m128 scl2 = _mm_fmadd_ps(wh1, v2, wh0);
+        __m128 scl0 = _mm_fmadd_ps(wh, p0.simd, wh);
+        __m128 scl1 = _mm_fmadd_ps(wh, p1.simd, wh);
+        __m128 scl2 = _mm_fmadd_ps(wh, p2.simd, wh);
 
         scl0 = _mm_max_ps(_mm_floor_ps(scl0), _mm_setzero_ps());
         scl1 = _mm_max_ps(_mm_floor_ps(scl1), _mm_setzero_ps());
         scl2 = _mm_max_ps(_mm_floor_ps(scl2), _mm_setzero_ps());
 
-        _mm_store_ps(reinterpret_cast<float*>(&p0), _mm_blend_ps(scl0, v0, 0x0C));
-        _mm_store_ps(reinterpret_cast<float*>(&p1), _mm_blend_ps(scl1, v1, 0x0C));
-        _mm_store_ps(reinterpret_cast<float*>(&p2), _mm_blend_ps(scl2, v2, 0x0C));
+        p0.simd = _mm_blend_ps(p0.simd, scl0, 0x03);
+        p1.simd = _mm_blend_ps(p1.simd, scl1, 0x03);
+        p2.simd = _mm_blend_ps(p2.simd, scl2, 0x03);
+
+    #elif defined(LS_X86_SSE2)
+        const __m128 wh = _mm_unpacklo_ps(_mm_set1_ps(widthScale), _mm_set1_ps(heightScale));
+
+        __m128 scl0 = _mm_fmadd_ps(wh, p0.simd, wh);
+        __m128 scl1 = _mm_fmadd_ps(wh, p1.simd, wh);
+        __m128 scl2 = _mm_fmadd_ps(wh, p2.simd, wh);
+
+        scl0 = _mm_max_ps(_mm_cvtepi32_ps(_mm_cvtps_epi32(scl0)), _mm_setzero_ps());
+        scl1 = _mm_max_ps(_mm_cvtepi32_ps(_mm_cvtps_epi32(scl1)), _mm_setzero_ps());
+        scl2 = _mm_max_ps(_mm_cvtepi32_ps(_mm_cvtps_epi32(scl2)), _mm_setzero_ps());
+
+        const __m128 mask = _mm_castsi128_ps(_mm_set_epi32(0x00000000, 0x00000000, 0xFFFFFFFF, 0xFFFFFFFF));
+
+        p0.simd = _mm_or_ps(_mm_andnot_ps(mask, p0.simd), _mm_and_ps(mask, scl0));
+        p1.simd = _mm_or_ps(_mm_andnot_ps(mask, p1.simd), _mm_and_ps(mask, scl1));
+        p2.simd = _mm_or_ps(_mm_andnot_ps(mask, p2.simd), _mm_and_ps(mask, scl2));
 
     #elif defined(LS_ARCH_AARCH64)
-        const float32x4_t wh0{widthScale, heightScale, 0.f, 0.f};
-        const float32x4_t wh1{widthScale, heightScale, 1.f, 1.f};
-        const uint32x4_t blendMask{0x00000000, 0x00000000, 0xFFFFFFFF, 0xFFFFFFFF};
+        const float32x2_t dims = vset_lane_f32(heightScale, vdup_n_f32(widthScale), 1);
+        const float32x2_t z = vdup_n_f32(0.f);
+        const float32x2_t o = vdup_n_f32(1.f);
 
-        const float32x4_t v0 = vld1q_f32(reinterpret_cast<const float*>(&p0));
-        const float32x4_t v1 = vld1q_f32(reinterpret_cast<const float*>(&p1));
-        const float32x4_t v2 = vld1q_f32(reinterpret_cast<const float*>(&p2));
+        const float32x4_t wh0 = vcombine_f32(dims, z);
+        const float32x4_t wh1 = vcombine_f32(dims, o);
+        const uint32x4_t blendMask = vcombine_u32(vdup_n_u32(0x00000000), vdup_n_u32(0xFFFFFFFF));
 
-        float32x4_t scl0 = vmlaq_f32(wh0, v0, wh1);
+        float32x4_t scl0 = vmlaq_f32(wh0, p0.simd, wh1);
         scl0 = vmaxq_f32(vdupq_n_f32(0.f), vrndmq_f32(scl0));
-        vst1q_f32(reinterpret_cast<float*>(&p0), vbslq_f32(blendMask, v0, scl0));
+        p0.simd = vbslq_f32(blendMask, p0.simd, scl0);
 
-        float32x4_t scl1 = vmlaq_f32(wh0, v1, wh1);
+        float32x4_t scl1 = vmlaq_f32(wh0, p1.simd, wh1);
         scl1 = vmaxq_f32(vdupq_n_f32(0.f), vrndmq_f32(scl1));
-        vst1q_f32(reinterpret_cast<float*>(&p1), vbslq_f32(blendMask, v1, scl1));
+        p1.simd = vbslq_f32(blendMask, p1.simd, scl1);
 
-        float32x4_t scl2 = vmlaq_f32(wh0, v2, wh1);
+        float32x4_t scl2 = vmlaq_f32(wh0, p2.simd, wh1);
         scl2 = vmaxq_f32(vdupq_n_f32(0.f), vrndmq_f32(scl2));
-        vst1q_f32(reinterpret_cast<float*>(&p2), vbslq_f32(blendMask, v2, scl2));
+        p2.simd = vbslq_f32(blendMask, p2.simd, scl2);
 
     #elif defined(LS_ARM_NEON)
-        const float32x4_t wh0{widthScale, heightScale, 0.f, 0.f};
-        const float32x4_t wh1{widthScale, heightScale, 1.f, 1.f};
-        const uint32x4_t blendMask{0x00000000, 0x00000000, 0xFFFFFFFF, 0xFFFFFFFF};
+        const float32x2_t dims = vset_lane_f32(heightScale, vdup_n_f32(widthScale), 1);
+        const float32x2_t z = vdup_n_f32(0.f);
+        const float32x2_t o = vdup_n_f32(1.f);
 
-        const float32x4_t v0 = vld1q_f32(reinterpret_cast<const float*>(&p0));
-        float32x4_t scl0 = vmlaq_f32(wh0, v0, wh1);
+        const float32x4_t wh0 = vcombine_f32(dims, z);
+        const float32x4_t wh1 = vcombine_f32(dims, o);
+        const uint32x4_t blendMask = vcombine_u32(vdup_n_u32(0x00000000), vdup_n_u32(0xFFFFFFFF));
+
+        float32x4_t scl0 = vmlaq_f32(wh0, p0.simd, wh1);
         scl0 = vmaxq_f32(vdupq_n_f32(0.f), vcvtq_f32_s32(vcvtq_s32_f32(scl0)));
-        vst1q_f32(reinterpret_cast<float*>(&p0), vbslq_f32(blendMask, v0, scl0));
+        p0.simd = vbslq_f32(blendMask, p0.simd, scl0);
 
-        const float32x4_t v1 = vld1q_f32(reinterpret_cast<const float*>(&p1));
-        float32x4_t scl1 = vmlaq_f32(wh0, v1, wh1);
+        float32x4_t scl1 = vmlaq_f32(wh0, p1.simd, wh1);
         scl1 = vmaxq_f32(vdupq_n_f32(0.f), vcvtq_f32_s32(vcvtq_s32_f32(scl1)));
-        vst1q_f32(reinterpret_cast<float*>(&p1), vbslq_f32(blendMask, v1, scl1));
+        p1.simd = vbslq_f32(blendMask, p1.simd, scl1);
 
-        const float32x4_t v2 = vld1q_f32(reinterpret_cast<const float*>(&p2));
-        float32x4_t scl2 = vmlaq_f32(wh0, v2, wh1);
+        float32x4_t scl2 = vmlaq_f32(wh0, p2.simd, wh1);
         scl2 = vmaxq_f32(vdupq_n_f32(0.f), vcvtq_f32_s32(vcvtq_s32_f32(scl2)));
-        vst1q_f32(reinterpret_cast<float*>(&p2), vbslq_f32(blendMask, v2, scl2));
+        p2.simd = vbslq_f32(blendMask, p2.simd, scl2);
 
     #else
         p0[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  p0[0], widthScale)));
@@ -472,23 +396,29 @@ inline LS_INLINE SL_ClipStatus face_visible(
         return (SL_ClipStatus)(visI | partI);
 
     #elif defined(LS_ARM_NEON)
-        const float32x4_t w0p = vdupq_lane_f32(vget_high_f32(clip0.simd), 1);
-        const float32x4_t w1p = vdupq_lane_f32(vget_high_f32(clip1.simd), 1);
-        const float32x4_t w2p = vdupq_lane_f32(vget_high_f32(clip2.simd), 1);
+        #if defined(LS_ARCH_AARCH64)
+            const float32x4_t w0p = vdupq_laneq_f32(clip0.simd, 3);
+            const float32x4_t w1p = vdupq_laneq_f32(clip1.simd, 3);
+            const float32x4_t w2p = vdupq_laneq_f32(clip2.simd, 3);
+        #else
+            const float32x4_t w0p = vdupq_lane_f32(vget_high_f32(clip0.simd), 1);
+            const float32x4_t w1p = vdupq_lane_f32(vget_high_f32(clip1.simd), 1);
+            const float32x4_t w2p = vdupq_lane_f32(vget_high_f32(clip2.simd), 1);
+        #endif
 
         const uint32x4_t le0  = vcaleq_f32(clip0.simd, w0p);
         const uint32x4_t le1  = vcaleq_f32(clip1.simd, w1p);
         const uint32x4_t le2  = vcaleq_f32(clip2.simd, w2p);
 
-        const uint32x4_t vis = vandq_u32(le2, vandq_u32(le1, le0));
+        const uint32x4_t vis = vandq_u32(vandq_u32(le2, vandq_u32(le1, le0)), vdupq_n_u32(SL_TRIANGLE_FULLY_VISIBLE));
         const uint32x2_t vis2 = vand_u32(vget_low_u32(vis), vget_high_u32(vis));
-        const unsigned   visI = SL_TRIANGLE_FULLY_VISIBLE & vget_lane_u32(vand_u32(vis2, vrev64_u32(vis2)), 0);
+        const unsigned   visI = vget_lane_u32(vand_u32(vis2, vrev64_u32(vis2)), 0);
 
-        const uint32x2_t gt0 = vcgt_f32(vget_low_f32(w0p), vcreate_f32(0));
-        const uint32x2_t gt1 = vcgt_f32(vget_low_f32(w1p), vcreate_f32(0));
-        const uint32x2_t gt2 = vcgt_f32(vget_low_f32(w2p), vcreate_f32(0));
+        const uint32x2_t gt0 = vrshr_n_u32(vreinterpret_u32_f32(vget_low_f32(w0p)), 31);
+        const uint32x2_t gt1 = vrshr_n_u32(vreinterpret_u32_f32(vget_low_f32(w1p)), 31);
+        const uint32x2_t gt2 = vrshr_n_u32(vreinterpret_u32_f32(vget_low_f32(w2p)), 31);
         const uint32x2_t part2 = vorr_u32(gt2, vorr_u32(gt1, gt0));
-        const unsigned   partI = SL_TRIANGLE_PARTIALLY_VISIBLE & vget_lane_u32(vorr_u32(part2, vrev64_u32(part2)), 0);
+        const unsigned   partI = SL_TRIANGLE_PARTIALLY_VISIBLE & vget_lane_u32(part2, 0);
 
         return (SL_ClipStatus)(visI | partI);
 
@@ -939,10 +869,21 @@ void SL_VertexProcessor::clip_and_process_tris(
 
     LS_DEBUG_ASSERT(numTotalVerts <= numTempVerts);
 
-    for (unsigned i = numTotalVerts; i--;)
     {
-        newVerts[i] = sl_perspective_divide(newVerts[i]);
-        sl_world_to_screen_coords_divided(newVerts[i], widthScale, heightScale);
+        sl_perspective_divide3(newVerts[0], newVerts[1], newVerts[2]);
+        sl_world_to_screen_coords_divided3(newVerts[0], newVerts[1], newVerts[2], widthScale, heightScale);
+    }
+
+    if (LS_LIKELY(numTotalVerts > 3))
+    {
+        sl_perspective_divide3(newVerts[3], newVerts[4], newVerts[5]);
+        sl_world_to_screen_coords_divided3(newVerts[3], newVerts[4], newVerts[5], widthScale, heightScale);
+    }
+
+    if (LS_LIKELY(numTotalVerts > 6))
+    {
+        sl_perspective_divide3(newVerts[6], newVerts[7], newVerts[8]);
+        sl_world_to_screen_coords_divided3(newVerts[6], newVerts[7], newVerts[8], widthScale, heightScale);
     }
 
     SL_TransformedVert p0, p1, p2;
