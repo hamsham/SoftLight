@@ -1,8 +1,12 @@
 
+#include "lightsky/setup/Types.h"
+
 #include "lightsky/utils/Sort.hpp" // utils::sort_radix
 
-#include "softlight/SL_FragmentProcessor.hpp"
-#include "softlight/SL_RasterProcessor.hpp"
+#include "softlight/SL_LineRasterizer.hpp"
+#include "softlight/SL_PointRasterizer.hpp"
+#include "softlight/SL_TriRasterizer.hpp"
+#include "softlight/SL_VertexProcessor.hpp"
 #include "softlight/SL_Shader.hpp" // SL_Shader
 #include "softlight/SL_ShaderUtil.hpp" // SL_BinCounter, SL_BinCounterAtomic
 
@@ -12,12 +16,12 @@ namespace utils = ls::utils;
 
 
 /*-----------------------------------------------------------------------------
- * SL_RasterProcessor Class
+ * SL_VertexProcessor Class
 -----------------------------------------------------------------------------*/
 /*-------------------------------------
  * Destructor
 -------------------------------------*/
-SL_RasterProcessor::~SL_RasterProcessor()
+SL_VertexProcessor::~SL_VertexProcessor()
 {
 }
 
@@ -26,7 +30,8 @@ SL_RasterProcessor::~SL_RasterProcessor()
 /*-------------------------------------
  * Execute the rasterizer
 -------------------------------------*/
-void SL_RasterProcessor::flush_rasterizer() const noexcept
+template <typename RasterizerType>
+void SL_VertexProcessor::flush_rasterizer() const noexcept
 {
     // Allow the other threads to know when they're ready for processing
     const int_fast64_t    numThreads = (int_fast64_t)mNumThreads;
@@ -79,19 +84,20 @@ void SL_RasterProcessor::flush_rasterizer() const noexcept
         maxElements = math::min<uint64_t>(mBinsUsed->count.load(std::memory_order_consume), SL_SHADER_MAX_BINNED_PRIMS);
     }
 
-    SL_FragmentProcessor fragTask{
-        (uint16_t)mThreadId,
-        mRenderMode,
-        (uint32_t)mNumThreads,
-        (uint32_t)maxElements,
-        mShader,
-        mFbo,
-        mBinIds,
-        mFragBins,
-        mFragQueues + mThreadId
-    };
+    static_assert(ls::setup::IsBaseOf<SL_FragmentProcessor, RasterizerType>::value, "Template parameter 'RasterizerType' must derive from SL_FragmentProcessor.");
+    RasterizerType rasterizer;
 
-    fragTask.execute();
+    rasterizer.mThreadId = (uint16_t)mThreadId;
+    rasterizer.mMode = mRenderMode;
+    rasterizer.mNumProcessors = (uint32_t)mNumThreads;
+    rasterizer.mNumBins = (uint32_t)maxElements;
+    rasterizer.mShader = mShader;
+    rasterizer.mFbo = mFbo;
+    rasterizer.mBinIds = mBinIds;
+    rasterizer.mBins = mFragBins;
+    rasterizer.mQueues = mFragQueues + mThreadId;
+
+    rasterizer.execute();
 
     // Indicate to all threads we can now process more vertices
     syncPoint2 = mFragProcessors->count.fetch_add(1, std::memory_order_acq_rel);
@@ -118,14 +124,17 @@ void SL_RasterProcessor::flush_rasterizer() const noexcept
 /*--------------------------------------
  * Perform a final sync
 --------------------------------------*/
-void SL_RasterProcessor::cleanup() noexcept
+template <typename RasterizerType>
+void SL_VertexProcessor::cleanup() noexcept
 {
+    static_assert(ls::setup::IsBaseOf<SL_FragmentProcessor, RasterizerType>::value, "Template parameter 'RasterizerType' must derive from SL_FragmentProcessor.");
+
     mBusyProcessors->count.fetch_sub(1, std::memory_order_acq_rel);
     do
     {
         if (mFragProcessors->count.load(std::memory_order_consume))
         {
-            flush_rasterizer();
+            flush_rasterizer<RasterizerType>();
         }
         else
         {
@@ -135,6 +144,17 @@ void SL_RasterProcessor::cleanup() noexcept
 
     if (mBinsUsed->count.load(std::memory_order_consume))
     {
-        flush_rasterizer();
+        flush_rasterizer<RasterizerType>();
     }
 }
+
+/*--------------------------------------
+ * Raster Specializations
+--------------------------------------*/
+template void SL_VertexProcessor::flush_rasterizer<SL_PointRasterizer>() const noexcept;
+template void SL_VertexProcessor::flush_rasterizer<SL_LineRasterizer>() const noexcept;
+template void SL_VertexProcessor::flush_rasterizer<SL_TriRasterizer>() const noexcept;
+
+template void SL_VertexProcessor::cleanup<SL_PointRasterizer>() noexcept;
+template void SL_VertexProcessor::cleanup<SL_LineRasterizer>() noexcept;
+template void SL_VertexProcessor::cleanup<SL_TriRasterizer>() noexcept;

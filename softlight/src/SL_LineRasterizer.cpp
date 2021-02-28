@@ -1,0 +1,320 @@
+
+#include "lightsky/setup/Api.h" // LS_IMPERATIVE
+
+#include "lightsky/math/bits.h"
+#include "lightsky/math/fixed.h"
+#include "lightsky/math/half.h"
+#include "lightsky/math/vec_utils.h"
+
+#include "softlight/SL_Config.hpp"
+#include "softlight/SL_LineRasterizer.hpp"
+#include "softlight/SL_Framebuffer.hpp" // SL_Framebuffer
+#include "softlight/SL_Shader.hpp" // SL_FragmentShader
+#include "softlight/SL_Texture.hpp"
+
+
+
+/*-----------------------------------------------------------------------------
+ * Namespace setup
+-----------------------------------------------------------------------------*/
+namespace math = ls::math;
+namespace utils = ls::utils;
+
+
+
+/*-----------------------------------------------------------------------------
+ * Anonymous Helper Functions
+-----------------------------------------------------------------------------*/
+namespace
+{
+
+
+
+/*--------------------------------------
+ * Interpolate varying variables across a line
+--------------------------------------*/
+inline void LS_IMPERATIVE interpolate_line_varyings(
+    const float             percent,
+    const uint32_t          numVaryings,
+    const math::vec4* const inVaryings,
+    math::vec4* const       outVaryings
+) noexcept
+{
+    const uint32_t i2 = numVaryings;
+
+    for (uint32_t i = numVaryings; i--;)
+    {
+        const math::vec4& v0 = inVaryings[i];
+        const math::vec4& v1 = inVaryings[i+i2];
+        outVaryings[i] = math::mix(v0, v1, percent);
+    }
+}
+
+
+
+} // end anonymous namespace
+
+
+
+/*-----------------------------------------------------------------------------
+ * SL_LineRasterizer Class
+-----------------------------------------------------------------------------*/
+/*--------------------------------------
+ * Methods for clipping a line segment
+ *
+ * This method was adapted from Stephen M. Cameron's implementation of the
+ * Liang-Barsky line clipping algorithm:
+ *     https://github.com/smcameron/liang-barsky-in-c
+ *
+ * His method was also adapted from Hin Jang's C++ implementation:
+ *     http://hinjang.com/articles/04.html#eight
+--------------------------------------*/
+bool clip_segment(float num, float denom, float& tE, float& tL)
+{
+    if (math::abs(denom) < LS_EPSILON)
+        return num < 0.f;
+
+    const float t = num / denom;
+
+    if (denom > 0.f)
+    {
+        if (t > tL)
+        {
+            return false;
+        }
+
+        if (t > tE)
+        {
+            tE = t;
+        }
+    }
+    else
+    {
+        if (t < tE)
+        {
+            return false;
+        }
+
+        if (t < tL)
+        {
+            tL = t;
+        }
+    }
+
+    return true;
+}
+
+bool sl_clip_liang_barsky(math::vec2& a, math::vec2& b, const math::vec4_t<int32_t>& dimens)
+{
+    float tE, tL;
+    float& x1 = a[0];
+    float& y1 = a[1];
+    float& x2 = b[0];
+    float& y2 = b[1];
+    const float dx = x2 - x1;
+    const float dy = y2 - y1;
+
+    float xMin = (float)dimens[0];
+    float xMax = (float)dimens[1];
+    float yMin = (float)dimens[2];
+    float yMax = (float)dimens[3];
+
+    if (math::abs(dx) < LS_EPSILON && math::abs(dy) < LS_EPSILON)
+    {
+        if (x1 >= xMin && x1 <= xMax && y1 >= yMin && y1 <= yMax)
+        {
+            return true;
+        }
+    }
+
+    tE = 0.f;
+    tL = 1.f;
+
+    if (clip_segment(xMin-x1,  dx, tE, tL) &&
+        clip_segment(x1-xMax, -dx, tE, tL) &&
+        clip_segment(yMin-y1,  dy, tE, tL) &&
+        clip_segment(y1-yMax, -dy, tE, tL))
+    {
+        if (tL < 1.f)
+        {
+            x2 = x1 + tL * dx;
+            y2 = y1 + tL * dy;
+        }
+
+        if (tE > 0.f)
+        {
+            x1 += tE * dx;
+            y1 += tE * dy;
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
+inline bool sl_clip_liang_barsky(math::vec2 screenCoords[2], const math::vec4_t<int32_t>& dimens)
+{
+    return sl_clip_liang_barsky(screenCoords[0], screenCoords[1], dimens);
+}
+
+
+
+/*--------------------------------------
+ * Process the line fragments using a simple DDA algorithm
+--------------------------------------*/
+template <typename depth_type>
+void SL_LineRasterizer::render_line(
+    const uint32_t binId,
+    SL_Framebuffer* fbo,
+    const math::vec4_t<int32_t> dimens) noexcept
+{
+    typedef math::long_medp_t fixed_type;
+    constexpr fixed_type ZERO = fixed_type{0};
+
+    const SL_FragmentShader fragShader  = mShader->mFragShader;
+    const SL_BlendMode      blendMode   = fragShader.blend;
+    const bool              blend       = blendMode != SL_BLEND_OFF;
+    const uint32_t          numVaryings = fragShader.numVaryings;
+    const uint32_t          numOutputs  = fragShader.numOutputs;
+    const bool              noDepthTest = fragShader.depthTest == SL_DEPTH_TEST_OFF;
+    const bool              depthMask   = fragShader.depthMask == SL_DEPTH_MASK_ON;
+    const auto              shader      = fragShader.shader;
+    const SL_UniformBuffer* pUniforms   = mShader->mUniforms;
+
+    const math::vec4  screenCoord0  = mBins[binId].mScreenCoords[0];
+    const math::vec4  screenCoord1  = mBins[binId].mScreenCoords[1];
+    float             z0            = screenCoord0[2];
+    float             z1            = screenCoord1[2];
+    const math::vec4* inVaryings    = mBins[binId].mVaryings;
+    math::vec2        clipCoords[2] = {math::vec2_cast(screenCoord0), math::vec2_cast(screenCoord1)};
+
+    if (!sl_clip_liang_barsky(clipCoords, dimens))
+    {
+        return;
+    }
+
+    const float      x1f   = screenCoord0[0];
+    const float      y1f   = screenCoord0[1];
+    const fixed_type x1    = math::fixed_cast<fixed_type, float>(clipCoords[0][0]);
+    const fixed_type y1    = math::fixed_cast<fixed_type, float>(clipCoords[0][1]);
+    const fixed_type x2    = math::fixed_cast<fixed_type, float>(clipCoords[1][0]);
+    const fixed_type y2    = math::fixed_cast<fixed_type, float>(clipCoords[1][1]);
+    fixed_type       x     = x1;
+    fixed_type       y     = y1;
+    fixed_type       dx    = x2 - x1;
+    fixed_type       dy    = y2 - y1;
+    const fixed_type step  = math::abs((dx >= dy ? dx : dy));
+    const int32_t    istep = math::integer_cast<int32_t, fixed_type>(step);
+
+    dx = (step > ZERO) ? (dx/step) : ZERO;
+    dy = (step > ZERO) ? (dy/step) : ZERO;
+
+    const float       dist     = 1.f / math::length(math::vec2_cast(screenCoord1)-math::vec2_cast(screenCoord0));
+    const SL_Texture* depthBuf = fbo->get_depth_buffer();
+
+    SL_FragmentParam fragParams;
+    fragParams.pUniforms = pUniforms;
+
+    for (int32_t i = 0; i <= istep; ++i)
+    {
+        const float      xf      = math::float_cast<float, fixed_type>(x);
+        const float      yf      = math::float_cast<float, fixed_type>(y);
+        const int32_t    xi      = math::integer_cast<int32_t, fixed_type>(math::floor(x));
+        const int32_t    yi      = math::integer_cast<int32_t, fixed_type>(math::floor(y));
+
+        const float      currLen = math::length(math::vec2{xf-x1f, yf-y1f});
+        const float      interp  = (currLen*dist);
+        const float      z       = math::mix(z0, z1, interp);
+
+#if SL_REVERSED_Z_RENDERING
+        if (noDepthTest || (float)depthBuf->raw_texel<depth_type>((uint16_t)xi, (uint16_t)yi) <= z)
+#else
+        if (noDepthTest || (float)depthBuf->raw_texel<depth_type>((uint16_t)xi, (uint16_t)yi) >= z)
+#endif
+        {
+            interpolate_line_varyings(interp, numVaryings, inVaryings, fragParams.pVaryings);
+
+            fragParams.coord.x     = (uint16_t)xi;
+            fragParams.coord.y     = (uint16_t)yi;
+            fragParams.coord.depth = z;
+            const uint_fast32_t haveOutputs = shader(fragParams);
+
+            if (blend)
+            {
+                // branchless select
+                switch (-haveOutputs & numOutputs)
+                {
+                    case 4: fbo->put_alpha_pixel(3, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3], blendMode);
+                    case 3: fbo->put_alpha_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], blendMode);
+                    case 2: fbo->put_alpha_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], blendMode);
+                    case 1: fbo->put_alpha_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], blendMode);
+                        //case 1: fbo->put_pixel(0, fragParams.x, fragParams.y, math::vec4{1.f, 0, 1.f, 1.f});
+                }
+
+            }
+            else
+            {
+                // branchless select
+                switch (-haveOutputs & numOutputs)
+                {
+                    case 4: fbo->put_pixel(3, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3]);
+                    case 3: fbo->put_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2]);
+                    case 2: fbo->put_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1]);
+                    case 1: fbo->put_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0]);
+                        //case 1: fbo->put_pixel(0,fragParams.x, fragParams.y, math::vec4{1.f, 0, 1.f, 1.f});
+                }
+            }
+
+            if (haveOutputs && depthMask)
+            {
+                fbo->put_depth_pixel<depth_type>(xi, yi, (depth_type)z);
+            }
+        }
+
+        x += dx;
+        y += dy;
+    }
+}
+
+
+
+/*-------------------------------------
+ * Run the fragment processor
+-------------------------------------*/
+void SL_LineRasterizer::execute() noexcept
+{
+    const uint16_t depthBpp = mFbo->get_depth_buffer()->bpp();
+
+    // divide the screen into equal parts which can then be rendered by all
+    // available fragment threads.
+    const int32_t w = mFbo->width();
+    const int32_t h = mFbo->height();
+    const math::vec4_t<int32_t> dimens = sl_subdivide_region<int32_t>(w, h, mNumProcessors, mThreadId);
+
+    if (depthBpp == sizeof(math::half))
+    {
+        for (uint64_t binId = 0; binId < mNumBins; ++binId)
+        {
+            render_line<math::half>(binId, mFbo, dimens);
+        }
+    }
+    else if (depthBpp == sizeof(float))
+    {
+        for (uint64_t binId = 0; binId < mNumBins; ++binId)
+        {
+            render_line<float>(binId, mFbo, dimens);
+        }
+    }
+    else if (depthBpp == sizeof(double))
+    {
+        for (uint64_t binId = 0; binId < mNumBins; ++binId)
+        {
+            render_line<double>(binId, mFbo, dimens);
+        }
+    }
+}
+
+template void SL_LineRasterizer::render_line<ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+template void SL_LineRasterizer::render_line<float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+template void SL_LineRasterizer::render_line<double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;

@@ -247,7 +247,7 @@ unsigned SL_ProcessorPool::concurrency(unsigned inNumThreads) noexcept
         "\n\tThread Count:       ", inNumThreads,
         "\n\tBytes per Task:     ", sizeof(SL_ShaderProcessor),
         "\n\tBytes of Task Pool: ", sizeof(SL_ProcessorPool),
-        "\n\tVertex Task Size:   ", sizeof(SL_RasterProcessor),
+        "\n\tVertex Task Size:   ", sizeof(SL_VertexProcessor),
         "\n\tFragment Task Size: ", sizeof(SL_FragmentProcessor),
         "\n\tFragment Bin Size:  ", sizeof(SL_FragmentBin),
         "\n\tBlitter Task Size:  ", sizeof(SL_BlitProcessor));
@@ -270,7 +270,7 @@ void SL_ProcessorPool::run_shader_processors(const SL_Context& c, const SL_Mesh&
     SL_ShaderProcessor task;
     task.mType = sl_processor_type_for_draw_mode(renderMode);
 
-    SL_RasterProcessor* vertTask = task.processor_for_draw_mode(renderMode);
+    SL_VertexProcessor* vertTask = task.processor_for_draw_mode(renderMode);
     vertTask->mThreadId       = 0;
     vertTask->mNumThreads     = (int16_t)mNumThreads;
     vertTask->mFragProcessors = mFragSemaphore.get();
@@ -326,7 +326,7 @@ void SL_ProcessorPool::run_shader_processors(const SL_Context& c, const SL_Mesh*
     SL_ShaderProcessor task;
     task.mType = sl_processor_type_for_draw_mode(renderMode);
 
-    SL_RasterProcessor* vertTask = task.processor_for_draw_mode(renderMode);
+    SL_VertexProcessor* vertTask = task.processor_for_draw_mode(renderMode);
     vertTask->mThreadId       = 0;
     vertTask->mNumThreads     = (int16_t)mNumThreads;
     vertTask->mFragProcessors = mFragSemaphore.get();

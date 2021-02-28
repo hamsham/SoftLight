@@ -64,10 +64,6 @@ SL_ShaderProcessor::SL_ShaderProcessor(const SL_ShaderProcessor& sp) noexcept :
 {
     switch (sp.mType)
     {
-        case SL_FRAGMENT_SHADER:
-            mFragProcessor = sp.mFragProcessor;
-            break;
-
         case SL_TRI_PROCESSOR:
             mTriProcessor = sp.mTriProcessor;
             break;
@@ -98,10 +94,6 @@ SL_ShaderProcessor::SL_ShaderProcessor(SL_ShaderProcessor&& sp) noexcept :
 {
     switch (sp.mType)
     {
-        case SL_FRAGMENT_SHADER:
-            mFragProcessor = sp.mFragProcessor;
-            break;
-
         case SL_TRI_PROCESSOR:
             mTriProcessor = sp.mTriProcessor;
             break;
@@ -135,10 +127,6 @@ SL_ShaderProcessor& SL_ShaderProcessor::operator=(const SL_ShaderProcessor& sp) 
 
         switch (sp.mType)
         {
-            case SL_FRAGMENT_SHADER:
-                mFragProcessor = sp.mFragProcessor;
-                break;
-
             case SL_TRI_PROCESSOR:
                 mTriProcessor = sp.mTriProcessor;
                 break;
@@ -175,10 +163,6 @@ SL_ShaderProcessor& SL_ShaderProcessor::operator=(SL_ShaderProcessor&& sp) noexc
 
         switch (sp.mType)
         {
-            case SL_FRAGMENT_SHADER:
-                mFragProcessor = sp.mFragProcessor;
-                break;
-
             case SL_TRI_PROCESSOR:
                 mTriProcessor = sp.mTriProcessor;
                 break;
@@ -207,7 +191,7 @@ SL_ShaderProcessor& SL_ShaderProcessor::operator=(SL_ShaderProcessor&& sp) noexc
 /*--------------------------------------
  * Deduce the correct rasterizer for a particular draw mode
 --------------------------------------*/
-SL_RasterProcessor* SL_ShaderProcessor::processor_for_draw_mode(SL_RenderMode drawMode) noexcept
+SL_VertexProcessor* SL_ShaderProcessor::processor_for_draw_mode(SL_RenderMode drawMode) noexcept
 {
     switch (drawMode)
     {

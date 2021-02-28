@@ -6,7 +6,6 @@
 
 #include "softlight/SL_BlitProcesor.hpp"
 #include "softlight/SL_ClearProcesor.hpp"
-#include "softlight/SL_FragmentProcessor.hpp"
 #include "softlight/SL_LineProcessor.hpp"
 #include "softlight/SL_PointProcessor.hpp"
 #include "softlight/SL_TriProcessor.hpp"
@@ -22,7 +21,6 @@ enum SL_RenderMode : uint32_t;
 -----------------------------------------------------------------------------*/
 enum SL_ShaderType : uint8_t
 {
-    SL_FRAGMENT_SHADER,
     SL_TRI_PROCESSOR,
     SL_LINE_PROCESSOR,
     SL_POINT_PROCESSOR,
@@ -44,7 +42,6 @@ struct SL_ShaderProcessor
     // 2128 bits
     union
     {
-        SL_FragmentProcessor mFragProcessor;
         SL_TriProcessor mTriProcessor;
         SL_LineProcessor mLineProcessor;
         SL_PointProcessor mPointProcessor;
@@ -66,7 +63,7 @@ struct SL_ShaderProcessor
 
     SL_ShaderProcessor& operator=(SL_ShaderProcessor&&) noexcept;
 
-    SL_RasterProcessor* processor_for_draw_mode(SL_RenderMode drawMode) noexcept;
+    SL_VertexProcessor* processor_for_draw_mode(SL_RenderMode drawMode) noexcept;
 
     void operator()() noexcept;
 };
@@ -80,10 +77,6 @@ inline void SL_ShaderProcessor::operator()() noexcept
 {
     switch (mType)
     {
-        case SL_FRAGMENT_SHADER:
-            mFragProcessor.execute();
-            break;
-
         case SL_TRI_PROCESSOR:
             mTriProcessor.execute();
             break;

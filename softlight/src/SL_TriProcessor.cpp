@@ -1,10 +1,13 @@
 
+#include "lightsky/math/mat_utils.h"
+
 #include "softlight/SL_Context.hpp"
 #include "softlight/SL_Framebuffer.hpp"
 #include "softlight/SL_IndexBuffer.hpp"
 #include "softlight/SL_Shader.hpp"
 #include "softlight/SL_ShaderUtil.hpp" // SL_BinCounter
 #include "softlight/SL_TriProcessor.hpp"
+#include "softlight/SL_TriRasterizer.hpp"
 #include "softlight/SL_VertexArray.hpp"
 #include "softlight/SL_VertexCache.hpp"
 
@@ -453,7 +456,7 @@ void SL_TriProcessor::push_bin(size_t primIndex, float fboW, float fboH, const S
     // Attempt to grab a bin index. Flush the bins if they've filled up.
     while ((binId = pLocks->count.fetch_add(1, std::memory_order_acq_rel)) >= SL_SHADER_MAX_BINNED_PRIMS)
     {
-        flush_rasterizer();
+        flush_rasterizer<SL_TriRasterizer>();
     }
 
     // place a triangle into the next available bin
@@ -698,7 +701,7 @@ void SL_TriProcessor::process_verts(const SL_Mesh& m, size_t instanceId) noexcep
 {
     if (mFragProcessors->count.load(std::memory_order_consume))
     {
-        flush_rasterizer();
+        flush_rasterizer<SL_TriRasterizer>();
     }
 
     SL_TransformedVert      pVert0;
@@ -813,5 +816,5 @@ void SL_TriProcessor::execute() noexcept
         }
     }
 
-    this->cleanup();
+    this->cleanup<SL_TriRasterizer>();
 }

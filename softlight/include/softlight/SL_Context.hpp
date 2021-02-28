@@ -9,8 +9,9 @@
 
 #include "lightsky/utils/Pointer.h"
 
-#include "softlight/SL_Setup.hpp"
 #include "softlight/SL_ProcessorPool.hpp"
+#include "softlight/SL_RasterState.hpp"
+#include "softlight/SL_Setup.hpp"
 
 
 
@@ -73,6 +74,8 @@ class SL_Context
     SL_AlignedVector<SL_UniformBuffer> mUniforms;
 
     SL_AlignedVector<SL_Shader> mShaders;
+
+    SL_RasterState mState;
 
     SL_ProcessorPool mProcessors;
 

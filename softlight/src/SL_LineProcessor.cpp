@@ -3,6 +3,7 @@
 #include "softlight/SL_Framebuffer.hpp"
 #include "softlight/SL_IndexBuffer.hpp"
 #include "softlight/SL_LineProcessor.hpp"
+#include "softlight/SL_LineRasterizer.hpp"
 #include "softlight/SL_Shader.hpp"
 #include "softlight/SL_ShaderUtil.hpp" // SL_BinCounter
 #include "softlight/SL_VertexArray.hpp"
@@ -82,7 +83,7 @@ void SL_LineProcessor::push_bin(size_t primIndex, float fboW, float fboH, const 
     // Attempt to grab a bin index. Flush the bins if they've filled up.
     while ((binId = pLocks->count.fetch_add(1, std::memory_order_acq_rel)) >= SL_SHADER_MAX_BINNED_PRIMS)
     {
-        flush_rasterizer();
+        flush_rasterizer<SL_LineRasterizer>();
     }
 
     // place a triangle into the next available bin
@@ -109,7 +110,7 @@ void SL_LineProcessor::process_verts(const SL_Mesh& m, size_t instanceId) noexce
 {
     if (mFragProcessors->count.load(std::memory_order_consume))
     {
-        flush_rasterizer();
+        flush_rasterizer<SL_LineRasterizer>();
     }
 
     SL_TransformedVert      pVert0;
@@ -198,5 +199,5 @@ void SL_LineProcessor::execute() noexcept
         }
     }
 
-    this->cleanup();
+    this->cleanup<SL_LineRasterizer>();
 }

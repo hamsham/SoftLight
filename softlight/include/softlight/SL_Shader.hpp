@@ -7,6 +7,7 @@
 
 #include "lightsky/math/vec4.h"
 
+#include "softlight/SL_RasterState.hpp"
 #include "softlight/SL_ShaderUtil.hpp" // SL_SHADER_MAX_FRAG_OUTPUTS, SL_SHADER_MAX_VARYING_VECTORS
 
 
@@ -31,54 +32,6 @@ class SL_VertexArray;
 class SL_VertexBuffer;
 
 enum SL_RenderMode : uint32_t; // SL_Geometry.hpp
-
-
-
-/*-------------------------------------
- * Triangle Cull Mode
--------------------------------------*/
-enum SL_CullMode : uint8_t
-{
-    SL_CULL_BACK_FACE,
-    SL_CULL_FRONT_FACE,
-    SL_CULL_OFF
-};
-
-
-
-/*-------------------------------------
- * Fragment Blending
--------------------------------------*/
-enum SL_BlendMode : uint8_t
-{
-    SL_BLEND_OFF,
-    SL_BLEND_ALPHA,
-    SL_BLEND_PREMULTIPLED_ALPHA,
-    SL_BLEND_ADDITIVE,
-    SL_BLEND_SCREEN,
-};
-
-
-
-/*-------------------------------------
- * Depth Test Configuration
--------------------------------------*/
-enum SL_DepthTest : uint8_t
-{
-    SL_DEPTH_TEST_OFF,
-    SL_DEPTH_TEST_ON
-};
-
-
-
-/*-------------------------------------
- * Depth-Write Configuration
--------------------------------------*/
-enum SL_DepthMask : uint8_t
-{
-    SL_DEPTH_MASK_OFF,
-    SL_DEPTH_MASK_ON
-};
 
 
 
@@ -155,12 +108,15 @@ struct SL_FragmentShader
 class SL_Shader
 {
     friend class SL_Context;
-    friend struct SL_VertexProcessor;
-    friend struct SL_FragmentProcessor;
-    friend class SL_RasterProcessor;
+    friend class SL_VertexProcessor;
+
     friend class SL_PointProcessor;
     friend class SL_LineProcessor;
     friend class SL_TriProcessor;
+
+    friend struct SL_PointRasterizer;
+    friend struct SL_LineRasterizer;
+    friend struct SL_TriRasterizer;
 
   private:
     SL_VertexShader mVertShader;

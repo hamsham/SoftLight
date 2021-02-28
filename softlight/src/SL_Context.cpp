@@ -39,6 +39,7 @@ SL_Context::SL_Context() noexcept :
     mIbos{},
     mUniforms{},
     mShaders{},
+    mState{},
     mProcessors{}
 {}
 
@@ -55,6 +56,7 @@ SL_Context::SL_Context(const SL_Context& c) noexcept :
     mIbos{c.mIbos},
     mUniforms{c.mUniforms},
     mShaders{c.mShaders},
+    mState{c.mState},
     mProcessors{c.mProcessors}
 {
     mTextures.reserve(c.mTextures.size());
@@ -78,6 +80,7 @@ SL_Context::SL_Context(SL_Context&& c) noexcept :
     mIbos{std::move(c.mIbos)},
     mUniforms{std::move(c.mUniforms)},
     mShaders{std::move(c.mShaders)},
+    mState{std::move(c.mState)},
     mProcessors{std::move(c.mProcessors)}
 {}
 
@@ -110,6 +113,7 @@ SL_Context& SL_Context::operator=(const SL_Context& c) noexcept
             mTextures.push_back(new SL_Texture{*pTex});
         }
 
+        mState = c.mState;
         mProcessors = c.mProcessors;
     }
 
@@ -132,6 +136,7 @@ SL_Context& SL_Context::operator=(SL_Context&& c) noexcept
         mIbos       = std::move(c.mIbos);
         mUniforms   = std::move(c.mUniforms);
         mShaders    = std::move(c.mShaders);
+        mState      = std::move(c.mState);
         mProcessors = std::move(c.mProcessors);
     }
 
@@ -580,6 +585,10 @@ void SL_Context::terminate()
 
     mShaders.clear();
     mShaders.shrink_to_fit();
+
+    mState.reset();
+
+    mProcessors.concurrency(1);
 }
 
 
