@@ -42,7 +42,7 @@ class SL_PTVCache
 
 
 
-SL_PTVCache::SL_PTVCache(ls::math::vec4_t<float> (*pShader)(SL_VertexParam&), SL_VertexParam& inParam) noexcept :
+inline SL_PTVCache::SL_PTVCache(ls::math::vec4_t<float> (*pShader)(SL_VertexParam&), SL_VertexParam& inParam) noexcept :
     //mIndices{},
     mParam{inParam},
     mShader{pShader}

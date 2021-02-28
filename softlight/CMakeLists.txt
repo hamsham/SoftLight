@@ -144,12 +144,15 @@ set(SL_LIB_HEADERS
     include/softlight/SL_ImgFilePPM.hpp
     include/softlight/SL_IndexBuffer.hpp
     include/softlight/SL_KeySym.hpp
+    include/softlight/SL_LineProcessor.hpp
     include/softlight/SL_Material.hpp
     include/softlight/SL_Mesh.hpp
     include/softlight/SL_Octree.hpp
     include/softlight/SL_PackedVertex.hpp
     include/softlight/SL_Plane.hpp
+    include/softlight/SL_PointProcessor.hpp
     include/softlight/SL_ProcessorPool.hpp
+    include/softlight/SL_RasterProcessor.hpp
     include/softlight/SL_RenderWindow.hpp
     include/softlight/SL_Sampler.hpp
     include/softlight/SL_ScanlineBounds.hpp
@@ -165,11 +168,11 @@ set(SL_LIB_HEADERS
     include/softlight/SL_TextMeshLoader.hpp
     include/softlight/SL_Texture.hpp
     include/softlight/SL_Transform.hpp
+    include/softlight/SL_TriProcessor.hpp
     include/softlight/SL_UniformBuffer.hpp
     include/softlight/SL_VertexArray.hpp
     include/softlight/SL_VertexBuffer.hpp
     include/softlight/SL_VertexCache.hpp
-    include/softlight/SL_VertexProcessor.hpp
     include/softlight/SL_WindowBuffer.hpp
     include/softlight/SL_WindowEvent.hpp)
 
@@ -218,9 +221,12 @@ set(SL_LIB_SOURCES
     src/SL_ImgFile.cpp
     src/SL_ImgFilePPM.cpp
     src/SL_IndexBuffer.cpp
+    src/SL_LineProcessor.cpp
     src/SL_Material.cpp
     src/SL_Mesh.cpp
+    src/SL_PointProcessor.cpp
     src/SL_ProcessorPool.cpp
+    src/SL_RasterProcessor.cpp
     src/SL_RenderWindow.cpp
     src/SL_SceneFileLoader.cpp
     src/SL_SceneFileUtility.cpp
@@ -231,10 +237,10 @@ set(SL_LIB_SOURCES
     src/SL_TextMeshLoader.cpp
     src/SL_Texture.cpp
     src/SL_Transform.cpp
+    src/SL_TriProcessor.cpp
     src/SL_UniformBuffer.cpp
     src/SL_VertexArray.cpp
     src/SL_VertexBuffer.cpp
-    src/SL_VertexProcessor.cpp
     src/SL_WindowBuffer.cpp)
 
 if(WIN32)

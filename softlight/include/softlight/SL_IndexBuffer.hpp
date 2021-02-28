@@ -51,6 +51,8 @@ class SL_IndexBuffer
 
     const void* element(const ptrdiff_t index) const noexcept;
 
+    size_t index(size_t index) const noexcept;
+
     void* data() noexcept;
 
     const void* data() const noexcept;
@@ -120,6 +122,25 @@ inline const void* SL_IndexBuffer::element(const ptrdiff_t index) const noexcept
 {
     const ptrdiff_t offset = index * mBytesPerId;
     return mBuffer.get() + offset;
+}
+
+
+
+/*--------------------------------------
+ * Retrieve a single element
+--------------------------------------*/
+inline size_t SL_IndexBuffer::index(const size_t index) const noexcept
+{
+    switch (mType)
+    {
+        case VERTEX_DATA_BYTE:  return *reinterpret_cast<const unsigned char*>(this->element(index));
+        case VERTEX_DATA_SHORT: return *reinterpret_cast<const unsigned short*>(this->element(index));
+        case VERTEX_DATA_INT:   return *reinterpret_cast<const unsigned int*>(this->element(index));
+        default:
+            LS_UNREACHABLE();
+    }
+
+    return (size_t)~0ull;
 }
 
 

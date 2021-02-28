@@ -7,7 +7,13 @@
 #include "softlight/SL_BlitProcesor.hpp"
 #include "softlight/SL_ClearProcesor.hpp"
 #include "softlight/SL_FragmentProcessor.hpp"
-#include "softlight/SL_VertexProcessor.hpp"
+#include "softlight/SL_LineProcessor.hpp"
+#include "softlight/SL_PointProcessor.hpp"
+#include "softlight/SL_TriProcessor.hpp"
+
+
+
+enum SL_RenderMode : uint32_t;
 
 
 
@@ -16,11 +22,15 @@
 -----------------------------------------------------------------------------*/
 enum SL_ShaderType : uint8_t
 {
-    SL_VERTEX_SHADER,
     SL_FRAGMENT_SHADER,
-    SL_BLIT_SHADER,
-    SL_CLEAR_SHADER
+    SL_TRI_PROCESSOR,
+    SL_LINE_PROCESSOR,
+    SL_POINT_PROCESSOR,
+    SL_BLIT_PROCESSOR,
+    SL_CLEAR_PROCESSOR
 };
+
+SL_ShaderType sl_processor_type_for_draw_mode(SL_RenderMode drawMode) noexcept;
 
 
 
@@ -34,15 +44,17 @@ struct SL_ShaderProcessor
     // 2128 bits
     union
     {
-        SL_VertexProcessor mVertProcessor;
         SL_FragmentProcessor mFragProcessor;
+        SL_TriProcessor mTriProcessor;
+        SL_LineProcessor mLineProcessor;
+        SL_PointProcessor mPointProcessor;
         SL_BlitProcessor mBlitter;
         SL_ClearProcessor mClear;
     };
 
     // 2144 bits (268 bytes), padding not included
 
-    ~SL_ShaderProcessor() noexcept = default;
+    ~SL_ShaderProcessor() noexcept;
 
     SL_ShaderProcessor() noexcept;
 
@@ -53,6 +65,8 @@ struct SL_ShaderProcessor
     SL_ShaderProcessor& operator=(const SL_ShaderProcessor&) noexcept;
 
     SL_ShaderProcessor& operator=(SL_ShaderProcessor&&) noexcept;
+
+    SL_RasterProcessor* processor_for_draw_mode(SL_RenderMode drawMode) noexcept;
 
     void operator()() noexcept;
 };
@@ -66,19 +80,27 @@ inline void SL_ShaderProcessor::operator()() noexcept
 {
     switch (mType)
     {
-        case SL_VERTEX_SHADER:
-            mVertProcessor.execute();
-            break;
-
         case SL_FRAGMENT_SHADER:
             mFragProcessor.execute();
             break;
 
-        case SL_BLIT_SHADER:
+        case SL_TRI_PROCESSOR:
+            mTriProcessor.execute();
+            break;
+
+        case SL_LINE_PROCESSOR:
+            mLineProcessor.execute();
+            break;
+
+        case SL_POINT_PROCESSOR:
+            mPointProcessor.execute();
+            break;
+
+        case SL_BLIT_PROCESSOR:
             mBlitter.execute();
             break;
 
-        case SL_CLEAR_SHADER:
+        case SL_CLEAR_PROCESSOR:
             mClear.execute();
             break;
     }

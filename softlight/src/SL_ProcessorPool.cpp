@@ -15,7 +15,6 @@
 #include "softlight/SL_ProcessorPool.hpp"
 #include "softlight/SL_ShaderProcessor.hpp"
 #include "softlight/SL_ShaderUtil.hpp" // SL_FragmentBin
-#include "softlight/SL_VertexProcessor.hpp"
 
 
 
@@ -248,7 +247,7 @@ unsigned SL_ProcessorPool::concurrency(unsigned inNumThreads) noexcept
         "\n\tThread Count:       ", inNumThreads,
         "\n\tBytes per Task:     ", sizeof(SL_ShaderProcessor),
         "\n\tBytes of Task Pool: ", sizeof(SL_ProcessorPool),
-        "\n\tVertex Task Size:   ", sizeof(SL_VertexProcessor),
+        "\n\tVertex Task Size:   ", sizeof(SL_RasterProcessor),
         "\n\tFragment Task Size: ", sizeof(SL_FragmentProcessor),
         "\n\tFragment Bin Size:  ", sizeof(SL_FragmentBin),
         "\n\tBlitter Task Size:  ", sizeof(SL_BlitProcessor));
@@ -267,43 +266,46 @@ void SL_ProcessorPool::run_shader_processors(const SL_Context& c, const SL_Mesh&
     mShadingSemaphore->count.store(mNumThreads);
     clear_fragment_bins();
 
+    const SL_RenderMode renderMode = m.mode;
     SL_ShaderProcessor task;
-    task.mType = SL_VERTEX_SHADER;
+    task.mType = sl_processor_type_for_draw_mode(renderMode);
 
-    SL_VertexProcessor& vertTask = task.mVertProcessor;
-    vertTask.mThreadId       = 0;
-    vertTask.mNumThreads     = (int16_t)mNumThreads;
-    vertTask.mFragProcessors = mFragSemaphore.get();
-    vertTask.mBusyProcessors = mShadingSemaphore.get();
-    vertTask.mShader         = &s;
-    vertTask.mContext        = &c;
-    vertTask.mFbo            = &fbo;
-    vertTask.mRenderMode     = m.mode;
-    vertTask.mNumMeshes      = 1;
-    vertTask.mNumInstances   = numInstances;
-    vertTask.mMeshes         = &m;
-    vertTask.mBinsUsed       = mBinsUsed.get();
-    vertTask.mBinIds         = mBinIds.get();
-    vertTask.mTempBinIds     = mTempBinIds.get();
-    vertTask.mFragBins       = mFragBins.get();
-    vertTask.mFragQueues     = mFragQueues.get();
+    SL_RasterProcessor* vertTask = task.processor_for_draw_mode(renderMode);
+    vertTask->mThreadId       = 0;
+    vertTask->mNumThreads     = (int16_t)mNumThreads;
+    vertTask->mFragProcessors = mFragSemaphore.get();
+    vertTask->mBusyProcessors = mShadingSemaphore.get();
+    vertTask->mShader         = &s;
+    vertTask->mContext        = &c;
+    vertTask->mFbo            = &fbo;
+    vertTask->mRenderMode     = m.mode;
+    vertTask->mNumMeshes      = 1;
+    vertTask->mNumInstances   = numInstances;
+    vertTask->mMeshes         = &m;
+    vertTask->mBinsUsed       = mBinsUsed.get();
+    vertTask->mBinIds         = mBinIds.get();
+    vertTask->mTempBinIds     = mTempBinIds.get();
+    vertTask->mFragBins       = mFragBins.get();
+    vertTask->mFragQueues     = mFragQueues.get();
 
     // Divide all vertex processing amongst the available worker threads. Let
     // The threads work out between themselves how to partition the data.
-    for (uint16_t threadId = 0; threadId < mNumThreads-1; ++threadId)
+    for (uint16_t threadId = 0; threadId < mNumThreads; ++threadId)
     {
-        vertTask.mThreadId = threadId;
+        vertTask->mThreadId = threadId;
 
         // Busy waiting will be enabled the moment the first flush occurs on each
         // thread.
-        SL_ProcessorPool::ThreadedWorker& worker = mWorkers[threadId];
-        worker.busy_waiting(false);
-        worker.push(task);
+        if (threadId < mNumThreads-1)
+        {
+            SL_ProcessorPool::ThreadedWorker& worker = mWorkers[threadId];
+            worker.busy_waiting(false);
+            worker.push(task);
+        }
     }
 
     flush();
-    vertTask.mThreadId = (uint16_t)(mNumThreads-1u);
-    vertTask.execute();
+    task();
 
     // Each thread should now pause except for the main thread.
     wait();
@@ -320,43 +322,46 @@ void SL_ProcessorPool::run_shader_processors(const SL_Context& c, const SL_Mesh*
     mShadingSemaphore->count.store(mNumThreads);
     clear_fragment_bins();
 
+    const SL_RenderMode renderMode = meshes[0].mode;
     SL_ShaderProcessor task;
-    task.mType = SL_VERTEX_SHADER;
+    task.mType = sl_processor_type_for_draw_mode(renderMode);
 
-    SL_VertexProcessor& vertTask = task.mVertProcessor;
-    vertTask.mThreadId       = 0;
-    vertTask.mNumThreads     = (int16_t)mNumThreads;
-    vertTask.mFragProcessors = mFragSemaphore.get();
-    vertTask.mBusyProcessors = mShadingSemaphore.get();
-    vertTask.mShader         = &s;
-    vertTask.mContext        = &c;
-    vertTask.mFbo            = &fbo;
-    vertTask.mRenderMode     = meshes->mode;
-    vertTask.mNumMeshes      = numMeshes;
-    vertTask.mNumInstances   = 1;
-    vertTask.mMeshes         = meshes;
-    vertTask.mBinsUsed       = mBinsUsed.get();
-    vertTask.mBinIds         = mBinIds.get();
-    vertTask.mTempBinIds     = mTempBinIds.get();
-    vertTask.mFragBins       = mFragBins.get();
-    vertTask.mFragQueues     = mFragQueues.get();
+    SL_RasterProcessor* vertTask = task.processor_for_draw_mode(renderMode);
+    vertTask->mThreadId       = 0;
+    vertTask->mNumThreads     = (int16_t)mNumThreads;
+    vertTask->mFragProcessors = mFragSemaphore.get();
+    vertTask->mBusyProcessors = mShadingSemaphore.get();
+    vertTask->mShader         = &s;
+    vertTask->mContext        = &c;
+    vertTask->mFbo            = &fbo;
+    vertTask->mRenderMode     = meshes->mode;
+    vertTask->mNumMeshes      = numMeshes;
+    vertTask->mNumInstances   = 1;
+    vertTask->mMeshes         = meshes;
+    vertTask->mBinsUsed       = mBinsUsed.get();
+    vertTask->mBinIds         = mBinIds.get();
+    vertTask->mTempBinIds     = mTempBinIds.get();
+    vertTask->mFragBins       = mFragBins.get();
+    vertTask->mFragQueues     = mFragQueues.get();
 
     // Divide all vertex processing amongst the available worker threads. Let
     // The threads work out between themselves how to partition the data.
-    for (uint16_t threadId = 0; threadId < mNumThreads-1; ++threadId)
+    for (uint16_t threadId = 0; threadId < mNumThreads; ++threadId)
     {
-        vertTask.mThreadId = threadId;
+        vertTask->mThreadId = threadId;
 
         // Busy waiting will be enabled the moment the first flush occurs on each
         // thread.
-        SL_ProcessorPool::ThreadedWorker& worker = mWorkers[threadId];
-        worker.busy_waiting(false);
-        worker.push(task);
+        if (threadId < mNumThreads-1)
+        {
+            SL_ProcessorPool::ThreadedWorker& worker = mWorkers[threadId];
+            worker.busy_waiting(false);
+            worker.push(task);
+        }
     }
 
     flush();
-    vertTask.mThreadId = (uint16_t)(mNumThreads-1u);
-    vertTask.execute();
+    task();
 
     // Each thread should now pause except for the main thread.
     wait();
@@ -389,7 +394,7 @@ void SL_ProcessorPool::run_blit_processors(
     uint16_t dstY1) noexcept
 {
     SL_ShaderProcessor processor;
-    processor.mType = SL_BLIT_SHADER;
+    processor.mType = SL_BLIT_PROCESSOR;
 
     SL_BlitProcessor& blitter = processor.mBlitter;
     blitter.mThreadId         = 0;
@@ -431,7 +436,7 @@ void SL_ProcessorPool::run_blit_processors(
 void SL_ProcessorPool::run_clear_processors(const void* inColor, SL_Texture* outTex) noexcept
 {
     SL_ShaderProcessor processor;
-    processor.mType = SL_CLEAR_SHADER;
+    processor.mType = SL_CLEAR_PROCESSOR;
 
     SL_ClearProcessor& blitter = processor.mClear;
     blitter.mThreadId         = 0;
@@ -465,7 +470,7 @@ void SL_ProcessorPool::run_clear_processors(const void* inColor, SL_Texture* out
 void SL_ProcessorPool::run_clear_processors(const void* inColor, const void* depth, SL_Texture* colorBuf, SL_Texture* depthBuf) noexcept
 {
     SL_ShaderProcessor processor;
-    processor.mType = SL_CLEAR_SHADER;
+    processor.mType = SL_CLEAR_PROCESSOR;
 
     SL_ClearProcessor& blitter = processor.mClear;
     blitter.mThreadId         = 0;
@@ -511,7 +516,7 @@ void SL_ProcessorPool::run_clear_processors(const void* inColor, const void* dep
 void SL_ProcessorPool::run_clear_processors(const std::array<const void*, 2>& inColors, const void* depth, const std::array<SL_Texture*, 2>& colorBufs, SL_Texture* depthBuf) noexcept
 {
     SL_ShaderProcessor processor;
-    processor.mType = SL_CLEAR_SHADER;
+    processor.mType = SL_CLEAR_PROCESSOR;
 
     SL_ClearProcessor& blitter = processor.mClear;
     blitter.mThreadId         = 0;
@@ -565,7 +570,7 @@ void SL_ProcessorPool::run_clear_processors(const std::array<const void*, 2>& in
 void SL_ProcessorPool::run_clear_processors(const std::array<const void*, 3>& inColors, const void* depth, const std::array<SL_Texture*, 3>& colorBufs, SL_Texture* depthBuf) noexcept
 {
     SL_ShaderProcessor processor;
-    processor.mType = SL_CLEAR_SHADER;
+    processor.mType = SL_CLEAR_PROCESSOR;
 
     SL_ClearProcessor& blitter = processor.mClear;
     blitter.mThreadId         = 0;
@@ -627,7 +632,7 @@ void SL_ProcessorPool::run_clear_processors(const std::array<const void*, 3>& in
 void SL_ProcessorPool::run_clear_processors(const std::array<const void*, 4>& inColors, const void* depth, const std::array<SL_Texture*, 4>& colorBufs, SL_Texture* depthBuf) noexcept
 {
     SL_ShaderProcessor processor;
-    processor.mType = SL_CLEAR_SHADER;
+    processor.mType = SL_CLEAR_PROCESSOR;
 
     SL_ClearProcessor& blitter = processor.mClear;
     blitter.mThreadId         = 0;

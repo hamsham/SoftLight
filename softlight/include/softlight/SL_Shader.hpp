@@ -34,9 +34,6 @@ enum SL_RenderMode : uint32_t; // SL_Geometry.hpp
 
 
 
-/*-----------------------------------------------------------------------------
- * Vertex Shaders
------------------------------------------------------------------------------*/
 /*-------------------------------------
  * Triangle Cull Mode
 -------------------------------------*/
@@ -49,6 +46,45 @@ enum SL_CullMode : uint8_t
 
 
 
+/*-------------------------------------
+ * Fragment Blending
+-------------------------------------*/
+enum SL_BlendMode : uint8_t
+{
+    SL_BLEND_OFF,
+    SL_BLEND_ALPHA,
+    SL_BLEND_PREMULTIPLED_ALPHA,
+    SL_BLEND_ADDITIVE,
+    SL_BLEND_SCREEN,
+};
+
+
+
+/*-------------------------------------
+ * Depth Test Configuration
+-------------------------------------*/
+enum SL_DepthTest : uint8_t
+{
+    SL_DEPTH_TEST_OFF,
+    SL_DEPTH_TEST_ON
+};
+
+
+
+/*-------------------------------------
+ * Depth-Write Configuration
+-------------------------------------*/
+enum SL_DepthMask : uint8_t
+{
+    SL_DEPTH_MASK_OFF,
+    SL_DEPTH_MASK_ON
+};
+
+
+
+/*-----------------------------------------------------------------------------
+ * Vertex Shaders
+-----------------------------------------------------------------------------*/
 /*-------------------------------------
  * Parameters which go into a vert shader.
 -------------------------------------*/
@@ -82,42 +118,6 @@ struct SL_VertexShader
 /*-----------------------------------------------------------------------------
  * Fragment Shaders
 -----------------------------------------------------------------------------*/
-/*-------------------------------------
- * Fragment Blending
--------------------------------------*/
-enum SL_BlendMode : uint8_t
-{
-    SL_BLEND_OFF,
-    SL_BLEND_ALPHA,
-    SL_BLEND_PREMULTIPLED_ALPHA,
-    SL_BLEND_ADDITIVE,
-    SL_BLEND_SCREEN,
-};
-
-
-
-/*-------------------------------------
- * Depth-Write Configuration
--------------------------------------*/
-enum SL_DepthMask : uint8_t
-{
-    SL_DEPTH_MASK_OFF,
-    SL_DEPTH_MASK_ON
-};
-
-
-
-/*-------------------------------------
- * Depth Test Configuration
--------------------------------------*/
-enum SL_DepthTest : uint8_t
-{
-    SL_DEPTH_TEST_OFF,
-    SL_DEPTH_TEST_ON
-};
-
-
-
 /*-------------------------------------
  * Parameters which go into a frag shader.
 -------------------------------------*/
@@ -157,6 +157,10 @@ class SL_Shader
     friend class SL_Context;
     friend struct SL_VertexProcessor;
     friend struct SL_FragmentProcessor;
+    friend class SL_RasterProcessor;
+    friend class SL_PointProcessor;
+    friend class SL_LineProcessor;
+    friend class SL_TriProcessor;
 
   private:
     SL_VertexShader mVertShader;

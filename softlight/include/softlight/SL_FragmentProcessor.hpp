@@ -62,10 +62,7 @@ struct SL_FragmentProcessor
     // 432 bits = 54 bytes
 
     template <typename depth_type>
-    void render_point(
-        const uint32_t binId,
-        SL_Framebuffer* const fbo,
-        const ls::math::vec4_t<int32_t> dimens) noexcept;
+    void render_point(const uint32_t binId, SL_Framebuffer* const fbo) noexcept;
 
     template <typename depth_type>
     void render_line(
@@ -90,9 +87,9 @@ struct SL_FragmentProcessor
 
 
 
-extern template void SL_FragmentProcessor::render_point<ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-extern template void SL_FragmentProcessor::render_point<float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-extern template void SL_FragmentProcessor::render_point<double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+extern template void SL_FragmentProcessor::render_point<ls::math::half>(const uint32_t, SL_Framebuffer* const) noexcept;
+extern template void SL_FragmentProcessor::render_point<float>(const uint32_t, SL_Framebuffer* const) noexcept;
+extern template void SL_FragmentProcessor::render_point<double>(const uint32_t, SL_Framebuffer* const) noexcept;
 
 extern template void SL_FragmentProcessor::render_line<ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
 extern template void SL_FragmentProcessor::render_line<float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;

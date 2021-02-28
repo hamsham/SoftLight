@@ -1,24 +1,12 @@
 
-#include "lightsky/setup/Arch.h"
-#include "lightsky/setup/CPU.h"
-#include "lightsky/setup/Macros.h"
-
-#include "lightsky/utils/Assertions.h" // LS_DEBUG_ASSERT
-#include "lightsky/utils/Sort.hpp"
-
-#include "lightsky/math/mat_utils.h"
-
 #include "softlight/SL_Context.hpp"
-#include "softlight/SL_FragmentProcessor.hpp"
 #include "softlight/SL_Framebuffer.hpp"
 #include "softlight/SL_IndexBuffer.hpp"
 #include "softlight/SL_Shader.hpp"
-#include "softlight/SL_ShaderProcessor.hpp"
 #include "softlight/SL_ShaderUtil.hpp" // SL_BinCounter
+#include "softlight/SL_TriProcessor.hpp"
 #include "softlight/SL_VertexArray.hpp"
-#include "softlight/SL_VertexBuffer.hpp"
 #include "softlight/SL_VertexCache.hpp"
-#include "softlight/SL_VertexProcessor.hpp"
 
 
 
@@ -31,6 +19,18 @@ namespace math = ls::math;
 
 namespace
 {
+
+
+
+/*-------------------------------------
+ * Enum to help with determining face visibility
+-------------------------------------*/
+enum SL_ClipStatus
+{
+    SL_TRIANGLE_NOT_VISIBLE       = 0x00,
+    SL_TRIANGLE_PARTIALLY_VISIBLE = 0x01,
+    SL_TRIANGLE_FULLY_VISIBLE     = 0x03,
+};
 
 
 
@@ -210,72 +210,6 @@ inline LS_INLINE void sl_world_to_screen_coords_divided3(
 
 
 /*--------------------------------------
- * Convert world coordinates to screen coordinates (temporary until NDC clipping is added)
---------------------------------------*/
-inline LS_INLINE void sl_world_to_screen_coords(math::vec4& v, const float widthScale, const float heightScale) noexcept
-{
-    const float wInv = math::rcp(v.v[3]);
-    math::vec4&& temp = v * wInv;
-
-    temp[0] = widthScale  + temp[0] * widthScale;
-    temp[1] = heightScale + temp[1] * heightScale;
-
-    v[0] = temp[0];
-    v[1] = temp[1];
-    v[2] = temp[2];
-    v[3] = wInv;
-}
-
-
-
-/*--------------------------------------
- * Get the next vertex from an IBO
---------------------------------------*/
-inline size_t get_next_vertex(const SL_IndexBuffer* LS_RESTRICT_PTR pIbo, size_t vId) noexcept
-{
-    switch (pIbo->type())
-    {
-        case VERTEX_DATA_BYTE:  return *reinterpret_cast<const unsigned char*>(pIbo->element(vId));
-        case VERTEX_DATA_SHORT: return *reinterpret_cast<const unsigned short*>(pIbo->element(vId));
-        case VERTEX_DATA_INT:   return *reinterpret_cast<const unsigned int*>(pIbo->element(vId));
-        default:
-            LS_UNREACHABLE();
-    }
-    return vId;
-}
-
-
-
-inline LS_INLINE math::vec3_t<size_t> get_next_vertex3(const SL_IndexBuffer* LS_RESTRICT_PTR pIbo, size_t vId) noexcept
-{
-    math::vec3_t<unsigned char> byteIds;
-    math::vec3_t<unsigned short> shortIds;
-    math::vec3_t<unsigned int> intIds;
-
-    switch (pIbo->type())
-    {
-        case VERTEX_DATA_BYTE:
-            byteIds = *reinterpret_cast<const decltype(byteIds)*>(pIbo->element(vId));
-            return (math::vec3_t<size_t>)byteIds;
-
-        case VERTEX_DATA_SHORT:
-            shortIds = *reinterpret_cast<const decltype(shortIds)*>(pIbo->element(vId));
-            return (math::vec3_t<size_t>)shortIds;
-
-        case VERTEX_DATA_INT:
-            intIds = *reinterpret_cast<const decltype(intIds)*>(pIbo->element(vId));
-            return (math::vec3_t<size_t>)intIds;
-
-        default:
-            LS_UNREACHABLE();
-    }
-
-    return math::vec3_t<size_t>{0, 0, 0};
-}
-
-
-
-/*--------------------------------------
  * Triangle determinants for backface culling
 --------------------------------------*/
 inline LS_INLINE float face_determinant(
@@ -448,117 +382,49 @@ inline LS_INLINE SL_ClipStatus face_visible(
 
 
 
+/*--------------------------------------
+ * Load a grouping of vertex element IDs
+--------------------------------------*/
+inline LS_INLINE math::vec3_t<size_t> get_next_vertex3(const SL_IndexBuffer* LS_RESTRICT_PTR pIbo, size_t vId) noexcept
+{
+    math::vec3_t<unsigned char> byteIds;
+    math::vec3_t<unsigned short> shortIds;
+    math::vec3_t<unsigned int> intIds;
+
+    switch (pIbo->type())
+    {
+        case VERTEX_DATA_BYTE:
+            byteIds = *reinterpret_cast<const decltype(byteIds)*>(pIbo->element(vId));
+            return (math::vec3_t<size_t>)byteIds;
+
+        case VERTEX_DATA_SHORT:
+            shortIds = *reinterpret_cast<const decltype(shortIds)*>(pIbo->element(vId));
+            return (math::vec3_t<size_t>)shortIds;
+
+        case VERTEX_DATA_INT:
+            intIds = *reinterpret_cast<const decltype(intIds)*>(pIbo->element(vId));
+            return (math::vec3_t<size_t>)intIds;
+
+        default:
+            LS_UNREACHABLE();
+    }
+
+    return math::vec3_t<size_t>{0, 0, 0};
+}
+
+
+
 } // end anonymous namespace
 
 
 
 /*-----------------------------------------------------------------------------
- * SL_VertexProcessor Class
+ * SL_TriProcessor Class
 -----------------------------------------------------------------------------*/
-/*-------------------------------------
- * Execute a fragment processor
--------------------------------------*/
-void SL_VertexProcessor::flush_bins() const noexcept
-{
-    // Allow the other threads to know when they're ready for processing
-    const int_fast64_t    numThreads = (int_fast64_t)mNumThreads;
-    const int_fast64_t    syncPoint1 = -numThreads - 1;
-    const int_fast64_t    tileId     = mFragProcessors->count.fetch_add(1ll, std::memory_order_acq_rel);
-    const SL_FragmentBin* pBins      = mFragBins;
-    uint_fast64_t         maxElements;
-    int_fast64_t          syncPoint2;
-
-    // Sort the bins based on their depth.
-    if (LS_UNLIKELY(tileId == numThreads-1u))
-    {
-        maxElements = math::min<uint64_t>(mBinsUsed->count.load(std::memory_order_consume), SL_SHADER_MAX_BINNED_PRIMS);
-
-        // Try to perform depth sorting once, and only once, per opaque draw
-        // call to reduce depth-buffer access during rasterization. Sorting
-        // primitives multiple times here in the vertex processor will
-        // increase latency before invoking the fragment processor.
-        const bool canDepthSort = maxElements < SL_SHADER_MAX_BINNED_PRIMS;
-
-        // Blended fragments get sorted by their primitive index for
-        // consistency.
-        if (LS_UNLIKELY(mShader->fragment_shader().blend != SL_BLEND_OFF))
-        {
-            ls::utils::sort_radix<SL_BinCounter<uint32_t>>(mBinIds, mTempBinIds, maxElements, [&](const SL_BinCounter<uint32_t>& val) noexcept->unsigned long long
-            {
-                return (unsigned long long)pBins[val.count].primIndex;
-            });
-        }
-        else if (canDepthSort)
-        {
-            ls::utils::sort_radix<SL_BinCounter<uint32_t>>(mBinIds, mTempBinIds, maxElements, [&](const SL_BinCounter<uint32_t>& val) noexcept->unsigned long long
-            {
-                // flip sign, otherwise the sorting goes from back-to-front
-                // due to the sortable nature of floats.
-                return (unsigned long long) -(*reinterpret_cast<const int32_t*>(pBins[val.count].mScreenCoords[0].v+3));
-            });
-        }
-
-        // Let all threads know they can process fragments.
-        mFragProcessors->count.store(syncPoint1, std::memory_order_release);
-    }
-    else
-    {
-        while (mFragProcessors->count.load(std::memory_order_consume) > 0)
-        {
-            ls::setup::cpu_yield();
-        }
-
-        maxElements = math::min<uint64_t>(mBinsUsed->count.load(std::memory_order_consume), SL_SHADER_MAX_BINNED_PRIMS);
-    }
-
-    SL_FragmentProcessor fragTask{
-        (uint16_t)tileId,
-        mRenderMode,
-        (uint32_t)mNumThreads,
-        (uint32_t)maxElements,
-        mShader,
-        mFbo,
-        mBinIds,
-        mFragBins,
-        mFragQueues + tileId
-    };
-
-    fragTask.execute();
-
-    // Indicate to all threads we can now process more vertices
-    syncPoint2 = mFragProcessors->count.fetch_add(1, std::memory_order_acq_rel);
-
-    // Wait for the last thread to reset the number of available bins.
-    while (mFragProcessors->count.load(std::memory_order_consume) < 0)
-    {
-        if (syncPoint2 == -2)
-        {
-            mBinsUsed->count.store(0, std::memory_order_release);
-            mFragProcessors->count.store(0, std::memory_order_release);
-            break;
-        }
-        else
-        {
-            // wait until all fragments are rendered across the other threads
-            ls::setup::cpu_yield();
-        }
-    }
-}
-
-
-
 /*--------------------------------------
  * Publish a vertex to a fragment thread
 --------------------------------------*/
-template <int renderMode>
-void SL_VertexProcessor::push_bin(
-    size_t primIndex,
-    float fboW,
-    float fboH,
-    const SL_TransformedVert& a,
-    const SL_TransformedVert& b,
-    const SL_TransformedVert& c
-) const noexcept
+void SL_TriProcessor::push_bin(size_t primIndex, float fboW, float fboH, const SL_TransformedVert& a, const SL_TransformedVert& b, const SL_TransformedVert& c) const noexcept
 {
     SL_BinCounterAtomic<uint32_t>* const pLocks = mBinsUsed;
     SL_FragmentBin* const pFragBins = mFragBins;
@@ -567,40 +433,12 @@ void SL_VertexProcessor::push_bin(
     const math::vec4& p0 = a.vert;
     const math::vec4& p1 = b.vert;
     const math::vec4& p2 = c.vert;
-    float bboxMinX;
-    float bboxMinY;
-    float bboxMaxX;
-    float bboxMaxY;
 
-    // render points through whichever tile/thread they appear in
-    switch (renderMode)
-    {
-        case RENDER_MODE_POINTS:
-            bboxMinX = p0[0];
-            bboxMaxX = p0[0];
-            bboxMinY = p0[1];
-            bboxMaxY = p0[1];
-            break;
-
-        case RENDER_MODE_LINES:
-            // establish a bounding box to detect overlap with a thread's tiles
-            bboxMinX = math::min(p0[0], p1[0]);
-            bboxMinY = math::min(p0[1], p1[1]);
-            bboxMaxX = math::max(p0[0], p1[0]);
-            bboxMaxY = math::max(p0[1], p1[1]);
-            break;
-
-        case RENDER_MODE_TRIANGLES:
-            // establish a bounding box to detect overlap with a thread's tiles
-            bboxMinX = math::min(p0[0], p1[0], p2[0]);
-            bboxMinY = math::min(p0[1], p1[1], p2[1]);
-            bboxMaxX = math::max(p0[0], p1[0], p2[0]);
-            bboxMaxY = math::max(p0[1], p1[1], p2[1]);
-            break;
-
-        default:
-            LS_UNREACHABLE();
-    }
+    // establish a bounding box to detect overlap with a thread's tiles
+    const float bboxMinX = math::min(p0[0], p1[0], p2[0]);
+    const float bboxMinY = math::min(p0[1], p1[1], p2[1]);
+    const float bboxMaxX = math::max(p0[0], p1[0], p2[0]);
+    const float bboxMaxY = math::max(p0[1], p1[1], p2[1]);
 
     int isPrimHidden = (bboxMaxX < 0.f || bboxMaxY < 0.f || fboW < bboxMinX || fboH < bboxMinY);
     isPrimHidden = isPrimHidden || (bboxMaxX-bboxMinX < 1.f) || (bboxMaxY-bboxMinY < 1.f);
@@ -615,7 +453,7 @@ void SL_VertexProcessor::push_bin(
     // Attempt to grab a bin index. Flush the bins if they've filled up.
     while ((binId = pLocks->count.fetch_add(1, std::memory_order_acq_rel)) >= SL_SHADER_MAX_BINNED_PRIMS)
     {
-        flush_bins();
+        flush_rasterizer();
     }
 
     // place a triangle into the next available bin
@@ -627,7 +465,6 @@ void SL_VertexProcessor::push_bin(
     // Copy all per-vertex coordinates and varyings to the fragment bins
     // which will need the data for interpolation. The perspective-divide
     // is only used for rendering triangles.
-    if (renderMode == SL_RenderMode::RENDER_MODE_TRIANGLES)
     {
         const math::vec4&& p0p1 = p0 - p1;
         const math::vec4&& p0p2 = p0 - p2;
@@ -647,85 +484,32 @@ void SL_VertexProcessor::push_bin(
         );
     }
 
-    unsigned i;
-    switch (renderMode)
+    switch (numVaryings)
     {
-        case SL_RenderMode::RENDER_MODE_TRIANGLES:
-            switch (numVaryings)
-            {
-                case 4:
-                    bin.mVaryings[3+SL_SHADER_MAX_VARYING_VECTORS*0] = a.varyings[3];
-                    bin.mVaryings[3+SL_SHADER_MAX_VARYING_VECTORS*1] = b.varyings[3];
-                    bin.mVaryings[3+SL_SHADER_MAX_VARYING_VECTORS*2] = c.varyings[3];
+        case 4:
+            bin.mVaryings[3+SL_SHADER_MAX_VARYING_VECTORS*0] = a.varyings[3];
+            bin.mVaryings[3+SL_SHADER_MAX_VARYING_VECTORS*1] = b.varyings[3];
+            bin.mVaryings[3+SL_SHADER_MAX_VARYING_VECTORS*2] = c.varyings[3];
 
-                case 3:
-                    bin.mVaryings[2+SL_SHADER_MAX_VARYING_VECTORS*0] = a.varyings[2];
-                    bin.mVaryings[2+SL_SHADER_MAX_VARYING_VECTORS*1] = b.varyings[2];
-                    bin.mVaryings[2+SL_SHADER_MAX_VARYING_VECTORS*2] = c.varyings[2];
+        case 3:
+            bin.mVaryings[2+SL_SHADER_MAX_VARYING_VECTORS*0] = a.varyings[2];
+            bin.mVaryings[2+SL_SHADER_MAX_VARYING_VECTORS*1] = b.varyings[2];
+            bin.mVaryings[2+SL_SHADER_MAX_VARYING_VECTORS*2] = c.varyings[2];
 
-                case 2:
-                    bin.mVaryings[1+SL_SHADER_MAX_VARYING_VECTORS*0] = a.varyings[1];
-                    bin.mVaryings[1+SL_SHADER_MAX_VARYING_VECTORS*1] = b.varyings[1];
-                    bin.mVaryings[1+SL_SHADER_MAX_VARYING_VECTORS*2] = c.varyings[1];
+        case 2:
+            bin.mVaryings[1+SL_SHADER_MAX_VARYING_VECTORS*0] = a.varyings[1];
+            bin.mVaryings[1+SL_SHADER_MAX_VARYING_VECTORS*1] = b.varyings[1];
+            bin.mVaryings[1+SL_SHADER_MAX_VARYING_VECTORS*2] = c.varyings[1];
 
-                case 1:
-                    bin.mVaryings[0+SL_SHADER_MAX_VARYING_VECTORS*0] = a.varyings[0];
-                    bin.mVaryings[0+SL_SHADER_MAX_VARYING_VECTORS*1] = b.varyings[0];
-                    bin.mVaryings[0+SL_SHADER_MAX_VARYING_VECTORS*2] = c.varyings[0];
-            }
-            break;
-
-        case SL_RenderMode::RENDER_MODE_LINES:
-            for (i = 0; i < numVaryings; ++i)
-            {
-                bin.mVaryings[i+SL_SHADER_MAX_VARYING_VECTORS*0] = a.varyings[i];
-                bin.mVaryings[i+SL_SHADER_MAX_VARYING_VECTORS*1] = b.varyings[i];
-            }
-            break;
-
-        case SL_RenderMode::RENDER_MODE_POINTS:
-            for (i = 0; i < numVaryings; ++i)
-            {
-                bin.mVaryings[i] = a.varyings[i];
-            }
-            break;
-
-        default:
-            LS_UNREACHABLE();
+        case 1:
+            bin.mVaryings[0+SL_SHADER_MAX_VARYING_VECTORS*0] = a.varyings[0];
+            bin.mVaryings[0+SL_SHADER_MAX_VARYING_VECTORS*1] = b.varyings[0];
+            bin.mVaryings[0+SL_SHADER_MAX_VARYING_VECTORS*2] = c.varyings[0];
     }
 
     bin.primIndex = primIndex;
     mBinIds[binId].count = binId;
 }
-
-
-
-template void SL_VertexProcessor::push_bin<RENDER_MODE_POINTS>(
-    size_t,
-    float,
-    float,
-    const SL_TransformedVert&,
-    const SL_TransformedVert&,
-    const SL_TransformedVert&
-) const noexcept;
-
-template void SL_VertexProcessor::push_bin<RENDER_MODE_LINES>(
-    size_t,
-    float,
-    float,
-    const SL_TransformedVert&,
-    const SL_TransformedVert&,
-    const SL_TransformedVert&
-) const noexcept;
-
-template void SL_VertexProcessor::push_bin<RENDER_MODE_TRIANGLES>(
-    size_t,
-    float,
-    float,
-    const SL_TransformedVert&,
-    const SL_TransformedVert&,
-    const SL_TransformedVert&
-) const noexcept;
 
 
 
@@ -753,7 +537,7 @@ template void SL_VertexProcessor::push_bin<RENDER_MODE_TRIANGLES>(
  *      Polygon = clippedPolygon     // keep on working with the new polygon
  *  end for
 -------------------------------------*/
-void SL_VertexProcessor::clip_and_process_tris(
+void SL_TriProcessor::clip_and_process_tris(
     size_t primIndex,
     float fboW,
     float fboH,
@@ -901,7 +685,7 @@ void SL_VertexProcessor::clip_and_process_tris(
         p2.vert = newVerts[k];
         _copy_verts(numVarys, newVarys+(k*SL_SHADER_MAX_VARYING_VECTORS), p2.varyings);
 
-        push_bin<SL_RenderMode::RENDER_MODE_TRIANGLES>(primIndex, fboW, fboH, p0, p1, p2);
+        push_bin(primIndex, fboW, fboH, p0, p1, p2);
     }
 }
 
@@ -910,138 +694,13 @@ void SL_VertexProcessor::clip_and_process_tris(
 /*--------------------------------------
  * Process Points
 --------------------------------------*/
-void SL_VertexProcessor::process_points(const SL_Mesh& m, size_t instanceId) noexcept
+void SL_TriProcessor::process_verts(const SL_Mesh& m, size_t instanceId) noexcept
 {
-    SL_TransformedVert      pVert0;
-    const SL_VertexShader   vertShader   = mShader->mVertShader;
-    const auto              shader       = vertShader.shader;
-    const SL_VertexArray&   vao          = mContext->vao(m.vaoId);
-    const float             fboW         = (float)mFbo->width();
-    const float             fboH         = (float)mFbo->height();
-    const float             widthScale   = fboW * 0.5f;
-    const float             heightScale  = fboH * 0.5f;
-    const SL_IndexBuffer*   pIbo         = vao.has_index_buffer() ? &mContext->ibo(vao.get_index_buffer()) : nullptr;
-    const bool              usingIndices = m.mode == RENDER_MODE_INDEXED_POINTS;
-
-    SL_VertexParam params;
-    params.pUniforms  = mShader->mUniforms;
-    params.instanceId = instanceId;
-    params.pVao       = &vao;
-    params.pVbo       = &mContext->vbo(vao.get_vertex_buffer());
-
-    #if SL_VERTEX_CACHING_ENABLED
-        size_t begin;
-        size_t end;
-        constexpr size_t step = 1;
-
-        sl_calc_indexed_parition<1>(m.elementEnd-m.elementBegin, mNumThreads, mThreadId, begin, end);
-        begin += m.elementBegin;
-        end += m.elementBegin;
-
-        SL_PTVCache ptvCache{shader, params};
-    #else
-        const size_t begin = m.elementBegin + mThreadId;
-        const size_t end   = m.elementEnd;
-        const size_t step  = mNumThreads;
-    #endif
-
-    for (size_t i = begin; i < end; i += step)
+    if (mFragProcessors->count.load(std::memory_order_consume))
     {
-        #if SL_VERTEX_CACHING_ENABLED
-            const size_t vertId = usingIndices ? get_next_vertex(pIbo, i) : i;
-            ptvCache.query_and_update(vertId, pVert0);
-        #else
-            params.vertId    = usingIndices ? get_next_vertex(pIbo, i) : i;
-            params.pVaryings = pVert0.varyings;
-            pVert0.vert      = shader(params);
-        #endif
-
-        if (pVert0.vert[3] > 0.f)
-        {
-            sl_world_to_screen_coords(pVert0.vert, widthScale, heightScale);
-            push_bin<SL_RenderMode::RENDER_MODE_POINTS>(i, fboW, fboH, pVert0, pVert0, pVert0);
-        }
+        flush_rasterizer();
     }
-}
 
-
-
-/*--------------------------------------
- * Process Lines
---------------------------------------*/
-void SL_VertexProcessor::process_lines(const SL_Mesh& m, size_t instanceId) noexcept
-{
-    SL_TransformedVert      pVert0;
-    SL_TransformedVert      pVert1;
-    const SL_VertexShader   vertShader   = mShader->mVertShader;
-    const auto              shader       = vertShader.shader;
-    const SL_VertexArray&   vao          = mContext->vao(m.vaoId);
-    const float             fboW         = (float)mFbo->width();
-    const float             fboH         = (float)mFbo->height();
-    const float             widthScale   = fboW * 0.5f;
-    const float             heightScale  = fboH * 0.5f;
-    const SL_IndexBuffer*   pIbo         = vao.has_index_buffer() ? &mContext->ibo(vao.get_index_buffer()) : nullptr;
-    const bool              usingIndices = m.mode == RENDER_MODE_INDEXED_LINES;
-
-    SL_VertexParam params;
-    params.pUniforms  = mShader->mUniforms;
-    params.instanceId = instanceId;
-    params.pVao       = &vao;
-    params.pVbo       = &mContext->vbo(vao.get_vertex_buffer());
-
-    #if SL_VERTEX_CACHING_ENABLED
-        size_t begin;
-        size_t end;
-        constexpr size_t step = 2;
-
-        sl_calc_indexed_parition<2>(m.elementEnd-m.elementBegin, mNumThreads, mThreadId, begin, end);
-        begin += m.elementBegin;
-        end += m.elementBegin;
-
-        SL_PTVCache ptvCache{shader, params};
-    #else
-        const size_t begin = m.elementBegin + mThreadId * 2u;
-        const size_t end   = m.elementEnd;
-        const size_t step  = mNumThreads * 2u;
-    #endif
-
-    for (size_t i = begin; i < end; i += step)
-    {
-        const size_t index0  = i;
-        const size_t index1  = i + 1;
-
-        #if SL_VERTEX_CACHING_ENABLED
-            const size_t vertId0 = usingIndices ? get_next_vertex(pIbo, index0) : index0;
-            const size_t vertId1 = usingIndices ? get_next_vertex(pIbo, index1) : index1;
-            ptvCache.query_and_update(vertId0, pVert0);
-            ptvCache.query_and_update(vertId1, pVert1);
-        #else
-            params.vertId    = usingIndices ? get_next_vertex(pIbo, index0) : index0;
-            params.pVaryings = pVert0.varyings;
-            pVert0.vert      = shader(params);
-
-            params.vertId    = usingIndices ? get_next_vertex(pIbo, index1) : index1;
-            params.pVaryings = pVert1.varyings;
-            pVert1.vert      = shader(params);
-        #endif
-
-        if (pVert0.vert[3] >= 0.f && pVert1.vert[3] >= 0.f)
-        {
-            sl_world_to_screen_coords(pVert0.vert, widthScale, heightScale);
-            sl_world_to_screen_coords(pVert1.vert, widthScale, heightScale);
-
-            push_bin<SL_RenderMode::RENDER_MODE_LINES>(i, fboW, fboH, pVert0, pVert1, pVert1);
-        }
-    }
-}
-
-
-
-/*--------------------------------------
- * Process Triangles
---------------------------------------*/
-void SL_VertexProcessor::process_tris(const SL_Mesh& m, size_t instanceId) noexcept
-{
     SL_TransformedVert      pVert0;
     SL_TransformedVert      pVert1;
     SL_TransformedVert      pVert2;
@@ -1123,7 +782,7 @@ void SL_VertexProcessor::process_tris(const SL_Mesh& m, size_t instanceId) noexc
         {
             sl_perspective_divide3(pVert0.vert, pVert1.vert, pVert2.vert);
             sl_world_to_screen_coords_divided3(pVert0.vert, pVert1.vert, pVert2.vert, widthScale, heightScale);
-            push_bin<SL_RenderMode::RENDER_MODE_TRIANGLES>(i, fboW, fboH, pVert0, pVert1, pVert2);
+            push_bin(i, fboW, fboH, pVert0, pVert1, pVert2);
         }
         else if (visStatus == SL_TRIANGLE_PARTIALLY_VISIBLE)
         {
@@ -1135,105 +794,24 @@ void SL_VertexProcessor::process_tris(const SL_Mesh& m, size_t instanceId) noexc
 
 
 /*--------------------------------------
- * Process Vertices
+ * Execute the point rasterization
 --------------------------------------*/
-void SL_VertexProcessor::execute() noexcept
+void SL_TriProcessor::execute() noexcept
 {
     if (mNumInstances == 1)
     {
-        if (mRenderMode & (RENDER_MODE_POINTS | RENDER_MODE_INDEXED_POINTS))
+        for (size_t i = 0; i < mNumMeshes; ++i)
         {
-            for (size_t i = 0; i < mNumMeshes; ++i)
-            {
-                if (mFragProcessors->count.load(std::memory_order_consume))
-                {
-                    flush_bins();
-                }
-
-                process_points(mMeshes[i], 0);
-            }
-        }
-        else if (mRenderMode & (RENDER_MODE_LINES | RENDER_MODE_INDEXED_LINES))
-        {
-            for (size_t i = 0; i < mNumMeshes; ++i)
-            {
-                if (mFragProcessors->count.load(std::memory_order_consume))
-                {
-                    flush_bins();
-                }
-
-                process_lines(mMeshes[i], 0);
-            }
-        }
-        else if (mRenderMode & (RENDER_MODE_TRIANGLES | RENDER_MODE_INDEXED_TRIANGLES | RENDER_MODE_TRI_WIRE | RENDER_MODE_INDEXED_TRI_WIRE))
-        {
-            for (size_t i = 0; i < mNumMeshes; ++i)
-            {
-                if (mFragProcessors->count.load(std::memory_order_consume))
-                {
-                    flush_bins();
-                }
-
-                process_tris(mMeshes[i], 0);
-            }
+            process_verts(mMeshes[i], 0);
         }
     }
     else
     {
-        if (mRenderMode & (RENDER_MODE_POINTS | RENDER_MODE_INDEXED_POINTS))
+        for (size_t i = 0; i < mNumInstances; ++i)
         {
-            for (size_t i = 0; i < mNumInstances; ++i)
-            {
-                if (mFragProcessors->count.load(std::memory_order_consume))
-                {
-                    flush_bins();
-                }
-
-                process_points(mMeshes[0], i);
-            }
-        }
-        else if (mRenderMode & (RENDER_MODE_LINES | RENDER_MODE_INDEXED_LINES))
-        {
-            for (size_t i = 0; i < mNumInstances; ++i)
-            {
-                if (mFragProcessors->count.load(std::memory_order_consume))
-                {
-                    flush_bins();
-                }
-
-                process_lines(mMeshes[0], i);
-            }
-        }
-        else if (mRenderMode & (RENDER_MODE_TRIANGLES | RENDER_MODE_INDEXED_TRIANGLES | RENDER_MODE_TRI_WIRE | RENDER_MODE_INDEXED_TRI_WIRE))
-        {
-            for (size_t i = 0; i < mNumInstances; ++i)
-            {
-                if (mFragProcessors->count.load(std::memory_order_consume))
-                {
-                    flush_bins();
-                }
-
-                process_tris(mMeshes[0], i);
-            }
+            process_verts(mMeshes[0], i);
         }
     }
 
-    mBusyProcessors->count.fetch_sub(1, std::memory_order_acq_rel);
-    do
-    {
-        if (mFragProcessors->count.load(std::memory_order_consume))
-        {
-            flush_bins();
-        }
-        else
-        {
-            ls::setup::cpu_yield();
-        }
-    }
-    while (mBusyProcessors->count.load(std::memory_order_consume));
-
-    if (mBinsUsed->count.load(std::memory_order_consume))
-    {
-        flush_bins();
-    }
+    this->cleanup();
 }

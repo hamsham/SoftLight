@@ -270,10 +270,7 @@ inline LS_INLINE math::vec4 _sl_get_depth_texel4<float>(const float* pDepth)
  * Determine if a point can be rendered.
 --------------------------------------*/
 template <typename depth_type>
-void SL_FragmentProcessor::render_point(
-    const uint32_t binId,
-    SL_Framebuffer* const fbo,
-    const ls::math::vec4_t<int32_t> dimens) noexcept
+void SL_FragmentProcessor::render_point(const uint32_t binId, SL_Framebuffer* const fbo) noexcept
 {
     const SL_FragmentShader fragShader  = mShader->mFragShader;
     const SL_UniformBuffer* pUniforms   = mShader->mUniforms;
@@ -288,7 +285,7 @@ void SL_FragmentProcessor::render_point(
     const SL_Texture*       pDepthBuf   = fbo->get_depth_buffer();
     SL_FragmentParam        fragParams;
 
-    if (fragCoord.v[0] < dimens[0] || fragCoord.v[0] > dimens[1] || fragCoord.v[1] < dimens[2] || fragCoord.v[1] > dimens[3])
+    if ((uint16_t)fragCoord.v[1] % mNumProcessors != mThreadId)
     {
         return;
     }
@@ -326,7 +323,7 @@ void SL_FragmentProcessor::render_point(
             case 3: fbo->put_alpha_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], blendMode);
             case 2: fbo->put_alpha_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], blendMode);
             case 1: fbo->put_alpha_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], blendMode);
-                //case 1: fbo->put_pixel(0, x0, y0, math::vec4{1.f, 0, 1.f, 1.f});
+            //case 1: fbo->put_pixel(0, fragParams.coord.x, fragParams.coord.y, math::vec4{1.f, 0, 1.f, 1.f});
         }
 
     }
@@ -339,7 +336,7 @@ void SL_FragmentProcessor::render_point(
             case 3: fbo->put_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2]);
             case 2: fbo->put_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1]);
             case 1: fbo->put_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0]);
-                //case 1: fbo->put_pixel(0, x0, y0, math::vec4{1.f, 0, 1.f, 1.f});
+            //case 1: fbo->put_pixel(0, fragParams.coord.x, fragParams.coord.y, math::vec4{1.f, 0, 1.f, 1.f});
         }
     }
 
@@ -1132,31 +1129,25 @@ void SL_FragmentProcessor::execute() noexcept
         case RENDER_MODE_POINTS:
         case RENDER_MODE_INDEXED_POINTS:
         {
-            // divide the screen into equal parts which can then be rendered by all
-            // available fragment threads.
-            const int32_t w = mFbo->width();
-            const int32_t h = mFbo->height();
-            const math::vec4_t<int32_t> dimens = sl_subdivide_region<int32_t>(w, h, mNumProcessors, mThreadId);
-
             if (depthBpp == sizeof(math::half))
             {
                 for (uint64_t binId = 0; binId < mNumBins; ++binId)
                 {
-                    render_point<math::half>(binId, mFbo, dimens);
+                    render_point<math::half>(binId, mFbo);
                 }
             }
             else if (depthBpp == sizeof(float))
             {
                 for (uint64_t binId = 0; binId < mNumBins; ++binId)
                 {
-                    render_point<float>(binId, mFbo, dimens);
+                    render_point<float>(binId, mFbo);
                 }
             }
             else if (depthBpp == sizeof(double))
             {
                 for (uint64_t binId = 0; binId < mNumBins; ++binId)
                 {
-                    render_point<double>(binId, mFbo, dimens);
+                    render_point<double>(binId, mFbo);
                 }
             }
             break;
@@ -1237,9 +1228,9 @@ void SL_FragmentProcessor::execute() noexcept
     }
 }
 
-template void SL_FragmentProcessor::render_point<ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-template void SL_FragmentProcessor::render_point<float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-template void SL_FragmentProcessor::render_point<double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+template void SL_FragmentProcessor::render_point<ls::math::half>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_FragmentProcessor::render_point<float>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_FragmentProcessor::render_point<double>(const uint32_t, SL_Framebuffer* const) noexcept;
 
 template void SL_FragmentProcessor::render_line<ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
 template void SL_FragmentProcessor::render_line<float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
