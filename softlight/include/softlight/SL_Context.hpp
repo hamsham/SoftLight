@@ -203,6 +203,33 @@ class SL_Context
     /*
      *
      */
+    void cull_mode(SL_CullMode cm) noexcept;
+
+    SL_CullMode cull_mode() const noexcept;
+
+    void depth_test(SL_DepthTest dt) noexcept;
+
+    SL_DepthTest depth_test() const noexcept;
+
+    void depth_mask(SL_DepthMask dm) noexcept;
+
+    SL_DepthMask depth_mask() const noexcept;
+
+    void blend_mode(SL_BlendMode bm) noexcept;
+
+    SL_BlendMode blend_mode() const noexcept;
+
+    void viewport(uint16_t x, uint16_t y, uint16_t w, uint16_t h) noexcept;
+
+    ls::math::vec4_t<uint16_t> viewport() const noexcept;
+
+    void scissor(uint16_t x, uint16_t y, uint16_t w, uint16_t h) noexcept;
+
+    ls::math::vec4_t<uint16_t> scissor() const noexcept;
+
+    /*
+     *
+     */
     void draw(const SL_Mesh& m, size_t shaderId, size_t fboId) noexcept;
 
     /*
@@ -295,6 +322,114 @@ class SL_Context
      */
     unsigned num_threads(unsigned inNumThreads) noexcept;
 };
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+inline void SL_Context::cull_mode(SL_CullMode cm) noexcept
+{
+    mState.cull_mode(cm);
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+inline SL_CullMode SL_Context::cull_mode() const noexcept
+{
+    return mState.cull_mode();
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+inline void SL_Context::depth_test(SL_DepthTest dt) noexcept
+{
+    mState.depth_test(dt);
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+inline SL_DepthTest SL_Context::depth_test() const noexcept
+{
+    return mState.depth_test();
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+inline void SL_Context::depth_mask(SL_DepthMask dm) noexcept
+{
+    mState.depth_mask(dm);
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+inline SL_DepthMask SL_Context::depth_mask() const noexcept
+{
+    return mState.depth_mask();
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+inline void SL_Context::blend_mode(SL_BlendMode bm) noexcept
+{
+    mState.blend_mode(bm);
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+inline SL_BlendMode SL_Context::blend_mode() const noexcept
+{
+    return mState.blend_mode();
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+inline void SL_Context::viewport(uint16_t x, uint16_t y, uint16_t w, uint16_t h) noexcept
+{
+    mState.viewport(x, y, w, h);
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+inline ls::math::vec4_t<uint16_t> SL_Context::viewport() const noexcept
+{
+    return mState.viewport();
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+inline void SL_Context::scissor(uint16_t x, uint16_t y, uint16_t w, uint16_t h) noexcept
+{
+    mState.scissor(x, y, w, h);
+}
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+inline ls::math::vec4_t<uint16_t> SL_Context::scissor() const noexcept
+{
+    return mState.scissor();
+}
 
 
 

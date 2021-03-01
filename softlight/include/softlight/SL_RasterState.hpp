@@ -68,6 +68,11 @@ enum SL_BlendMode : uint8_t
 
 /*-----------------------------------------------------------------------------
  * Rasterization State Storage
+ *
+ * This class should be lightweight so any overhead of copying shouldn't have
+ * more overhead than assigning an __m128 or float32x4_t type. The reason is
+ * the SL_RasterState is copied into the software rasterizer, which should be
+ * as freakishly fast as possible.
 -----------------------------------------------------------------------------*/
 class SL_RasterState
 {
@@ -245,12 +250,12 @@ constexpr SL_BlendMode SL_RasterState::blend_mode_from_bits(value_type bits) noe
  * Constructor
 -------------------------------------*/
 constexpr SL_RasterState::SL_RasterState() noexcept :
-    mStates{
+    mStates{(SL_RasterState::value_type)(
         SL_RasterState::cull_mode_to_bits(SL_CullMode::SL_CULL_BACK_FACE) |
         SL_RasterState::depth_test_to_bits(SL_DepthTest::SL_DEPTH_TEST_ON) |
         SL_RasterState::depth_mask_to_bits(SL_DepthMask::SL_DEPTH_MASK_ON) |
         SL_RasterState::blend_mode_to_bits(SL_BlendMode::SL_BLEND_OFF)
-    },
+    )},
     mViewport{0, 0, 65535, 65535},
     mScissor{0, 0, 65535, 65535}
 {}
@@ -313,12 +318,12 @@ inline SL_RasterState& SL_RasterState::operator=(SL_RasterState&& rs) noexcept
 -------------------------------------*/
 inline void SL_RasterState::reset() noexcept
 {
-    mStates = 0
+    mStates = (SL_RasterState::value_type)(0
         | SL_RasterState::cull_mode_to_bits(SL_CullMode::SL_CULL_BACK_FACE)
         | SL_RasterState::depth_test_to_bits(SL_DepthTest::SL_DEPTH_TEST_ON)
         | SL_RasterState::depth_mask_to_bits(SL_DepthMask::SL_DEPTH_MASK_ON)
         | SL_RasterState::blend_mode_to_bits(SL_BlendMode::SL_BLEND_OFF)
-        | 0;
+        | 0);
     mViewport = ls::math::vec4_t<uint16_t>{0, 0, 65535, 65535};
     mScissor = ls::math::vec4_t<uint16_t>{0, 0, 65535, 65535};
 }
