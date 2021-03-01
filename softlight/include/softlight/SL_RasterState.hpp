@@ -108,7 +108,7 @@ class SL_RasterState
     static constexpr SL_BlendMode blend_mode_from_bits(value_type bits) noexcept;
 
   public:
-    ~SL_RasterState() noexcept;
+    ~SL_RasterState() noexcept = default;
 
     constexpr SL_RasterState() noexcept;
 
@@ -239,13 +239,6 @@ constexpr SL_BlendMode SL_RasterState::blend_mode_from_bits(value_type bits) noe
     return static_cast<SL_BlendMode>((bits & SL_RasterState::SL_BLEND_MODE_MASK) >> SL_RasterState::SL_BLEND_MODE_SHIFTS);
 }
 
-/*-------------------------------------
- * Destructor
--------------------------------------*/
-inline SL_RasterState::~SL_RasterState() noexcept
-{
-}
-
 
 
 /*-------------------------------------
@@ -258,8 +251,8 @@ constexpr SL_RasterState::SL_RasterState() noexcept :
         SL_RasterState::depth_mask_to_bits(SL_DepthMask::SL_DEPTH_MASK_ON) |
         SL_RasterState::blend_mode_to_bits(SL_BlendMode::SL_BLEND_OFF)
     },
-    mViewport{0, 0, 0, 0},
-    mScissor{0, 0, 0, 0}
+    mViewport{0, 0, 65535, 65535},
+    mScissor{0, 0, 65535, 65535}
 {}
 
 
@@ -326,8 +319,8 @@ inline void SL_RasterState::reset() noexcept
         | SL_RasterState::depth_mask_to_bits(SL_DepthMask::SL_DEPTH_MASK_ON)
         | SL_RasterState::blend_mode_to_bits(SL_BlendMode::SL_BLEND_OFF)
         | 0;
-    mViewport = ls::math::vec4_t<uint16_t>{0, 0, 0, 0};
-    mScissor = ls::math::vec4_t<uint16_t>{0, 0, 0, 0};
+    mViewport = ls::math::vec4_t<uint16_t>{0, 0, 65535, 65535};
+    mScissor = ls::math::vec4_t<uint16_t>{0, 0, 65535, 65535};
 }
 
 
