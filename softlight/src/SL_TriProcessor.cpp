@@ -800,7 +800,7 @@ void SL_TriProcessor::process_verts(const SL_Mesh& m, size_t instanceId) noexcep
     #endif
 
     //const math::mat4&& vp = math::viewport<float>(0.f, 0.25f, 1.f, 0.5f);
-    const math::mat4&& vp = math::mat4{1.f};
+    //const math::mat4&& vp = math::mat4{1.f};
 
     for (size_t i = begin; i < end; i += step)
     {
@@ -813,15 +813,15 @@ void SL_TriProcessor::process_verts(const SL_Mesh& m, size_t instanceId) noexcep
         #else
             params.vertId    = vertId.v[0];
             params.pVaryings = pVert0.varyings;
-            pVert0.vert      = vp * shader(params);
+            pVert0.vert      = shader(params);
 
             params.vertId    = vertId.v[1];
             params.pVaryings = pVert1.varyings;
-            pVert1.vert      = vp * shader(params);
+            pVert1.vert      = shader(params);
 
             params.vertId    = vertId.v[2];
             params.pVaryings = pVert2.varyings;
-            pVert2.vert      = vp * shader(params);
+            pVert2.vert      = shader(params);
         #endif
 
         if (LS_LIKELY(cullMode != SL_CULL_OFF))
