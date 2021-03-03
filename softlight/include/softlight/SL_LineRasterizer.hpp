@@ -26,6 +26,14 @@ class SL_Framebuffer;
 class SL_Shader;
 class SL_Texture;
 
+struct SL_DepthFuncLT;
+struct SL_DepthFuncLE;
+struct SL_DepthFuncGT;
+struct SL_DepthFuncGE;
+struct SL_DepthFuncEQ;
+struct SL_DepthFuncNE;
+struct SL_DepthFuncOFF;
+
 
 
 /*-----------------------------------------------------------------------------
@@ -33,17 +41,54 @@ class SL_Texture;
 -----------------------------------------------------------------------------*/
 struct SL_LineRasterizer final : public SL_FragmentProcessor
 {
-    template <typename depth_type>
+    template <class DepthCmpFunc, typename depth_type>
     void render_line(const uint32_t binId, SL_Framebuffer* const fbo, const ls::math::vec4_t<int32_t> dimens) noexcept;
+
+    template <class DepthCmpFunc>
+    void dispatch_bins() noexcept;
 
     virtual void execute() noexcept override;
 };
 
 
 
-extern template void SL_LineRasterizer::render_line<ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-extern template void SL_LineRasterizer::render_line<float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-extern template void SL_LineRasterizer::render_line<double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+extern template void SL_LineRasterizer::dispatch_bins<SL_DepthFuncLT>() noexcept;
+extern template void SL_LineRasterizer::dispatch_bins<SL_DepthFuncLE>() noexcept;
+extern template void SL_LineRasterizer::dispatch_bins<SL_DepthFuncGT>() noexcept;
+extern template void SL_LineRasterizer::dispatch_bins<SL_DepthFuncGE>() noexcept;
+extern template void SL_LineRasterizer::dispatch_bins<SL_DepthFuncEQ>() noexcept;
+extern template void SL_LineRasterizer::dispatch_bins<SL_DepthFuncNE>() noexcept;
+extern template void SL_LineRasterizer::dispatch_bins<SL_DepthFuncOFF>() noexcept;
+
+
+
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncLT, ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncLT, float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncLT, double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncLE, ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncLE, float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncLE, double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncGT, ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncGT, float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncGT, double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncGE, ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncGE, float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncGE, double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncNE, ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncNE, float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncNE, double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
 
 
 

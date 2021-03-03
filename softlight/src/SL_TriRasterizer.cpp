@@ -247,11 +247,90 @@ inline LS_INLINE math::vec4 _sl_get_depth_texel4<float>(const float* pDepth)
  * SL_TriRasterizer Class
 -----------------------------------------------------------------------------*/
 /*--------------------------------------
- * Wireframe Rasterization
+ * Bin-Rasterization
 --------------------------------------*/
 template <typename depth_type>
+void SL_TriRasterizer::flush_fragments(
+    const SL_FragmentBin* pBin,
+    uint32_t              numQueuedFrags,
+    const SL_FragCoord*   outCoords) const noexcept
+{
+    const SL_UniformBuffer* pUniforms   = mShader->mUniforms;
+    const SL_FragmentShader fragShader  = mShader->mFragShader;
+    SL_Texture*             pDepthBuf   = mFbo->get_depth_buffer();
+
+    SL_FragmentParam fragParams;
+    fragParams.pUniforms = pUniforms;
+
+    if (LS_LIKELY(fragShader.blend == SL_BLEND_OFF))
+    {
+        for (uint32_t i = 0; i < numQueuedFrags; ++i)
+        {
+            const math::vec4& bc = outCoords->bc[i];
+            fragParams.coord = outCoords->coord[i];
+
+            interpolate_tri_varyings(bc.v, fragShader.numVaryings, pBin->mVaryings, fragParams.pVaryings);
+
+            uint_fast32_t haveOutputs = (uint_fast32_t)(-(int_fast32_t)fragShader.shader(fragParams));
+
+            // branchless select
+            switch (haveOutputs & fragShader.numOutputs)
+            {
+                case 4: mFbo->put_pixel(3, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3]);
+                case 3: mFbo->put_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2]);
+                case 2: mFbo->put_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1]);
+                case 1: mFbo->put_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0]);
+            }
+
+            if (haveOutputs & (fragShader.depthMask == SL_DEPTH_MASK_ON))
+            {
+                pDepthBuf->raw_texel<depth_type>(fragParams.coord.x, fragParams.coord.y) = (depth_type)fragParams.coord.depth;
+            }
+        }
+    }
+    else
+    {
+        for (uint32_t i = 0; i < numQueuedFrags; ++i)
+        {
+            const math::vec4& bc = outCoords->bc[i];
+            fragParams.coord = outCoords->coord[i];
+
+            interpolate_tri_varyings(bc.v, fragShader.numVaryings, pBin->mVaryings, fragParams.pVaryings);
+
+            uint_fast32_t haveOutputs = (uint_fast32_t)(-(int_fast32_t)fragShader.shader(fragParams));
+
+            // branchless select
+            switch (haveOutputs & fragShader.numOutputs)
+            {
+                case 4: mFbo->put_alpha_pixel(3, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3], fragShader.blend);
+                case 3: mFbo->put_alpha_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], fragShader.blend);
+                case 2: mFbo->put_alpha_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], fragShader.blend);
+                case 1: mFbo->put_alpha_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], fragShader.blend);
+            }
+
+            if (haveOutputs & (fragShader.depthMask == SL_DEPTH_MASK_ON))
+            {
+                pDepthBuf->raw_texel<depth_type>(fragParams.coord.x, fragParams.coord.y) = (depth_type)fragParams.coord.depth;
+            }
+        }
+    }
+}
+
+
+
+template void SL_TriRasterizer::flush_fragments<ls::math::half>(const SL_FragmentBin*, uint32_t, const SL_FragCoord*) const noexcept;
+template void SL_TriRasterizer::flush_fragments<float>(const SL_FragmentBin*, uint32_t, const SL_FragCoord*) const noexcept;
+template void SL_TriRasterizer::flush_fragments<double>(const SL_FragmentBin*, uint32_t, const SL_FragCoord*) const noexcept;
+
+
+
+/*--------------------------------------
+ * Wireframe Rasterization
+--------------------------------------*/
+template <class DepthCmpFunc, typename depth_type>
 void SL_TriRasterizer::render_wireframe(const SL_Texture* depthBuffer) const noexcept
 {
+    constexpr DepthCmpFunc depthCmpFunc;
     const SL_BinCounter<uint32_t>* pBinIds = mBinIds;
     const SL_FragmentBin* pBins = mBins;
     const uint32_t numBins = (uint32_t)mNumBins;
@@ -259,7 +338,6 @@ void SL_TriRasterizer::render_wireframe(const SL_Texture* depthBuffer) const noe
     SL_FragCoord*         outCoords    = mQueues;
     const int32_t         yOffset      = (int32_t)mThreadId;
     const int32_t         increment    = (int32_t)mNumProcessors;
-    const int32_t         depthTesting = -(mShader->fragment_shader().depthTest == SL_DEPTH_TEST_OFF) & 0x0F;
     SL_ScanlineBounds     scanline;
 
     for (uint32_t i = 0; i < numBins; ++i)
@@ -302,11 +380,7 @@ void SL_TriRasterizer::render_wireframe(const SL_Texture* depthBuffer) const noe
                 const float   z  = math::dot(depth, bc);
                 const float   d  = _sl_get_depth_texel<depth_type>(pDepth+x);
 
-                #if SL_REVERSED_Z_RENDERING
-                const int_fast32_t&& depthTest = math::sign_mask(d-z) | depthTesting;
-                #else
-                const int_fast32_t&& depthTest = math::sign_mask(z-d) | depthTesting;
-                #endif
+                const int_fast32_t&& depthTest = depthCmpFunc(z, d);
 
                 if (LS_UNLIKELY(!depthTest))
                 {
@@ -338,13 +412,43 @@ void SL_TriRasterizer::render_wireframe(const SL_Texture* depthBuffer) const noe
 }
 
 
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncLT, ls::math::half>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncLT, float>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncLT, double>(const SL_Texture*) const noexcept;
+
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncLE, ls::math::half>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncLE, float>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncLE, double>(const SL_Texture*) const noexcept;
+
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncGT, ls::math::half>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncGT, float>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncGT, double>(const SL_Texture*) const noexcept;
+
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncGE, ls::math::half>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncGE, float>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncGE, double>(const SL_Texture*) const noexcept;
+
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncEQ, ls::math::half>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncEQ, float>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncEQ, double>(const SL_Texture*) const noexcept;
+
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncNE, ls::math::half>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncNE, float>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncNE, double>(const SL_Texture*) const noexcept;
+
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncOFF, ls::math::half>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncOFF, float>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncOFF, double>(const SL_Texture*) const noexcept;
+
+
 
 /*--------------------------------------
  * Triangle Rasterization, scalar
 --------------------------------------*/
-template <typename depth_type>
+template <class DepthCmpFunc, typename depth_type>
 void SL_TriRasterizer::render_triangle(const SL_Texture* depthBuffer) const noexcept
 {
+    constexpr DepthCmpFunc depthCmpFunc;
     const SL_BinCounter<uint32_t>* pBinIds = mBinIds;
     const SL_FragmentBin* pBins = mBins;
     const uint32_t numBins = (uint32_t)mNumBins;
@@ -352,7 +456,6 @@ void SL_TriRasterizer::render_triangle(const SL_Texture* depthBuffer) const noex
     SL_FragCoord*         outCoords    = mQueues;
     const int32_t         yOffset      = (int32_t)mThreadId;
     const int32_t         increment    = (int32_t)mNumProcessors;
-    const int32_t         depthTesting = -(mShader->fragment_shader().depthTest == SL_DEPTH_TEST_OFF) & 0x0F;
     SL_ScanlineBounds     scanline;
 
     for (uint32_t i = 0; i < numBins; ++i)
@@ -396,11 +499,7 @@ void SL_TriRasterizer::render_triangle(const SL_Texture* depthBuffer) const noex
                     math::vec4&& bc = math::fmadd(bcClipSpace[0], xf, bcY);
                     const float z = math::dot(depth, bc);
 
-                    #if SL_REVERSED_Z_RENDERING
-                    const int_fast32_t&& depthTest = math::sign_mask(d - z) | depthTesting;
-                    #else
-                    const int_fast32_t&& depthTest = math::sign_mask(z-d) | depthTesting;
-                    #endif
+                    const int_fast32_t&& depthTest = depthCmpFunc(z, d);
 
                     if (LS_LIKELY(depthTest))
                     {
@@ -436,25 +535,55 @@ void SL_TriRasterizer::render_triangle(const SL_Texture* depthBuffer) const noex
 
 
 
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncLT, ls::math::half>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncLT, float>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncLT, double>(const SL_Texture*) const noexcept;
+
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncLE, ls::math::half>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncLE, float>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncLE, double>(const SL_Texture*) const noexcept;
+
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncGT, ls::math::half>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncGT, float>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncGT, double>(const SL_Texture*) const noexcept;
+
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncGE, ls::math::half>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncGE, float>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncGE, double>(const SL_Texture*) const noexcept;
+
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncEQ, ls::math::half>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncEQ, float>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncEQ, double>(const SL_Texture*) const noexcept;
+
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncNE, ls::math::half>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncNE, float>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncNE, double>(const SL_Texture*) const noexcept;
+
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncOFF, ls::math::half>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncOFF, float>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncOFF, double>(const SL_Texture*) const noexcept;
+
+
+
 /*-------------------------------------
  * Render a triangle using 4 elements at a time
 -------------------------------------*/
-#ifdef LS_X86_AVX2
+#if defined(LS_X86_AVX2)
 
 
 
-template <typename depth_type>
+template <class DepthCmpFunc, typename depth_type>
 void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const noexcept
 {
+    constexpr DepthCmpFunc         depthCmpFunc;
     const SL_BinCounter<uint32_t>* pBinIds = mBinIds;
-    const SL_FragmentBin* pBins = mBins;
-    const uint32_t numBins = (uint32_t)mNumBins;
+    const SL_FragmentBin* const    pBins   = mBins;
+    const uint32_t                 numBins = (uint32_t)mNumBins;
 
-    SL_FragCoord*         outCoords    = mQueues;
-    const int32_t         yOffset      = (int32_t)mThreadId;
-    const int32_t         increment    = (int32_t)mNumProcessors;
-    const __m128          depthTesting = _mm_castsi128_ps(_mm_set1_epi32(-(mShader->fragment_shader().depthTest == SL_DEPTH_TEST_OFF)));
-    SL_ScanlineBounds     scanline;
+    SL_FragCoord*     outCoords    = mQueues;
+    const int32_t     yOffset      = (int32_t)mThreadId;
+    const int32_t     increment    = (int32_t)mNumProcessors;
+    SL_ScanlineBounds scanline;
 
     for (uint32_t i = 0; i < numBins; ++i)
     {
@@ -508,16 +637,11 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
                 do
                 {
                     // calculate barycentric coordinates and perform a depth test
-                    const math::vec4&& d      = _sl_get_depth_texel4<depth_type>(pDepth);
-                    const __m128       xBound = _mm_castsi128_ps(_mm_cmplt_epi32(x4, xMax4));
-                    math::mat4&&       bc     = math::outer(math::vec4{_mm_cvtepi32_ps(x4)}, bcClipSpace[0]) + bcY;
-                    const math::vec4&& z      = depth * bc;
-
-                    #if SL_REVERSED_Z_RENDERING
-                    const int32_t depthTest = _mm_movemask_ps(_mm_and_ps(xBound, _mm_or_ps(_mm_cmplt_ps(d.simd, z.simd), depthTesting)));
-                    #else
-                    const int32_t depthTest = _mm_movemask_ps(_mm_and_ps(xBound, _mm_or_ps(_mm_cmplt_ps(z.simd, d.simd), depthTesting)));
-                    #endif
+                    const math::vec4&& d         = _sl_get_depth_texel4<depth_type>(pDepth);
+                    const __m128       xBound    = _mm_castsi128_ps(_mm_cmplt_epi32(x4, xMax4));
+                    math::mat4&&       bc        = math::outer(math::vec4{_mm_cvtepi32_ps(x4)}, bcClipSpace[0]) + bcY;
+                    const math::vec4&& z         = depth * bc;
+                    const int32_t      depthTest = _mm_movemask_ps(_mm_and_ps(xBound, depthCmpFunc(z.simd, d.simd)));
 
                     if (LS_UNLIKELY(0 != depthTest))
                     {
@@ -595,18 +719,18 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
 
 
 
-template <typename depth_type>
+template <class DepthCmpFunc, typename depth_type>
 void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const noexcept
 {
+    constexpr DepthCmpFunc         depthCmpFunc;
     const SL_BinCounter<uint32_t>* pBinIds = mBinIds;
-    const SL_FragmentBin* pBins = mBins;
-    const uint32_t numBins = (uint32_t)mNumBins;
+    const SL_FragmentBin* const    pBins   = mBins;
+    const uint32_t                 numBins = (uint32_t)mNumBins;
 
-    SL_FragCoord*         outCoords    = mQueues;
-    const int32_t         yOffset      = (int32_t)mThreadId;
-    const int32_t         increment    = (int32_t)mNumProcessors;
-    const int32_t         depthTesting = -(mShader->fragment_shader().depthTest == SL_DEPTH_TEST_OFF) & 0x0F;
-    SL_ScanlineBounds     scanline;
+    SL_FragCoord*     outCoords    = mQueues;
+    const int32_t     yOffset      = (int32_t)mThreadId;
+    const int32_t     increment    = (int32_t)mNumProcessors;
+    SL_ScanlineBounds scanline;
 
     for (uint32_t i = 0; i < numBins; ++i)
     {
@@ -657,11 +781,7 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
                     math::mat4&&       bc     = math::outer((math::vec4)x4, bcClipSpace[0]) + bcY;
                     const math::vec4&& z      = depth * bc;
 
-                    #if SL_REVERSED_Z_RENDERING
-                    const int32_t depthTest = xBound & (math::sign_mask(d-z) | depthTesting);
-                    #else
-                    const int32_t depthTest = xBound & (math::sign_mask(z-d) | depthTesting);
-                    #endif
+                    const int32_t depthTest = xBound & math::sign_mask(depthCmpFunc(z, d));
 
                     if (LS_LIKELY(0 != depthTest))
                     {
@@ -723,82 +843,41 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
 
 
 
-/*--------------------------------------
- * Triangle Fragment Bin-Rasterization
---------------------------------------*/
-template <typename depth_type>
-void SL_TriRasterizer::flush_fragments(
-    const SL_FragmentBin* pBin,
-    uint32_t              numQueuedFrags,
-    const SL_FragCoord*   outCoords) const noexcept
-{
-    const SL_UniformBuffer* pUniforms   = mShader->mUniforms;
-    const SL_FragmentShader fragShader  = mShader->mFragShader;
-    SL_Texture*             pDepthBuf   = mFbo->get_depth_buffer();
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncLT, ls::math::half>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncLT, float>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncLT, double>(const SL_Texture*) const noexcept;
 
-    SL_FragmentParam fragParams;
-    fragParams.pUniforms = pUniforms;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncLE, ls::math::half>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncLE, float>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncLE, double>(const SL_Texture*) const noexcept;
 
-    if (LS_LIKELY(fragShader.blend == SL_BLEND_OFF))
-    {
-        for (uint32_t i = 0; i < numQueuedFrags; ++i)
-        {
-            const math::vec4& bc = outCoords->bc[i];
-            fragParams.coord = outCoords->coord[i];
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncGT, ls::math::half>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncGT, float>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncGT, double>(const SL_Texture*) const noexcept;
 
-            interpolate_tri_varyings(bc.v, fragShader.numVaryings, pBin->mVaryings, fragParams.pVaryings);
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncGE, ls::math::half>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncGE, float>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncGE, double>(const SL_Texture*) const noexcept;
 
-            uint_fast32_t haveOutputs = (uint_fast32_t)(-(int_fast32_t)fragShader.shader(fragParams));
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncEQ, ls::math::half>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncEQ, float>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncEQ, double>(const SL_Texture*) const noexcept;
 
-            // branchless select
-            switch (haveOutputs & fragShader.numOutputs)
-            {
-                case 4: mFbo->put_pixel(3, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3]);
-                case 3: mFbo->put_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2]);
-                case 2: mFbo->put_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1]);
-                case 1: mFbo->put_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0]);
-            }
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncNE, ls::math::half>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncNE, float>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncNE, double>(const SL_Texture*) const noexcept;
 
-            if (haveOutputs & (fragShader.depthMask == SL_DEPTH_MASK_ON))
-            {
-                pDepthBuf->raw_texel<depth_type>(fragParams.coord.x, fragParams.coord.y) = (depth_type)fragParams.coord.depth;
-            }
-        }
-    }
-    else
-    {
-        for (uint32_t i = 0; i < numQueuedFrags; ++i)
-        {
-            const math::vec4& bc = outCoords->bc[i];
-            fragParams.coord = outCoords->coord[i];
-
-            interpolate_tri_varyings(bc.v, fragShader.numVaryings, pBin->mVaryings, fragParams.pVaryings);
-
-            uint_fast32_t haveOutputs = (uint_fast32_t)(-(int_fast32_t)fragShader.shader(fragParams));
-
-            // branchless select
-            switch (haveOutputs & fragShader.numOutputs)
-            {
-                case 4: mFbo->put_alpha_pixel(3, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3], fragShader.blend);
-                case 3: mFbo->put_alpha_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], fragShader.blend);
-                case 2: mFbo->put_alpha_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], fragShader.blend);
-                case 1: mFbo->put_alpha_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], fragShader.blend);
-            }
-
-            if (haveOutputs & (fragShader.depthMask == SL_DEPTH_MASK_ON))
-            {
-                pDepthBuf->raw_texel<depth_type>(fragParams.coord.x, fragParams.coord.y) = (depth_type)fragParams.coord.depth;
-            }
-        }
-    }
-}
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncOFF, ls::math::half>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncOFF, float>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncOFF, double>(const SL_Texture*) const noexcept;
 
 
 
 /*-------------------------------------
- * Run the fragment processor
+ * Dispatch the fragment processor with the correct depth-comparison function
 -------------------------------------*/
-void SL_TriRasterizer::execute() noexcept
+template <class DepthCmpFunc>
+void SL_TriRasterizer::dispatch_bins() noexcept
 {
     const uint16_t depthBpp = mFbo->get_depth_buffer()->bpp();
 
@@ -808,15 +887,15 @@ void SL_TriRasterizer::execute() noexcept
         case RENDER_MODE_INDEXED_TRI_WIRE:
             if (depthBpp == sizeof(math::half))
             {
-                render_wireframe<math::half>(mFbo->get_depth_buffer());
+                render_wireframe<DepthCmpFunc, math::half>(mFbo->get_depth_buffer());
             }
             else if (depthBpp == sizeof(float))
             {
-                render_wireframe<float>(mFbo->get_depth_buffer());
+                render_wireframe<DepthCmpFunc, float>(mFbo->get_depth_buffer());
             }
             else if (depthBpp == sizeof(double))
             {
-                render_wireframe<double>(mFbo->get_depth_buffer());
+                render_wireframe<DepthCmpFunc, double>(mFbo->get_depth_buffer());
             }
             break;
 
@@ -826,18 +905,18 @@ void SL_TriRasterizer::execute() noexcept
             // There's No need to subdivide the output framebuffer
             if (depthBpp == sizeof(math::half))
             {
-                //render_triangle<math::half>(mFbo->get_depth_buffer());
-                render_triangle_simd<math::half>(mFbo->get_depth_buffer());
+                //render_triangle<DepthCmpFunc, math::half>(mFbo->get_depth_buffer());
+                render_triangle_simd<DepthCmpFunc, math::half>(mFbo->get_depth_buffer());
             }
             else if (depthBpp == sizeof(float))
             {
-                //render_triangle<float>(mFbo->get_depth_buffer());
-                render_triangle_simd<float>(mFbo->get_depth_buffer());
+                //render_triangle<DepthCmpFunc, float>(mFbo->get_depth_buffer());
+                render_triangle_simd<DepthCmpFunc, float>(mFbo->get_depth_buffer());
             }
             else if (depthBpp == sizeof(double))
             {
-                render_triangle<double>(mFbo->get_depth_buffer());
-                //render_triangle_simd<double>(mFbo->get_depth_buffer());
+                render_triangle<DepthCmpFunc, double>(mFbo->get_depth_buffer());
+                //render_triangle_simd<DepthCmpFunc, double>(mFbo->get_depth_buffer());
             }
             break;
 
@@ -847,18 +926,57 @@ void SL_TriRasterizer::execute() noexcept
     }
 }
 
-template void SL_TriRasterizer::render_wireframe<ls::math::half>(const SL_Texture*) const noexcept;
-template void SL_TriRasterizer::render_wireframe<float>(const SL_Texture*) const noexcept;
-template void SL_TriRasterizer::render_wireframe<double>(const SL_Texture*) const noexcept;
 
-template void SL_TriRasterizer::render_triangle<ls::math::half>(const SL_Texture*) const noexcept;
-template void SL_TriRasterizer::render_triangle<float>(const SL_Texture*) const noexcept;
-template void SL_TriRasterizer::render_triangle<double>(const SL_Texture*) const noexcept;
 
-template void SL_TriRasterizer::render_triangle_simd<ls::math::half>(const SL_Texture*) const noexcept;
-template void SL_TriRasterizer::render_triangle_simd<float>(const SL_Texture*) const noexcept;
-template void SL_TriRasterizer::render_triangle_simd<double>(const SL_Texture*) const noexcept;
+template void SL_TriRasterizer::dispatch_bins<SL_DepthFuncLT>() noexcept;
+template void SL_TriRasterizer::dispatch_bins<SL_DepthFuncLE>() noexcept;
+template void SL_TriRasterizer::dispatch_bins<SL_DepthFuncGT>() noexcept;
+template void SL_TriRasterizer::dispatch_bins<SL_DepthFuncGE>() noexcept;
+template void SL_TriRasterizer::dispatch_bins<SL_DepthFuncEQ>() noexcept;
+template void SL_TriRasterizer::dispatch_bins<SL_DepthFuncNE>() noexcept;
+template void SL_TriRasterizer::dispatch_bins<SL_DepthFuncOFF>() noexcept;
 
-template void SL_TriRasterizer::flush_fragments<ls::math::half>(const SL_FragmentBin*, uint32_t, const SL_FragCoord*) const noexcept;
-template void SL_TriRasterizer::flush_fragments<float>(const SL_FragmentBin*, uint32_t, const SL_FragCoord*) const noexcept;
-template void SL_TriRasterizer::flush_fragments<double>(const SL_FragmentBin*, uint32_t, const SL_FragCoord*) const noexcept;
+
+
+/*-------------------------------------
+ * Run the fragment processor
+-------------------------------------*/
+void SL_TriRasterizer::execute() noexcept
+{
+    const SL_DepthTest depthTestType = mShader->fragment_shader().depthTest;
+
+    switch (depthTestType)
+    {
+        case SL_DEPTH_TEST_OFF:
+            dispatch_bins<SL_DepthFuncOFF>();
+            break;
+
+        case SL_DEPTH_TEST_LESS_THAN:
+            dispatch_bins<SL_DepthFuncLT>();
+            break;
+
+        case SL_DEPTH_TEST_LESS_EQUAL:
+            dispatch_bins<SL_DepthFuncLE>();
+            break;
+
+        case SL_DEPTH_TEST_GREATER_THAN:
+            dispatch_bins<SL_DepthFuncGT>();
+            break;
+
+        case SL_DEPTH_TEST_GREATER_EQUAL:
+            dispatch_bins<SL_DepthFuncGE>();
+            break;
+
+        case SL_DEPTH_TEST_EQUAL:
+            dispatch_bins<SL_DepthFuncEQ>();
+            break;
+
+        case SL_DEPTH_TEST_NOT_EQUAL:
+            dispatch_bins<SL_DepthFuncNE>();
+            break;
+
+        default:
+            LS_DEBUG_ASSERT(false);
+            LS_UNREACHABLE();
+    }
+}

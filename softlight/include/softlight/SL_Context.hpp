@@ -219,13 +219,13 @@ class SL_Context
 
     SL_BlendMode blend_mode() const noexcept;
 
-    void viewport(uint16_t x, uint16_t y, uint16_t w, uint16_t h) noexcept;
+    void viewport(int32_t x, int32_t y, uint16_t w, uint16_t h) noexcept;
 
-    ls::math::vec4_t<uint16_t> viewport() const noexcept;
+    ls::math::vec4_t<int32_t> viewport() const noexcept;
 
-    void scissor(uint16_t x, uint16_t y, uint16_t w, uint16_t h) noexcept;
+    void scissor(int32_t x, int32_t y, uint16_t w, uint16_t h) noexcept;
 
-    ls::math::vec4_t<uint16_t> scissor() const noexcept;
+    ls::math::vec4_t<int32_t> scissor() const noexcept;
 
     /*
      *
@@ -399,7 +399,7 @@ inline SL_BlendMode SL_Context::blend_mode() const noexcept
 
 /*-------------------------------------
 -------------------------------------*/
-inline void SL_Context::viewport(uint16_t x, uint16_t y, uint16_t w, uint16_t h) noexcept
+inline void SL_Context::viewport(int32_t x, int32_t y, uint16_t w, uint16_t h) noexcept
 {
     mState.viewport(x, y, w, h);
 }
@@ -408,7 +408,7 @@ inline void SL_Context::viewport(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
 
 /*-------------------------------------
 -------------------------------------*/
-inline ls::math::vec4_t<uint16_t> SL_Context::viewport() const noexcept
+inline ls::math::vec4_t<int32_t> SL_Context::viewport() const noexcept
 {
     return mState.viewport();
 }
@@ -417,7 +417,7 @@ inline ls::math::vec4_t<uint16_t> SL_Context::viewport() const noexcept
 
 /*-------------------------------------
 -------------------------------------*/
-inline void SL_Context::scissor(uint16_t x, uint16_t y, uint16_t w, uint16_t h) noexcept
+inline void SL_Context::scissor(int32_t x, int32_t y, uint16_t w, uint16_t h) noexcept
 {
     mState.scissor(x, y, w, h);
 }
@@ -426,7 +426,7 @@ inline void SL_Context::scissor(uint16_t x, uint16_t y, uint16_t w, uint16_t h) 
 
 /*-------------------------------------
 -------------------------------------*/
-inline ls::math::vec4_t<uint16_t> SL_Context::scissor() const noexcept
+inline ls::math::vec4_t<int32_t> SL_Context::scissor() const noexcept
 {
     return mState.scissor();
 }

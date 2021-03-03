@@ -23,6 +23,43 @@ namespace math = ls::math;
 namespace
 {
 
+#if 0
+inline LS_INLINE math::mat4 sl_scissor(float x, float y, float w, float h) noexcept
+{
+    if (x < 0.f)
+    {
+        w += x;
+        x = 0.f;
+    }
+
+    if (y < 0.f)
+    {
+        h += y;
+        y = 0.f;
+    }
+
+    w = ls::math::min(1.f - x, w);
+    h = ls::math::min(1.f - y, h);
+
+    const float nm00 = math::rcp(w);
+    const float nm11 = math::rcp(h);
+
+    const float nm30 = nm00 - 1.f;
+    const float nm31 = nm11 - 1.f;
+
+    const float m30 = math::fmadd(x, (-2.f * nm00), nm30);
+    const float m31 = math::fmadd(y, (-2.f * nm11), nm31);
+
+    return math::mat4{
+        nm00, 0.f,  0.f, 0.f,
+        0.f,  nm11, 0.f, 0.f,
+        0.f,  0.f,  1.f, 0.f,
+        m30,  m31,  0.f, 1.f
+    };
+}
+
+#endif
+
 
 
 /*-------------------------------------
@@ -196,7 +233,7 @@ inline LS_INLINE void sl_world_to_screen_coords_divided3(
         scl2 = vmaxq_f32(vdupq_n_f32(0.f), vcvtq_f32_s32(vcvtq_s32_f32(scl2)));
         p2.simd = vbslq_f32(blendMask, p2.simd, scl2);
 
-    #else
+    #elif 1
         p0[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  p0[0], widthScale)));
         p0[1] = math::max(0.f, math::floor(math::fmadd(heightScale, p0[1], heightScale)));
 
@@ -205,7 +242,29 @@ inline LS_INLINE void sl_world_to_screen_coords_divided3(
 
         p2[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  p2[0], widthScale)));
         p2[1] = math::max(0.f, math::floor(math::fmadd(heightScale, p2[1], heightScale)));
-        //v = math::fmadd(math::vec4{widthScale, heightScale, 1.f, 1.f}, v, math::vec4{widthScale, heightScale, 0.f, 0.f});l
+        //v = math::fmadd(math::vec4{widthScale, heightScale, 1.f, 1.f}, v, math::vec4{widthScale, heightScale, 0.f, 0.f});
+
+    #else
+        (void)widthScale;
+        (void)heightScale;
+
+        const float x = 0.f;
+        const float y = 180.f;
+        const float w0 = 1280.f;
+        const float h0 = 360.f;
+        const float w1 = w0 * 0.5f;
+        const float h1 = h0 * 0.5f;
+        const float xOffset = x;
+        const float yOffset = y;
+
+        p0[0] = math::max(math::floor(math::fmadd(p0[0]+1.f, w1, xOffset)), 0.f);
+        p0[1] = math::max(math::floor(math::fmadd(p0[1]+1.f, h1, yOffset)), 0.f);
+
+        p1[0] = math::max(math::floor(math::fmadd(p1[0]+1.f, w1, xOffset)), 0.f);
+        p1[1] = math::max(math::floor(math::fmadd(p1[1]+1.f, h1, yOffset)), 0.f);
+
+        p2[0] = math::max(math::floor(math::fmadd(p2[0]+1.f, w1, xOffset)), 0.f);
+        p2[1] = math::max(math::floor(math::fmadd(p2[1]+1.f, h1, yOffset)), 0.f);
 
     #endif
 }
@@ -740,6 +799,9 @@ void SL_TriProcessor::process_verts(const SL_Mesh& m, size_t instanceId) noexcep
         const size_t step  = mNumThreads * 3u;
     #endif
 
+    //const math::mat4&& vp = math::viewport<float>(0.f, 0.25f, 1.f, 0.5f);
+    const math::mat4&& vp = math::mat4{1.f};
+
     for (size_t i = begin; i < end; i += step)
     {
         const math::vec3_t<size_t>&& vertId = usingIndices ? get_next_vertex3(pIbo, i) : math::vec3_t<size_t>{i, i+1, i+2};
@@ -751,15 +813,15 @@ void SL_TriProcessor::process_verts(const SL_Mesh& m, size_t instanceId) noexcep
         #else
             params.vertId    = vertId.v[0];
             params.pVaryings = pVert0.varyings;
-            pVert0.vert      = shader(params);
+            pVert0.vert      = vp * shader(params);
 
             params.vertId    = vertId.v[1];
             params.pVaryings = pVert1.varyings;
-            pVert1.vert      = shader(params);
+            pVert1.vert      = vp * shader(params);
 
             params.vertId    = vertId.v[2];
             params.pVaryings = pVert2.varyings;
-            pVert2.vert      = shader(params);
+            pVert2.vert      = vp * shader(params);
         #endif
 
         if (LS_LIKELY(cullMode != SL_CULL_OFF))

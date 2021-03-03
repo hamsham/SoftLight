@@ -56,6 +56,10 @@
     #define SL_TEST_BUMP_MAPS 0
 #endif /* SL_TEST_BUMP_MAPS */
 
+#ifndef TEST_REVERSED_DEPTH
+    #define TEST_REVERSED_DEPTH 1
+#endif
+
 namespace math = ls::math;
 namespace utils = ls::utils;
 
@@ -347,7 +351,13 @@ SL_FragmentShader normal_frag_shader()
     shader.numVaryings = 2;
     shader.numOutputs  = 1;
     shader.blend       = SL_BLEND_OFF;
-    shader.depthTest   = SL_DEPTH_TEST_ON;
+
+    #ifdef TEST_REVERSED_DEPTH
+    shader.depthTest = SL_DEPTH_TEST_GREATER_EQUAL;
+    #else
+    shader.depthTest = SL_DEPTH_TEST_LESS_EQUAL;
+    #endif
+
     shader.depthMask   = SL_DEPTH_MASK_ON;
     shader.shader      = _normal_frag_shader_impl;
 
@@ -362,7 +372,13 @@ SL_FragmentShader normal_frag_shader_pbr()
     shader.numVaryings = 2;
     shader.numOutputs  = 1;
     shader.blend       = SL_BLEND_OFF;
-    shader.depthTest   = SL_DEPTH_TEST_ON;
+
+    #ifdef TEST_REVERSED_DEPTH
+    shader.depthTest = SL_DEPTH_TEST_GREATER_EQUAL;
+    #else
+    shader.depthTest = SL_DEPTH_TEST_LESS_EQUAL;
+    #endif
+
     shader.depthMask   = SL_DEPTH_MASK_ON;
     shader.shader      = _normal_frag_shader_pbr;
 
@@ -598,7 +614,13 @@ SL_FragmentShader texture_frag_shader()
     shader.numVaryings = 3;
     shader.numOutputs  = 1;
     shader.blend       = SL_BLEND_OFF;
-    shader.depthTest   = SL_DEPTH_TEST_ON;
+
+    #ifdef TEST_REVERSED_DEPTH
+    shader.depthTest = SL_DEPTH_TEST_GREATER_EQUAL;
+    #else
+    shader.depthTest = SL_DEPTH_TEST_LESS_EQUAL;
+    #endif
+
     shader.depthMask   = SL_DEPTH_MASK_ON;
     shader.shader      = _texture_frag_shader_spot;
 
@@ -613,7 +635,13 @@ SL_FragmentShader texture_frag_shader_pbr()
     shader.numVaryings = 3;
     shader.numOutputs  = 1;
     shader.blend       = SL_BLEND_OFF;
-    shader.depthTest   = SL_DEPTH_TEST_ON;
+
+    #ifdef TEST_REVERSED_DEPTH
+    shader.depthTest = SL_DEPTH_TEST_GREATER_EQUAL;
+    #else
+    shader.depthTest = SL_DEPTH_TEST_LESS_EQUAL;
+    #endif
+
     shader.depthMask   = SL_DEPTH_MASK_ON;
     shader.shader      = _texture_frag_shader_pbr;
 
@@ -856,7 +884,7 @@ int main()
     camTrans.extract_transforms(math::look_at(math::vec3{0.f}, math::vec3{3.f, -5.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
     //camTrans.extract_transforms(math::look_at(math::vec3{200.f, 150.f, 0.f}, math::vec3{0.f, 100.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
 
-    #if SL_REVERSED_Z_RENDERING
+    #if TEST_REVERSED_DEPTH
         math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
     #else
         math::mat4 projMatrix = math::perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 10.f, 500.f);
@@ -899,7 +927,7 @@ int main()
                 context.texture(0).init(context.texture(0).type(), pWindow->width(), pWindow->height());
                 context.texture(1).init(context.texture(1).type(), pWindow->width(), pWindow->height());
 
-                #if SL_REVERSED_Z_RENDERING
+                #if TEST_REVERSED_DEPTH
                     projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
                 #else
                     projMatrix = math::perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.1f, 500.f);
@@ -1023,7 +1051,7 @@ int main()
 
             pGraph->update();
 
-            #if SL_REVERSED_Z_RENDERING
+            #if TEST_REVERSED_DEPTH
                 context.clear_framebuffer(0, 0, SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0}, 0.0);
             #else
                 context.clear_framebuffer(0, 0, SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0}, 1.0);

@@ -24,13 +24,13 @@ namespace utils = ls::utils;
 /*--------------------------------------
  * Determine if a point can be rendered.
 --------------------------------------*/
-template <typename depth_type>
+template <class DepthCmpFunc, typename depth_type>
 void SL_PointRasterizer::render_point(const uint32_t binId, SL_Framebuffer* const fbo) noexcept
 {
+    constexpr DepthCmpFunc  depthCmp    = {};
     const SL_FragmentShader fragShader  = mShader->mFragShader;
     const SL_UniformBuffer* pUniforms   = mShader->mUniforms;
     const uint32_t          numOutputs  = fragShader.numOutputs;
-    const bool              depthTest   = fragShader.depthTest == SL_DEPTH_TEST_ON;
     const bool              depthMask   = fragShader.depthMask == SL_DEPTH_MASK_ON;
     const auto              pShader     = fragShader.shader;
     const SL_BlendMode      blendMode   = fragShader.blend;
@@ -50,16 +50,9 @@ void SL_PointRasterizer::render_point(const uint32_t binId, SL_Framebuffer* cons
     fragParams.coord.depth = fragCoord[2];
     fragParams.pUniforms = pUniforms;
 
-    if (depthTest == SL_DEPTH_TEST_ON)
+    if (!depthCmp((float)pDepthBuf->raw_texel<depth_type>(fragParams.coord.x, fragParams.coord.y), fragCoord[2]))
     {
-#if SL_REVERSED_Z_RENDERING
-        if (fragCoord[2] < (float)pDepthBuf->raw_texel<depth_type>(fragParams.coord.x, fragParams.coord.y))
-#else
-        if (fragCoord[2] > (float)pDepthBuf->raw_texel<depth_type>(fragParams.coord.x, fragParams.coord.y))
-#endif
-        {
-            return;
-        }
+        return;
     }
 
     for (unsigned i = SL_SHADER_MAX_VARYING_VECTORS; i--;)
@@ -103,10 +96,41 @@ void SL_PointRasterizer::render_point(const uint32_t binId, SL_Framebuffer* cons
 
 
 
+template void SL_PointRasterizer::render_point<SL_DepthFuncLT, ls::math::half>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_PointRasterizer::render_point<SL_DepthFuncLT, float>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_PointRasterizer::render_point<SL_DepthFuncLT, double>(const uint32_t, SL_Framebuffer* const) noexcept;
+
+template void SL_PointRasterizer::render_point<SL_DepthFuncLE, ls::math::half>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_PointRasterizer::render_point<SL_DepthFuncLE, float>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_PointRasterizer::render_point<SL_DepthFuncLE, double>(const uint32_t, SL_Framebuffer* const) noexcept;
+
+template void SL_PointRasterizer::render_point<SL_DepthFuncGT, ls::math::half>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_PointRasterizer::render_point<SL_DepthFuncGT, float>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_PointRasterizer::render_point<SL_DepthFuncGT, double>(const uint32_t, SL_Framebuffer* const) noexcept;
+
+template void SL_PointRasterizer::render_point<SL_DepthFuncGE, ls::math::half>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_PointRasterizer::render_point<SL_DepthFuncGE, float>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_PointRasterizer::render_point<SL_DepthFuncGE, double>(const uint32_t, SL_Framebuffer* const) noexcept;
+
+template void SL_PointRasterizer::render_point<SL_DepthFuncEQ, ls::math::half>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_PointRasterizer::render_point<SL_DepthFuncEQ, float>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_PointRasterizer::render_point<SL_DepthFuncEQ, double>(const uint32_t, SL_Framebuffer* const) noexcept;
+
+template void SL_PointRasterizer::render_point<SL_DepthFuncNE, ls::math::half>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_PointRasterizer::render_point<SL_DepthFuncNE, float>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_PointRasterizer::render_point<SL_DepthFuncNE, double>(const uint32_t, SL_Framebuffer* const) noexcept;
+
+template void SL_PointRasterizer::render_point<SL_DepthFuncOFF, ls::math::half>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_PointRasterizer::render_point<SL_DepthFuncOFF, float>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_PointRasterizer::render_point<SL_DepthFuncOFF, double>(const uint32_t, SL_Framebuffer* const) noexcept;
+
+
+
 /*-------------------------------------
- * Run the fragment processor
+ * Dispatch the fragment processor with the correct depth-comparison function
 -------------------------------------*/
-void SL_PointRasterizer::execute() noexcept
+template <class DepthCmpFunc>
+void SL_PointRasterizer::dispatch_bins() noexcept
 {
     const uint16_t depthBpp = mFbo->get_depth_buffer()->bpp();
 
@@ -114,25 +138,76 @@ void SL_PointRasterizer::execute() noexcept
     {
         for (uint64_t binId = 0; binId < mNumBins; ++binId)
         {
-            render_point<math::half>(binId, mFbo);
+            render_point<DepthCmpFunc, math::half>(binId, mFbo);
         }
     }
     else if (depthBpp == sizeof(float))
     {
         for (uint64_t binId = 0; binId < mNumBins; ++binId)
         {
-            render_point<float>(binId, mFbo);
+            render_point<DepthCmpFunc, float>(binId, mFbo);
         }
     }
     else if (depthBpp == sizeof(double))
     {
         for (uint64_t binId = 0; binId < mNumBins; ++binId)
         {
-            render_point<double>(binId, mFbo);
+            render_point<DepthCmpFunc, double>(binId, mFbo);
         }
     }
 }
 
-template void SL_PointRasterizer::render_point<ls::math::half>(const uint32_t, SL_Framebuffer* const) noexcept;
-template void SL_PointRasterizer::render_point<float>(const uint32_t, SL_Framebuffer* const) noexcept;
-template void SL_PointRasterizer::render_point<double>(const uint32_t, SL_Framebuffer* const) noexcept;
+
+
+template void SL_PointRasterizer::dispatch_bins<SL_DepthFuncLT>() noexcept;
+template void SL_PointRasterizer::dispatch_bins<SL_DepthFuncLE>() noexcept;
+template void SL_PointRasterizer::dispatch_bins<SL_DepthFuncGT>() noexcept;
+template void SL_PointRasterizer::dispatch_bins<SL_DepthFuncGE>() noexcept;
+template void SL_PointRasterizer::dispatch_bins<SL_DepthFuncEQ>() noexcept;
+template void SL_PointRasterizer::dispatch_bins<SL_DepthFuncNE>() noexcept;
+template void SL_PointRasterizer::dispatch_bins<SL_DepthFuncOFF>() noexcept;
+
+
+
+/*-------------------------------------
+ * Run the fragment processor
+-------------------------------------*/
+void SL_PointRasterizer::execute() noexcept
+{
+    const SL_DepthTest depthTestType = mShader->fragment_shader().depthTest;
+
+    switch (depthTestType)
+    {
+        case SL_DEPTH_TEST_OFF:
+            dispatch_bins<SL_DepthFuncOFF>();
+            break;
+
+        case SL_DEPTH_TEST_LESS_THAN:
+            dispatch_bins<SL_DepthFuncLT>();
+            break;
+
+        case SL_DEPTH_TEST_LESS_EQUAL:
+            dispatch_bins<SL_DepthFuncLE>();
+            break;
+
+        case SL_DEPTH_TEST_GREATER_THAN:
+            dispatch_bins<SL_DepthFuncGT>();
+            break;
+
+        case SL_DEPTH_TEST_GREATER_EQUAL:
+            dispatch_bins<SL_DepthFuncGE>();
+            break;
+
+        case SL_DEPTH_TEST_EQUAL:
+            dispatch_bins<SL_DepthFuncEQ>();
+            break;
+
+        case SL_DEPTH_TEST_NOT_EQUAL:
+            dispatch_bins<SL_DepthFuncNE>();
+            break;
+
+        default:
+            LS_DEBUG_ASSERT(false);
+            LS_UNREACHABLE();
+    }
+}

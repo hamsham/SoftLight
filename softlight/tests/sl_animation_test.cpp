@@ -144,7 +144,7 @@ SL_FragmentShader untextured_frag_shader()
     shader.numVaryings = 2;
     shader.numOutputs  = 1;
     shader.blend       = SL_BLEND_OFF;
-    shader.depthTest   = SL_DEPTH_TEST_ON;
+    shader.depthTest   = SL_DEPTH_TEST_GREATER_EQUAL;
     shader.depthMask   = SL_DEPTH_MASK_ON;
     shader.shader      = _untextured_frag_shader;
 
@@ -289,7 +289,7 @@ SL_FragmentShader textured_frag_shader()
     shader.numVaryings = 3;
     shader.numOutputs  = 1;
     shader.blend       = SL_BLEND_OFF;
-    shader.depthTest   = SL_DEPTH_TEST_ON;
+    shader.depthTest   = SL_DEPTH_TEST_GREATER_EQUAL;
     shader.depthMask   = SL_DEPTH_MASK_ON;
     shader.shader      = _textured_frag_shader;
 

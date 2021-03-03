@@ -118,7 +118,7 @@ SL_FragmentShader mesh_frag_shader()
     shader.numVaryings = 1;
     shader.numOutputs  = 1;
     shader.blend       = SL_BLEND_OFF;
-    shader.depthTest   = SL_DEPTH_TEST_ON;
+    shader.depthTest   = SL_DEPTH_TEST_GREATER_EQUAL;
     shader.depthMask   = SL_DEPTH_MASK_ON;
     shader.shader      = _mesh_frag_shader;
 

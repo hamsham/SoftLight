@@ -180,7 +180,7 @@ SL_FragmentShader texture_frag_shader()
     shader.numVaryings = 2;
     shader.numOutputs  = 1;
     shader.blend       = SL_BLEND_OFF;
-    shader.depthTest   = SL_DEPTH_TEST_ON;
+    shader.depthTest   = SL_DEPTH_TEST_GREATER_EQUAL;
     shader.depthMask   = SL_DEPTH_MASK_ON;
     shader.shader      = _texture_frag_shader;
 

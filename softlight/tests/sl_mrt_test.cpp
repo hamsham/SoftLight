@@ -129,7 +129,7 @@ SL_FragmentShader mrt_frag_shader()
     shader.numVaryings = 3;
     shader.numOutputs  = 4;
     shader.blend       = SL_BLEND_OFF;
-    shader.depthTest   = SL_DEPTH_TEST_ON;
+    shader.depthTest   = SL_DEPTH_TEST_GREATER_EQUAL;
     shader.depthMask   = SL_DEPTH_MASK_ON;
     shader.shader      = _mrt_frag_shader;
 

@@ -200,6 +200,247 @@ void sl_calc_indexed_parition2(size_t count, size_t numThreads, size_t threadId,
 
 
 /*-----------------------------------------------------------------------------
+ * Depth-Test Operations
+-----------------------------------------------------------------------------*/
+/*-------------------------------------
+-------------------------------------*/
+struct SL_DepthFuncOFF
+{
+    constexpr int operator()(float, float) const noexcept
+    {
+        return true;
+    }
+
+    inline LS_INLINE ls::math::vec4_t<int> operator()(const ls::math::vec4&, const ls::math::vec4&) const noexcept
+    {
+        return 0x0F;
+    }
+
+    #if defined(LS_X86_SSE)
+    inline LS_INLINE __m128 operator()(__m128, __m128) const noexcept
+    {
+        const int32_t n = 0xFFFFFFFF;
+        return _mm_set1_ps(*reinterpret_cast<const float*>(&n));
+    }
+
+    #elif defined(LS_ARM_NEON)
+    inline LS_INLINE float32x4_t operator()(float32x4_t, float32x4_t) const noexcept
+        {
+            return vreinterpretq_f32_u32(vdupq_n_u32(0xFFFFFFFF));
+        }
+
+    #endif
+};
+
+
+
+/*-------------------------------------
+-------------------------------------*/
+struct SL_DepthFuncLT
+{
+    constexpr int operator()(float a, float b) const noexcept
+    {
+        return a < b;
+    }
+
+    inline LS_INLINE ls::math::vec4_t<int> operator()(const ls::math::vec4& a, const ls::math::vec4& b) const noexcept
+    {
+        return ls::math::vec4_t<int>{
+            -(a[0] < b[0]),
+            -(a[1] < b[1]),
+            -(a[2] < b[2]),
+            -(a[3] < b[3])
+        };
+    }
+
+    #if defined(LS_X86_SSE)
+        inline LS_INLINE __m128 operator()(__m128 a, __m128 b) const noexcept
+        {
+            return _mm_cmplt_ps(a, b);
+        }
+
+    #elif defined(LS_ARM_NEON)
+        inline LS_INLINE float32x4_t operator()(float32x4_t a, float32x4_t b) const noexcept
+        {
+            return vcltq_f32(a, b);
+        }
+
+    #endif
+};
+
+/*-------------------------------------
+-------------------------------------*/
+struct SL_DepthFuncLE
+{
+    constexpr int operator()(float a, float b) const noexcept
+    {
+        return a <= b;
+    }
+
+    inline LS_INLINE ls::math::vec4_t<int> operator()(const ls::math::vec4& a, const ls::math::vec4& b) const noexcept
+    {
+        return ls::math::vec4_t<int>{
+            -(a[0] <= b[0]),
+            -(a[1] <= b[1]),
+            -(a[2] <= b[2]),
+            -(a[3] <= b[3])
+        };
+    }
+
+    #if defined(LS_X86_SSE)
+        inline LS_INLINE __m128 operator()(__m128 a, __m128 b) const noexcept
+        {
+            return _mm_cmple_ps(a, b);
+        }
+
+    #elif defined(LS_ARM_NEON)
+        inline LS_INLINE float32x4_t operator()(float32x4_t a, float32x4_t b) const noexcept
+        {
+            return vcleq_f32(a, b);
+        }
+
+    #endif
+};
+
+/*-------------------------------------
+-------------------------------------*/
+struct SL_DepthFuncGT
+{
+    constexpr int operator()(float a, float b) const noexcept
+    {
+        return a > b;
+    }
+
+    inline LS_INLINE ls::math::vec4_t<int> operator()(const ls::math::vec4& a, const ls::math::vec4& b) const noexcept
+    {
+        return ls::math::vec4_t<int>{
+            -(a[0] > b[0]),
+            -(a[1] > b[1]),
+            -(a[2] > b[2]),
+            -(a[3] > b[3])
+        };
+    }
+
+    #if defined(LS_X86_SSE)
+        inline LS_INLINE __m128 operator()(__m128 a, __m128 b) const noexcept
+        {
+            return _mm_cmpgt_ps(a, b);
+        }
+
+    #elif defined(LS_ARM_NEON)
+        inline LS_INLINE float32x4_t operator()(float32x4_t a, float32x4_t b) const noexcept
+        {
+            return vcgtq_f32(a, b);
+        }
+
+    #endif
+};
+
+/*-------------------------------------
+-------------------------------------*/
+struct SL_DepthFuncGE
+{
+    constexpr int operator()(float a, float b) const noexcept
+    {
+        return a >= b;
+    }
+
+    inline LS_INLINE ls::math::vec4_t<int> operator()(const ls::math::vec4& a, const ls::math::vec4& b) const noexcept
+    {
+        return ls::math::vec4_t<int>{
+            -(a[0] >= b[0]),
+            -(a[1] >= b[1]),
+            -(a[2] >= b[2]),
+            -(a[3] >= b[3])
+        };
+    }
+
+    #if defined(LS_X86_SSE)
+        inline LS_INLINE __m128 operator()(__m128 a, __m128 b) const noexcept
+        {
+            return _mm_cmpge_ps(a, b);
+        }
+
+    #elif defined(LS_ARM_NEON)
+        inline LS_INLINE float32x4_t operator()(float32x4_t a, float32x4_t b) const noexcept
+        {
+            return vcgeq_f32(a, b);
+        }
+
+    #endif
+};
+
+/*-------------------------------------
+-------------------------------------*/
+struct SL_DepthFuncEQ
+{
+    constexpr int operator()(float a, float b) const noexcept
+    {
+        return a == b;
+    }
+
+    inline LS_INLINE ls::math::vec4_t<int> operator()(const ls::math::vec4& a, const ls::math::vec4& b) const noexcept
+    {
+        return ls::math::vec4_t<int>{
+            -(a[0] == b[0]),
+            -(a[1] == b[1]),
+            -(a[2] == b[2]),
+            -(a[3] == b[3])
+        };
+    }
+
+    #if defined(LS_X86_SSE)
+        inline LS_INLINE __m128 operator()(__m128 a, __m128 b) const noexcept
+        {
+            return _mm_cmpeq_ps(a, b);
+        }
+
+    #elif defined(LS_ARM_NEON)
+        inline LS_INLINE float32x4_t operator()(float32x4_t a, float32x4_t b) const noexcept
+        {
+            return vceqq_f32(a, b);
+        }
+
+    #endif
+};
+
+/*-------------------------------------
+-------------------------------------*/
+struct SL_DepthFuncNE
+{
+    constexpr int operator()(float a, float b) const noexcept
+    {
+        return a != b;
+    }
+
+    inline LS_INLINE ls::math::vec4_t<int> operator()(const ls::math::vec4& a, const ls::math::vec4& b) const noexcept
+    {
+        return ls::math::vec4_t<int>{
+            -(a[0] != b[0]),
+            -(a[1] != b[1]),
+            -(a[2] != b[2]),
+            -(a[3] != b[3])
+        };
+    }
+
+    #if defined(LS_X86_SSE)
+        inline LS_INLINE __m128 operator()(__m128 a, __m128 b) const noexcept
+        {
+            return _mm_cmpneq_ps(a, b);
+        }
+
+    #elif defined(LS_ARM_NEON)
+        inline LS_INLINE float32x4_t operator()(float32x4_t a, float32x4_t b) const noexcept
+        {
+            return vreinterpretq_f32_u32(vmvnq_u32(vreinterpretq_u32_f32(vceqq_f32(a, b))));
+        }
+
+    #endif
+};
+
+
+
+/*-----------------------------------------------------------------------------
  * Constants needed for shader operation
 -----------------------------------------------------------------------------*/
 enum SL_ShaderLimits

@@ -122,7 +122,7 @@ SL_FragmentShader sky_frag_shader()
     shader.numOutputs = 1;
     shader.blend = SL_BLEND_OFF;
     shader.depthMask = SL_DEPTH_MASK_OFF;
-    shader.depthTest = SL_DEPTH_TEST_ON;
+    shader.depthTest = SL_DEPTH_TEST_GREATER_EQUAL;
     shader.shader = _sky_frag_shader;
 
     return shader;
