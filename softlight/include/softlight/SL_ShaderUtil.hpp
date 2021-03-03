@@ -262,7 +262,7 @@ struct SL_DepthFuncLT
     #elif defined(LS_ARM_NEON)
         inline LS_INLINE float32x4_t operator()(float32x4_t a, float32x4_t b) const noexcept
         {
-            return vcltq_f32(a, b);
+            return vreinterpretq_f32_u32(vcltq_f32(a, b));
         }
 
     #endif
@@ -296,7 +296,7 @@ struct SL_DepthFuncLE
     #elif defined(LS_ARM_NEON)
         inline LS_INLINE float32x4_t operator()(float32x4_t a, float32x4_t b) const noexcept
         {
-            return vcleq_f32(a, b);
+            return vreinterpretq_f32_u32(vcleq_f32(a, b));
         }
 
     #endif
@@ -330,7 +330,7 @@ struct SL_DepthFuncGT
     #elif defined(LS_ARM_NEON)
         inline LS_INLINE float32x4_t operator()(float32x4_t a, float32x4_t b) const noexcept
         {
-            return vcgtq_f32(a, b);
+            return vreinterpretq_f32_u32(vcgtq_f32(a, b));
         }
 
     #endif
@@ -364,7 +364,7 @@ struct SL_DepthFuncGE
     #elif defined(LS_ARM_NEON)
         inline LS_INLINE float32x4_t operator()(float32x4_t a, float32x4_t b) const noexcept
         {
-            return vcgeq_f32(a, b);
+            return vreinterpretq_f32_u32(vcgeq_f32(a, b));
         }
 
     #endif
@@ -398,7 +398,7 @@ struct SL_DepthFuncEQ
     #elif defined(LS_ARM_NEON)
         inline LS_INLINE float32x4_t operator()(float32x4_t a, float32x4_t b) const noexcept
         {
-            return vceqq_f32(a, b);
+            return vreinterpretq_f32_u32(vceqq_f32(a, b));
         }
 
     #endif
