@@ -246,10 +246,10 @@ struct SL_DepthFuncLT
     inline LS_INLINE ls::math::vec4_t<int> operator()(const ls::math::vec4& a, const ls::math::vec4& b) const noexcept
     {
         return ls::math::vec4_t<int>{
-            -(a[0] < b[0]),
-            -(a[1] < b[1]),
-            -(a[2] < b[2]),
-            -(a[3] < b[3])
+            a[0] < b[0],
+            a[1] < b[1],
+            a[2] < b[2],
+            a[3] < b[3]
         };
     }
 
@@ -280,10 +280,10 @@ struct SL_DepthFuncLE
     inline LS_INLINE ls::math::vec4_t<int> operator()(const ls::math::vec4& a, const ls::math::vec4& b) const noexcept
     {
         return ls::math::vec4_t<int>{
-            -(a[0] <= b[0]),
-            -(a[1] <= b[1]),
-            -(a[2] <= b[2]),
-            -(a[3] <= b[3])
+            a[0] <= b[0],
+            a[1] <= b[1],
+            a[2] <= b[2],
+            a[3] <= b[3]
         };
     }
 
@@ -314,10 +314,10 @@ struct SL_DepthFuncGT
     inline LS_INLINE ls::math::vec4_t<int> operator()(const ls::math::vec4& a, const ls::math::vec4& b) const noexcept
     {
         return ls::math::vec4_t<int>{
-            -(a[0] > b[0]),
-            -(a[1] > b[1]),
-            -(a[2] > b[2]),
-            -(a[3] > b[3])
+            a[0] > b[0],
+            a[1] > b[1],
+            a[2] > b[2],
+            a[3] > b[3]
         };
     }
 
@@ -348,10 +348,10 @@ struct SL_DepthFuncGE
     inline LS_INLINE ls::math::vec4_t<int> operator()(const ls::math::vec4& a, const ls::math::vec4& b) const noexcept
     {
         return ls::math::vec4_t<int>{
-            -(a[0] >= b[0]),
-            -(a[1] >= b[1]),
-            -(a[2] >= b[2]),
-            -(a[3] >= b[3])
+            a[0] >= b[0],
+            a[1] >= b[1],
+            a[2] >= b[2],
+            a[3] >= b[3]
         };
     }
 
@@ -382,10 +382,10 @@ struct SL_DepthFuncEQ
     inline LS_INLINE ls::math::vec4_t<int> operator()(const ls::math::vec4& a, const ls::math::vec4& b) const noexcept
     {
         return ls::math::vec4_t<int>{
-            -(a[0] == b[0]),
-            -(a[1] == b[1]),
-            -(a[2] == b[2]),
-            -(a[3] == b[3])
+            a[0] == b[0],
+            a[1] == b[1],
+            a[2] == b[2],
+            a[3] == b[3]
         };
     }
 
@@ -416,10 +416,10 @@ struct SL_DepthFuncNE
     inline LS_INLINE ls::math::vec4_t<int> operator()(const ls::math::vec4& a, const ls::math::vec4& b) const noexcept
     {
         return ls::math::vec4_t<int>{
-            -(a[0] != b[0]),
-            -(a[1] != b[1]),
-            -(a[2] != b[2]),
-            -(a[3] != b[3])
+            a[0] != b[0],
+            a[1] != b[1],
+            a[2] != b[2],
+            a[3] != b[3]
         };
     }
 

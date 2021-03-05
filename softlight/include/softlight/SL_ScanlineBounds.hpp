@@ -47,18 +47,15 @@ constexpr LS_INLINE data_t sl_scanline_offset(
 
 inline LS_INLINE void sl_sort_minmax(__m128& a, __m128& b)  noexcept
 {
-    #ifdef LS_X86_AVX
-        const __m128 ay    = _mm_permute_ps(a, 0x55);
-        const __m128 by    = _mm_permute_ps(b, 0x55);
-        const __m128 masks = _mm_cmplt_ps(ay, by);
+    #if defined(LS_X86_AVX)
+        const __m128 masks = _mm_permute_ps(_mm_cmplt_ps(a, b), 0x55);
         const __m128 at   = a;
         const __m128 bt   = b;
         a = _mm_blendv_ps(at, bt, masks);
         b = _mm_blendv_ps(bt, at, masks);
     #else
-        const __m128 ay   = _mm_shuffle_ps(a, a, 0x55);
-        const __m128 by   = _mm_shuffle_ps(b, b, 0x55);
-        const __m128 mask = _mm_cmplt_ps(ay, by);
+        const __m128 cmp  = _mm_cmplt_ps(a, b);
+        const __m128 mask = _mm_shuffle_ps(cmp, cmp, 0x55);
         const __m128 at   = _mm_or_ps(_mm_and_ps(mask,    b), _mm_andnot_ps(mask, a));
         const __m128 bt   = _mm_or_ps(_mm_andnot_ps(mask, b), _mm_and_ps(mask,    a));
         a = at;
@@ -70,11 +67,14 @@ inline LS_INLINE void sl_sort_minmax(__m128& a, __m128& b)  noexcept
 
 inline LS_INLINE void sl_sort_minmax(float32x4_t& a, float32x4_t& b)  noexcept
 {
-    const float32x4_t ay   = vdupq_n_f32(vgetq_lane_f32(a, 1));
-    const float32x4_t by   = vdupq_n_f32(vgetq_lane_f32(b, 1));
-    const uint32x4_t  mask = vcltq_f32(ay, by);
-    const float32x4_t at   = a;
-    const float32x4_t bt   = b;
+    #if defined(LS_ARCH_AARCH64)
+        const uint32x4_t mask = vdupq_laneq_u32(vcltq_f32(a, b), 1);
+    #else
+        const uint32x4_t mask = vdupq_lane_u32(vget_low_u32(vcltq_f32(a, b)), 1);
+    #endif
+
+    const float32x4_t at = a;
+    const float32x4_t bt = b;
 
     a = vbslq_f32(mask, bt, at);
     b = vbslq_f32(mask, at, bt);

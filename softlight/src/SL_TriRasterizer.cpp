@@ -719,6 +719,18 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
 
 
 
+inline LS_INLINE ls::math::vec4_t<int> _sl_cmp_vec4_lt(const ls::math::vec4_t<int>& a, const ls::math::vec4_t<int>& b) noexcept
+{
+    return ls::math::vec4_t<int>{
+        a[0] < b[0],
+        a[1] < b[1],
+        a[2] < b[2],
+        a[3] < b[3]
+    };
+}
+
+
+
 template <class DepthCmpFunc, typename depth_type>
 void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const noexcept
 {
@@ -770,47 +782,50 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
             {
                 const depth_type* pDepth = depthBuffer->row_pointer<depth_type>((uintptr_t)y) + xMin;
                 const math::vec4&& bcY = math::fmadd(bcClipSpace[1], math::vec4{yf}, bcClipSpace[2]);
-                math::vec4i       x4     = math::vec4i{0, 1, 2, 3} + xMin;
+                math::vec4i&&     x4     = math::vec4i{0, 1, 2, 3} + xMin;
                 const math::vec4i xMax4  {xMax};
 
                 do
                 {
                     // calculate barycentric coordinates and perform a depth test
-                    const int32_t      xBound = math::sign_mask(x4-xMax4);
-                    const math::vec4&& d      = _sl_get_depth_texel4<depth_type>(pDepth);
-                    math::mat4&&       bc     = math::outer((math::vec4)x4, bcClipSpace[0]) + bcY;
-                    const math::vec4&& z      = depth * bc;
+                    const math::vec4i&& xBound = _sl_cmp_vec4_lt(x4, xMax4);
+                    const math::vec4&&  d      = _sl_get_depth_texel4<depth_type>(pDepth);
+                    math::mat4&&        bc     = math::outer((math::vec4)x4, bcClipSpace[0]) + bcY;
+                    const math::vec4&&  z      = depth * bc;
 
-                    const int32_t depthTest = xBound & math::sign_mask(depthCmpFunc(z, d));
+                    math::vec4i&& storeMask4 = depthCmpFunc(z, d);
+                    storeMask4[0] &= xBound[0];
+                    storeMask4[1] &= xBound[1];
+                    storeMask4[2] &= xBound[2];
+                    storeMask4[3] &= xBound[3];
 
-                    if (LS_LIKELY(0 != depthTest))
+                    if (LS_LIKELY(storeMask4 != math::vec4i{0}))
                     {
-                        const unsigned rasterCount       = math::popcnt_u32(depthTest & 0x0F);
-                        const unsigned storeMask1        = math::popcnt_u32((unsigned)depthTest & 0x01u) + numQueuedFrags;
-                        const unsigned storeMask2        = math::popcnt_u32((unsigned)depthTest & 0x03u) + numQueuedFrags;
-                        const unsigned storeMask3        = math::popcnt_u32((unsigned)depthTest & 0x07u) + numQueuedFrags;
+                        unsigned rasterCount = math::sum(storeMask4);
 
-                        outCoords->coord[numQueuedFrags] = SL_FragCoordXYZ{(uint16_t)x4.v[0], (uint16_t)y, z.v[0]};
-                        outCoords->coord[storeMask1]     = SL_FragCoordXYZ{(uint16_t)x4.v[1], (uint16_t)y, z.v[1]};
-                        outCoords->coord[storeMask2]     = SL_FragCoordXYZ{(uint16_t)x4.v[2], (uint16_t)y, z.v[2]};
-                        outCoords->coord[storeMask3]     = SL_FragCoordXYZ{(uint16_t)x4.v[3], (uint16_t)y, z.v[3]};
+                        storeMask4[3] = storeMask4[2]+storeMask4[1]+storeMask4[0];
+                        storeMask4[2] = storeMask4[1]+storeMask4[0];
+                        storeMask4[1] = storeMask4[0];
+                        storeMask4[0] = 0;
+                        storeMask4 += numQueuedFrags;
 
-                        math::vec4 persp4 = homogenous * bc;
-                        bc[0] = bc[0] * homogenous;
-                        bc[1] = bc[1] * homogenous;
-                        bc[2] = bc[2] * homogenous;
-                        bc[3] = bc[3] * homogenous;
-
+                        math::vec4&& persp4 = homogenous * bc;
                         persp4 = math::rcp(persp4);
-                        bc[0] = bc[0] * persp4[0];
-                        bc[1] = bc[1] * persp4[1];
-                        bc[2] = bc[2] * persp4[2];
-                        bc[3] = bc[3] * persp4[3];
 
-                        outCoords->bc[numQueuedFrags] = bc[0];
-                        outCoords->bc[storeMask1]     = bc[1];
-                        outCoords->bc[storeMask2]     = bc[2];
-                        outCoords->bc[storeMask3]     = bc[3];
+                        bc[0] *= homogenous;
+                        bc[1] *= homogenous;
+                        bc[2] *= homogenous;
+                        bc[3] *= homogenous;
+
+                        outCoords->bc[storeMask4[0]] = bc[0] * persp4[0];
+                        outCoords->bc[storeMask4[1]] = bc[1] * persp4[1];
+                        outCoords->bc[storeMask4[2]] = bc[2] * persp4[2];
+                        outCoords->bc[storeMask4[3]] = bc[3] * persp4[3];
+
+                        outCoords->coord[storeMask4[0]] = SL_FragCoordXYZ{(uint16_t)x4.v[0], (uint16_t)y, z.v[0]};
+                        outCoords->coord[storeMask4[1]] = SL_FragCoordXYZ{(uint16_t)x4.v[1], (uint16_t)y, z.v[1]};
+                        outCoords->coord[storeMask4[2]] = SL_FragCoordXYZ{(uint16_t)x4.v[2], (uint16_t)y, z.v[2]};
+                        outCoords->coord[storeMask4[3]] = SL_FragCoordXYZ{(uint16_t)x4.v[3], (uint16_t)y, z.v[3]};
 
                         numQueuedFrags += rasterCount;
                         if (LS_UNLIKELY(numQueuedFrags > SL_SHADER_MAX_QUEUED_FRAGS - 4))
