@@ -10,6 +10,20 @@
 
 
 /*-----------------------------------------------------------------------------
+ * Forward Declarations
+-----------------------------------------------------------------------------*/
+namespace ls
+{
+namespace math
+{
+    template <typename num_type>
+    struct mat4_t;
+}
+}
+
+
+
+/*-----------------------------------------------------------------------------
  * Rasterization State
 -----------------------------------------------------------------------------*/
 /*-------------------------------------
@@ -71,10 +85,10 @@ enum SL_BlendMode : uint8_t
  *
  * This class should be lightweight so any overhead of copying shouldn't have
  * more overhead than assigning an __m128 or float32x4_t type. The reason is
- * the SL_RasterState is copied into the software rasterizer, which should be
+ * the SL_ViewportState is copied into the software rasterizer, which should be
  * as freakishly fast as possible.
 -----------------------------------------------------------------------------*/
-class SL_RasterState
+class SL_ViewportState
 {
   private:
     enum SL_RasterStateShifts : uint32_t
@@ -110,17 +124,17 @@ class SL_RasterState
     static constexpr SL_BlendMode blend_mode_from_bits(uint32_t bits) noexcept;
 
   public:
-    ~SL_RasterState() noexcept = default;
+    ~SL_ViewportState() noexcept = default;
 
-    constexpr SL_RasterState() noexcept;
+    constexpr SL_ViewportState() noexcept;
 
-    constexpr SL_RasterState(const SL_RasterState& rs) noexcept;
+    constexpr SL_ViewportState(const SL_ViewportState& rs) noexcept;
 
-    constexpr SL_RasterState(SL_RasterState&& rs) noexcept;
+    constexpr SL_ViewportState(SL_ViewportState&& rs) noexcept;
 
-    SL_RasterState& operator=(const SL_RasterState& rs) noexcept;
+    SL_ViewportState& operator=(const SL_ViewportState& rs) noexcept;
 
-    SL_RasterState& operator=(SL_RasterState&& rs) noexcept;
+    SL_ViewportState& operator=(SL_ViewportState&& rs) noexcept;
 
     void reset() noexcept;
 
@@ -146,16 +160,22 @@ class SL_RasterState
 
     constexpr ls::math::vec4_t<int32_t> viewport() const noexcept;
 
+    ls::math::vec4 viewport_rect(float fboW, float fboH) const noexcept;
+
+    ls::math::vec4_t<int32_t> viewport_rect(int32_t fboX, int32_t fboY, int32_t fboW, int32_t fboH) const noexcept;
+
     void scissor(int32_t x, int32_t y, uint16_t w, uint16_t h) noexcept;
 
     constexpr ls::math::vec4_t<int32_t> scissor() const noexcept;
 
-  private:
-    uint32_t mStates;
+    ls::math::mat4_t<float> scissor_matrix(const float fboW, const float fboH) const noexcept;
 
+  private:
     ls::math::vec4_t<int32_t> mViewport;
 
     ls::math::vec4_t<int32_t> mScissor;
+
+    uint32_t mStates;
 };
 
 
@@ -166,9 +186,9 @@ class SL_RasterState
 /*-------------------------------------
  * Cull Mode to bits
 -------------------------------------*/
-constexpr uint32_t SL_RasterState::cull_mode_to_bits(SL_CullMode cm) noexcept
+constexpr uint32_t SL_ViewportState::cull_mode_to_bits(SL_CullMode cm) noexcept
 {
-    return static_cast<uint32_t>(cm << SL_RasterState::SL_CULL_MODE_SHIFTS);
+    return static_cast<uint32_t>(cm << SL_ViewportState::SL_CULL_MODE_SHIFTS);
 }
 
 
@@ -176,9 +196,9 @@ constexpr uint32_t SL_RasterState::cull_mode_to_bits(SL_CullMode cm) noexcept
 /*-------------------------------------
  * Cull Mode from bits
 -------------------------------------*/
-constexpr SL_CullMode SL_RasterState::cull_mode_from_bits(uint32_t bits) noexcept
+constexpr SL_CullMode SL_ViewportState::cull_mode_from_bits(uint32_t bits) noexcept
 {
-    return static_cast<SL_CullMode>((bits & SL_RasterState::SL_CULL_MODE_MASK) >> SL_RasterState::SL_CULL_MODE_SHIFTS);
+    return static_cast<SL_CullMode>((bits & SL_ViewportState::SL_CULL_MODE_MASK) >> SL_ViewportState::SL_CULL_MODE_SHIFTS);
 }
 
 
@@ -186,9 +206,9 @@ constexpr SL_CullMode SL_RasterState::cull_mode_from_bits(uint32_t bits) noexcep
 /*-------------------------------------
  * Depth Test to bits
 -------------------------------------*/
-constexpr uint32_t SL_RasterState::depth_test_to_bits(SL_DepthTest dt) noexcept
+constexpr uint32_t SL_ViewportState::depth_test_to_bits(SL_DepthTest dt) noexcept
 {
-    return static_cast<uint32_t>(dt << SL_RasterState::SL_DEPTH_TEST_SHIFTS);
+    return static_cast<uint32_t>(dt << SL_ViewportState::SL_DEPTH_TEST_SHIFTS);
 }
 
 
@@ -196,9 +216,9 @@ constexpr uint32_t SL_RasterState::depth_test_to_bits(SL_DepthTest dt) noexcept
 /*-------------------------------------
  * Depth Test from bits
 -------------------------------------*/
-constexpr SL_DepthTest SL_RasterState::depth_test_from_bits(uint32_t bits) noexcept
+constexpr SL_DepthTest SL_ViewportState::depth_test_from_bits(uint32_t bits) noexcept
 {
-    return static_cast<SL_DepthTest>((bits & SL_RasterState::SL_DEPTH_TEST_MASK) >> SL_RasterState::SL_DEPTH_TEST_SHIFTS);
+    return static_cast<SL_DepthTest>((bits & SL_ViewportState::SL_DEPTH_TEST_MASK) >> SL_ViewportState::SL_DEPTH_TEST_SHIFTS);
 }
 
 
@@ -206,9 +226,9 @@ constexpr SL_DepthTest SL_RasterState::depth_test_from_bits(uint32_t bits) noexc
 /*-------------------------------------
  * Depth Mask to bits
 -------------------------------------*/
-constexpr uint32_t SL_RasterState::depth_mask_to_bits(SL_DepthMask dm) noexcept
+constexpr uint32_t SL_ViewportState::depth_mask_to_bits(SL_DepthMask dm) noexcept
 {
-    return static_cast<uint32_t>(dm << SL_RasterState::SL_DEPTH_MASK_SHIFTS);
+    return static_cast<uint32_t>(dm << SL_ViewportState::SL_DEPTH_MASK_SHIFTS);
 }
 
 
@@ -216,9 +236,9 @@ constexpr uint32_t SL_RasterState::depth_mask_to_bits(SL_DepthMask dm) noexcept
 /*-------------------------------------
  * Depth Mask from bits
 -------------------------------------*/
-constexpr SL_DepthMask SL_RasterState::depth_mask_from_bits(uint32_t bits) noexcept
+constexpr SL_DepthMask SL_ViewportState::depth_mask_from_bits(uint32_t bits) noexcept
 {
-    return static_cast<SL_DepthMask>((bits & SL_RasterState::SL_DEPTH_MASK_MASK) >> SL_RasterState::SL_DEPTH_MASK_SHIFTS);
+    return static_cast<SL_DepthMask>((bits & SL_ViewportState::SL_DEPTH_MASK_MASK) >> SL_ViewportState::SL_DEPTH_MASK_SHIFTS);
 }
 
 
@@ -226,9 +246,9 @@ constexpr SL_DepthMask SL_RasterState::depth_mask_from_bits(uint32_t bits) noexc
 /*-------------------------------------
  * Blend mode to bits
 -------------------------------------*/
-constexpr uint32_t SL_RasterState::blend_mode_to_bits(SL_BlendMode bm) noexcept
+constexpr uint32_t SL_ViewportState::blend_mode_to_bits(SL_BlendMode bm) noexcept
 {
-    return static_cast<uint32_t>(bm << SL_RasterState::SL_BLEND_MODE_SHIFTS);
+    return static_cast<uint32_t>(bm << SL_ViewportState::SL_BLEND_MODE_SHIFTS);
 }
 
 
@@ -236,9 +256,9 @@ constexpr uint32_t SL_RasterState::blend_mode_to_bits(SL_BlendMode bm) noexcept
 /*-------------------------------------
  * blend mode from bits
 -------------------------------------*/
-constexpr SL_BlendMode SL_RasterState::blend_mode_from_bits(uint32_t bits) noexcept
+constexpr SL_BlendMode SL_ViewportState::blend_mode_from_bits(uint32_t bits) noexcept
 {
-    return static_cast<SL_BlendMode>((bits & SL_RasterState::SL_BLEND_MODE_MASK) >> SL_RasterState::SL_BLEND_MODE_SHIFTS);
+    return static_cast<SL_BlendMode>((bits & SL_ViewportState::SL_BLEND_MODE_MASK) >> SL_ViewportState::SL_BLEND_MODE_SHIFTS);
 }
 
 
@@ -246,15 +266,15 @@ constexpr SL_BlendMode SL_RasterState::blend_mode_from_bits(uint32_t bits) noexc
 /*-------------------------------------
  * Constructor
 -------------------------------------*/
-constexpr SL_RasterState::SL_RasterState() noexcept :
-    mStates{(uint32_t)(
-        SL_RasterState::cull_mode_to_bits(SL_CullMode::SL_CULL_BACK_FACE) |
-        SL_RasterState::depth_test_to_bits(SL_DepthTest::SL_DEPTH_TEST_LESS_THAN) |
-        SL_RasterState::depth_mask_to_bits(SL_DepthMask::SL_DEPTH_MASK_ON) |
-        SL_RasterState::blend_mode_to_bits(SL_BlendMode::SL_BLEND_OFF)
-    )},
+constexpr SL_ViewportState::SL_ViewportState() noexcept :
     mViewport{0, 0, 65535, 65535},
-    mScissor{0, 0, 65535, 65535}
+    mScissor{0, 0, 65535, 65535},
+    mStates{(uint32_t)(
+        SL_ViewportState::cull_mode_to_bits(SL_CullMode::SL_CULL_BACK_FACE) |
+        SL_ViewportState::depth_test_to_bits(SL_DepthTest::SL_DEPTH_TEST_LESS_THAN) |
+        SL_ViewportState::depth_mask_to_bits(SL_DepthMask::SL_DEPTH_MASK_ON) |
+        SL_ViewportState::blend_mode_to_bits(SL_BlendMode::SL_BLEND_OFF)
+    )}
 {}
 
 
@@ -262,10 +282,10 @@ constexpr SL_RasterState::SL_RasterState() noexcept :
 /*-------------------------------------
  * Copy Constructor
 -------------------------------------*/
-constexpr SL_RasterState::SL_RasterState(const SL_RasterState& rs) noexcept :
-    mStates{rs.mStates},
+constexpr SL_ViewportState::SL_ViewportState(const SL_ViewportState& rs) noexcept :
     mViewport{rs.mViewport},
-    mScissor{rs.mScissor}
+    mScissor{rs.mScissor},
+    mStates{rs.mStates}
 {}
 
 
@@ -273,10 +293,10 @@ constexpr SL_RasterState::SL_RasterState(const SL_RasterState& rs) noexcept :
 /*-------------------------------------
  * Move Constructor
 -------------------------------------*/
-constexpr SL_RasterState::SL_RasterState(SL_RasterState&& rs) noexcept :
-    mStates{rs.mStates},
+constexpr SL_ViewportState::SL_ViewportState(SL_ViewportState&& rs) noexcept :
     mViewport{rs.mViewport},
-    mScissor{rs.mScissor}
+    mScissor{rs.mScissor},
+    mStates{rs.mStates}
 {}
 
 
@@ -284,11 +304,11 @@ constexpr SL_RasterState::SL_RasterState(SL_RasterState&& rs) noexcept :
 /*-------------------------------------
  * Copy Operator
 -------------------------------------*/
-inline SL_RasterState& SL_RasterState::operator=(const SL_RasterState& rs) noexcept
+inline SL_ViewportState& SL_ViewportState::operator=(const SL_ViewportState& rs) noexcept
 {
-    mStates = rs.mStates;
     mViewport = rs.mViewport;
     mScissor = rs.mScissor;
+    mStates = rs.mStates;
 
     return *this;
 }
@@ -298,11 +318,11 @@ inline SL_RasterState& SL_RasterState::operator=(const SL_RasterState& rs) noexc
 /*-------------------------------------
  * Move Operator
 -------------------------------------*/
-inline SL_RasterState& SL_RasterState::operator=(SL_RasterState&& rs) noexcept
+inline SL_ViewportState& SL_ViewportState::operator=(SL_ViewportState&& rs) noexcept
 {
-    mStates = rs.mStates;
     mViewport = rs.mViewport;
     mScissor = rs.mScissor;
+    mStates = rs.mStates;
     rs.reset();
 
     return *this;
@@ -313,16 +333,16 @@ inline SL_RasterState& SL_RasterState::operator=(SL_RasterState&& rs) noexcept
 /*-------------------------------------
  * Reset Internal State
 -------------------------------------*/
-inline void SL_RasterState::reset() noexcept
+inline void SL_ViewportState::reset() noexcept
 {
-    mStates = (uint32_t)(0
-        | SL_RasterState::cull_mode_to_bits(SL_CullMode::SL_CULL_BACK_FACE)
-        | SL_RasterState::depth_test_to_bits(SL_DepthTest::SL_DEPTH_TEST_LESS_THAN)
-        | SL_RasterState::depth_mask_to_bits(SL_DepthMask::SL_DEPTH_MASK_ON)
-        | SL_RasterState::blend_mode_to_bits(SL_BlendMode::SL_BLEND_OFF)
-        | 0);
     mViewport = ls::math::vec4_t<int32_t>{0, 0, 65535, 65535};
     mScissor = ls::math::vec4_t<int32_t>{0, 0, 65535, 65535};
+    mStates = (uint32_t)(0
+                         | SL_ViewportState::cull_mode_to_bits(SL_CullMode::SL_CULL_BACK_FACE)
+                         | SL_ViewportState::depth_test_to_bits(SL_DepthTest::SL_DEPTH_TEST_LESS_THAN)
+                         | SL_ViewportState::depth_mask_to_bits(SL_DepthMask::SL_DEPTH_MASK_ON)
+                         | SL_ViewportState::blend_mode_to_bits(SL_BlendMode::SL_BLEND_OFF)
+                         | 0);
 }
 
 
@@ -330,7 +350,7 @@ inline void SL_RasterState::reset() noexcept
 /*-------------------------------------
  * Get the internal state
 -------------------------------------*/
-constexpr uint32_t SL_RasterState::bits() const noexcept
+constexpr uint32_t SL_ViewportState::bits() const noexcept
 {
     return mStates;
 }
@@ -340,7 +360,7 @@ constexpr uint32_t SL_RasterState::bits() const noexcept
 /*-------------------------------------
  * cull mode setter
 -------------------------------------*/
-inline void SL_RasterState::cull_mode(SL_CullMode cm) noexcept
+inline void SL_ViewportState::cull_mode(SL_CullMode cm) noexcept
 {
     mStates = (mStates & ~SL_CULL_MODE_MASK) | cull_mode_to_bits(cm);
 }
@@ -350,7 +370,7 @@ inline void SL_RasterState::cull_mode(SL_CullMode cm) noexcept
 /*-------------------------------------
  * cull mode getter
 -------------------------------------*/
-constexpr SL_CullMode SL_RasterState::cull_mode() const noexcept
+constexpr SL_CullMode SL_ViewportState::cull_mode() const noexcept
 {
     return cull_mode_from_bits(mStates);
 }
@@ -360,7 +380,7 @@ constexpr SL_CullMode SL_RasterState::cull_mode() const noexcept
 /*-------------------------------------
  * depth test setter
 -------------------------------------*/
-inline void SL_RasterState::depth_test(SL_DepthTest dt) noexcept
+inline void SL_ViewportState::depth_test(SL_DepthTest dt) noexcept
 {
     mStates = (mStates & ~SL_DEPTH_TEST_MASK) | depth_test_to_bits(dt);
 }
@@ -370,7 +390,7 @@ inline void SL_RasterState::depth_test(SL_DepthTest dt) noexcept
 /*-------------------------------------
  * depth test getter
 -------------------------------------*/
-constexpr SL_DepthTest SL_RasterState::depth_test() const noexcept
+constexpr SL_DepthTest SL_ViewportState::depth_test() const noexcept
 {
     return depth_test_from_bits(mStates);
 }
@@ -380,7 +400,7 @@ constexpr SL_DepthTest SL_RasterState::depth_test() const noexcept
 /*-------------------------------------
  * depth mask setter
 -------------------------------------*/
-inline void SL_RasterState::depth_mask(SL_DepthMask dm) noexcept
+inline void SL_ViewportState::depth_mask(SL_DepthMask dm) noexcept
 {
     mStates = (mStates & ~SL_DEPTH_MASK_MASK) | depth_mask_to_bits(dm);
 }
@@ -390,7 +410,7 @@ inline void SL_RasterState::depth_mask(SL_DepthMask dm) noexcept
 /*-------------------------------------
  * depth mask getter
 -------------------------------------*/
-constexpr SL_DepthMask SL_RasterState::depth_mask() const noexcept
+constexpr SL_DepthMask SL_ViewportState::depth_mask() const noexcept
 {
     return depth_mask_from_bits(mStates);
 }
@@ -400,7 +420,7 @@ constexpr SL_DepthMask SL_RasterState::depth_mask() const noexcept
 /*-------------------------------------
  * blend mode setter
 -------------------------------------*/
-inline void SL_RasterState::blend_mode(SL_BlendMode bm) noexcept
+inline void SL_ViewportState::blend_mode(SL_BlendMode bm) noexcept
 {
     mStates = (mStates & ~SL_BLEND_MODE_MASK) | blend_mode_to_bits(bm);
 }
@@ -410,7 +430,7 @@ inline void SL_RasterState::blend_mode(SL_BlendMode bm) noexcept
 /*-------------------------------------
  * blend mode getter
 -------------------------------------*/
-constexpr SL_BlendMode SL_RasterState::blend_mode() const noexcept
+constexpr SL_BlendMode SL_ViewportState::blend_mode() const noexcept
 {
     return blend_mode_from_bits(mStates);
 }
@@ -420,7 +440,7 @@ constexpr SL_BlendMode SL_RasterState::blend_mode() const noexcept
 /*-------------------------------------
  * viewport setter
 -------------------------------------*/
-inline void SL_RasterState::viewport(int32_t x, int32_t y, uint16_t w, uint16_t h) noexcept
+inline void SL_ViewportState::viewport(int32_t x, int32_t y, uint16_t w, uint16_t h) noexcept
 {
     mViewport = ls::math::vec4_t<int32_t>{
         ls::math::clamp<int32_t>(x, -65536, 65535),
@@ -435,7 +455,7 @@ inline void SL_RasterState::viewport(int32_t x, int32_t y, uint16_t w, uint16_t 
 /*-------------------------------------
  * viewport getter
 -------------------------------------*/
-constexpr ls::math::vec4_t<int32_t> SL_RasterState::viewport() const noexcept
+constexpr ls::math::vec4_t<int32_t> SL_ViewportState::viewport() const noexcept
 {
     return mViewport;
 }
@@ -445,7 +465,7 @@ constexpr ls::math::vec4_t<int32_t> SL_RasterState::viewport() const noexcept
 /*-------------------------------------
  * scissor setter
 -------------------------------------*/
-inline void SL_RasterState::scissor(int32_t x, int32_t y, uint16_t w, uint16_t h) noexcept
+inline void SL_ViewportState::scissor(int32_t x, int32_t y, uint16_t w, uint16_t h) noexcept
 {
     mScissor = ls::math::vec4_t<int32_t>{
         ls::math::clamp<int32_t>(x, -65536, 65535),
@@ -460,7 +480,7 @@ inline void SL_RasterState::scissor(int32_t x, int32_t y, uint16_t w, uint16_t h
 /*-------------------------------------
  * scissor getter
 -------------------------------------*/
-constexpr ls::math::vec4_t<int32_t> SL_RasterState::scissor() const noexcept
+constexpr ls::math::vec4_t<int32_t> SL_ViewportState::scissor() const noexcept
 {
     return mScissor;
 }

@@ -1,0 +1,8 @@
+//
+// Created by hammy on 3/16/21.
+//
+
+#ifndef SOFTLIGHT_SL_PIPELINESTATE_HPP
+#define SOFTLIGHT_SL_PIPELINESTATE_HPP
+
+#endif //SOFTLIGHT_SL_PIPELINESTATE_HPP
