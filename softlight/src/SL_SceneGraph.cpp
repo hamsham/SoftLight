@@ -69,7 +69,6 @@ void rotate_left(RandomIter nums, size_t size, size_t numRotations)
 -------------------------------------*/
 SL_SceneGraph::~SL_SceneGraph() noexcept
 {
-    terminate();
 }
 
 

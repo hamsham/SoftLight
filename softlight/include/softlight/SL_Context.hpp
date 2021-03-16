@@ -9,9 +9,10 @@
 
 #include "lightsky/utils/Pointer.h"
 
+#include "softlight/SL_PipelineState.hpp"
 #include "softlight/SL_ProcessorPool.hpp"
-#include "softlight/SL_RasterState.hpp"
 #include "softlight/SL_Setup.hpp"
+#include "softlight/SL_ViewportState.hpp"
 
 
 
@@ -59,6 +60,7 @@ class SL_Context
 {
     friend class SL_SceneFilePreload;
     friend class SL_SceneFileLoader;
+    friend class SL_ProcessorPool;
 
   private:
     SL_AlignedVector<SL_VertexArray> mVaos;
@@ -75,7 +77,7 @@ class SL_Context
 
     SL_AlignedVector<SL_Shader> mShaders;
 
-    SL_RasterState mState;
+    SL_ViewportState mViewState;
 
     SL_ProcessorPool mProcessors;
 
@@ -203,29 +205,9 @@ class SL_Context
     /*
      *
      */
-    void cull_mode(SL_CullMode cm) noexcept;
+    const SL_ViewportState& viewport_state() const noexcept;
 
-    SL_CullMode cull_mode() const noexcept;
-
-    void depth_test(SL_DepthTest dt) noexcept;
-
-    SL_DepthTest depth_test() const noexcept;
-
-    void depth_mask(SL_DepthMask dm) noexcept;
-
-    SL_DepthMask depth_mask() const noexcept;
-
-    void blend_mode(SL_BlendMode bm) noexcept;
-
-    SL_BlendMode blend_mode() const noexcept;
-
-    void viewport(int32_t x, int32_t y, uint16_t w, uint16_t h) noexcept;
-
-    ls::math::vec4_t<int32_t> viewport() const noexcept;
-
-    void scissor(int32_t x, int32_t y, uint16_t w, uint16_t h) noexcept;
-
-    ls::math::vec4_t<int32_t> scissor() const noexcept;
+    SL_ViewportState& viewport_state() noexcept;
 
     /*
      *
@@ -327,108 +309,18 @@ class SL_Context
 
 /*-------------------------------------
 -------------------------------------*/
-inline void SL_Context::cull_mode(SL_CullMode cm) noexcept
+inline const SL_ViewportState& SL_Context::viewport_state() const noexcept
 {
-    mState.cull_mode(cm);
+    return mViewState;
 }
 
 
 
 /*-------------------------------------
 -------------------------------------*/
-inline SL_CullMode SL_Context::cull_mode() const noexcept
+inline SL_ViewportState& SL_Context::viewport_state() noexcept
 {
-    return mState.cull_mode();
-}
-
-
-
-/*-------------------------------------
--------------------------------------*/
-inline void SL_Context::depth_test(SL_DepthTest dt) noexcept
-{
-    mState.depth_test(dt);
-}
-
-
-
-/*-------------------------------------
--------------------------------------*/
-inline SL_DepthTest SL_Context::depth_test() const noexcept
-{
-    return mState.depth_test();
-}
-
-
-
-/*-------------------------------------
--------------------------------------*/
-inline void SL_Context::depth_mask(SL_DepthMask dm) noexcept
-{
-    mState.depth_mask(dm);
-}
-
-
-
-/*-------------------------------------
--------------------------------------*/
-inline SL_DepthMask SL_Context::depth_mask() const noexcept
-{
-    return mState.depth_mask();
-}
-
-
-
-/*-------------------------------------
--------------------------------------*/
-inline void SL_Context::blend_mode(SL_BlendMode bm) noexcept
-{
-    mState.blend_mode(bm);
-}
-
-
-
-/*-------------------------------------
--------------------------------------*/
-inline SL_BlendMode SL_Context::blend_mode() const noexcept
-{
-    return mState.blend_mode();
-}
-
-
-
-/*-------------------------------------
--------------------------------------*/
-inline void SL_Context::viewport(int32_t x, int32_t y, uint16_t w, uint16_t h) noexcept
-{
-    mState.viewport(x, y, w, h);
-}
-
-
-
-/*-------------------------------------
--------------------------------------*/
-inline ls::math::vec4_t<int32_t> SL_Context::viewport() const noexcept
-{
-    return mState.viewport();
-}
-
-
-
-/*-------------------------------------
--------------------------------------*/
-inline void SL_Context::scissor(int32_t x, int32_t y, uint16_t w, uint16_t h) noexcept
-{
-    mState.scissor(x, y, w, h);
-}
-
-
-
-/*-------------------------------------
--------------------------------------*/
-inline ls::math::vec4_t<int32_t> SL_Context::scissor() const noexcept
-{
-    return mState.scissor();
+    return mViewState;
 }
 
 

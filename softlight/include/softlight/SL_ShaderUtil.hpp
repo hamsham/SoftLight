@@ -53,6 +53,49 @@ inline void sl_calc_frag_tiles(data_type numThreads, data_type& numHoriz, data_t
 /**
  * @brief Subdivide a rectangular region into equally spaced areas.
  *
+ * @param dimens
+ * The x, y, width, and height height of the region to subdivide.
+ *
+ * @param numThreads
+ * The number of threads to consider for subdivision.
+ *
+ * @param threadId
+ * The current thread ID.
+ *
+ * @return A 4D vector, containing the following parameters for the current
+ * thread, respectively:
+ *     - Beginning X coordinate
+ *     - Ending X coordinate
+ *     - Beginning Y coordinate
+ *     - Ending Y coordinate
+ */
+template <typename data_t>
+inline ls::math::vec4_t<data_t> sl_subdivide_region(
+    ls::math::vec4_t<data_t> dimens,
+    const data_t numThreads,
+    const data_t threadId
+) noexcept
+{
+    data_t cols;
+    data_t rows;
+
+    sl_calc_frag_tiles<data_t>(numThreads, cols, rows);
+    dimens[2] = dimens[2] / cols;
+    dimens[3] = dimens[3] / rows;
+
+    const data_t x0 = dimens[0] + (dimens[2] * (threadId % cols));
+    const data_t y0 = dimens[1] + (dimens[3] * ((threadId / cols) % rows));
+    const data_t x1 = dimens[2] + x0;
+    const data_t y1 = dimens[3] + y0;
+
+    return ls::math::vec4_t<data_t>{x0, x1, y0, y1};
+}
+
+
+
+/**
+ * @brief Subdivide a rectangular region into equally spaced areas.
+ *
  * @param w
  * The total width of the region to subdivide.
  *
@@ -80,19 +123,7 @@ inline ls::math::vec4_t<data_t> sl_subdivide_region(
     const data_t threadId
 ) noexcept
 {
-    data_t cols;
-    data_t rows;
-
-    sl_calc_frag_tiles<data_t>(numThreads, cols, rows);
-    w = w / cols;
-    h = h / rows;
-
-    const data_t x0 = w * (threadId % cols);
-    const data_t y0 = h * ((threadId / cols) % rows);
-    const data_t x1 = w + x0;
-    const data_t y1 = h + y0;
-
-    return ls::math::vec4_t<data_t>{x0, x1, y0, y1};
+    return sl_subdivide_region<data_t>(ls::math::vec4_t<data_t>{data_t{0}, data_t{0}, w, h}, numThreads, threadId);
 }
 
 
@@ -432,7 +463,7 @@ struct SL_DepthFuncNE
     #elif defined(LS_ARM_NEON)
         inline LS_INLINE float32x4_t operator()(float32x4_t a, float32x4_t b) const noexcept
         {
-            return vreinterpretq_f32_u32(vmvnq_u32(vreinterpretq_u32_f32(vceqq_f32(a, b))));
+            return vreinterpretq_f32_u32(vmvnq_u32(vceqq_f32(a, b)));
         }
 
     #endif

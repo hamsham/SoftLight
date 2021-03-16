@@ -6,9 +6,9 @@
 #include "lightsky/math/half.h"
 #include "lightsky/math/vec_utils.h"
 
-#include "softlight/SL_Config.hpp"
 #include "softlight/SL_LineRasterizer.hpp"
 #include "softlight/SL_Framebuffer.hpp" // SL_Framebuffer
+#include "softlight/SL_ViewportState.hpp"
 #include "softlight/SL_Shader.hpp" // SL_FragmentShader
 #include "softlight/SL_Texture.hpp"
 
@@ -220,8 +220,8 @@ void SL_LineRasterizer::render_line(
     {
         const float      xf      = math::float_cast<float, fixed_type>(x);
         const float      yf      = math::float_cast<float, fixed_type>(y);
-        const int32_t    xi      = math::integer_cast<int32_t, fixed_type>(math::floor(x));
-        const int32_t    yi      = math::integer_cast<int32_t, fixed_type>(math::floor(y));
+        const int32_t    xi      = math::max(0, math::integer_cast<int32_t, fixed_type>(math::floor(x)));
+        const int32_t    yi      = math::max(0, math::integer_cast<int32_t, fixed_type>(math::floor(y)));
 
         const float      currLen = math::length(math::vec2{xf-x1f, yf-y1f});
         const float      interp  = (currLen*dist);
@@ -248,7 +248,7 @@ void SL_LineRasterizer::render_line(
                 case 3: fbo->put_alpha_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], blendMode);
                 case 2: fbo->put_alpha_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], blendMode);
                 case 1: fbo->put_alpha_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], blendMode);
-                    //case 1: fbo->put_pixel(0, fragParams.x, fragParams.y, math::vec4{1.f, 0, 1.f, 1.f});
+                //case 1: fbo->put_pixel(0, fragParams.coord.x, fragParams.coord.y, math::vec4{1.f, 0, 1.f, 1.f});
             }
 
         }
@@ -261,7 +261,7 @@ void SL_LineRasterizer::render_line(
                 case 3: fbo->put_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2]);
                 case 2: fbo->put_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1]);
                 case 1: fbo->put_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0]);
-                    //case 1: fbo->put_pixel(0,fragParams.x, fragParams.y, math::vec4{1.f, 0, 1.f, 1.f});
+                //case 1: fbo->put_pixel(0,fragParams.coord.x, fragParams.coord.y, math::vec4{1.f, 0, 1.f, 1.f});
             }
         }
 
@@ -312,10 +312,10 @@ void SL_LineRasterizer::dispatch_bins() noexcept
 {
     // divide the screen into equal parts which can then be rendered by all
     // available fragment threads.
-    const int32_t w = mFbo->width();
-    const int32_t h = mFbo->height();
+    const math::vec4_t<int32_t>&& clipRect = mViewState->viewport_rect(0, 0, mFbo->width(), mFbo->height());
+    const math::vec4_t<int32_t>&& dimens = sl_subdivide_region<int32_t>(clipRect, mNumProcessors, mThreadId);
+
     const uint16_t depthBpp = mFbo->get_depth_buffer()->bpp();
-    const math::vec4_t<int32_t> dimens = sl_subdivide_region<int32_t>(w, h, mNumProcessors, mThreadId);
 
     if (depthBpp == sizeof(math::half))
     {

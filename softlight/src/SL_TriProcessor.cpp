@@ -10,6 +10,7 @@
 #include "softlight/SL_TriRasterizer.hpp"
 #include "softlight/SL_VertexArray.hpp"
 #include "softlight/SL_VertexCache.hpp"
+#include "softlight/SL_ViewportState.hpp"
 
 
 
@@ -18,47 +19,8 @@
 -----------------------------------------------------------------------------*/
 namespace math = ls::math;
 
-
-
 namespace
 {
-
-#if 0
-inline LS_INLINE math::mat4 sl_scissor(float x, float y, float w, float h) noexcept
-{
-    if (x < 0.f)
-    {
-        w += x;
-        x = 0.f;
-    }
-
-    if (y < 0.f)
-    {
-        h += y;
-        y = 0.f;
-    }
-
-    w = ls::math::min(1.f - x, w);
-    h = ls::math::min(1.f - y, h);
-
-    const float nm00 = math::rcp(w);
-    const float nm11 = math::rcp(h);
-
-    const float nm30 = nm00 - 1.f;
-    const float nm31 = nm11 - 1.f;
-
-    const float m30 = math::fmadd(x, (-2.f * nm00), nm30);
-    const float m31 = math::fmadd(y, (-2.f * nm11), nm31);
-
-    return math::mat4{
-        nm00, 0.f,  0.f, 0.f,
-        0.f,  nm11, 0.f, 0.f,
-        0.f,  0.f,  1.f, 0.f,
-        m30,  m31,  0.f, 1.f
-    };
-}
-
-#endif
 
 
 
@@ -75,7 +37,7 @@ enum SL_ClipStatus
 
 
 /*--------------------------------------
- * Convert world coordinates to screen coordinates (temporary until NDC clipping is added)
+ * Convert world coordinates to screen coordinates
 --------------------------------------*/
 inline LS_INLINE void sl_perspective_divide3(math::vec4& LS_RESTRICT_PTR v0, math::vec4& LS_RESTRICT_PTR v1, math::vec4& LS_RESTRICT_PTR v2) noexcept
 {
@@ -149,122 +111,103 @@ inline LS_INLINE void sl_perspective_divide3(math::vec4& LS_RESTRICT_PTR v0, mat
 
 
 /*--------------------------------------
- * Convert world coordinates to screen coordinates (temporary until NDC clipping is added)
+ * Convert world coordinates to screen coordinates
 --------------------------------------*/
 inline LS_INLINE void sl_world_to_screen_coords_divided3(
     math::vec4& LS_RESTRICT_PTR p0,
     math::vec4& LS_RESTRICT_PTR p1,
     math::vec4& LS_RESTRICT_PTR p2,
-    const float widthScale,
-    const float heightScale
+    const math::vec4& viewportDims
 ) noexcept
 {
-    #if defined(LS_X86_SSE4_1)
-        const __m128 wh = _mm_unpacklo_ps(_mm_set1_ps(widthScale), _mm_set1_ps(heightScale));
+    #if defined(LS_X86_FMA)
+        const __m128 dims = _mm_load_ps(&viewportDims);
+        const __m128 halfDims = _mm_mul_ps(dims, _mm_set1_ps(0.5f));
+        const __m128 one = _mm_set1_ps(1.f);
+        const __m128 wh = _mm_shuffle_ps(halfDims, one, 0x0E);
 
-        __m128 scl0 = _mm_fmadd_ps(wh, p0.simd, wh);
-        __m128 scl1 = _mm_fmadd_ps(wh, p1.simd, wh);
-        __m128 scl2 = _mm_fmadd_ps(wh, p2.simd, wh);
+        __m128 v0 = _mm_add_ps(one, p0.simd);
+        v0 = _mm_floor_ps(_mm_fmadd_ps(v0, wh, dims));
+        p0.simd = _mm_shuffle_ps(_mm_max_ps(v0, _mm_setzero_ps()), p0.simd, 0xE4);
 
-        scl0 = _mm_max_ps(_mm_floor_ps(scl0), _mm_setzero_ps());
-        scl1 = _mm_max_ps(_mm_floor_ps(scl1), _mm_setzero_ps());
-        scl2 = _mm_max_ps(_mm_floor_ps(scl2), _mm_setzero_ps());
+        __m128 v1 = _mm_add_ps(one, p1.simd);
+        v1 = _mm_floor_ps(_mm_fmadd_ps(v1, wh, dims));
+        p1.simd = _mm_shuffle_ps(_mm_max_ps(v1, _mm_setzero_ps()), p1.simd, 0xE4);
 
-        p0.simd = _mm_blend_ps(p0.simd, scl0, 0x03);
-        p1.simd = _mm_blend_ps(p1.simd, scl1, 0x03);
-        p2.simd = _mm_blend_ps(p2.simd, scl2, 0x03);
+        __m128 v2 = _mm_add_ps(one, p2.simd);
+        v2 = _mm_floor_ps(_mm_fmadd_ps(v2, wh, dims));
+        p2.simd = _mm_shuffle_ps(_mm_max_ps(v2, _mm_setzero_ps()), p2.simd, 0xE4);
 
-    #elif defined(LS_X86_SSE2)
-        const __m128 wh = _mm_unpacklo_ps(_mm_set1_ps(widthScale), _mm_set1_ps(heightScale));
+    #elif defined(LS_X86_SSE)
+        const __m128 dims = _mm_load_ps(&viewportDims);
+        const __m128 halfDims = _mm_mul_ps(dims, _mm_set1_ps(0.5f));
+        const __m128 one = _mm_set1_ps(1.f);
+        const __m128 wh = _mm_shuffle_ps(halfDims, one, 0x0E);
 
-        __m128 scl0 = _mm_fmadd_ps(wh, p0.simd, wh);
-        __m128 scl1 = _mm_fmadd_ps(wh, p1.simd, wh);
-        __m128 scl2 = _mm_fmadd_ps(wh, p2.simd, wh);
+        __m128 v0 = _mm_mul_ps(_mm_add_ps(one, p0.simd), wh);
+        v0 = _mm_cvtepi32_ps(_mm_cvtps_epi32(_mm_add_ps(v0, dims)));
+        p0.simd = _mm_shuffle_ps(_mm_max_ps(v0, _mm_setzero_ps()), p0.simd, 0xE4);
 
-        scl0 = _mm_max_ps(_mm_cvtepi32_ps(_mm_cvtps_epi32(scl0)), _mm_setzero_ps());
-        scl1 = _mm_max_ps(_mm_cvtepi32_ps(_mm_cvtps_epi32(scl1)), _mm_setzero_ps());
-        scl2 = _mm_max_ps(_mm_cvtepi32_ps(_mm_cvtps_epi32(scl2)), _mm_setzero_ps());
+        __m128 v1 = _mm_mul_ps(_mm_add_ps(one, p1.simd), wh);
+        v1 = _mm_cvtepi32_ps(_mm_cvtps_epi32(_mm_add_ps(v1, dims)));
+        p1.simd = _mm_shuffle_ps(_mm_max_ps(v1, _mm_setzero_ps()), p1.simd, 0xE4);
 
-        const __m128 mask = _mm_castsi128_ps(_mm_set_epi32(0x00000000, 0x00000000, 0xFFFFFFFF, 0xFFFFFFFF));
-
-        p0.simd = _mm_or_ps(_mm_andnot_ps(mask, p0.simd), _mm_and_ps(mask, scl0));
-        p1.simd = _mm_or_ps(_mm_andnot_ps(mask, p1.simd), _mm_and_ps(mask, scl1));
-        p2.simd = _mm_or_ps(_mm_andnot_ps(mask, p2.simd), _mm_and_ps(mask, scl2));
+        __m128 v2 = _mm_mul_ps(_mm_add_ps(one, p2.simd), wh);
+        v2 = _mm_cvtepi32_ps(_mm_cvtps_epi32(_mm_add_ps(v2, dims)));
+        p2.simd = _mm_shuffle_ps(_mm_max_ps(v2, _mm_setzero_ps()), p2.simd, 0xE4);
 
     #elif defined(LS_ARCH_AARCH64)
-        const float32x2_t dims = vset_lane_f32(heightScale, vdup_n_f32(widthScale), 1);
-        const float32x2_t z = vdup_n_f32(0.f);
-        const float32x2_t o = vdup_n_f32(1.f);
+        const float32x4_t dims = vld1q_f32(&viewportDims);
+        const float32x2_t offset = vget_low_f32(dims);
+        const float32x2_t wh = vmul_f32(vdup_n_f32(0.5f), vget_high_f32(dims));
+        const float32x2_t one = vdup_n_f32(1.f);
 
-        const float32x4_t wh0 = vcombine_f32(dims, z);
-        const float32x4_t wh1 = vcombine_f32(dims, o);
-        const uint32x4_t blendMask = vcombine_u32(vdup_n_u32(0x00000000), vdup_n_u32(0xFFFFFFFF));
+        float32x2_t v0 = vadd_f32(vld1_f32(&p0), one);
+        v0 = vrndm_f32(vmla_f32(offset, wh, v0));
+        vst1_f32(&p0, vmax_f32(v0, vdup_n_f32(0.f)));
 
-        float32x4_t scl0 = vmlaq_f32(wh0, p0.simd, wh1);
-        scl0 = vmaxq_f32(vdupq_n_f32(0.f), vrndmq_f32(scl0));
-        p0.simd = vbslq_f32(blendMask, p0.simd, scl0);
+        float32x2_t v1 = vadd_f32(vld1_f32(&p1), one);
+        v1 = vrndm_f32(vmla_f32(offset, wh, v1));
+        vst1_f32(&p1, vmax_f32(v1, vdup_n_f32(0.f)));
 
-        float32x4_t scl1 = vmlaq_f32(wh0, p1.simd, wh1);
-        scl1 = vmaxq_f32(vdupq_n_f32(0.f), vrndmq_f32(scl1));
-        p1.simd = vbslq_f32(blendMask, p1.simd, scl1);
-
-        float32x4_t scl2 = vmlaq_f32(wh0, p2.simd, wh1);
-        scl2 = vmaxq_f32(vdupq_n_f32(0.f), vrndmq_f32(scl2));
-        p2.simd = vbslq_f32(blendMask, p2.simd, scl2);
+        float32x2_t v2 = vadd_f32(vld1_f32(&p2), one);
+        v2 = vrndm_f32(vmla_f32(offset, wh, v2));
+        vst1_f32(&p2, vmax_f32(v2, vdup_n_f32(0.f)));
 
     #elif defined(LS_ARM_NEON)
-        const float32x2_t dims = vset_lane_f32(heightScale, vdup_n_f32(widthScale), 1);
-        const float32x2_t z = vdup_n_f32(0.f);
-        const float32x2_t o = vdup_n_f32(1.f);
+        const float32x4_t dims = vld1q_f32(&viewportDims);
+        const float32x2_t offset = vget_low_f32(dims);
+        const float32x2_t wh = vmul_f32(vdup_n_f32(0.5f), vget_high_f32(dims));
+        const float32x2_t one = vdup_n_f32(1.f);
 
-        const float32x4_t wh0 = vcombine_f32(dims, z);
-        const float32x4_t wh1 = vcombine_f32(dims, o);
-        const uint32x4_t blendMask = vcombine_u32(vdup_n_u32(0x00000000), vdup_n_u32(0xFFFFFFFF));
+        float32x2_t v0 = vadd_f32(vld1_f32(&p0), one);
+        v0 = vcvt_f32_s32(vcvt_s32_f32(vmla_f32(offset, wh, v0)));
+        vst1_f32(&p0, vmax_f32(v0, vdup_n_f32(0.f)));
 
-        float32x4_t scl0 = vmlaq_f32(wh0, p0.simd, wh1);
-        scl0 = vmaxq_f32(vdupq_n_f32(0.f), vcvtq_f32_s32(vcvtq_s32_f32(scl0)));
-        p0.simd = vbslq_f32(blendMask, p0.simd, scl0);
+        float32x2_t v1 = vadd_f32(vld1_f32(&p1), one);
+        v1 = vcvt_f32_s32(vcvt_s32_f32(vmla_f32(offset, wh, v1)));
+        vst1_f32(&p1, vmax_f32(v1, vdup_n_f32(0.f)));
 
-        float32x4_t scl1 = vmlaq_f32(wh0, p1.simd, wh1);
-        scl1 = vmaxq_f32(vdupq_n_f32(0.f), vcvtq_f32_s32(vcvtq_s32_f32(scl1)));
-        p1.simd = vbslq_f32(blendMask, p1.simd, scl1);
-
-        float32x4_t scl2 = vmlaq_f32(wh0, p2.simd, wh1);
-        scl2 = vmaxq_f32(vdupq_n_f32(0.f), vcvtq_f32_s32(vcvtq_s32_f32(scl2)));
-        p2.simd = vbslq_f32(blendMask, p2.simd, scl2);
-
-    #elif 1
-        p0[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  p0[0], widthScale)));
-        p0[1] = math::max(0.f, math::floor(math::fmadd(heightScale, p0[1], heightScale)));
-
-        p1[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  p1[0], widthScale)));
-        p1[1] = math::max(0.f, math::floor(math::fmadd(heightScale, p1[1], heightScale)));
-
-        p2[0] = math::max(0.f, math::floor(math::fmadd(widthScale,  p2[0], widthScale)));
-        p2[1] = math::max(0.f, math::floor(math::fmadd(heightScale, p2[1], heightScale)));
-        //v = math::fmadd(math::vec4{widthScale, heightScale, 1.f, 1.f}, v, math::vec4{widthScale, heightScale, 0.f, 0.f});
+        float32x2_t v2 = vadd_f32(vld1_f32(&p2), one);
+        v2 = vcvt_f32_s32(vcvt_s32_f32(vmla_f32(offset, wh, v2)));
+        vst1_f32(&p2, vmax_f32(v2, vdup_n_f32(0.f)));
 
     #else
-        (void)widthScale;
-        (void)heightScale;
+        // NDC->screen space transform is clamped to the framebuffer bounds.
+        // For example:
+        // x = math::clamp(x, 0.f, fboW);
+        // w = min(w, fboW-x);
+        const float w = viewportDims[2] * 0.5f;
+        const float h = viewportDims[3] * 0.5f;
 
-        const float x = 0.f;
-        const float y = 180.f;
-        const float w0 = 1280.f;
-        const float h0 = 360.f;
-        const float w1 = w0 * 0.5f;
-        const float h1 = h0 * 0.5f;
-        const float xOffset = x;
-        const float yOffset = y;
+        p0[0] = math::max(math::floor(math::fmadd(p0[0]+1.f, w, viewportDims[0])), 0.f);
+        p0[1] = math::max(math::floor(math::fmadd(p0[1]+1.f, h, viewportDims[1])), 0.f);
 
-        p0[0] = math::max(math::floor(math::fmadd(p0[0]+1.f, w1, xOffset)), 0.f);
-        p0[1] = math::max(math::floor(math::fmadd(p0[1]+1.f, h1, yOffset)), 0.f);
+        p1[0] = math::max(math::floor(math::fmadd(p1[0]+1.f, w, viewportDims[0])), 0.f);
+        p1[1] = math::max(math::floor(math::fmadd(p1[1]+1.f, h, viewportDims[1])), 0.f);
 
-        p1[0] = math::max(math::floor(math::fmadd(p1[0]+1.f, w1, xOffset)), 0.f);
-        p1[1] = math::max(math::floor(math::fmadd(p1[1]+1.f, h1, yOffset)), 0.f);
-
-        p2[0] = math::max(math::floor(math::fmadd(p2[0]+1.f, w1, xOffset)), 0.f);
-        p2[1] = math::max(math::floor(math::fmadd(p2[1]+1.f, h1, yOffset)), 0.f);
+        p2[0] = math::max(math::floor(math::fmadd(p2[0]+1.f, w, viewportDims[0])), 0.f);
+        p2[1] = math::max(math::floor(math::fmadd(p2[1]+1.f, h, viewportDims[1])), 0.f);
 
     #endif
 }
@@ -486,7 +429,7 @@ inline LS_INLINE math::vec3_t<size_t> get_next_vertex3(const SL_IndexBuffer* LS_
 /*--------------------------------------
  * Publish a vertex to a fragment thread
 --------------------------------------*/
-void SL_TriProcessor::push_bin(size_t primIndex, float fboW, float fboH, const SL_TransformedVert& a, const SL_TransformedVert& b, const SL_TransformedVert& c) const noexcept
+void SL_TriProcessor::push_bin(size_t primIndex, const SL_TransformedVert& a, const SL_TransformedVert& b, const SL_TransformedVert& c) const noexcept
 {
     SL_BinCounterAtomic<uint32_t>* const pLocks = mBinsUsed;
     SL_FragmentBin* const pFragBins = mFragBins;
@@ -502,8 +445,7 @@ void SL_TriProcessor::push_bin(size_t primIndex, float fboW, float fboH, const S
     const float bboxMaxX = math::max(p0[0], p1[0], p2[0]);
     const float bboxMaxY = math::max(p0[1], p1[1], p2[1]);
 
-    int isPrimHidden = (bboxMaxX < 0.f || bboxMaxY < 0.f || fboW < bboxMinX || fboH < bboxMinY);
-    isPrimHidden = isPrimHidden || (bboxMaxX-bboxMinX < 1.f) || (bboxMaxY-bboxMinY < 1.f);
+    const int isPrimHidden = (bboxMaxX-bboxMinX < 1.f) || (bboxMaxY-bboxMinY < 1.f);
     if (LS_UNLIKELY(isPrimHidden))
     {
         return;
@@ -601,16 +543,13 @@ void SL_TriProcessor::push_bin(size_t primIndex, float fboW, float fboH, const S
 -------------------------------------*/
 void SL_TriProcessor::clip_and_process_tris(
     size_t primIndex,
-    float fboW,
-    float fboH,
+    const math::vec4& viewportDims,
     const SL_TransformedVert& a,
     const SL_TransformedVert& b,
     const SL_TransformedVert& c) noexcept
 {
     const SL_VertexShader vertShader    = mShader->mVertShader;
     const unsigned        numVarys      = (unsigned)vertShader.numVaryings;
-    const float           widthScale    = fboW * 0.5f;
-    const float           heightScale   = fboH * 0.5f;
     constexpr unsigned    numTempVerts  = 9; // at most 9 vertices should be generated
     unsigned              numTotalVerts = 3;
     math::vec4            tempVerts     [numTempVerts];
@@ -717,19 +656,19 @@ void SL_TriProcessor::clip_and_process_tris(
 
     {
         sl_perspective_divide3(newVerts[0], newVerts[1], newVerts[2]);
-        sl_world_to_screen_coords_divided3(newVerts[0], newVerts[1], newVerts[2], widthScale, heightScale);
+        sl_world_to_screen_coords_divided3(newVerts[0], newVerts[1], newVerts[2], viewportDims);
     }
 
     if (LS_LIKELY(numTotalVerts > 3))
     {
         sl_perspective_divide3(newVerts[3], newVerts[4], newVerts[5]);
-        sl_world_to_screen_coords_divided3(newVerts[3], newVerts[4], newVerts[5], widthScale, heightScale);
+        sl_world_to_screen_coords_divided3(newVerts[3], newVerts[4], newVerts[5], viewportDims);
     }
 
     if (LS_LIKELY(numTotalVerts > 6))
     {
         sl_perspective_divide3(newVerts[6], newVerts[7], newVerts[8]);
-        sl_world_to_screen_coords_divided3(newVerts[6], newVerts[7], newVerts[8], widthScale, heightScale);
+        sl_world_to_screen_coords_divided3(newVerts[6], newVerts[7], newVerts[8], viewportDims);
     }
 
     SL_TransformedVert p0, p1, p2;
@@ -747,7 +686,7 @@ void SL_TriProcessor::clip_and_process_tris(
         p2.vert = newVerts[k];
         _copy_verts(numVarys, newVarys+(k*SL_SHADER_MAX_VARYING_VECTORS), p2.varyings);
 
-        push_bin(primIndex, fboW, fboH, p0, p1, p2);
+        push_bin(primIndex, p0, p1, p2);
     }
 }
 
@@ -770,10 +709,7 @@ void SL_TriProcessor::process_verts(const SL_Mesh& m, size_t instanceId) noexcep
     const SL_CullMode       cullMode     = vertShader.cullMode;
     const auto              shader       = vertShader.shader;
     const SL_VertexArray&   vao          = mContext->vao(m.vaoId);
-    const float             fboW         = (float)mFbo->width();
-    const float             fboH         = (float)mFbo->height();
-    const float             widthScale   = fboW * 0.5f;
-    const float             heightScale  = fboH * 0.5f;
+    const math::vec4&&      fboDims      = (math::vec4)math::vec4_t<int>{0, 0, mFbo->width(), mFbo->height()};
     const SL_IndexBuffer*   pIbo         = vao.has_index_buffer() ? &mContext->ibo(vao.get_index_buffer()) : nullptr;
     const int               usingIndices = (m.mode == RENDER_MODE_INDEXED_TRIANGLES) || (m.mode == RENDER_MODE_INDEXED_TRI_WIRE);
 
@@ -799,8 +735,9 @@ void SL_TriProcessor::process_verts(const SL_Mesh& m, size_t instanceId) noexcep
         const size_t step  = mNumThreads * 3u;
     #endif
 
-    //const math::mat4&& vp = math::viewport<float>(0.f, 0.25f, 1.f, 0.5f);
-    //const math::mat4&& vp = math::mat4{1.f};
+    const SL_ViewportState& viewState = mContext->viewport_state();
+    const math::mat4&& scissorMat = viewState.scissor_matrix(fboDims[2], fboDims[3]);
+    const math::vec4&& viewportDims = viewState.viewport_rect(fboDims[2], fboDims[3]);
 
     for (size_t i = begin; i < end; i += step)
     {
@@ -813,15 +750,15 @@ void SL_TriProcessor::process_verts(const SL_Mesh& m, size_t instanceId) noexcep
         #else
             params.vertId    = vertId.v[0];
             params.pVaryings = pVert0.varyings;
-            pVert0.vert      = shader(params);
+            pVert0.vert      = scissorMat * shader(params);
 
             params.vertId    = vertId.v[1];
             params.pVaryings = pVert1.varyings;
-            pVert1.vert      = shader(params);
+            pVert1.vert      = scissorMat * shader(params);
 
             params.vertId    = vertId.v[2];
             params.pVaryings = pVert2.varyings;
-            pVert2.vert      = shader(params);
+            pVert2.vert      = scissorMat * shader(params);
         #endif
 
         if (LS_LIKELY(cullMode != SL_CULL_OFF))
@@ -846,12 +783,12 @@ void SL_TriProcessor::process_verts(const SL_Mesh& m, size_t instanceId) noexcep
         if (visStatus == SL_TRIANGLE_FULLY_VISIBLE)
         {
             sl_perspective_divide3(pVert0.vert, pVert1.vert, pVert2.vert);
-            sl_world_to_screen_coords_divided3(pVert0.vert, pVert1.vert, pVert2.vert, widthScale, heightScale);
-            push_bin(i, fboW, fboH, pVert0, pVert1, pVert2);
+            sl_world_to_screen_coords_divided3(pVert0.vert, pVert1.vert, pVert2.vert, viewportDims);
+            push_bin(i, pVert0, pVert1, pVert2);
         }
         else if (visStatus == SL_TRIANGLE_PARTIALLY_VISIBLE)
         {
-            clip_and_process_tris(i, fboW, fboH, pVert0, pVert1, pVert2);
+            clip_and_process_tris(i, viewportDims, pVert0, pVert1, pVert2);
         }
     }
 }

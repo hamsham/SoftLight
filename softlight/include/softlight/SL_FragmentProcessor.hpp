@@ -25,6 +25,7 @@ union SL_BinCounter;
 struct SL_FragCoord; // SL_ShaderProcessor.hpp
 struct SL_FragmentBin; // SL_ShaderProcessor.hpp
 class SL_Framebuffer;
+class SL_ViewportState;
 class SL_Shader;
 class SL_Texture;
 
@@ -40,28 +41,18 @@ class SL_Texture;
 -----------------------------------------------------------------------------*/
 struct SL_FragmentProcessor
 {
-    // 16 bits
     uint16_t mThreadId;
-
-    // 32 bits
     SL_RenderMode mMode;
-
-    // 32-bits
     uint32_t mNumProcessors;
-
-    // 64 bits
     uint_fast32_t mNumBins;
-
-    // 256 bits
     const SL_Shader* mShader;
     SL_Framebuffer* mFbo;
+    const SL_ViewportState* mViewState;
     SL_BinCounter<uint32_t>* mBinIds;
     const SL_FragmentBin* mBins;
     SL_FragCoord* mQueues;
 
-    // 432 bits = 54 bytes
-
-    virtual ~SL_FragmentProcessor() noexcept = 0;
+    virtual ~SL_FragmentProcessor() noexcept {}
 
     virtual void execute() noexcept = 0;
 };

@@ -9,7 +9,6 @@
 #include "lightsky/math/vec_utils.h"
 #include "lightsky/math/mat_utils.h"
 
-#include "softlight/SL_Config.hpp"
 #include "softlight/SL_TriRasterizer.hpp"
 #include "softlight/SL_Framebuffer.hpp" // SL_Framebuffer
 #include "softlight/SL_ScanlineBounds.hpp"
@@ -17,6 +16,7 @@
 #include "softlight/SL_ShaderProcessor.hpp" // SL_FragmentBin
 #include "softlight/SL_ShaderUtil.hpp" // sl_scanline_offset(), SL_BinCounter
 #include "softlight/SL_Texture.hpp"
+#include "softlight/SL_ViewportState.hpp"
 
 
 
@@ -647,10 +647,10 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
                     {
                         __m128 persp4 = (homogenous * bc).simd;
 
-                        const unsigned storeMask1  = math::popcnt_u32((unsigned)depthTest & 0x01u) + numQueuedFrags;
-                        const unsigned storeMask2  = math::popcnt_u32((unsigned)depthTest & 0x03u) + numQueuedFrags;
-                        const unsigned storeMask3  = math::popcnt_u32((unsigned)depthTest & 0x07u) + numQueuedFrags;
-                        const unsigned rasterCount = math::popcnt_u32(depthTest & 0x0F);
+                        const unsigned storeMask1  = (unsigned)_mm_popcnt_u32((unsigned)depthTest & 0x01u) + numQueuedFrags;
+                        const unsigned storeMask2  = (unsigned)_mm_popcnt_u32((unsigned)depthTest & 0x03u) + numQueuedFrags;
+                        const unsigned storeMask3  = (unsigned)_mm_popcnt_u32((unsigned)depthTest & 0x07u) + numQueuedFrags;
+                        const unsigned rasterCount = (unsigned)_mm_popcnt_u32(depthTest & 0x0F);
 
                         persp4 = _mm_rcp_ps(persp4);
 

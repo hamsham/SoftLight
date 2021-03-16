@@ -7,7 +7,7 @@
 
 #include "lightsky/math/vec4.h"
 
-#include "softlight/SL_RasterState.hpp"
+#include "softlight/SL_PipelineState.hpp"
 #include "softlight/SL_ShaderUtil.hpp" // SL_SHADER_MAX_FRAG_OUTPUTS, SL_SHADER_MAX_VARYING_VECTORS
 
 

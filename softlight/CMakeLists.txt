@@ -150,11 +150,11 @@ set(SL_LIB_HEADERS
     include/softlight/SL_Mesh.hpp
     include/softlight/SL_Octree.hpp
     include/softlight/SL_PackedVertex.hpp
+    include/softlight/SL_PipelineState.hpp
     include/softlight/SL_Plane.hpp
     include/softlight/SL_PointProcessor.hpp
     include/softlight/SL_PointRasterizer.hpp
     include/softlight/SL_ProcessorPool.hpp
-    include/softlight/SL_RasterState.hpp
     include/softlight/SL_RenderWindow.hpp
     include/softlight/SL_Sampler.hpp
     include/softlight/SL_ScanlineBounds.hpp
@@ -177,6 +177,7 @@ set(SL_LIB_HEADERS
     include/softlight/SL_VertexBuffer.hpp
     include/softlight/SL_VertexCache.hpp
     include/softlight/SL_VertexProcessor.hpp
+    include/softlight/SL_ViewportState.hpp
     include/softlight/SL_WindowBuffer.hpp
     include/softlight/SL_WindowEvent.hpp)
 
@@ -248,6 +249,7 @@ set(SL_LIB_SOURCES
     src/SL_VertexArray.cpp
     src/SL_VertexBuffer.cpp
     src/SL_VertexProcessor.cpp
+    src/SL_ViewportState.cpp
     src/SL_WindowBuffer.cpp)
 
 if(WIN32)

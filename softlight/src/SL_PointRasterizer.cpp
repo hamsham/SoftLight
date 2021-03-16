@@ -1,12 +1,11 @@
 
-#include "lightsky/math/bits.h"
 #include "lightsky/math/half.h"
 
-#include "softlight/SL_Config.hpp"
 #include "softlight/SL_PointRasterizer.hpp"
 #include "softlight/SL_Framebuffer.hpp" // SL_Framebuffer
 #include "softlight/SL_Shader.hpp" // SL_FragmentShader
 #include "softlight/SL_Texture.hpp"
+#include "softlight/SL_ViewportState.hpp"
 
 
 
@@ -50,7 +49,7 @@ void SL_PointRasterizer::render_point(const uint32_t binId, SL_Framebuffer* cons
     fragParams.coord.depth = fragCoord[2];
     fragParams.pUniforms = pUniforms;
 
-    if (!depthCmp((float)pDepthBuf->raw_texel<depth_type>(fragParams.coord.x, fragParams.coord.y), fragCoord[2]))
+    if (!depthCmp(fragCoord[2], (float)pDepthBuf->raw_texel<depth_type>(fragParams.coord.x, fragParams.coord.y)))
     {
         return;
     }
@@ -71,7 +70,7 @@ void SL_PointRasterizer::render_point(const uint32_t binId, SL_Framebuffer* cons
             case 3: fbo->put_alpha_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], blendMode);
             case 2: fbo->put_alpha_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], blendMode);
             case 1: fbo->put_alpha_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], blendMode);
-                //case 1: fbo->put_pixel(0, fragParams.coord.x, fragParams.coord.y, math::vec4{1.f, 0, 1.f, 1.f});
+            //case 1: fbo->put_pixel(0, fragParams.coord.x, fragParams.coord.y, math::vec4{1.f, 0.f, 1.f, 1.f});
         }
 
     }
@@ -84,7 +83,7 @@ void SL_PointRasterizer::render_point(const uint32_t binId, SL_Framebuffer* cons
             case 3: fbo->put_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2]);
             case 2: fbo->put_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1]);
             case 1: fbo->put_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0]);
-                //case 1: fbo->put_pixel(0, fragParams.coord.x, fragParams.coord.y, math::vec4{1.f, 0, 1.f, 1.f});
+            //case 1: fbo->put_pixel(0, fragParams.coord.x, fragParams.coord.y, math::vec4{1.f, 0.f, 1.f, 1.f});
         }
     }
 

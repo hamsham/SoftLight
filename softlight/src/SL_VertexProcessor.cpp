@@ -3,12 +3,14 @@
 
 #include "lightsky/utils/Sort.hpp" // utils::sort_radix
 
+#include "softlight/SL_Context.hpp"
 #include "softlight/SL_LineRasterizer.hpp"
 #include "softlight/SL_PointRasterizer.hpp"
-#include "softlight/SL_TriRasterizer.hpp"
-#include "softlight/SL_VertexProcessor.hpp"
 #include "softlight/SL_Shader.hpp" // SL_Shader
 #include "softlight/SL_ShaderUtil.hpp" // SL_BinCounter, SL_BinCounterAtomic
+#include "softlight/SL_TriRasterizer.hpp"
+#include "softlight/SL_VertexProcessor.hpp"
+#include "softlight/SL_ViewportState.hpp"
 
 namespace math = ls::math;
 namespace utils = ls::utils;
@@ -18,15 +20,6 @@ namespace utils = ls::utils;
 /*-----------------------------------------------------------------------------
  * SL_VertexProcessor Class
 -----------------------------------------------------------------------------*/
-/*-------------------------------------
- * Destructor
--------------------------------------*/
-SL_VertexProcessor::~SL_VertexProcessor()
-{
-}
-
-
-
 /*-------------------------------------
  * Execute the rasterizer
 -------------------------------------*/
@@ -87,12 +80,15 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
     static_assert(ls::setup::IsBaseOf<SL_FragmentProcessor, RasterizerType>::value, "Template parameter 'RasterizerType' must derive from SL_FragmentProcessor.");
     RasterizerType rasterizer;
 
+    const SL_ViewportState& viewState = mContext->viewport_state();
+
     rasterizer.mThreadId = (uint16_t)mThreadId;
     rasterizer.mMode = mRenderMode;
     rasterizer.mNumProcessors = (uint32_t)mNumThreads;
     rasterizer.mNumBins = (uint32_t)maxElements;
     rasterizer.mShader = mShader;
     rasterizer.mFbo = mFbo;
+    rasterizer.mViewState = &viewState;
     rasterizer.mBinIds = mBinIds;
     rasterizer.mBins = mFragBins;
     rasterizer.mQueues = mFragQueues + mThreadId;

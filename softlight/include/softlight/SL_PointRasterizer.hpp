@@ -3,7 +3,7 @@
 #define SL_POINT_RASTERIZER_HPP
 
 #include "softlight/SL_FragmentProcessor.hpp"
-#include "softlight/SL_RasterState.hpp"
+#include "softlight/SL_ViewportState.hpp"
 
 
 
