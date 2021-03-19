@@ -1,9 +1,7 @@
 
 #include <algorithm> // std::replace
 #include <utility> // std::move
-#include <memory> // std::nothrow
 #include <string>
-#include <cstring> // strcmp()
 
 #include "lightsky/setup/OS.h" // LS_OS_WINDOWS
 

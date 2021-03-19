@@ -34,7 +34,8 @@ if (BUILD_ASSIMP OR NOT ASSIMP_INCLUDE_DIR OR NOT ASSIMP_LIBRARIES)
         -DASSIMP_BUILD_ZLIB:BOOL=ON
         -DASSIMP_BUILD_TESTS:BOOL=OFF
         -DASSIMP_BUILD_SAMPLES:BOOL=OFF
-        -DASSIMP_BUILD_ASSIMP_TOOLS:BOOL=OFF)
+        -DASSIMP_BUILD_ASSIMP_TOOLS:BOOL=OFF
+        -DASSIMP_INSTALL_PDB:BOOL=FALSE)
     mark_as_advanced(ASSIMP_BUILD_FLAGS)
 
     # Build Assimp
@@ -97,7 +98,13 @@ if (BUILD_ASSIMP OR NOT ASSIMP_INCLUDE_DIR OR NOT ASSIMP_LIBRARIES)
                 set(MSVC_PREFIX "vc150")
             endif()
 
-            set(ASSIMP_LIB "assimp-${MSVC_PREFIX}-mt")
+            # Not a command-line build
+            if (NOT CMAKE_VS_MSBUILD_COMMAND)
+                set(ASSIMP_LIB_SUFFIX "d")
+            endif()
+
+
+            set(ASSIMP_LIB "assimp-${MSVC_PREFIX}-mt${ASSIMP_LIB_SUFFIX}")
             add_library(assimp STATIC IMPORTED)
             set_target_properties(assimp PROPERTIES IMPORTED_LOCATION ${EXTERNAL_PROJECT_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${ASSIMP_LIB}${CMAKE_STATIC_LIBRARY_SUFFIX})
         else()

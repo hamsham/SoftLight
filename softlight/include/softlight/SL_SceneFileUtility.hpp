@@ -5,6 +5,13 @@
 #include <string>
 #include <unordered_map>
 
+#include "lightsky/setup/Compiler.h"
+
+#ifdef LS_COMPILER_MSC
+    // Assimp has compe pragmas that don't exist in newer versions of MSVC
+    #pragma warning(disable : 4619)
+#endif // LS_COMPILER_MSC
+
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/mesh.h>

@@ -637,11 +637,11 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
                 do
                 {
                     // calculate barycentric coordinates and perform a depth test
-                    const math::vec4&& d         = _sl_get_depth_texel4<depth_type>(pDepth);
-                    const __m128       xBound    = _mm_castsi128_ps(_mm_cmplt_epi32(x4, xMax4));
-                    math::mat4&&       bc        = math::outer(math::vec4{_mm_cvtepi32_ps(x4)}, bcClipSpace[0]) + bcY;
-                    const math::vec4&& z         = depth * bc;
-                    const int32_t      depthTest = _mm_movemask_ps(_mm_and_ps(xBound, depthCmpFunc(z.simd, d.simd)));
+                    const __m128  d         = _sl_get_depth_texel4<depth_type>(pDepth).simd;
+                    const __m128  xBound    = _mm_castsi128_ps(_mm_cmplt_epi32(x4, xMax4));
+                    math::mat4&&  bc        = math::outer(math::vec4{_mm_cvtepi32_ps(x4)}, bcClipSpace[0]) + bcY;
+                    const __m128  z         = (depth * bc).simd;
+                    const int32_t depthTest = _mm_movemask_ps(_mm_and_ps(xBound, depthCmpFunc(z, d)));
 
                     if (LS_UNLIKELY(0 != depthTest))
                     {
@@ -656,8 +656,8 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
 
                         //const __m128 xy = _mm_castsi128_ps(_mm_or_si128(_mm_and_si128(x4, _mm_set1_epi32(0x0000FFFF)), _mm_slli_epi32(_mm_set1_epi32(y), 16)));
                         const __m128 xy = _mm_castsi128_ps(_mm_or_si128(x4, _mm_slli_epi32(_mm_set1_epi32(y), 16)));
-                        const __m128 xyz0 = _mm_unpacklo_ps(xy, z.simd);
-                        const __m128 xyz1 = _mm_unpackhi_ps(xy, z.simd);
+                        const __m128 xyz0 = _mm_unpacklo_ps(xy, z);
+                        const __m128 xyz1 = _mm_unpackhi_ps(xy, z);
 
                         {
                             const __m128 persp0 = _mm_broadcastss_ps(persp4);

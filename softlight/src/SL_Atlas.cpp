@@ -217,10 +217,10 @@ bool SL_Atlas::init(SL_Context& context, const SL_FontLoader& fr) noexcept
             // Upload glyph data
             const int texPosX = x * maxGlyphSize[0];
             const int texPosY = y * maxGlyphSize[1];
-            mAtlasTex->set_texels((uint16_t)texPosX, texPosY, 0, (uint16_t)pGlyph.size[0], (uint16_t)pGlyph.size[1], 1, pGlyph.pData);
+            mAtlasTex->set_texels((uint16_t)texPosX, (uint16_t)texPosY, 0, (uint16_t)pGlyph.size[0], (uint16_t)pGlyph.size[1], 1, pGlyph.pData);
 
             // top-left & bottom right glyph corner
-            pEntry.uv[0] = math::vec2{(float)maxGlyphSize[0] * x, (float)maxGlyphSize[1] * y};
+            pEntry.uv[0] = (math::vec2)math::vec2i{maxGlyphSize[0] * x, maxGlyphSize[1] * y};
             pEntry.uv[1] = pEntry.uv[0] + (math::vec2)pGlyph.size;
 
             // normalize UV coordinates to within (0, 1)

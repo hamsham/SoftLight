@@ -103,7 +103,7 @@ int run_benchmark(
 
     std::cout.precision(std::numeric_limits<double>::digits10);
     std::cout << testName.c_str() << " Benchmark: "
-              << chrono::duration_cast< hr_prec >(t2 - t1).count() / 1000.0
+              << (double)chrono::duration_cast< hr_prec >(t2 - t1).count() / 1000.0
               << std::endl;
 
     const std::string filename = testName + ".ppm";
@@ -131,9 +131,9 @@ int run_benchmark(
 ------------------------------------------------------------------------------*/
 int main()
 {
-    std::thread t1(run_benchmark, "EFLA_5",       IMAGE_WIDTH, IMAGE_HEIGHT, &sl_draw_line_efla5);
-    std::thread t2(run_benchmark, "Bresenham_FP", IMAGE_WIDTH, IMAGE_HEIGHT, &sl_draw_line_fixed);
-    std::thread t3(run_benchmark, "Bresenham",    IMAGE_WIDTH, IMAGE_HEIGHT, &sl_draw_line_bresenham);
+    std::thread t1(run_benchmark, std::string{"EFLA_5"},       (uint16_t)IMAGE_WIDTH, (uint16_t)IMAGE_HEIGHT, &sl_draw_line_efla5);
+    std::thread t2(run_benchmark, std::string{"Bresenham_FP"}, (uint16_t)IMAGE_WIDTH, (uint16_t)IMAGE_HEIGHT, &sl_draw_line_fixed);
+    std::thread t3(run_benchmark, std::string{"Bresenham"},    (uint16_t)IMAGE_WIDTH, (uint16_t)IMAGE_HEIGHT, &sl_draw_line_bresenham);
     t1.join();
     t2.join();
     t3.join();

@@ -33,7 +33,22 @@ if (BUILD_FREEIMAGE OR FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NO
             set(FREEIMAGE_PLATFORM "Win32")
             set(FREEIMAGE_DIST_DIR "x32")
         endif()
-        
+
+        # MSBuild SHOULD be located by CMAKE_VS_MSBUILD_COMMAND, but that seems
+        # To only work when building using "cmake --build"
+        if (CMAKE_VS_MSBUILD_COMMAND)
+            set(_FREEIMAGE_MSBUILD_TOOL "${CMAKE_VS_MSBUILD_COMMAND}")
+        else()
+            find_program(_FREEIMAGE_MSBUILD_TOOL MSBuild.exe)
+        endif()
+
+        set(FREEIMAGE_MSBUILD_TOOL "${_FREEIMAGE_MSBUILD_TOOL}" CACHE PATH "Path to MSBuild for compiling FreeImage.")
+        if (NOT FREEIMAGE_MSBUILD_TOOL)
+            message(FATAL_ERROR "Unable to locate MSBuild for compiling FreeImage.")
+        else()
+            message("-- Found MSBuild: ${FREEIMAGE_MSBUILD_TOOL}")
+        endif()
+
         ExternalProject_Add(
             FreeImage
             PREFIX
@@ -45,7 +60,7 @@ if (BUILD_FREEIMAGE OR FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NO
             CONFIGURE_COMMAND
                 ""
             BUILD_COMMAND
-                ${CMAKE_MAKE_PROGRAM} FreeImage.2017.sln /p:Configuration=Release /p:Platform=${FREEIMAGE_PLATFORM}
+                "${FREEIMAGE_MSBUILD_TOOL}" FreeImage.2017.sln /p:Configuration=Release /p:Platform=${FREEIMAGE_PLATFORM}
             BUILD_IN_SOURCE
                 1
             INSTALL_COMMAND

@@ -248,14 +248,13 @@ struct SL_DepthFuncOFF
     }
 
     #if defined(LS_X86_SSE)
-    inline LS_INLINE __m128 operator()(__m128, __m128) const noexcept
-    {
-        const int32_t n = 0xFFFFFFFF;
-        return _mm_set1_ps(*reinterpret_cast<const float*>(&n));
-    }
+        inline LS_INLINE __m128 operator()(__m128, __m128) const noexcept
+        {
+            return _mm_castsi128_ps(_mm_set1_epi32(0xFFFFFFFF));
+        }
 
     #elif defined(LS_ARM_NEON)
-    inline LS_INLINE float32x4_t operator()(float32x4_t, float32x4_t) const noexcept
+        inline LS_INLINE float32x4_t operator()(float32x4_t, float32x4_t) const noexcept
         {
             return vreinterpretq_f32_u32(vdupq_n_u32(0xFFFFFFFF));
         }

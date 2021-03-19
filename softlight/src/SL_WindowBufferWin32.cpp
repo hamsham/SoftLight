@@ -111,7 +111,7 @@ int SL_WindowBufferWin32::init(SL_RenderWindow& win, unsigned width, unsigned he
     pInfo->bmiHeader.biClrUsed       = 0;
     pInfo->bmiHeader.biClrImportant  = 0;
 
-    if (mTexture.init(SL_COLOR_RGBA_8U, width, height, 1) != 0)
+    if (mTexture.init(SL_COLOR_RGBA_8U, (uint16_t)width, (uint16_t)height, 1) != 0)
     {
         ls::utils::aligned_free(pInfo);
         return -4;

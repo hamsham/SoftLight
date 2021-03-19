@@ -449,8 +449,8 @@ int main()
                 std::cout<< "Window resized: " << evt.window.width << 'x' << evt.window.height << std::endl;
                 pRenderBuf->terminate();
                 pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
-                context.texture(0).init(context.texture(0).type(), pWindow->width(), pWindow->height());
-                context.texture(1).init(context.texture(1).type(), pWindow->width(), pWindow->height());
+                context.texture(0).init(context.texture(0).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
+                context.texture(1).init(context.texture(1).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
                 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
             }
 

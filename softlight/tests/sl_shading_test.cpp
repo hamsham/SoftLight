@@ -244,10 +244,10 @@ int scene_load_sphere(SL_SceneGraph& graph, unsigned numStacks, unsigned numSect
     const float sectorStep   = LS_TWO_PI / numSectorsf;
     const float stackStep = LS_PI / numStacksf;
 
-    const size_t numVerts   = (numSectors+1) * (numStacks+1);
-    const size_t stride     = sizeof(SphereVert);
-    const size_t numBytes   = numVerts * stride;
-    size_t       numIndices = (6*numSectors*(numStacks-1)) + (2*numSectors*numStacks) + (2*numSectors*(numStacks-1));
+    const unsigned numVerts   = (numSectors+1) * (numStacks+1);
+    const unsigned stride     = (unsigned)sizeof(SphereVert);
+    const unsigned numBytes   = numVerts * stride;
+    unsigned       numIndices = (6*numSectors*(numStacks-1)) + (2*numSectors*numStacks) + (2*numSectors*(numStacks-1));
     //numIndices += 3 - (numIndices%3);
 
     int retCode = 0;
@@ -616,8 +616,8 @@ int main()
                 std::cout<< "Window resized: " << evt.window.width << 'x' << evt.window.height << std::endl;
                 pRenderBuf->terminate();
                 pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
-                context.texture(0).init(context.texture(0).type(), pWindow->width(), pWindow->height());
-                context.texture(1).init(context.texture(1).type(), pWindow->width(), pWindow->height());
+                context.texture(0).init(context.texture(0).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
+                context.texture(1).init(context.texture(1).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
                 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
             }
 

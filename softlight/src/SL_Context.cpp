@@ -744,8 +744,8 @@ void SL_Context::blit(SL_WindowBuffer& buffer, size_t textureId) noexcept
     const uint16_t srcY1 = pTex->height();
     const uint16_t dstX0 = 0;
     const uint16_t dstY0 = 0;
-    const uint16_t dstX1 = buffer.width();
-    const uint16_t dstY1 = buffer.height();
+    const uint16_t dstX1 = (uint16_t)buffer.width();
+    const uint16_t dstY1 = (uint16_t)buffer.height();
 
     mProcessors.run_blit_processors(
         mTextures[textureId],

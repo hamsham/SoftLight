@@ -295,28 +295,33 @@ void blit_backbuffer(SL_WindowBuffer* backBuffer, SL_Context& context, unsigned 
         return;
     }
 
+    const uint16_t w = (uint16_t)backBuffer->width();
+    const uint16_t h = (uint16_t)backBuffer->height();
+    const uint16_t w2 = (uint16_t)(backBuffer->width() / 2);
+    const uint16_t h2 = (uint16_t)(backBuffer->height() / 2);
+
     context.blit(
         *backBuffer, 1,
-        0, 0, backBuffer->width(), backBuffer->height(),
-        0, 0, backBuffer->width()/2, backBuffer->height()/2
+        0, 0, w,  h,
+        0, 0, w2, h2
     );
 
     context.blit(
         *backBuffer, 2,
-        0, 0, backBuffer->width(), backBuffer->height(),
-        backBuffer->width()/2, 0, backBuffer->width(), backBuffer->height()/2
+        0,  0, w, h,
+        w2, 0, w, h2
     );
 
     context.blit(
         *backBuffer, 3,
-        0, 0, backBuffer->width(), backBuffer->height(),
-        0, backBuffer->height()/2, backBuffer->width()/2, backBuffer->height()
+        0, 0,  w,  h,
+        0, h2, w2, h
     );
 
     context.blit(
         *backBuffer, 4,
-        0, 0, backBuffer->width(), backBuffer->height(),
-        backBuffer->width()/2, backBuffer->height()/2, backBuffer->width(), backBuffer->height()
+        0,  0,  w, h,
+        w2, h2, w, h
     );
 }
 
@@ -388,11 +393,11 @@ int main()
                 pRenderBuf->terminate();
                 pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
 
-                context.texture(0).init(context.texture(0).type(), pWindow->width(), pWindow->height());
-                context.texture(1).init(context.texture(1).type(), pWindow->width(), pWindow->height());
-                context.texture(2).init(context.texture(2).type(), pWindow->width(), pWindow->height());
-                context.texture(3).init(context.texture(2).type(), pWindow->width(), pWindow->height());
-                context.texture(4).init(context.texture(2).type(), pWindow->width(), pWindow->height());
+                context.texture(0).init(context.texture(0).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
+                context.texture(1).init(context.texture(1).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
+                context.texture(2).init(context.texture(2).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
+                context.texture(3).init(context.texture(3).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
+                context.texture(4).init(context.texture(4).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
 
                 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
             }

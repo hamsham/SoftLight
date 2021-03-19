@@ -787,6 +787,7 @@ SL_Framebuffer::PixelPlacementFuncType SL_Framebuffer::pixel_placement_function(
         case SL_COLOR_RGBA_DOUBLE: return &assign_pixel<SL_ColorRGBAd>;
 
         default:
+            LS_DEBUG_ASSERT(false);
             LS_UNREACHABLE();
     }
 
@@ -833,6 +834,7 @@ SL_Framebuffer::BlendedPixelPlacementFuncType SL_Framebuffer::blended_pixel_plac
         case SL_COLOR_RGBA_DOUBLE: return &assign_alpha_pixel<SL_ColorRGBAd>;
 
         default:
+            LS_DEBUG_ASSERT(false);
             LS_UNREACHABLE();
     }
 

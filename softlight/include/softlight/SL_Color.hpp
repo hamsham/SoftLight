@@ -249,7 +249,7 @@ color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, S
 {
     return SL_ColorRType<T>
    {
-       (T)(((float)std::numeric_limits<T>::max() / (float)std::numeric_limits<U>::max()) * p.r)
+       (T)(((float)std::numeric_limits<T>::max() / (float)std::numeric_limits<U>::max()) * (float)p.r)
    };
 }
 
