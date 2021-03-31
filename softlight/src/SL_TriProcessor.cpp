@@ -75,6 +75,25 @@ inline LS_INLINE void sl_perspective_divide3(math::vec4& LS_RESTRICT_PTR v0, mat
         v1.simd = _mm_or_ps(_mm_castsi128_ps(vi1), _mm_castsi128_ps(wi1));
         v2.simd = _mm_or_ps(_mm_castsi128_ps(vi2), _mm_castsi128_ps(wi2));
 
+    #elif defined(LS_ARCH_AARCH64)
+        //const uint32x4_t blendMask{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000000};
+        const uint32x4_t blendMask = vsetq_lane_u32(0, vdupq_n_u32(0xFFFFFFFF), 3);
+
+        const float32x4_t w0 = vdupq_n_f32(vgetq_lane_f32(v0.simd, 3));
+        const float32x4_t wInv0 = vdivq_f32(vdupq_n_f32(1.f), w0);
+        const float32x4_t vMul0 = vmulq_f32(v0.simd, wInv0);
+        v0.simd = vbslq_f32(blendMask, vMul0, wInv0);
+
+        const float32x4_t w1 = vdupq_n_f32(vgetq_lane_f32(v1.simd, 3));
+        const float32x4_t wInv1 = vdivq_f32(vdupq_n_f32(1.f), w1);
+        const float32x4_t vMul1 = vmulq_f32(v1.simd, wInv1);
+        v1.simd = vbslq_f32(blendMask, vMul1, wInv1);
+
+        const float32x4_t w2 = vdupq_n_f32(vgetq_lane_f32(v2.simd, 3));
+        const float32x4_t wInv2 = vdivq_f32(vdupq_n_f32(1.f), w2);
+        const float32x4_t vMul2 = vmulq_f32(v2.simd, wInv2);
+        v2.simd = vbslq_f32(blendMask, vMul2, wInv2);
+
     #elif defined(LS_ARM_NEON)
         //const uint32x4_t blendMask{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000000};
         const uint32x4_t blendMask = vsetq_lane_u32(0, vdupq_n_u32(0xFFFFFFFF), 3);

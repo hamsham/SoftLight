@@ -48,38 +48,38 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
     static_assert(SL_SHADER_MAX_VARYING_VECTORS == 4, "Please update the varying interpolator.");
 
     #if defined(LS_X86_AVX2)
-    (void)numVaryings;
+        (void)numVaryings;
 
-    const float* LS_RESTRICT_PTR i0 = reinterpret_cast<const float*>(inVaryings0);
-    const float* LS_RESTRICT_PTR i1 = reinterpret_cast<const float*>(inVaryings0 + SL_SHADER_MAX_VARYING_VECTORS);
-    const float* LS_RESTRICT_PTR i2 = reinterpret_cast<const float*>(inVaryings0 + SL_SHADER_MAX_VARYING_VECTORS * 2);
-    float* const LS_RESTRICT_PTR o = reinterpret_cast<float*>(outVaryings);
+        const float* LS_RESTRICT_PTR i0 = reinterpret_cast<const float*>(inVaryings0);
+        const float* LS_RESTRICT_PTR i1 = reinterpret_cast<const float*>(inVaryings0 + SL_SHADER_MAX_VARYING_VECTORS);
+        const float* LS_RESTRICT_PTR i2 = reinterpret_cast<const float*>(inVaryings0 + SL_SHADER_MAX_VARYING_VECTORS * 2);
+        float* const LS_RESTRICT_PTR o = reinterpret_cast<float*>(outVaryings);
 
-    __m256 a, c, v0, v2;
+        __m256 a, c, v0, v2;
 
-    a = _mm256_load_ps(i0 + 0);
-    c = _mm256_load_ps(i0 + 8);
-    const __m256 bc0 = _mm256_broadcast_ss(baryCoords+0);
-    v0 = _mm256_mul_ps(bc0, a);
-    v2 = _mm256_mul_ps(bc0, c);
+        a = _mm256_load_ps(i0 + 0);
+        c = _mm256_load_ps(i0 + 8);
+        const __m256 bc0 = _mm256_broadcast_ss(baryCoords+0);
+        v0 = _mm256_mul_ps(bc0, a);
+        v2 = _mm256_mul_ps(bc0, c);
 
-    a = _mm256_load_ps(i1 + 0);
-    c = _mm256_load_ps(i1 + 8);
-    const __m256 bc1 = _mm256_broadcast_ss(baryCoords+1);
-    v0 = _mm256_fmadd_ps(bc1, a, v0);
-    v2 = _mm256_fmadd_ps(bc1, c, v2);
+        a = _mm256_load_ps(i1 + 0);
+        c = _mm256_load_ps(i1 + 8);
+        const __m256 bc1 = _mm256_broadcast_ss(baryCoords+1);
+        v0 = _mm256_fmadd_ps(bc1, a, v0);
+        v2 = _mm256_fmadd_ps(bc1, c, v2);
 
-    a = _mm256_load_ps(i2 + 0);
-    c = _mm256_load_ps(i2 + 8);
-    const __m256 bc2 = _mm256_broadcast_ss(baryCoords+2);
-    v0 = _mm256_fmadd_ps(bc2, a, v0);
-    v2 = _mm256_fmadd_ps(bc2, c, v2);
+        a = _mm256_load_ps(i2 + 0);
+        c = _mm256_load_ps(i2 + 8);
+        const __m256 bc2 = _mm256_broadcast_ss(baryCoords+2);
+        v0 = _mm256_fmadd_ps(bc2, a, v0);
+        v2 = _mm256_fmadd_ps(bc2, c, v2);
 
-    _mm256_store_ps(o + 0,  v0);
-    _mm256_store_ps(o + 8,  v2);
+        _mm256_store_ps(o + 0,  v0);
+        _mm256_store_ps(o + 8,  v2);
 
     #elif defined(LS_X86_SSE)
-    (void)numVaryings;
+        (void)numVaryings;
 
         const float* LS_RESTRICT_PTR i0 = reinterpret_cast<const float*>(inVaryings0);
         const float* LS_RESTRICT_PTR i1 = reinterpret_cast<const float*>(inVaryings0 + SL_SHADER_MAX_VARYING_VECTORS);
@@ -122,6 +122,40 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
         _mm_store_ps(o + 4,  v1);
         _mm_store_ps(o + 8,  v2);
         _mm_store_ps(o + 12, v3);
+
+    #elif defined(LS_ARCH_AARCH64)
+        const math::vec4* LS_RESTRICT_PTR inVaryings1 = inVaryings0 + SL_SHADER_MAX_VARYING_VECTORS;
+        const math::vec4* LS_RESTRICT_PTR inVaryings2 = inVaryings0 + SL_SHADER_MAX_VARYING_VECTORS * 2;
+
+        const float32x4_t bc  = vld1q_f32(baryCoords);
+        float32x4_t v0, v1, v2;
+
+        switch (numVaryings)
+        {
+            case 4:
+                v0 = vmulq_laneq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings0+3)), bc, 0);
+                v1 = vfmaq_laneq_f32(v0, vld1q_f32(reinterpret_cast<const float*>(inVaryings1+3)), bc, 1);
+                v2 = vfmaq_laneq_f32(v1, vld1q_f32(reinterpret_cast<const float*>(inVaryings2+3)), bc, 2);
+                vst1q_f32(reinterpret_cast<float*>(outVaryings+3), v2);
+
+            case 3:
+                v0 = vmulq_laneq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings0+2)), bc, 0);
+                v1 = vfmaq_laneq_f32(v0, vld1q_f32(reinterpret_cast<const float*>(inVaryings1+2)), bc, 1);
+                v2 = vfmaq_laneq_f32(v1, vld1q_f32(reinterpret_cast<const float*>(inVaryings2+2)), bc, 2);
+                vst1q_f32(reinterpret_cast<float*>(outVaryings+2), v2);
+
+            case 2:
+                v0 = vmulq_laneq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings0+1)), bc, 0);
+                v1 = vfmaq_laneq_f32(v0, vld1q_f32(reinterpret_cast<const float*>(inVaryings1+1)), bc, 1);
+                v2 = vfmaq_laneq_f32(v1, vld1q_f32(reinterpret_cast<const float*>(inVaryings2+1)), bc, 2);
+                vst1q_f32(reinterpret_cast<float*>(outVaryings+1), v2);
+
+            case 1:
+                v0 = vmulq_laneq_f32(vld1q_f32(reinterpret_cast<const float*>(inVaryings0)), bc, 0);
+                v1 = vfmaq_laneq_f32(v0, vld1q_f32(reinterpret_cast<const float*>(inVaryings1)), bc, 1);
+                v2 = vfmaq_laneq_f32(v1, vld1q_f32(reinterpret_cast<const float*>(inVaryings2)), bc, 2);
+                vst1q_f32(reinterpret_cast<float*>(outVaryings), v2);
+        }
 
     #elif defined(LS_ARM_NEON)
         const math::vec4* LS_RESTRICT_PTR inVaryings1 = inVaryings0 + SL_SHADER_MAX_VARYING_VECTORS;
@@ -194,6 +228,13 @@ template <>
 inline LS_INLINE float _sl_get_depth_texel<float>(const float* pDepth)
 {
     return _mm_cvtss_f32(_mm_load_ss(pDepth));
+}
+
+#elif defined(LS_ARM_NEON)
+template <>
+inline LS_INLINE float _sl_get_depth_texel<math::half>(const math::half* pDepth)
+{
+    return (float)(*reinterpret_cast<const __fp16*>(pDepth));
 }
 
 #endif

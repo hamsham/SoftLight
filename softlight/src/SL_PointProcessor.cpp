@@ -43,6 +43,15 @@ inline LS_INLINE void sl_perspective_divide1(math::vec4& LS_RESTRICT_PTR v0) noe
         const __m128i vi0  = _mm_shuffle_epi8(_mm_castps_si128(vMul0), _mm_set_epi8(-1, -1, -1, -1, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0));
         v0.simd = _mm_or_ps(_mm_castsi128_ps(vi0), _mm_castsi128_ps(wi0));
 
+    #elif defined(LS_ARCH_AARCH64)
+        //const uint32x4_t blendMask{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000000};
+        const uint32x4_t blendMask = vsetq_lane_u32(0, vdupq_n_u32(0xFFFFFFFF), 3);
+
+        const float32x4_t w0 = vdupq_n_f32(vgetq_lane_f32(v0.simd, 3));
+        const float32x4_t wInv0 = vdivq_f32(vdupq_n_f32(1.f), w0);
+        const float32x4_t vMul0 = vmulq_f32(v0.simd, wInv0);
+        v0.simd = vbslq_f32(blendMask, vMul0, wInv0);
+
     #elif defined(LS_ARM_NEON)
         //const uint32x4_t blendMask{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000000};
         const uint32x4_t blendMask = vsetq_lane_u32(0, vdupq_n_u32(0xFFFFFFFF), 3);

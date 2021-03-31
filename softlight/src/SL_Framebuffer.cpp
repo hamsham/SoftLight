@@ -127,6 +127,51 @@ inline void assign_pixel<SL_ColorRGBAf>(
 
     _mm_stream_ps(reinterpret_cast<float*>(outTexel), _mm_load_ps(&rgba));
 }
+
+
+
+#elif defined(LS_ARM_NEON)
+template <>
+inline void assign_pixel<SL_ColorRGBA8>(
+    uint16_t x,
+    uint16_t y,
+    const math::vec4& rgba,
+    SL_Texture* pTexture) noexcept
+{
+    // Get a reference to the source texel
+    int32_t* const  outTexel = pTexture->texel_pointer<int32_t>(x, y);
+
+    #if defined(LS_ARCH_AARCH64)
+        const uint32x4_t color32 = vcvtq_u32_f32(vmulq_n_f32(rgba.simd, 255.f));
+    #else
+        const uint32x4_t color32 = vcvtq_u32_f32(vmulq_f32(rgba.simd, vdupq_n_f32(255.f)));
+    #endif
+    const uint16x8_t color16 = vcombine_u16(vmovn_u32(color32), vmovn_u32(color32));
+    const uint8x8_t color8 = vmovn_u16(color16);
+    vst1_lane_u32(outTexel, vreinterpret_u32_u8(color8), 0);
+}
+
+
+
+template <>
+inline void assign_pixel<SL_ColorRGBA16>(
+    uint16_t x,
+    uint16_t y,
+    const math::vec4& rgba,
+    SL_Texture* pTexture) noexcept
+{
+    // Get a reference to the source texel
+    int64_t* const  outTexel = pTexture->texel_pointer<int64_t>(x, y);
+
+    #if defined(LS_ARCH_AARCH64)
+        const uint32x4_t color32 = vcvtq_u32_f32(vmulq_n_f32(rgba.simd, 65536.f));
+    #else
+        const uint32x4_t color32 = vcvtq_u32_f32(vmulq_f32(rgba.simd, vdupq_n_f32(255.f)));
+    #endif
+
+    vst1_u16(reinterpret_cast<uint16_t*>(outTexel), vmovn_u32(color32));
+}
+
 #endif
 
 

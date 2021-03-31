@@ -144,6 +144,8 @@ void SL_VertexProcessor::cleanup() noexcept
     }
 }
 
+
+
 /*--------------------------------------
  * Raster Specializations
 --------------------------------------*/
