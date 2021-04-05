@@ -139,7 +139,7 @@ inline void assign_pixel<SL_ColorRGBA8>(
     SL_Texture* pTexture) noexcept
 {
     // Get a reference to the source texel
-    int32_t* const  outTexel = pTexture->texel_pointer<int32_t>(x, y);
+    uint32_t* const outTexel = pTexture->texel_pointer<uint32_t>(x, y);
 
     #if defined(LS_ARCH_AARCH64)
         const uint32x4_t color32 = vcvtq_u32_f32(vmulq_n_f32(rgba.simd, 255.f));
@@ -161,12 +161,12 @@ inline void assign_pixel<SL_ColorRGBA16>(
     SL_Texture* pTexture) noexcept
 {
     // Get a reference to the source texel
-    int64_t* const  outTexel = pTexture->texel_pointer<int64_t>(x, y);
+    int64_t* const outTexel = pTexture->texel_pointer<int64_t>(x, y);
 
     #if defined(LS_ARCH_AARCH64)
         const uint32x4_t color32 = vcvtq_u32_f32(vmulq_n_f32(rgba.simd, 65536.f));
     #else
-        const uint32x4_t color32 = vcvtq_u32_f32(vmulq_f32(rgba.simd, vdupq_n_f32(255.f)));
+        const uint32x4_t color32 = vcvtq_u32_f32(vmulq_f32(rgba.simd, vdupq_n_f32(65536.f)));
     #endif
 
     vst1_u16(reinterpret_cast<uint16_t*>(outTexel), vmovn_u32(color32));

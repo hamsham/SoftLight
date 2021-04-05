@@ -563,44 +563,11 @@ color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, S
 
 
 
-#if 0//defined(LS_ARM_NEON)
-template <>
-inline SL_ColorRGBAType<float> color_cast<float, uint8_t>(const SL_ColorRGBAType<uint8_t>& p)
-{
-    const uint8x8_t color8 = vld1_u8(p.v);
-    const uint16x8_t color16 = vmovl_u8(color8);
-    const uint32x4_t color32 = vmovl_u16(vget_low_u16(color16));
-    const float32x4_t colorf = vcvtq_f32_u32(color32);
-
-    return SL_ColorRGBAType<float>{vmulq_f32(colorf, vdupq_n_f32(0.00392156862745f))};
-}
-
-#else
 template <>
 inline SL_ColorRGBAType<float> color_cast<float, uint8_t>(const SL_ColorRGBAType<uint8_t>& p)
 {
     return ((SL_ColorRGBAType<float>)p) * 0.00392156862745f;
 }
-
-#endif
-
-
-
-/*
-template <>
-inline SL_ColorRGBAType<float> color_cast<float, uint16_t>(const SL_ColorRGBAType<uint16_t>& p)
-{
-    return (SL_ColorRGBAType<float>)p * 1.52590218967e-05f;
-}
-
-
-
-template <>
-inline SL_ColorRGBAType<float> color_cast<float, uint32_t>(const SL_ColorRGBAType<uint32_t>& p)
-{
-    return (SL_ColorRGBAType<float>)p * 2.32830643708e-10f;
-}
-*/
 
 
 
