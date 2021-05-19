@@ -236,7 +236,7 @@ void SL_PointProcessor::process_verts(const SL_Mesh& m, size_t instanceId) noexc
     {
         #if SL_VERTEX_CACHING_ENABLED
             const size_t vertId = usingIndices ? pIbo->index(i) : i;
-            ptvCache.query_and_update(vertId, pVert0);
+            ptvCache.query_and_update(vertId, scissorMat, pVert0);
 
         #else
             params.vertId    = usingIndices ? pIbo->index(i) : i;

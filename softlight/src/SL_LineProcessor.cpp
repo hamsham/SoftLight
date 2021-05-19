@@ -297,10 +297,12 @@ void SL_LineProcessor::process_verts(const SL_Mesh& m, size_t instanceId) noexce
         const size_t index1 = i + 1;
 
         #if SL_VERTEX_CACHING_ENABLED
-            const size_t vertId0 = usingIndices ? get_next_vertex(pIbo, index0) : index0;
-            const size_t vertId1 = usingIndices ? get_next_vertex(pIbo, index1) : index1;
-            ptvCache.query_and_update(vertId0, pVert0);
-            ptvCache.query_and_update(vertId1, pVert1);
+            const size_t vertId0 = usingIndices ? pIbo->index(index0) : index0;
+            const size_t vertId1 = usingIndices ? pIbo->index(index1) : index1;
+
+            ptvCache.query_and_update(vertId0, scissorMat, pVert0);
+            ptvCache.query_and_update(vertId1, scissorMat, pVert1);
+
         #else
             params.vertId    = usingIndices ? pIbo->index(index0) : index0;
             params.pVaryings = pVert0.varyings;

@@ -2,12 +2,19 @@
 #ifndef SL_VERTEX_CACHE_HPP
 #define SL_VERTEX_CACHE_HPP
 
+#include "lightsky/math/mat4.h"
+
 #include "softlight/SL_Config.hpp"
 #include "softlight/SL_Shader.hpp" // SL_VertexParam
 #include "softlight/SL_ShaderUtil.hpp" // SL_VERTEX_CACHE_SIZE
 
 
 
+/**
+ * @brief Pre-Transform Vertex Cache
+ *
+ * This class helps to cache vertices immediately output from a shader.
+ */
 class SL_PTVCache
 {
   private:
@@ -28,6 +35,8 @@ class SL_PTVCache
     SL_TransformedVert mVertices[PTV_CACHE_SIZE];
 
   public:
+    // Removing all copy and move operations since this class should only be
+    // used within a single instance of a vertex processor.
     SL_PTVCache(const SL_PTVCache&)            = delete;
     SL_PTVCache(SL_PTVCache&&)                 = delete;
     SL_PTVCache& operator=(const SL_PTVCache&) = delete;
@@ -35,18 +44,19 @@ class SL_PTVCache
 
     SL_PTVCache(ls::math::vec4_t<float> (*pShader)(SL_VertexParam&), SL_VertexParam& inParam) noexcept;
 
-    SL_TransformedVert* query_and_update(size_t key) noexcept;
+    SL_TransformedVert* query_and_update(size_t key, const ls::math::mat4& scissorMat) noexcept;
 
-    void query_and_update(size_t key, SL_TransformedVert& out) noexcept;
+    void query_and_update(size_t key, const ls::math::mat4& scissorMat, SL_TransformedVert& out) noexcept;
 };
 
 
 
+/*-------------------------------------
+ * Constructor
+-------------------------------------*/
 inline SL_PTVCache::SL_PTVCache(ls::math::vec4_t<float> (*pShader)(SL_VertexParam&), SL_VertexParam& inParam) noexcept :
-    //mIndices{},
     mParam{inParam},
     mShader{pShader}
-    //mVertices{}
 {
     for (size_t& index : mIndices)
     {
@@ -56,7 +66,10 @@ inline SL_PTVCache::SL_PTVCache(ls::math::vec4_t<float> (*pShader)(SL_VertexPara
 
 
 
-inline LS_INLINE SL_TransformedVert* SL_PTVCache::query_and_update(size_t key) noexcept
+/*-------------------------------------
+ * Query the cache or insert a new element
+-------------------------------------*/
+inline LS_INLINE SL_TransformedVert* SL_PTVCache::query_and_update(size_t key, const ls::math::mat4& scissorMat) noexcept
 {
     const size_t i = key & (PTV_CACHE_SIZE-1);
 
@@ -65,7 +78,7 @@ inline LS_INLINE SL_TransformedVert* SL_PTVCache::query_and_update(size_t key) n
         mIndices[i] = key;
         mParam.vertId = key;
         mParam.pVaryings = mVertices[i].varyings;
-        mVertices[i].vert = mShader(mParam);
+        mVertices[i].vert = scissorMat * mShader(mParam);
     }
 
     return mVertices+i;
@@ -73,9 +86,12 @@ inline LS_INLINE SL_TransformedVert* SL_PTVCache::query_and_update(size_t key) n
 
 
 
-inline LS_INLINE void SL_PTVCache::query_and_update(size_t key, SL_TransformedVert& out) noexcept
+/*-------------------------------------
+ * Query the cache or insert a new element
+-------------------------------------*/
+inline LS_INLINE void SL_PTVCache::query_and_update(size_t key, const ls::math::mat4& scissorMat, SL_TransformedVert& out) noexcept
 {
-    const SL_TransformedVert* pIn = query_and_update(key);
+    const SL_TransformedVert* pIn = query_and_update(key, scissorMat);
 
     #if defined(LS_X86_SSE)
         _mm_store_ps(reinterpret_cast<float*>(&out)+0, _mm_load_ps(reinterpret_cast<const float*>(pIn)+0));

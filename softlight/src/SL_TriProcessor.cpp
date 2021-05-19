@@ -409,31 +409,57 @@ inline LS_INLINE SL_ClipStatus face_visible(
 /*--------------------------------------
  * Load a grouping of vertex element IDs
 --------------------------------------*/
-inline LS_INLINE math::vec3_t<size_t> get_next_vertex3(const SL_IndexBuffer* LS_RESTRICT_PTR pIbo, size_t vId) noexcept
+inline LS_INLINE math::vec4_t<size_t> get_next_vertex3(const SL_IndexBuffer* LS_RESTRICT_PTR pIbo, size_t vId) noexcept
 {
-    math::vec3_t<unsigned char> byteIds;
-    math::vec3_t<unsigned short> shortIds;
-    math::vec3_t<unsigned int> intIds;
+    #if defined(LS_ARCH_X86)
+        union
+        {
+            __m128 asNative;
+            math::vec4_t<unsigned char> asBytes;
+            math::vec4_t<unsigned short> asShorts;
+            math::vec4_t<unsigned int> asInts;
+        } ids;
+
+        ids.asNative = _mm_loadu_ps(reinterpret_cast<const float*>(pIbo->element(vId)));
+
+    #elif defined(LS_ARCH_ARM)
+        union
+        {
+            uint32x4_t asNative;
+            math::vec4_t<unsigned char> asBytes;
+            math::vec4_t<unsigned short> asShorts;
+            math::vec4_t<unsigned int> asInts;
+        } ids;
+
+        ids.asNative = vld1q_u32(reinterpret_cast<const uint32_t*>(pIbo->element(vId)));
+
+    #else
+        union
+        {
+            math::vec4_t<unsigned char> asBytes;
+            math::vec4_t<unsigned short> asShorts;
+            math::vec4_t<unsigned int> asInts;
+        } ids;
+
+        ids = *reinterpret_cast<const decltype(ids)*>(pIbo->element(vId));
+    #endif
 
     switch (pIbo->type())
     {
         case VERTEX_DATA_BYTE:
-            byteIds = *reinterpret_cast<const decltype(byteIds)*>(pIbo->element(vId));
-            return (math::vec3_t<size_t>)byteIds;
+            return (math::vec4_t<size_t>)ids.asBytes;
 
         case VERTEX_DATA_SHORT:
-            shortIds = *reinterpret_cast<const decltype(shortIds)*>(pIbo->element(vId));
-            return (math::vec3_t<size_t>)shortIds;
+            return (math::vec4_t<size_t>)ids.asShorts;
 
         case VERTEX_DATA_INT:
-            intIds = *reinterpret_cast<const decltype(intIds)*>(pIbo->element(vId));
-            return (math::vec3_t<size_t>)intIds;
+            return (math::vec4_t<size_t>)ids.asInts;
 
         default:
             LS_UNREACHABLE();
     }
 
-    return math::vec3_t<size_t>{0, 0, 0};
+    return math::vec4_t<size_t>{0, 0, 0, 0};
 }
 
 
@@ -673,21 +699,23 @@ void SL_TriProcessor::clip_and_process_tris(
 
     LS_DEBUG_ASSERT(numTotalVerts <= numTempVerts);
 
+    switch (numTotalVerts)
     {
-        sl_perspective_divide3(newVerts[0], newVerts[1], newVerts[2]);
-        sl_world_to_screen_coords_divided3(newVerts[0], newVerts[1], newVerts[2], viewportDims);
-    }
+        case 9:
+        case 8:
+        case 7:
+            sl_perspective_divide3(newVerts[6], newVerts[7], newVerts[8]);
+            sl_world_to_screen_coords_divided3(newVerts[6], newVerts[7], newVerts[8], viewportDims);
 
-    if (LS_LIKELY(numTotalVerts > 3))
-    {
-        sl_perspective_divide3(newVerts[3], newVerts[4], newVerts[5]);
-        sl_world_to_screen_coords_divided3(newVerts[3], newVerts[4], newVerts[5], viewportDims);
-    }
+        case 6:
+        case 5:
+        case 4:
+            sl_perspective_divide3(newVerts[3], newVerts[4], newVerts[5]);
+            sl_world_to_screen_coords_divided3(newVerts[3], newVerts[4], newVerts[5], viewportDims);
 
-    if (LS_LIKELY(numTotalVerts > 6))
-    {
-        sl_perspective_divide3(newVerts[6], newVerts[7], newVerts[8]);
-        sl_world_to_screen_coords_divided3(newVerts[6], newVerts[7], newVerts[8], viewportDims);
+        default:
+            sl_perspective_divide3(newVerts[0], newVerts[1], newVerts[2]);
+            sl_world_to_screen_coords_divided3(newVerts[0], newVerts[1], newVerts[2], viewportDims);
     }
 
     SL_TransformedVert p0, p1, p2;
@@ -760,12 +788,13 @@ void SL_TriProcessor::process_verts(const SL_Mesh& m, size_t instanceId) noexcep
 
     for (size_t i = begin; i < end; i += step)
     {
-        const math::vec3_t<size_t>&& vertId = usingIndices ? get_next_vertex3(pIbo, i) : math::vec3_t<size_t>{i, i+1, i+2};
+        const math::vec4_t<size_t>&& vertId = usingIndices ? get_next_vertex3(pIbo, i) : math::vec4_t<size_t>{i+0, i+1, i+2, i+3};
 
         #if SL_VERTEX_CACHING_ENABLED
-            ptvCache.query_and_update(vertId[0], pVert0);
-            ptvCache.query_and_update(vertId[1], pVert1);
-            ptvCache.query_and_update(vertId[2], pVert2);
+            ptvCache.query_and_update(vertId[0], scissorMat, pVert0);
+            ptvCache.query_and_update(vertId[1], scissorMat, pVert1);
+            ptvCache.query_and_update(vertId[2], scissorMat, pVert2);
+
         #else
             params.vertId    = vertId.v[0];
             params.pVaryings = pVert0.varyings;
