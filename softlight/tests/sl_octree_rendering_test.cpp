@@ -23,6 +23,7 @@
 #include "softlight/SL_RenderWindow.hpp"
 #include "softlight/SL_Sampler.hpp"
 #include "softlight/SL_SceneGraph.hpp"
+#include "softlight/SL_Shader.hpp"
 #include "softlight/SL_Transform.hpp"
 #include "softlight/SL_UniformBuffer.hpp"
 #include "softlight/SL_VertexArray.hpp"
