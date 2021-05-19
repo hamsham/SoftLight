@@ -541,7 +541,7 @@ std::size_t SL_Context::create_shader(
         return (std::size_t)-1;
     }
 
-    if (!fragShader.numOutputs)
+    if (!fragShader.numOutputs || fragShader.numOutputs > SL_SHADER_MAX_FRAG_OUTPUTS)
     {
         return (std::size_t)-1;
     }
