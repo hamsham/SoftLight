@@ -1,14 +1,11 @@
 
-#include <cstddef> // ptrdiff_t
-#include <type_traits> // std::is_same
-#include <utility> // std::move
-
 #include "lightsky/setup/Compiler.h" // LS_COMPILER_MSC
 
 #include "softlight/SL_Color.hpp"
 
 #include "softlight/SL_Framebuffer.hpp"
-#include "softlight/SL_Texture.hpp"
+#include "softlight/SL_PipelineState.hpp" // SL_BlendMode
+#include "softlight/SL_Shader.hpp" // SL_FragmentParam
 
 namespace math = ls::math;
 
@@ -688,6 +685,32 @@ void SL_Framebuffer::put_pixel(
 
 
 /*-------------------------------------
+ * Place a single pixel onto a texture
+-------------------------------------*/
+void SL_Framebuffer::put_pixel(SL_FboOutputMask outMask, SL_BlendMode blendMode, const SL_FragmentParam& fragParam) noexcept
+{
+    switch (outMask)
+    {
+        case SL_FBO_OUTPUT_ATTACHMENT_0_1_2_3: this->put_pixel(3, fragParam.coord.x, fragParam.coord.y, fragParam.pOutputs[3]);
+        case SL_FBO_OUTPUT_ATTACHMENT_0_1_2:   this->put_pixel(2, fragParam.coord.x, fragParam.coord.y, fragParam.pOutputs[2]);
+        case SL_FBO_OUTPUT_ATTACHMENT_0_1:     this->put_pixel(1, fragParam.coord.x, fragParam.coord.y, fragParam.pOutputs[1]);
+        case SL_FBO_OUTPUT_ATTACHMENT_0:       this->put_pixel(0, fragParam.coord.x, fragParam.coord.y, fragParam.pOutputs[0]);
+            break;
+
+        case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1_2_3: this->put_alpha_pixel(3, fragParam.coord.x, fragParam.coord.y, fragParam.pOutputs[3], blendMode);
+        case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1_2:   this->put_alpha_pixel(2, fragParam.coord.x, fragParam.coord.y, fragParam.pOutputs[2], blendMode);
+        case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1:     this->put_alpha_pixel(1, fragParam.coord.x, fragParam.coord.y, fragParam.pOutputs[1], blendMode);
+        case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0:       this->put_alpha_pixel(0, fragParam.coord.x, fragParam.coord.y, fragParam.pOutputs[0], blendMode);
+            break;
+
+        default:
+            LS_UNREACHABLE();
+    }
+}
+
+
+
+/*-------------------------------------
  * Place a pixel onto a texture with alpha blending
 -------------------------------------*/
 void SL_Framebuffer::put_alpha_pixel(
@@ -790,98 +813,4 @@ uint16_t SL_Framebuffer::depth() const noexcept
     }
 
     return 0;
-}
-
-
-
-/*-------------------------------------
- * Get the color placement function.
--------------------------------------*/
-SL_Framebuffer::PixelPlacementFuncType SL_Framebuffer::pixel_placement_function(SL_ColorDataType type) const noexcept
-{
-    switch (type)
-    {
-        case SL_COLOR_R_8U:        return &assign_pixel<SL_ColorR8>;
-        case SL_COLOR_RG_8U:       return &assign_pixel<SL_ColorRG8>;
-        case SL_COLOR_RGB_8U:      return &assign_pixel<SL_ColorRGB8>;
-        case SL_COLOR_RGBA_8U:     return &assign_pixel<SL_ColorRGBA8>;
-
-        case SL_COLOR_R_16U:       return &assign_pixel<SL_ColorR16>;
-        case SL_COLOR_RG_16U:      return &assign_pixel<SL_ColorRG16>;
-        case SL_COLOR_RGB_16U:     return &assign_pixel<SL_ColorRGB16>;
-        case SL_COLOR_RGBA_16U:    return &assign_pixel<SL_ColorRGBA16>;
-
-        case SL_COLOR_R_32U:       return &assign_pixel<SL_ColorR32>;
-        case SL_COLOR_RG_32U:      return &assign_pixel<SL_ColorRG32>;
-        case SL_COLOR_RGB_32U:     return &assign_pixel<SL_ColorRGB32>;
-        case SL_COLOR_RGBA_32U:    return &assign_pixel<SL_ColorRGBA32>;
-
-        case SL_COLOR_R_64U:       return &assign_pixel<SL_ColorR64>;
-        case SL_COLOR_RG_64U:      return &assign_pixel<SL_ColorRG64>;
-        case SL_COLOR_RGB_64U:     return &assign_pixel<SL_ColorRGB64>;
-        case SL_COLOR_RGBA_64U:    return &assign_pixel<SL_ColorRGBA64>;
-
-        case SL_COLOR_R_FLOAT:     return &assign_pixel<SL_ColorRf>;
-        case SL_COLOR_RG_FLOAT:    return &assign_pixel<SL_ColorRGf>;
-        case SL_COLOR_RGB_FLOAT:   return &assign_pixel<SL_ColorRGBf>;
-        case SL_COLOR_RGBA_FLOAT:  return &assign_pixel<SL_ColorRGBAf>;
-
-        case SL_COLOR_R_DOUBLE:    return &assign_pixel<SL_ColorRd>;
-        case SL_COLOR_RG_DOUBLE:   return &assign_pixel<SL_ColorRGd>;
-        case SL_COLOR_RGB_DOUBLE:  return &assign_pixel<SL_ColorRGBd>;
-        case SL_COLOR_RGBA_DOUBLE: return &assign_pixel<SL_ColorRGBAd>;
-
-        default:
-            LS_DEBUG_ASSERT(false);
-            LS_UNREACHABLE();
-    }
-
-    return nullptr;
-}
-
-
-
-/*-------------------------------------
- * Get the blended color placement function.
--------------------------------------*/
-SL_Framebuffer::BlendedPixelPlacementFuncType SL_Framebuffer::blended_pixel_placement_function(SL_ColorDataType type) const noexcept
-{
-    switch (type)
-    {
-        case SL_COLOR_R_8U:        return &assign_alpha_pixel<SL_ColorR8>;
-        case SL_COLOR_RG_8U:       return &assign_alpha_pixel<SL_ColorRG8>;
-        case SL_COLOR_RGB_8U:      return &assign_alpha_pixel<SL_ColorRGB8>;
-        case SL_COLOR_RGBA_8U:     return &assign_alpha_pixel<SL_ColorRGBA8>;
-
-        case SL_COLOR_R_16U:       return &assign_alpha_pixel<SL_ColorR16>;
-        case SL_COLOR_RG_16U:      return &assign_alpha_pixel<SL_ColorRG16>;
-        case SL_COLOR_RGB_16U:     return &assign_alpha_pixel<SL_ColorRGB16>;
-        case SL_COLOR_RGBA_16U:    return &assign_alpha_pixel<SL_ColorRGBA16>;
-
-        case SL_COLOR_R_32U:       return &assign_alpha_pixel<SL_ColorR32>;
-        case SL_COLOR_RG_32U:      return &assign_alpha_pixel<SL_ColorRG32>;
-        case SL_COLOR_RGB_32U:     return &assign_alpha_pixel<SL_ColorRGB32>;
-        case SL_COLOR_RGBA_32U:    return &assign_alpha_pixel<SL_ColorRGBA32>;
-
-        case SL_COLOR_R_64U:       return &assign_alpha_pixel<SL_ColorR64>;
-        case SL_COLOR_RG_64U:      return &assign_alpha_pixel<SL_ColorRG64>;
-        case SL_COLOR_RGB_64U:     return &assign_alpha_pixel<SL_ColorRGB64>;
-        case SL_COLOR_RGBA_64U:    return &assign_alpha_pixel<SL_ColorRGBA64>;
-
-        case SL_COLOR_R_FLOAT:     return &assign_alpha_pixel<SL_ColorRf>;
-        case SL_COLOR_RG_FLOAT:    return &assign_alpha_pixel<SL_ColorRGf>;
-        case SL_COLOR_RGB_FLOAT:   return &assign_alpha_pixel<SL_ColorRGBf>;
-        case SL_COLOR_RGBA_FLOAT:  return &assign_alpha_pixel<SL_ColorRGBAf>;
-
-        case SL_COLOR_R_DOUBLE:    return &assign_alpha_pixel<SL_ColorRd>;
-        case SL_COLOR_RG_DOUBLE:   return &assign_alpha_pixel<SL_ColorRGd>;
-        case SL_COLOR_RGB_DOUBLE:  return &assign_alpha_pixel<SL_ColorRGBd>;
-        case SL_COLOR_RGBA_DOUBLE: return &assign_alpha_pixel<SL_ColorRGBAd>;
-
-        default:
-            LS_DEBUG_ASSERT(false);
-            LS_UNREACHABLE();
-    }
-
-    return nullptr;
 }

@@ -10,7 +10,6 @@
 #include "lightsky/utils/Copy.h" // utils::fast_memset, fast_fill
 
 #include "softlight/SL_Texture.hpp"
-#include "SL_Shader.hpp"
 
 
 
@@ -27,6 +26,36 @@ union vec4_t;
 }
 }
 
+struct SL_FragmentParam;
+enum SL_BlendMode : uint8_t;
+
+
+
+/*-----------------------------------------------------------------------------
+ * Framebuffer Utilities
+-----------------------------------------------------------------------------*/
+enum SL_FboOutputMask
+{
+    SL_FBO_OUTPUT_NONE,
+
+    SL_FBO_OUTPUT_ATTACHMENT_0,
+    SL_FBO_OUTPUT_ATTACHMENT_0_1,
+    SL_FBO_OUTPUT_ATTACHMENT_0_1_2,
+    SL_FBO_OUTPUT_ATTACHMENT_0_1_2_3,
+
+    SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0,
+    SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1,
+    SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1_2,
+    SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1_2_3,
+};
+
+
+
+constexpr SL_FboOutputMask sl_calc_fbo_out_mask(unsigned numOutputs, bool blendEnabled) noexcept
+{
+    return static_cast<SL_FboOutputMask>(numOutputs + (blendEnabled ? (unsigned)SL_FBO_OUTPUT_ATTACHMENT_0_1_2_3 : (unsigned)SL_FBO_OUTPUT_NONE));
+}
+
 
 
 /*-----------------------------------------------------------------------------
@@ -34,10 +63,6 @@ union vec4_t;
 -----------------------------------------------------------------------------*/
 class SL_Framebuffer
 {
-  public:
-    typedef void (*PixelPlacementFuncType)(uint16_t, uint16_t, const ls::math::vec4&, SL_Texture* const);
-    typedef void (*BlendedPixelPlacementFuncType)(uint16_t, uint16_t, const ls::math::vec4&, SL_Texture* const, const SL_BlendMode);
-
   private:
     uint64_t mNumColors;
 
@@ -98,6 +123,8 @@ class SL_Framebuffer
         uint16_t y,
         const ls::math::vec4_t<float>& rgba) noexcept;
 
+    void put_pixel(SL_FboOutputMask outMask, SL_BlendMode blendMode, const SL_FragmentParam& fragParam) noexcept;
+
     void put_alpha_pixel(
         uint64_t targetId,
         uint16_t x,
@@ -116,10 +143,6 @@ class SL_Framebuffer
     uint16_t height() const noexcept;
 
     uint16_t depth() const noexcept;
-
-    PixelPlacementFuncType pixel_placement_function(SL_ColorDataType type) const noexcept;
-
-    BlendedPixelPlacementFuncType blended_pixel_placement_function(SL_ColorDataType type) const noexcept;
 };
 
 
