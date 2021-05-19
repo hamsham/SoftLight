@@ -15,6 +15,8 @@
 #include "lightsky/math/scalar_utils.h"
 #include "lightsky/math/vec4.h"
 
+#include "softlight/SL_Config.hpp"
+
 
 
 /*-----------------------------------------------------------------------------
@@ -482,7 +484,11 @@ enum SL_ShaderLimits
 
     // Maximum number of fragments that get queued before being placed on a
     // framebuffer.
+    #if !SL_CONSERVE_MEMORY
     SL_SHADER_MAX_QUEUED_FRAGS    = 600,
+    #else
+    SL_SHADER_MAX_QUEUED_FRAGS    = 16,
+    #endif /* !SL_CONSERVE_MEMORY */
 
     // Maximum number of vertex groups which get binned before being sent to a
     // fragment processor.
@@ -499,6 +505,8 @@ union alignas(sizeof(ls::math::vec4)) SL_BinCounter
 {
     typename ls::setup::EnableIf<ls::setup::IsIntegral<data_t>::value, data_t>::type count;
     unsigned char padding[sizeof(ls::math::vec4)];
+
+    ~SL_BinCounter() noexcept {}
 
     constexpr LS_INLINE SL_BinCounter(const data_t& n) noexcept :
         count{n}
@@ -538,6 +546,8 @@ union alignas(sizeof(ls::math::vec4)) SL_BinCounterAtomic
 {
     std::atomic<typename ls::setup::EnableIf<ls::setup::IsIntegral<data_t>::value, data_t>::type> count;
     unsigned char padding[sizeof(ls::math::vec4)];
+
+    ~SL_BinCounterAtomic() noexcept {}
 
     constexpr LS_INLINE SL_BinCounterAtomic(const data_t& n) noexcept :
         count{n}

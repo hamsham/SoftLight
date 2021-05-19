@@ -2,6 +2,7 @@
 #ifndef SL_TRI_RASTERIZER_HPP
 #define SL_TRI_RASTERIZER_HPP
 
+#include "softlight/SL_Config.hpp"
 #include "softlight/SL_FragmentProcessor.hpp"
 
 
@@ -46,6 +47,14 @@ struct SL_DepthFuncOFF;
 -----------------------------------------------------------------------------*/
 struct SL_TriRasterizer final : public SL_FragmentProcessor
 {
+    #if SL_CONSERVE_MEMORY
+        template <class DepthCmpFunc, typename depth_type>
+        void flush_scanlines(const SL_FragmentBin* pBin, uint32_t xMin, uint32_t xMax, uint32_t y) const noexcept;
+
+        template <class DepthCmpFunc, typename depth_type>
+        void iterate_tri_scanlines() const noexcept;
+    #endif
+
     template <typename depth_type>
     void flush_fragments(const SL_FragmentBin* pBin, uint32_t numQueuedFrags, const SL_FragCoord* outCoords) const noexcept;
 
@@ -63,6 +72,69 @@ struct SL_TriRasterizer final : public SL_FragmentProcessor
 
     virtual void execute() noexcept override;
 };
+
+
+
+#if SL_CONSERVE_MEMORY
+extern template void SL_TriRasterizer::flush_scanlines<SL_DepthFuncLT, ls::math::half>(const SL_FragmentBin*, uint32_t, uint32_t, uint32_t) const noexcept;
+extern template void SL_TriRasterizer::flush_scanlines<SL_DepthFuncLT, float>(const SL_FragmentBin*, uint32_t, uint32_t, uint32_t) const noexcept;
+extern template void SL_TriRasterizer::flush_scanlines<SL_DepthFuncLT, double>(const SL_FragmentBin*, uint32_t, uint32_t, uint32_t) const noexcept;
+
+extern template void SL_TriRasterizer::flush_scanlines<SL_DepthFuncLE, ls::math::half>(const SL_FragmentBin*, uint32_t, uint32_t, uint32_t) const noexcept;
+extern template void SL_TriRasterizer::flush_scanlines<SL_DepthFuncLE, float>(const SL_FragmentBin*, uint32_t, uint32_t, uint32_t) const noexcept;
+extern template void SL_TriRasterizer::flush_scanlines<SL_DepthFuncLE, double>(const SL_FragmentBin*, uint32_t, uint32_t, uint32_t) const noexcept;
+
+extern template void SL_TriRasterizer::flush_scanlines<SL_DepthFuncGT, ls::math::half>(const SL_FragmentBin*, uint32_t, uint32_t, uint32_t) const noexcept;
+extern template void SL_TriRasterizer::flush_scanlines<SL_DepthFuncGT, float>(const SL_FragmentBin*, uint32_t, uint32_t, uint32_t) const noexcept;
+extern template void SL_TriRasterizer::flush_scanlines<SL_DepthFuncGT, double>(const SL_FragmentBin*, uint32_t, uint32_t, uint32_t) const noexcept;
+
+extern template void SL_TriRasterizer::flush_scanlines<SL_DepthFuncGE, ls::math::half>(const SL_FragmentBin*, uint32_t, uint32_t, uint32_t) const noexcept;
+extern template void SL_TriRasterizer::flush_scanlines<SL_DepthFuncGE, float>(const SL_FragmentBin*, uint32_t, uint32_t, uint32_t) const noexcept;
+extern template void SL_TriRasterizer::flush_scanlines<SL_DepthFuncGE, double>(const SL_FragmentBin*, uint32_t, uint32_t, uint32_t) const noexcept;
+
+extern template void SL_TriRasterizer::flush_scanlines<SL_DepthFuncEQ, ls::math::half>(const SL_FragmentBin*, uint32_t, uint32_t, uint32_t) const noexcept;
+extern template void SL_TriRasterizer::flush_scanlines<SL_DepthFuncEQ, float>(const SL_FragmentBin*, uint32_t, uint32_t, uint32_t) const noexcept;
+extern template void SL_TriRasterizer::flush_scanlines<SL_DepthFuncEQ, double>(const SL_FragmentBin*, uint32_t, uint32_t, uint32_t) const noexcept;
+
+extern template void SL_TriRasterizer::flush_scanlines<SL_DepthFuncNE, ls::math::half>(const SL_FragmentBin*, uint32_t, uint32_t, uint32_t) const noexcept;
+extern template void SL_TriRasterizer::flush_scanlines<SL_DepthFuncNE, float>(const SL_FragmentBin*, uint32_t, uint32_t, uint32_t) const noexcept;
+extern template void SL_TriRasterizer::flush_scanlines<SL_DepthFuncNE, double>(const SL_FragmentBin*, uint32_t, uint32_t, uint32_t) const noexcept;
+
+extern template void SL_TriRasterizer::flush_scanlines<SL_DepthFuncOFF, ls::math::half>(const SL_FragmentBin*, uint32_t, uint32_t, uint32_t) const noexcept;
+extern template void SL_TriRasterizer::flush_scanlines<SL_DepthFuncOFF, float>(const SL_FragmentBin*, uint32_t, uint32_t, uint32_t) const noexcept;
+extern template void SL_TriRasterizer::flush_scanlines<SL_DepthFuncOFF, double>(const SL_FragmentBin*, uint32_t, uint32_t, uint32_t) const noexcept;
+
+
+
+extern template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncLT, ls::math::half>() const noexcept;
+extern template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncLT, float>() const noexcept;
+extern template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncLT, double>() const noexcept;
+
+extern template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncLE, ls::math::half>() const noexcept;
+extern template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncLE, float>() const noexcept;
+extern template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncLE, double>() const noexcept;
+
+extern template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncGT, ls::math::half>() const noexcept;
+extern template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncGT, float>() const noexcept;
+extern template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncGT, double>() const noexcept;
+
+extern template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncGE, ls::math::half>() const noexcept;
+extern template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncGE, float>() const noexcept;
+extern template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncGE, double>() const noexcept;
+
+extern template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncEQ, ls::math::half>() const noexcept;
+extern template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncEQ, float>() const noexcept;
+extern template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncEQ, double>() const noexcept;
+
+extern template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncNE, ls::math::half>() const noexcept;
+extern template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncNE, float>() const noexcept;
+extern template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncNE, double>() const noexcept;
+
+extern template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncOFF, ls::math::half>() const noexcept;
+extern template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncOFF, float>() const noexcept;
+extern template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncOFF, double>() const noexcept;
+
+#endif
 
 
 

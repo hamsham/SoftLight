@@ -12,7 +12,7 @@
 #endif /* SL_VERTEX_CACHING_ENABLED */
 
 #ifndef SL_VERTEX_CACHE_SIZE
-    #define SL_VERTEX_CACHE_SIZE 16
+    #define SL_VERTEX_CACHE_SIZE 4
 #endif /* SL_VERTEX_CACHE_SIZE */
 
 
@@ -22,8 +22,11 @@
 -----------------------------------------------------------------------------*/
 #ifndef SL_Z_CLIPPING_ENABLED
     #define SL_Z_CLIPPING_ENABLED 1
-#endif /* SL_VERTEX_CLIPPING_ENABLED */
+#endif /* SL_Z_CLIPPING_ENABLED */
 
+#ifndef SL_CONSERVE_MEMORY
+    #define SL_CONSERVE_MEMORY 0
+#endif /* SL_CONSERVE_MEMORY */
 
 
 #endif /* SL_CONFIG_HPP */
