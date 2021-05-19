@@ -58,7 +58,12 @@ class SL_VertexProcessor
     SL_FragmentBin* mFragBins;
     SL_FragCoord* mFragQueues;
 
-    virtual ~SL_VertexProcessor() noexcept {}
+    virtual ~SL_VertexProcessor() noexcept = default;
+    SL_VertexProcessor() noexcept = default;
+    SL_VertexProcessor(const SL_VertexProcessor&) noexcept = default;
+    SL_VertexProcessor(SL_VertexProcessor&&) noexcept = default;
+    SL_VertexProcessor& operator=(const SL_VertexProcessor&) noexcept = default;
+    SL_VertexProcessor& operator=(SL_VertexProcessor&&) noexcept = default;
 
     virtual void execute() noexcept = 0;
 
