@@ -9,6 +9,7 @@
 #include "softlight/SL_Framebuffer.hpp"
 #include "softlight/SL_IndexBuffer.hpp"
 #include "softlight/SL_Mesh.hpp"
+#include "softlight/SL_Shader.hpp"
 #include "softlight/SL_Texture.hpp"
 #include "softlight/SL_VertexArray.hpp"
 #include "softlight/SL_VertexBuffer.hpp"
