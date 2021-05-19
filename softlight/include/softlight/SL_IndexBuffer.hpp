@@ -11,6 +11,13 @@
 
 
 
+/*-----------------------------------------------------------------------------
+ * @brief Index Buffer Class
+ *
+ * This class manages element array buffer values for unsigned char, unsigned
+ * short, and unsigned long indices. These indices are used during rendering
+ * to identify vertices in vertex buffer objects.
+-----------------------------------------------------------------------------*/
 class SL_IndexBuffer
 {
   private:
@@ -20,7 +27,7 @@ class SL_IndexBuffer
 
     uint32_t mCount;
 
-    ls::utils::Pointer<unsigned char[], ls::utils::AlignedDeleter> mBuffer;
+    ls::utils::UniqueAlignedArray<unsigned char> mBuffer;
 
   public:
     ~SL_IndexBuffer() noexcept;
