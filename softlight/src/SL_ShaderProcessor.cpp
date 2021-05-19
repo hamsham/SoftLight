@@ -78,9 +78,11 @@ SL_ShaderProcessor::SL_ShaderProcessor(const SL_ShaderProcessor& sp) noexcept :
 
         case SL_BLIT_PROCESSOR:
             mBlitter = sp.mBlitter;
+            break;
 
         case SL_CLEAR_PROCESSOR:
             mClear = sp.mClear;
+            break;
     }
 }
 
@@ -108,9 +110,11 @@ SL_ShaderProcessor::SL_ShaderProcessor(SL_ShaderProcessor&& sp) noexcept :
 
         case SL_BLIT_PROCESSOR:
             mBlitter = sp.mBlitter;
+            break;
 
         case SL_CLEAR_PROCESSOR:
             mClear = sp.mClear;
+            break;
     }
 }
 
@@ -141,9 +145,11 @@ SL_ShaderProcessor& SL_ShaderProcessor::operator=(const SL_ShaderProcessor& sp) 
 
             case SL_BLIT_PROCESSOR:
                 mBlitter = sp.mBlitter;
+                break;
 
             case SL_CLEAR_PROCESSOR:
                 mClear = sp.mClear;
+                break;
         }
     }
 
@@ -177,9 +183,11 @@ SL_ShaderProcessor& SL_ShaderProcessor::operator=(SL_ShaderProcessor&& sp) noexc
 
             case SL_BLIT_PROCESSOR:
                 mBlitter = sp.mBlitter;
+                break;
 
             case SL_CLEAR_PROCESSOR:
                 mClear = sp.mClear;
+                break;
         }
     }
 
