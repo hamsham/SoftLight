@@ -82,7 +82,7 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
 
     const SL_ViewportState& viewState = mContext->viewport_state();
 
-    rasterizer.mThreadId = (uint16_t)mThreadId;
+    rasterizer.mThreadId = (uint16_t)tileId;
     rasterizer.mMode = mRenderMode;
     rasterizer.mNumProcessors = (uint32_t)mNumThreads;
     rasterizer.mNumBins = (uint32_t)maxElements;
