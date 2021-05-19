@@ -638,7 +638,8 @@ inline std::vector<T, Allocator>& SL_Octree<T, MaxDepth, Allocator>::data() noex
 template <typename T, size_t MaxDepth, class Allocator>
 bool SL_Octree<T, MaxDepth, Allocator>::emplace_internal(const ls::math::vec4& location, float radius, T&& value, size_t currDepth) noexcept
 {
-    if (radius >= mRadius || currDepth == MaxDepth)
+    const float r2 = mRadius * 0.5f;
+    if (radius > r2 || currDepth == MaxDepth)
     {
         mData.emplace_back(value);
         return true;
@@ -657,13 +658,15 @@ bool SL_Octree<T, MaxDepth, Allocator>::emplace_internal(const ls::math::vec4& l
         ls::math::sign_mask(ls::math::vec4{localSpace[0]+radius, localSpace[1]-radius, localSpace[2]+radius, 0.f}),
     };
 
-    int nodeId = 0;
-    nodeId |= locations[0] | locations[1];
-    nodeId |= locations[2] | locations[3];
-    nodeId |= locations[4] | locations[5];
-    nodeId |= locations[6] | locations[7];
-
-    if (locations[0] != nodeId)
+    const int nodeId = locations[0] | locations[1] | locations[2] | locations[3] | locations[4] | locations[5] | locations[6] | locations[7];
+    if (nodeId != locations[0]
+    || nodeId != locations[1]
+    || nodeId != locations[2]
+    || nodeId != locations[3]
+    || nodeId != locations[4]
+    || nodeId != locations[5]
+    || nodeId != locations[6]
+    || nodeId != locations[7])
     {
         mData.emplace_back(value);
         return true;
@@ -672,7 +675,6 @@ bool SL_Octree<T, MaxDepth, Allocator>::emplace_internal(const ls::math::vec4& l
     const float xSign = (nodeId & 0x01) ? -1.f : 1.f;
     const float ySign = (nodeId & 0x02) ? -1.f : 1.f;
     const float zSign = (nodeId & 0x04) ? -1.f : 1.f;
-    const float r2    = mRadius * 0.5f;
 
     const ls::math::vec4&& nodeLocation = mOrigin + ls::math::vec4{r2} * ls::math::vec4{xSign, ySign, zSign, 0.f};
 

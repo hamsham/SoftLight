@@ -1,46 +1,45 @@
 
-#ifndef SL_OCTREE_HPP
-#define SL_OCTREE_HPP
+#ifndef SL_QUADTREE_HPP
+#define SL_QUADTREE_HPP
 
 #include <vector>
 
-#include "lightsky/math/vec3.h"
-#include "lightsky/math/vec4.h"
+#include "lightsky/math/vec2.h"
 #include "lightsky/math/vec_utils.h"
 
 
 
 /**
- * @brief A Generic Octree container for spatial partitioning of general 3D
- * data.
+ * @brief A Generic QUADTREEree container for spatial partitioning of general
+ * 2D data.
  *
- * This octree will perform a best-fit of data into sub-trees. If an object
+ * This quadtree will perform a best-fit of data into sub-trees. If an object
  * overlaps one or more sub-trees, it will be stored in the parent tree.
  *
  * @tparam T
  * The type of data to store. Must be copy-constructable.
  *
  * @tparam MaxDepth
- * The maximum depth (subdivisions) of the octree.
+ * The maximum depth (subdivisions) of the quadtree.
  *
  * @tparam Allocator
  * An std::allocator-compatible object which will be responsible for managing
- * the memory of all data stored within the octree's subdivisions.
+ * the memory of all data stored within the quadtree's subdivisions.
  */
 template <typename T, size_t MaxDepth, class Allocator = std::allocator<T>>
-class SL_Octree
+class SL_Quadtree
 {
   private:
-    ls::math::vec4 mOrigin;
+    ls::math::vec2 mOrigin;
 
     float mRadius;
 
-    SL_Octree<T, MaxDepth, Allocator>* mNodes[8];
+    SL_Quadtree<T, MaxDepth, Allocator>* mNodes[4];
 
     std::vector<T, Allocator> mData;
 
   private:
-    bool emplace_internal(const ls::math::vec4& location, float radius, T&& value, size_t currDepth) noexcept;
+    bool emplace_internal(const ls::math::vec2& location, float radius, T&& value, size_t currDepth) noexcept;
 
     template <typename ConstIterCallbackType>
     void iterate_from_bottom_internal(ConstIterCallbackType iterCallback, size_t currDepth) const noexcept;
@@ -60,30 +59,19 @@ class SL_Octree
      *
      * Frees all internal memory.
      */
-    ~SL_Octree() noexcept;
+    ~SL_Quadtree() noexcept;
 
     /**
      * @brief Constructor
      *
      * @param origin
-     * The center of the octree in 3D space.
-     *
-     * @param radius
-     * The radius of the top-level octree.
-     */
-    SL_Octree(const ls::math::vec3& origin = ls::math::vec3{0.f, 0.f, 0.f}, float radius = 1.f) noexcept;
-
-    /**
-     * @brief Constructor
-     *
-     * @param origin
-     * The center of the octree in 3D space. The last (fourth) element of the
+     * The center of the quadtree in 2D space. The last (fourth) element of the
      * input vector is unused.
      *
      * @param radius
-     * The radius of the top-level octree.
+     * The radius of the top-level quadtree.
      */
-    SL_Octree(const ls::math::vec4& origin, float radius) noexcept;
+    SL_Quadtree(const ls::math::vec2& origin, float radius) noexcept;
 
     /**
      * @brief Copy Constructor
@@ -94,7 +82,7 @@ class SL_Octree
      * @param tree
      * The input tree to be copied into *this.
      */
-    SL_Octree(const SL_Octree& tree) noexcept;
+    SL_Quadtree(const SL_Quadtree& tree) noexcept;
 
     /**
      * @brief Move Constructor
@@ -105,7 +93,7 @@ class SL_Octree
      * @param tree
      * The input tree to be moved into *this.
      */
-    SL_Octree(SL_Octree&& tree) noexcept;
+    SL_Quadtree(SL_Quadtree&& tree) noexcept;
 
     /**
      * @brief Copy Operator
@@ -118,7 +106,7 @@ class SL_Octree
      *
      * @return  A reference to *this.
      */
-    SL_Octree& operator=(const SL_Octree& tree) noexcept;
+    SL_Quadtree& operator=(const SL_Quadtree& tree) noexcept;
 
     /**
      * @brief Move Operator
@@ -130,26 +118,26 @@ class SL_Octree
      *
      * @return A reference to *this.
      */
-    SL_Octree& operator=(SL_Octree&& tree) noexcept;
+    SL_Quadtree& operator=(SL_Quadtree&& tree) noexcept;
 
     /**
-     * @brief Retrieve the user-defined origin of the top-level octree.
+     * @brief Retrieve the user-defined origin of the top-level quadtree.
      *
      * Sub-trees will return their origin with respect to, and subdivided by,
-     * the top-level octree.
+     * the top-level quadtree.
      *
-     * @return A reference to the 3D (4D-padded) octree's origin.
+     * @return A reference to the 2D quadtree's origin.
      */
-    const ls::math::vec4& origin() const noexcept;
+    const ls::math::vec2& origin() const noexcept;
 
     /**
-     * @brief Retrieve the radius of an internal bounding-sphere's 3D space.
+     * @brief Retrieve the radius of an internal bounding-sphere's 2D space.
      *
      * Sub-trees will return their radius with respect to, and subdivided by,
-     * the top-level octree.
+     * the top-level quadtree.
      *
      * @return A floating-point value representing the size of the current
-     * octree node.
+     * quadtree node.
      */
     float radius() const noexcept;
 
@@ -159,9 +147,9 @@ class SL_Octree
      * The returned list of pointers will not be null, but the objects
      * contained within the returned list may be null.
      *
-     * @return A pointer to a list of 8 constant sub-trees.
+     * @return A pointer to a list of 4 constant sub-trees.
      */
-    const SL_Octree<T, MaxDepth, Allocator>* const* sub_nodes() const noexcept;
+    const SL_Quadtree<T, MaxDepth, Allocator>* const* sub_nodes() const noexcept;
 
     /**
      * @brief Retrieve the internal sub-trees.
@@ -169,9 +157,9 @@ class SL_Octree
      * The returned list of pointers will not be null, but the objects
      * contained within the returned list may be null.
      *
-     * @return A pointer to a list of 8 sub-trees.
+     * @return A pointer to a list of 4 sub-trees.
      */
-    SL_Octree<T, MaxDepth, Allocator>** sub_nodes() noexcept;
+    SL_Quadtree<T, MaxDepth, Allocator>** sub_nodes() noexcept;
 
     /**
      * @brief Retrieve the constant list of objects contained directly within
@@ -192,7 +180,7 @@ class SL_Octree
     std::vector<T, Allocator>& data() noexcept;
 
     /**
-     * @brief Retrieve the number of objects contained at *this tree's 3D
+     * @brief Retrieve the number of objects contained at *this tree's 2D
      * space.
      *
      * @return An unsigned integral type, representing the number of objects
@@ -233,7 +221,7 @@ class SL_Octree
      * if needed.
      *
      * @param location
-     * The 3D spatial location of the object to be stored.
+     * The 2D spatial location of the object to be stored.
      *
      * @param radius
      * The maximum bounding-radius occupied by the input object.
@@ -245,14 +233,14 @@ class SL_Octree
      * @return TRUE if the data was successfully inserted into *this or a
      * sub-tree, FALSE if an error occurred.
      */
-    bool insert(const ls::math::vec4& location, float radius, const T& value) noexcept;
+    bool insert(const ls::math::vec2& location, float radius, const T& value) noexcept;
 
     /**
      * @brief Insert (move) an object into *this, creating sub-tree partitions
      * if needed.
      *
      * @param location
-     * The 3D spatial location of the object to be stored.
+     * The 2D spatial location of the object to be stored.
      *
      * @param radius
      * The maximum bounding-radius occupied by the input object.
@@ -264,89 +252,29 @@ class SL_Octree
      * @return TRUE if the data was successfully inserted into *this or a
      * sub-tree, FALSE if an error occurred.
      */
-    bool emplace(const ls::math::vec4& location, float radius, T&& value) noexcept;
+    bool emplace(const ls::math::vec2& location, float radius, T&& value) noexcept;
 
     /**
-     * @brief Insert (copy) an object into *this, creating sub-tree partitions
-     * if needed.
-     *
-     * @param location
-     * The 3D spatial location of the object to be stored.
-     *
-     * @param radius
-     * The maximum bounding-radius occupied by the input object.
-     *
-     * @param value
-     * The data to be stored. This object must be copy-constructable,
-     * copy-assignable, move-constructable, and move-assignable.
-     *
-     * @return TRUE if the data was successfully inserted into *this or a
-     * sub-tree, FALSE if an error occurred.
-     */
-    bool insert(const ls::math::vec3& location, float radius, const T& value) noexcept;
-
-    /**
-     * @brief Insert (move) an object into *this, creating sub-tree partitions
-     * if needed.
-     *
-     * @param location
-     * The 3D spatial location of the object to be stored.
-     *
-     * @param radius
-     * The maximum bounding-radius occupied by the input object.
-     *
-     * @param value
-     * The data to be stored. This object must be copy-constructable,
-     * copy-assignable, move-constructable, and move-assignable.
-     *
-     * @return TRUE if the data was successfully inserted into *this or a
-     * sub-tree, FALSE if an error occurred.
-     */
-    bool emplace(const ls::math::vec3& location, float radius, T&& value) noexcept;
-
-    /**
-     * @brief Locate the closest sub-partition referenced by a point in 3D
+     * @brief Locate the closest sub-partition referenced by a point in 2D
      * space (const).
      *
      * @param location
-     * A 3D point where data should be referenced.
+     * A 2D point where data should be referenced.
      *
      * @return The closes sub-partition which contains the requested point.
      */
-    const SL_Octree* find(const ls::math::vec4& location) const noexcept;
+    const SL_Quadtree* find(const ls::math::vec2& location) const noexcept;
 
     /**
-     * @brief Locate the closest sub-partition referenced by a point in 3D
+     * @brief Locate the closest sub-partition referenced by a point in 2D
      * space.
      *
      * @param location
-     * A 3D point where data should be referenced.
+     * A 2D point where data should be referenced.
      *
      * @return The closes sub-partition which contains the requested point.
      */
-    SL_Octree* find(const ls::math::vec4& location) noexcept;
-
-    /**
-     * @brief Locate the closest sub-partition referenced by a point in 3D
-     * space (const).
-     *
-     * @param location
-     * A 3D point where data should be referenced.
-     *
-     * @return The closes sub-partition which contains the requested point.
-     */
-    const SL_Octree* find(const ls::math::vec3& location) const noexcept;
-
-    /**
-     * @brief Locate the closest sub-partition referenced by a point in 3D
-     * space.
-     *
-     * @param location
-     * A 3D point where data should be referenced.
-     *
-     * @return The closes sub-partition which contains the requested point.
-     */
-    SL_Octree* find(const ls::math::vec3& location) noexcept;
+    SL_Quadtree* find(const ls::math::vec2& location) noexcept;
 
     /**
      * @brief Perform a depth-first iteration over all sub-trees in *this
@@ -405,7 +333,7 @@ class SL_Octree
  * Destructor
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-SL_Octree<T, MaxDepth, Allocator>::~SL_Octree() noexcept
+SL_Quadtree<T, MaxDepth, Allocator>::~SL_Quadtree() noexcept
 {
     clear();
 }
@@ -416,23 +344,10 @@ SL_Octree<T, MaxDepth, Allocator>::~SL_Octree() noexcept
  * Constructor
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-SL_Octree<T, MaxDepth, Allocator>::SL_Octree(const ls::math::vec3& origin, float radius) noexcept :
-    mOrigin{ls::math::vec4_cast(origin, 0.f)},
-    mRadius{radius},
-    mNodes{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
-    mData{}
-{}
-
-
-
-/*-------------------------------------
- * Constructor
--------------------------------------*/
-template <typename T, size_t MaxDepth, class Allocator>
-SL_Octree<T, MaxDepth, Allocator>::SL_Octree(const ls::math::vec4& origin, float radius) noexcept :
+SL_Quadtree<T, MaxDepth, Allocator>::SL_Quadtree(const ls::math::vec2& origin, float radius) noexcept :
     mOrigin{origin},
     mRadius{radius},
-    mNodes{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
+    mNodes{nullptr, nullptr, nullptr, nullptr},
     mData{}
 {}
 
@@ -442,8 +357,8 @@ SL_Octree<T, MaxDepth, Allocator>::SL_Octree(const ls::math::vec4& origin, float
  * Copy Constructor
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-SL_Octree<T, MaxDepth, Allocator>::SL_Octree(const SL_Octree& tree) noexcept :
-    SL_Octree{}
+SL_Quadtree<T, MaxDepth, Allocator>::SL_Quadtree(const SL_Quadtree& tree) noexcept :
+    SL_Quadtree{}
 {
     *this = tree;
 }
@@ -454,7 +369,7 @@ SL_Octree<T, MaxDepth, Allocator>::SL_Octree(const SL_Octree& tree) noexcept :
  * Move Constructor
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-SL_Octree<T, MaxDepth, Allocator>::SL_Octree(SL_Octree&& tree) noexcept :
+SL_Quadtree<T, MaxDepth, Allocator>::SL_Quadtree(SL_Quadtree&& tree) noexcept :
     mOrigin{tree.mOrigin},
     mRadius{tree.mRadius},
     mNodes{
@@ -462,17 +377,13 @@ SL_Octree<T, MaxDepth, Allocator>::SL_Octree(SL_Octree&& tree) noexcept :
         tree.mNodes[1],
         tree.mNodes[2],
         tree.mNodes[3],
-        tree.mNodes[4],
-        tree.mNodes[5],
-        tree.mNodes[6],
-        tree.mNodes[7],
     },
     mData{std::move(tree.mData)}
 {
-    tree.mOrigin = ls::math::vec4{0.f};
+    tree.mOrigin = ls::math::vec2{0.f};
     tree.mRadius = 0.f;
 
-    for (unsigned i = 0; i < 8; ++i)
+    for (unsigned i = 0; i < 4; ++i)
     {
         tree.mNodes[i] = nullptr;
     }
@@ -484,35 +395,31 @@ SL_Octree<T, MaxDepth, Allocator>::SL_Octree(SL_Octree&& tree) noexcept :
  * Copy Operator
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-SL_Octree<T, MaxDepth, Allocator>& SL_Octree<T, MaxDepth, Allocator>::operator=(const SL_Octree& tree) noexcept
+SL_Quadtree<T, MaxDepth, Allocator>& SL_Quadtree<T, MaxDepth, Allocator>::operator=(const SL_Quadtree& tree) noexcept
 {
     if (this == &tree)
     {
         return *this;
     }
 
-    SL_Octree<T, MaxDepth, Allocator>* tempNodes[8] = {
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
+    SL_Quadtree<T, MaxDepth, Allocator>* tempNodes[4] = {
         nullptr,
         nullptr,
         nullptr,
         nullptr
     };
 
-    for (unsigned i = 0; i < 8; ++i)
+    for (unsigned i = 0; i < 4; ++i)
     {
         if (!tree.mNodes[i])
         {
             continue;
         }
 
-        tempNodes[i] = new(std::nothrow) SL_Octree<T, MaxDepth, Allocator>{*(tree.mNodes[i])};
+        tempNodes[i] = new(std::nothrow) SL_Quadtree<T, MaxDepth, Allocator>{*(tree.mNodes[i])};
         if (!tempNodes[i])
         {
-            for (SL_Octree<T, MaxDepth, Allocator>* pTemp : tempNodes)
+            for (SL_Quadtree<T, MaxDepth, Allocator>* pTemp : tempNodes)
             {
                 delete pTemp;
             }
@@ -526,7 +433,7 @@ SL_Octree<T, MaxDepth, Allocator>& SL_Octree<T, MaxDepth, Allocator>::operator=(
     mOrigin = tree.mOrigin;
     mRadius = tree.mRadius;
 
-    for (unsigned i = 0; i < 8; ++i)
+    for (unsigned i = 0; i < 4; ++i)
     {
         mNodes[i] = tempNodes[i];
     }
@@ -542,7 +449,7 @@ SL_Octree<T, MaxDepth, Allocator>& SL_Octree<T, MaxDepth, Allocator>::operator=(
  * Move Operator
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-SL_Octree<T, MaxDepth, Allocator>& SL_Octree<T, MaxDepth, Allocator>::operator=(SL_Octree&& tree) noexcept
+SL_Quadtree<T, MaxDepth, Allocator>& SL_Quadtree<T, MaxDepth, Allocator>::operator=(SL_Quadtree&& tree) noexcept
 {
     if (this == &tree)
     {
@@ -552,7 +459,7 @@ SL_Octree<T, MaxDepth, Allocator>& SL_Octree<T, MaxDepth, Allocator>::operator=(
     mOrigin = tree.mOrigin;
     mRadius = tree.mRadius;
 
-    for (unsigned i = 0; i < 8; ++i)
+    for (unsigned i = 0; i < 4; ++i)
     {
         delete mNodes[i];
         mNodes[i] = tree.mNodes[i];
@@ -570,7 +477,7 @@ SL_Octree<T, MaxDepth, Allocator>& SL_Octree<T, MaxDepth, Allocator>::operator=(
  * Get the origin
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-inline const ls::math::vec4& SL_Octree<T, MaxDepth, Allocator>::origin() const noexcept
+inline const ls::math::vec2& SL_Quadtree<T, MaxDepth, Allocator>::origin() const noexcept
 {
     return mOrigin;
 }
@@ -581,7 +488,7 @@ inline const ls::math::vec4& SL_Octree<T, MaxDepth, Allocator>::origin() const n
  * Get the radius
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-inline float SL_Octree<T, MaxDepth, Allocator>::radius() const noexcept
+inline float SL_Quadtree<T, MaxDepth, Allocator>::radius() const noexcept
 {
     return mRadius;
 }
@@ -592,7 +499,7 @@ inline float SL_Octree<T, MaxDepth, Allocator>::radius() const noexcept
  * Get the sub-nodes (const)
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-inline const SL_Octree<T, MaxDepth, Allocator>* const* SL_Octree<T, MaxDepth, Allocator>::sub_nodes() const noexcept
+inline const SL_Quadtree<T, MaxDepth, Allocator>* const* SL_Quadtree<T, MaxDepth, Allocator>::sub_nodes() const noexcept
 {
     return mNodes;
 }
@@ -603,7 +510,7 @@ inline const SL_Octree<T, MaxDepth, Allocator>* const* SL_Octree<T, MaxDepth, Al
  * Get the sub-nodes
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-inline SL_Octree<T, MaxDepth, Allocator>** SL_Octree<T, MaxDepth, Allocator>::sub_nodes() noexcept
+inline SL_Quadtree<T, MaxDepth, Allocator>** SL_Quadtree<T, MaxDepth, Allocator>::sub_nodes() noexcept
 {
     return mNodes;
 }
@@ -614,7 +521,7 @@ inline SL_Octree<T, MaxDepth, Allocator>** SL_Octree<T, MaxDepth, Allocator>::su
  * Get the internal objects (const)
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-inline const std::vector<T, Allocator>& SL_Octree<T, MaxDepth, Allocator>::data() const noexcept
+inline const std::vector<T, Allocator>& SL_Quadtree<T, MaxDepth, Allocator>::data() const noexcept
 {
     return mData;
 }
@@ -625,7 +532,7 @@ inline const std::vector<T, Allocator>& SL_Octree<T, MaxDepth, Allocator>::data(
  * Get the internal objects
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-inline std::vector<T, Allocator>& SL_Octree<T, MaxDepth, Allocator>::data() noexcept
+inline std::vector<T, Allocator>& SL_Quadtree<T, MaxDepth, Allocator>::data() noexcept
 {
     return mData;
 }
@@ -636,34 +543,29 @@ inline std::vector<T, Allocator>& SL_Octree<T, MaxDepth, Allocator>::data() noex
  * Emplace (move) an object into *this
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-bool SL_Octree<T, MaxDepth, Allocator>::emplace_internal(const ls::math::vec4& location, float radius, T&& value, size_t currDepth) noexcept
+bool SL_Quadtree<T, MaxDepth, Allocator>::emplace_internal(const ls::math::vec2& location, float radius, T&& value, size_t currDepth) noexcept
 {
-    if (radius >= mRadius || currDepth == MaxDepth)
+    const float r2 = mRadius * 0.5f;
+    if (radius > r2 || currDepth == MaxDepth)
     {
         mData.emplace_back(value);
         return true;
     }
 
-    const ls::math::vec4&& localSpace = location - mOrigin;
+    const ls::math::vec2&& localSpace = location - mOrigin;
 
-    const int locations[8] = {
-        ls::math::sign_mask(ls::math::vec4{localSpace[0]-radius, localSpace[1]+radius, localSpace[2]-radius, 0.f}),
-        ls::math::sign_mask(ls::math::vec4{localSpace[0]+radius, localSpace[1]+radius, localSpace[2]-radius, 0.f}),
-        ls::math::sign_mask(ls::math::vec4{localSpace[0]-radius, localSpace[1]-radius, localSpace[2]-radius, 0.f}),
-        ls::math::sign_mask(ls::math::vec4{localSpace[0]+radius, localSpace[1]-radius, localSpace[2]-radius, 0.f}),
-        ls::math::sign_mask(ls::math::vec4{localSpace[0]-radius, localSpace[1]+radius, localSpace[2]+radius, 0.f}),
-        ls::math::sign_mask(ls::math::vec4{localSpace[0]+radius, localSpace[1]+radius, localSpace[2]+radius, 0.f}),
-        ls::math::sign_mask(ls::math::vec4{localSpace[0]-radius, localSpace[1]-radius, localSpace[2]+radius, 0.f}),
-        ls::math::sign_mask(ls::math::vec4{localSpace[0]+radius, localSpace[1]-radius, localSpace[2]+radius, 0.f}),
+    const int locations[4] = {
+        ls::math::sign_mask(ls::math::vec2{localSpace[0]-radius, localSpace[1]+radius}),
+        ls::math::sign_mask(ls::math::vec2{localSpace[0]+radius, localSpace[1]+radius}),
+        ls::math::sign_mask(ls::math::vec2{localSpace[0]-radius, localSpace[1]-radius}),
+        ls::math::sign_mask(ls::math::vec2{localSpace[0]+radius, localSpace[1]-radius}),
     };
 
-    int nodeId = 0;
-    nodeId |= locations[0] | locations[1];
-    nodeId |= locations[2] | locations[3];
-    nodeId |= locations[4] | locations[5];
-    nodeId |= locations[6] | locations[7];
-
-    if (locations[0] != nodeId)
+    const int nodeId = locations[0] | locations[1] | locations[2] | locations[3];
+    if (locations[0] != nodeId
+    || locations[1] != nodeId
+    || locations[2] != nodeId
+    || locations[3] != nodeId)
     {
         mData.emplace_back(value);
         return true;
@@ -671,14 +573,12 @@ bool SL_Octree<T, MaxDepth, Allocator>::emplace_internal(const ls::math::vec4& l
 
     const float xSign = (nodeId & 0x01) ? -1.f : 1.f;
     const float ySign = (nodeId & 0x02) ? -1.f : 1.f;
-    const float zSign = (nodeId & 0x04) ? -1.f : 1.f;
-    const float r2    = mRadius * 0.5f;
 
-    const ls::math::vec4&& nodeLocation = mOrigin + ls::math::vec4{r2} * ls::math::vec4{xSign, ySign, zSign, 0.f};
+    const ls::math::vec2&& nodeLocation = mOrigin + ls::math::vec2{r2} * ls::math::vec2{xSign, ySign};
 
     if (!mNodes[nodeId])
     {
-        mNodes[nodeId] = new(std::nothrow) SL_Octree<T, MaxDepth, Allocator>(nodeLocation, r2);
+        mNodes[nodeId] = new(std::nothrow) SL_Quadtree<T, MaxDepth, Allocator>(nodeLocation, r2);
 
         if (!mNodes[nodeId])
         {
@@ -695,7 +595,7 @@ bool SL_Octree<T, MaxDepth, Allocator>::emplace_internal(const ls::math::vec4& l
  * Get the current data size
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-inline size_t SL_Octree<T, MaxDepth, Allocator>::size() const noexcept
+inline size_t SL_Quadtree<T, MaxDepth, Allocator>::size() const noexcept
 {
     return mData.size();
 }
@@ -706,11 +606,11 @@ inline size_t SL_Octree<T, MaxDepth, Allocator>::size() const noexcept
  * Get the number of local partitions
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-size_t SL_Octree<T, MaxDepth, Allocator>::breadth() const noexcept
+size_t SL_Quadtree<T, MaxDepth, Allocator>::breadth() const noexcept
 {
     size_t count = 0;
 
-    for (const SL_Octree<T, MaxDepth, Allocator>* pNode : mNodes)
+    for (const SL_Quadtree<T, MaxDepth, Allocator>* pNode : mNodes)
     {
         count += pNode != nullptr;
     }
@@ -724,10 +624,10 @@ size_t SL_Octree<T, MaxDepth, Allocator>::breadth() const noexcept
  * Get the overall depth from *this
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-inline size_t SL_Octree<T, MaxDepth, Allocator>::depth() const noexcept
+inline size_t SL_Quadtree<T, MaxDepth, Allocator>::depth() const noexcept
 {
     size_t d = 0;
-    for (const SL_Octree<T, MaxDepth, Allocator>* pNode : mNodes)
+    for (const SL_Quadtree<T, MaxDepth, Allocator>* pNode : mNodes)
     {
         if (pNode)
         {
@@ -744,7 +644,7 @@ inline size_t SL_Octree<T, MaxDepth, Allocator>::depth() const noexcept
  * Get the maximum allowable depth
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-constexpr size_t SL_Octree<T, MaxDepth, Allocator>::max_depth() const noexcept
+constexpr size_t SL_Quadtree<T, MaxDepth, Allocator>::max_depth() const noexcept
 {
     return MaxDepth;
 }
@@ -755,9 +655,9 @@ constexpr size_t SL_Octree<T, MaxDepth, Allocator>::max_depth() const noexcept
  * Clear all data & memory
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-void SL_Octree<T, MaxDepth, Allocator>::clear() noexcept
+void SL_Quadtree<T, MaxDepth, Allocator>::clear() noexcept
 {
-    for (unsigned i = 0; i < 8; ++i)
+    for (unsigned i = 0; i < 4; ++i)
     {
         if (mNodes[i])
         {
@@ -775,7 +675,7 @@ void SL_Octree<T, MaxDepth, Allocator>::clear() noexcept
  * Insert an object into *this
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-inline bool SL_Octree<T, MaxDepth, Allocator>::insert(const ls::math::vec4& location, float radius, const T& value) noexcept
+inline bool SL_Quadtree<T, MaxDepth, Allocator>::insert(const ls::math::vec2& location, float radius, const T& value) noexcept
 {
     return this->emplace_internal(location, radius, T{value}, 0);
 }
@@ -786,7 +686,7 @@ inline bool SL_Octree<T, MaxDepth, Allocator>::insert(const ls::math::vec4& loca
  * Emplace an object into *this
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-inline bool SL_Octree<T, MaxDepth, Allocator>::emplace(const ls::math::vec4& location, float radius, T&& value) noexcept
+inline bool SL_Quadtree<T, MaxDepth, Allocator>::emplace(const ls::math::vec2& location, float radius, T&& value) noexcept
 {
     return this->emplace_internal(location, radius, value, 0);
 }
@@ -794,32 +694,10 @@ inline bool SL_Octree<T, MaxDepth, Allocator>::emplace(const ls::math::vec4& loc
 
 
 /*-------------------------------------
- * Insert an object into *this
--------------------------------------*/
-template <typename T, size_t MaxDepth, class Allocator>
-inline bool SL_Octree<T, MaxDepth, Allocator>::insert(const ls::math::vec3& location, float radius, const T& value) noexcept
-{
-    return this->insert(ls::math::vec4_cast(location, 0.f), radius, value);
-}
-
-
-
-/*-------------------------------------
- * Emplace an object into *this
--------------------------------------*/
-template <typename T, size_t MaxDepth, class Allocator>
-inline bool SL_Octree<T, MaxDepth, Allocator>::emplace(const ls::math::vec3& location, float radius, T&& value) noexcept
-{
-    return this->emplace(ls::math::vec4_cast(location, 0.f), radius, value);
-}
-
-
-
-/*-------------------------------------
  * Find a sub-node at a location (const)
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-const SL_Octree<T, MaxDepth, Allocator>* SL_Octree<T, MaxDepth, Allocator>::find(const ls::math::vec4& location) const noexcept
+const SL_Quadtree<T, MaxDepth, Allocator>* SL_Quadtree<T, MaxDepth, Allocator>::find(const ls::math::vec2& location) const noexcept
 {
     const int nodeId = ls::math::sign_mask(location - mOrigin);
 
@@ -837,7 +715,7 @@ const SL_Octree<T, MaxDepth, Allocator>* SL_Octree<T, MaxDepth, Allocator>::find
  * Find a sub-node at a location
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-SL_Octree<T, MaxDepth, Allocator>* SL_Octree<T, MaxDepth, Allocator>::find(const ls::math::vec4& location) noexcept
+SL_Quadtree<T, MaxDepth, Allocator>* SL_Quadtree<T, MaxDepth, Allocator>::find(const ls::math::vec2& location) noexcept
 {
     const int nodeId = ls::math::sign_mask(location - mOrigin);
 
@@ -847,28 +725,6 @@ SL_Octree<T, MaxDepth, Allocator>* SL_Octree<T, MaxDepth, Allocator>::find(const
     }
 
     return mNodes[nodeId]->find(location);
-}
-
-
-
-/*-------------------------------------
- * Find a sub-node at a location (const)
--------------------------------------*/
-template <typename T, size_t MaxDepth, class Allocator>
-inline const SL_Octree<T, MaxDepth, Allocator>* SL_Octree<T, MaxDepth, Allocator>::find(const ls::math::vec3& location) const noexcept
-{
-    return this->find(ls::math::vec4_cast(location, 0.f));
-}
-
-
-
-/*-------------------------------------
- * Find a sub-node at a location
--------------------------------------*/
-template <typename T, size_t MaxDepth, class Allocator>
-inline SL_Octree<T, MaxDepth, Allocator>* SL_Octree<T, MaxDepth, Allocator>::find(const ls::math::vec3& location) noexcept
-{
-    return this->find(ls::math::vec4_cast(location, 0.f));
 }
 
 
@@ -878,9 +734,9 @@ inline SL_Octree<T, MaxDepth, Allocator>* SL_Octree<T, MaxDepth, Allocator>::fin
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
 template <typename ConstIterCallbackType>
-void SL_Octree<T, MaxDepth, Allocator>::iterate_from_bottom_internal(ConstIterCallbackType iterCallback, size_t currDepth) const noexcept
+void SL_Quadtree<T, MaxDepth, Allocator>::iterate_from_bottom_internal(ConstIterCallbackType iterCallback, size_t currDepth) const noexcept
 {
-    for (const SL_Octree<T, MaxDepth, Allocator>* pNode : mNodes)
+    for (const SL_Quadtree<T, MaxDepth, Allocator>* pNode : mNodes)
     {
         if (pNode)
         {
@@ -898,9 +754,9 @@ void SL_Octree<T, MaxDepth, Allocator>::iterate_from_bottom_internal(ConstIterCa
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
 template <typename IterCallbackType>
-void SL_Octree<T, MaxDepth, Allocator>::iterate_from_bottom_internal(IterCallbackType iterCallback, size_t currDepth) noexcept
+void SL_Quadtree<T, MaxDepth, Allocator>::iterate_from_bottom_internal(IterCallbackType iterCallback, size_t currDepth) noexcept
 {
-    for (const SL_Octree<T, MaxDepth, Allocator>* pNode : mNodes)
+    for (const SL_Quadtree<T, MaxDepth, Allocator>* pNode : mNodes)
     {
         if (pNode)
         {
@@ -918,7 +774,7 @@ void SL_Octree<T, MaxDepth, Allocator>::iterate_from_bottom_internal(IterCallbac
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
 template <typename ConstIterCallbackType>
-inline void SL_Octree<T, MaxDepth, Allocator>::iterate_bottom_up(ConstIterCallbackType iterCallback) const noexcept
+inline void SL_Quadtree<T, MaxDepth, Allocator>::iterate_bottom_up(ConstIterCallbackType iterCallback) const noexcept
 {
     this->iterate_from_bottom_internal<ConstIterCallbackType>(iterCallback, 0);
 }
@@ -930,7 +786,7 @@ inline void SL_Octree<T, MaxDepth, Allocator>::iterate_bottom_up(ConstIterCallba
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
 template <typename IterCallbackType>
-inline void SL_Octree<T, MaxDepth, Allocator>::iterate_bottom_up(IterCallbackType iterCallback) noexcept
+inline void SL_Quadtree<T, MaxDepth, Allocator>::iterate_bottom_up(IterCallbackType iterCallback) noexcept
 {
     this->iterate_from_bottom_internal<IterCallbackType>(iterCallback, 0);
 }
@@ -942,14 +798,14 @@ inline void SL_Octree<T, MaxDepth, Allocator>::iterate_bottom_up(IterCallbackTyp
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
 template <typename ConstIterCallbackType>
-void SL_Octree<T, MaxDepth, Allocator>::iterate_from_top_internal(ConstIterCallbackType iterCallback, size_t currDepth) const noexcept
+void SL_Quadtree<T, MaxDepth, Allocator>::iterate_from_top_internal(ConstIterCallbackType iterCallback, size_t currDepth) const noexcept
 {
     if (!iterCallback(this, currDepth))
     {
         return;
     }
 
-    for (const SL_Octree<T, MaxDepth, Allocator>* pNode : mNodes)
+    for (const SL_Quadtree<T, MaxDepth, Allocator>* pNode : mNodes)
     {
         if (pNode)
         {
@@ -965,14 +821,14 @@ void SL_Octree<T, MaxDepth, Allocator>::iterate_from_top_internal(ConstIterCallb
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
 template <typename IterCallbackType>
-void SL_Octree<T, MaxDepth, Allocator>::iterate_from_top_internal(IterCallbackType iterCallback, size_t currDepth) noexcept
+void SL_Quadtree<T, MaxDepth, Allocator>::iterate_from_top_internal(IterCallbackType iterCallback, size_t currDepth) noexcept
 {
     if (!iterCallback(this, currDepth))
     {
         return;
     }
 
-    for (const SL_Octree<T, MaxDepth, Allocator>* pNode : mNodes)
+    for (const SL_Quadtree<T, MaxDepth, Allocator>* pNode : mNodes)
     {
         if (pNode)
         {
@@ -988,7 +844,7 @@ void SL_Octree<T, MaxDepth, Allocator>::iterate_from_top_internal(IterCallbackTy
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
 template <typename ConstIterCallbackType>
-inline void SL_Octree<T, MaxDepth, Allocator>::iterate_top_down(ConstIterCallbackType iterCallback) const noexcept
+inline void SL_Quadtree<T, MaxDepth, Allocator>::iterate_top_down(ConstIterCallbackType iterCallback) const noexcept
 {
     this->iterate_from_top_internal<ConstIterCallbackType>(iterCallback, 0);
 }
@@ -1000,11 +856,11 @@ inline void SL_Octree<T, MaxDepth, Allocator>::iterate_top_down(ConstIterCallbac
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
 template <typename IterCallbackType>
-inline void SL_Octree<T, MaxDepth, Allocator>::iterate_top_down(IterCallbackType iterCallback) noexcept
+inline void SL_Quadtree<T, MaxDepth, Allocator>::iterate_top_down(IterCallbackType iterCallback) noexcept
 {
     this->iterate_from_top_internal<IterCallbackType>(iterCallback, 0);
 }
 
 
 
-#endif /* SL_OCTREE_HPP */
+#endif /* SL_QUADTREE_HPP */
