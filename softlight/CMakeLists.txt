@@ -155,6 +155,7 @@ set(SL_LIB_HEADERS
     include/softlight/SL_PointProcessor.hpp
     include/softlight/SL_PointRasterizer.hpp
     include/softlight/SL_ProcessorPool.hpp
+    include/softlight/SL_Quadtree.hpp
     include/softlight/SL_RenderWindow.hpp
     include/softlight/SL_Sampler.hpp
     include/softlight/SL_ScanlineBounds.hpp
