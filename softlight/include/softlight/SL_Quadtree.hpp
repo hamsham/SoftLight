@@ -545,15 +545,17 @@ inline std::vector<T, Allocator>& SL_Quadtree<T, MaxDepth, Allocator>::data() no
 template <typename T, size_t MaxDepth, class Allocator>
 bool SL_Quadtree<T, MaxDepth, Allocator>::emplace_internal(const ls::math::vec2& location, float radius, T&& value, size_t currDepth) noexcept
 {
+    // Don't even bother placing an object into sub-nodes if it can't fit
     const float r2 = mRadius * 0.5f;
     if (radius > r2 || currDepth == MaxDepth)
     {
-        mData.emplace_back(value);
+        mData.push_back(value);
         return true;
     }
 
+    // calculate a two-bit mask from the object's position and size. This mask
+    // will be used as the index of a sub-node in the tree
     const ls::math::vec2&& localSpace = location - mOrigin;
-
     const int locations[4] = {
         ls::math::sign_mask(ls::math::vec2{localSpace[0]-radius, localSpace[1]+radius}),
         ls::math::sign_mask(ls::math::vec2{localSpace[0]+radius, localSpace[1]+radius}),
@@ -561,13 +563,16 @@ bool SL_Quadtree<T, MaxDepth, Allocator>::emplace_internal(const ls::math::vec2&
         ls::math::sign_mask(ls::math::vec2{localSpace[0]+radius, localSpace[1]-radius}),
     };
 
-    const int nodeId = locations[0] | locations[1] | locations[2] | locations[3];
-    if (locations[0] != nodeId
-    || locations[1] != nodeId
-    || locations[2] != nodeId
-    || locations[3] != nodeId)
+    // determine if all the calculated masks match. unique masks mean the
+    // object overlaps sub-nodes
+    const int nodeId   = locations[0] | locations[1] | locations[2] | locations[3];
+    const int overlaps = locations[0] & locations[1] & locations[2] & locations[3];
+
+    // If an object intersects multiple sub-nodes, keep it in the current node
+    // rather than split the object across the intersecting sub-nodes
+    if (nodeId ^ overlaps)
     {
-        mData.emplace_back(value);
+        mData.push_back(value);
         return true;
     }
 

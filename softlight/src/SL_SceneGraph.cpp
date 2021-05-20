@@ -151,7 +151,7 @@ SL_SceneGraph& SL_SceneGraph::operator=(const SL_SceneGraph& s) noexcept
         ls::utils::Pointer<size_t[]> outMeshes{new size_t[inMeshCount]};
         ls::utils::fast_copy(outMeshes.get(), inMeshes.get(), inMeshCount);
 
-        mNodeMeshes.emplace_back(std::move(outMeshes));
+        mNodeMeshes.push_back(std::move(outMeshes));
     }
 
     mNumNodeMeshes = s.mNumNodeMeshes;

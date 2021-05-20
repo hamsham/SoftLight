@@ -638,15 +638,17 @@ inline std::vector<T, Allocator>& SL_Octree<T, MaxDepth, Allocator>::data() noex
 template <typename T, size_t MaxDepth, class Allocator>
 bool SL_Octree<T, MaxDepth, Allocator>::emplace_internal(const ls::math::vec4& location, float radius, T&& value, size_t currDepth) noexcept
 {
+    // Don't even bother placing an object into sub-nodes if it can't fit
     const float r2 = mRadius * 0.5f;
     if (radius > r2 || currDepth == MaxDepth)
     {
-        mData.emplace_back(value);
+        mData.push_back(value);
         return true;
     }
 
+    // calculate a three-bit mask from the object's position and size. This
+    // mask will be used as the index of a sub-node in the tree
     const ls::math::vec4&& localSpace = location - mOrigin;
-
     const int locations[8] = {
         ls::math::sign_mask(ls::math::vec4{localSpace[0]-radius, localSpace[1]+radius, localSpace[2]-radius, 0.f}),
         ls::math::sign_mask(ls::math::vec4{localSpace[0]+radius, localSpace[1]+radius, localSpace[2]-radius, 0.f}),
@@ -658,17 +660,16 @@ bool SL_Octree<T, MaxDepth, Allocator>::emplace_internal(const ls::math::vec4& l
         ls::math::sign_mask(ls::math::vec4{localSpace[0]+radius, localSpace[1]-radius, localSpace[2]+radius, 0.f}),
     };
 
-    const int nodeId = locations[0] | locations[1] | locations[2] | locations[3] | locations[4] | locations[5] | locations[6] | locations[7];
-    if (nodeId != locations[0]
-    || nodeId != locations[1]
-    || nodeId != locations[2]
-    || nodeId != locations[3]
-    || nodeId != locations[4]
-    || nodeId != locations[5]
-    || nodeId != locations[6]
-    || nodeId != locations[7])
+    // determine if all the calculated masks match. unique masks mean the
+    // object overlaps sub-nodes
+    const int nodeId   = locations[0] | locations[1] | locations[2] | locations[3] | locations[4] | locations[5] | locations[6] | locations[7];
+    const int overlaps = locations[0] & locations[1] & locations[2] & locations[3] & locations[4] & locations[5] & locations[6] & locations[7];
+
+    // If an object intersects multiple sub-nodes, keep it in the current node
+    // rather than split the object across the intersecting sub-nodes
+    if (nodeId ^ overlaps)
     {
-        mData.emplace_back(value);
+        mData.push_back(value);
         return true;
     }
 
