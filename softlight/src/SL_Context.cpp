@@ -183,7 +183,7 @@ SL_VertexArray& SL_Context::vao(std::size_t index)
 -------------------------------------*/
 std::size_t SL_Context::create_vao()
 {
-    mVaos.emplace_back(SL_VertexArray{});
+    mVaos.push_back(SL_VertexArray{});
     return mVaos.size() - 1;
 }
 
@@ -234,7 +234,7 @@ SL_Texture& SL_Context::texture(std::size_t index)
 -------------------------------------*/
 std::size_t SL_Context::create_texture()
 {
-    mTextures.emplace_back(new SL_Texture{});
+    mTextures.push_back(new SL_Texture{});
     return mTextures.size() - 1;
 }
 
@@ -286,7 +286,7 @@ SL_Framebuffer& SL_Context::framebuffer(std::size_t index)
 -------------------------------------*/
 std::size_t SL_Context::create_framebuffer()
 {
-    mFbos.emplace_back(SL_Framebuffer{});
+    mFbos.push_back(SL_Framebuffer{});
     return mFbos.size() - 1;
 }
 
@@ -337,7 +337,7 @@ SL_VertexBuffer& SL_Context::vbo(std::size_t index)
 -------------------------------------*/
 std::size_t SL_Context::create_vbo()
 {
-    mVbos.emplace_back(SL_VertexBuffer{});
+    mVbos.push_back(SL_VertexBuffer{});
     return mVbos.size() - 1;
 }
 
@@ -388,7 +388,7 @@ SL_IndexBuffer& SL_Context::ibo(std::size_t index)
 -------------------------------------*/
 std::size_t SL_Context::create_ibo()
 {
-    mIbos.emplace_back(SL_IndexBuffer{});
+    mIbos.push_back(SL_IndexBuffer{});
     return mIbos.size() - 1;
 }
 
@@ -439,7 +439,7 @@ SL_UniformBuffer& SL_Context::ubo(std::size_t index)
 -------------------------------------*/
 std::size_t SL_Context::create_ubo()
 {
-    mUniforms.emplace_back(SL_UniformBuffer{});
+    mUniforms.push_back(SL_UniformBuffer{});
     return mUniforms.size() - 1;
 }
 
@@ -512,7 +512,7 @@ std::size_t SL_Context::create_shader(
         return (std::size_t)-1;
     }
 
-    mShaders.emplace_back(SL_Shader{vertShader, fragShader});
+    mShaders.push_back(SL_Shader{vertShader, fragShader});
     return mShaders.size() - 1;
 }
 
@@ -546,7 +546,7 @@ std::size_t SL_Context::create_shader(
         return (std::size_t)-1;
     }
 
-    mShaders.emplace_back(SL_Shader{vertShader, fragShader, mUniforms[uniformIndex]});
+    mShaders.push_back(SL_Shader{vertShader, fragShader, mUniforms[uniformIndex]});
     return mShaders.size() - 1;
 }
 
