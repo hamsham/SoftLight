@@ -1,4 +1,11 @@
 
+/**
+ * @brief Basic Quadtree interface
+ *
+ * @todo Finish implementing proper allocator usage
+ *
+ * @todo Permit the use of a secondary allocator for nodes only.
+ */
 #ifndef SL_QUADTREE_HPP
 #define SL_QUADTREE_HPP
 
@@ -10,7 +17,7 @@
 
 
 /**
- * @brief A Generic QUADTREEree container for spatial partitioning of general
+ * @brief A Generic quadtree container for spatial partitioning of general
  * 2D data.
  *
  * This quadtree will perform a best-fit of data into sub-trees. If an object
@@ -545,53 +552,64 @@ inline std::vector<T, Allocator>& SL_Quadtree<T, MaxDepth, Allocator>::data() no
 template <typename T, size_t MaxDepth, class Allocator>
 bool SL_Quadtree<T, MaxDepth, Allocator>::emplace_internal(const ls::math::vec2& location, float radius, T&& value, size_t currDepth) noexcept
 {
-    // Don't even bother placing an object into sub-nodes if it can't fit
-    const float r2 = mRadius * 0.5f;
-    if (radius > r2 || currDepth == MaxDepth)
+    SL_Quadtree<T, MaxDepth, Allocator>* pTree = this;
+
+    while (true)
     {
-        mData.push_back(value);
-        return true;
-    }
-
-    // calculate a two-bit mask from the object's position and size. This mask
-    // will be used as the index of a sub-node in the tree
-    const ls::math::vec2&& localSpace = location - mOrigin;
-    const int locations[4] = {
-        ls::math::sign_mask(ls::math::vec2{localSpace[0]-radius, localSpace[1]+radius}),
-        ls::math::sign_mask(ls::math::vec2{localSpace[0]+radius, localSpace[1]+radius}),
-        ls::math::sign_mask(ls::math::vec2{localSpace[0]-radius, localSpace[1]-radius}),
-        ls::math::sign_mask(ls::math::vec2{localSpace[0]+radius, localSpace[1]-radius}),
-    };
-
-    // determine if all the calculated masks match. unique masks mean the
-    // object overlaps sub-nodes
-    const int nodeId   = locations[0] | locations[1] | locations[2] | locations[3];
-    const int overlaps = locations[0] & locations[1] & locations[2] & locations[3];
-
-    // If an object intersects multiple sub-nodes, keep it in the current node
-    // rather than split the object across the intersecting sub-nodes
-    if (nodeId ^ overlaps)
-    {
-        mData.push_back(value);
-        return true;
-    }
-
-    const float xSign = (nodeId & 0x01) ? -1.f : 1.f;
-    const float ySign = (nodeId & 0x02) ? -1.f : 1.f;
-
-    const ls::math::vec2&& nodeLocation = mOrigin + ls::math::vec2{r2} * ls::math::vec2{xSign, ySign};
-
-    if (!mNodes[nodeId])
-    {
-        mNodes[nodeId] = new(std::nothrow) SL_Quadtree<T, MaxDepth, Allocator>(nodeLocation, r2);
-
-        if (!mNodes[nodeId])
+        // Don't even bother placing an object into sub-nodes if it can't fit
+        const float r2 = pTree->mRadius * 0.5f;
+        if (radius > r2 || currDepth == MaxDepth)
         {
-            return false;
+            pTree->mData.push_back(value);
+            return true;
         }
+
+        // calculate a two-bit mask from the object's position and size. This mask
+        // will be used as the index of a sub-node in the tree
+        const ls::math::vec2&& localSpace = location - pTree->mOrigin;
+        const ls::math::vec2&& ls0 = localSpace + radius;
+        const ls::math::vec2&& ls1 = localSpace - radius;
+
+        const int locations[4] = {
+            ls::math::sign_mask(ls::math::vec2{ls0[0], ls0[1]}),
+            ls::math::sign_mask(ls::math::vec2{ls1[0], ls0[1]}),
+            ls::math::sign_mask(ls::math::vec2{ls0[0], ls1[1]}),
+            ls::math::sign_mask(ls::math::vec2{ls1[0], ls1[1]}),
+        };
+
+        // determine if all the calculated masks match. unique masks mean the
+        // object overlaps sub-nodes
+        const int nodeId = locations[0] | locations[1] | locations[2] | locations[3];
+        const int overlaps = locations[0] & locations[1] & locations[2] & locations[3];
+
+        // If an object intersects multiple sub-nodes, keep it in the current node
+        // rather than split the object across the intersecting sub-nodes
+        if (nodeId ^ overlaps)
+        {
+            pTree->mData.push_back(value);
+            return true;
+        }
+
+        const float xSign = (nodeId & 0x01) ? -1.f : 1.f;
+        const float ySign = (nodeId & 0x02) ? -1.f : 1.f;
+
+        const ls::math::vec2&& nodeLocation = pTree->mOrigin + ls::math::vec2{r2} * ls::math::vec2{xSign, ySign};
+
+        if (!pTree->mNodes[nodeId])
+        {
+            pTree->mNodes[nodeId] = new(std::nothrow) SL_Quadtree<T, MaxDepth, Allocator>(nodeLocation, r2);
+
+            if (!pTree->mNodes[nodeId])
+            {
+                break;
+            }
+        }
+
+        ++currDepth;
+        pTree = pTree->mNodes[nodeId];
     }
 
-    return mNodes[nodeId]->emplace_internal(location, radius, std::forward<T>(value), currDepth+1);
+    return false;
 }
 
 
