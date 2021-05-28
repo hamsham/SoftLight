@@ -32,7 +32,7 @@
 #include "softlight/SL_WindowEvent.hpp"
 
 #ifndef IMAGE_WIDTH
-    #define IMAGE_WIDTH 1280
+    #define IMAGE_WIDTH 1024
 #endif /* IMAGE_WIDTH */
 
 #ifndef IMAGE_HEIGHT
@@ -40,7 +40,7 @@
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SL_TEST_MAX_THREADS
-    #define SL_TEST_MAX_THREADS 3//(ls::math::max<unsigned>(std::thread::hardware_concurrency(), 2u) - 1u)
+    #define SL_TEST_MAX_THREADS (ls::math::max<unsigned>(std::thread::hardware_concurrency(), 2u) - 1u)
 #endif /* SL_TEST_MAX_THREADS */
 
 #ifndef SL_BENCHMARK_SCENE
@@ -99,15 +99,6 @@ SL_VertexShader box_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-bool _box_frag_shader(SL_FragmentParam& fragParam)
-{
-    fragParam.pOutputs[0] = fragParam.pUniforms->as<QuadtreeUniforms>()->color;
-
-    return true;
-}
-
-
-
 SL_FragmentShader box_frag_shader()
 {
     SL_FragmentShader shader;
@@ -116,7 +107,11 @@ SL_FragmentShader box_frag_shader()
     shader.blend = SL_BLEND_ALPHA;
     shader.depthMask = SL_DEPTH_MASK_OFF;
     shader.depthTest = SL_DEPTH_TEST_OFF;
-    shader.shader = _box_frag_shader;
+    shader.shader = [](SL_FragmentParam& fragParam) -> bool
+    {
+        fragParam.pOutputs[0] = fragParam.pUniforms->as<QuadtreeUniforms>()->color;
+        return true;
+    };
 
     return shader;
 }
@@ -315,46 +310,6 @@ void render_quadtree(SL_SceneGraph* pGraph, const QuadtreeType& quadtree, const 
 
 
 
-/*-------------------------------------
- * Update the camera's position
--------------------------------------*/
-void update_cam_position(SL_Transform& camTrans, float tickTime, utils::Pointer<bool[]>& pKeys)
-{
-    const float camSpeed = 1000.f;
-
-    if (pKeys[SL_KeySymbol::KEY_SYM_w] || pKeys[SL_KeySymbol::KEY_SYM_W])
-    {
-        camTrans.move(math::vec3{0.f, 0.f, camSpeed * tickTime}, false);
-    }
-
-    if (pKeys[SL_KeySymbol::KEY_SYM_s] || pKeys[SL_KeySymbol::KEY_SYM_S])
-    {
-        camTrans.move(math::vec3{0.f, 0.f, -camSpeed * tickTime}, false);
-    }
-
-    if (pKeys[SL_KeySymbol::KEY_SYM_e] || pKeys[SL_KeySymbol::KEY_SYM_E])
-    {
-        camTrans.move(math::vec3{0.f, camSpeed * tickTime, 0.f}, false);
-    }
-
-    if (pKeys[SL_KeySymbol::KEY_SYM_q] || pKeys[SL_KeySymbol::KEY_SYM_Q])
-    {
-        camTrans.move(math::vec3{0.f, -camSpeed * tickTime, 0.f}, false);
-    }
-
-    if (pKeys[SL_KeySymbol::KEY_SYM_d] || pKeys[SL_KeySymbol::KEY_SYM_D])
-    {
-        camTrans.move(math::vec3{camSpeed * tickTime, 0.f, 0.f}, false);
-    }
-
-    if (pKeys[SL_KeySymbol::KEY_SYM_a] || pKeys[SL_KeySymbol::KEY_SYM_A])
-    {
-        camTrans.move(math::vec3{-camSpeed * tickTime, 0.f, 0.f}, false);
-    }
-}
-
-
-
 /*-----------------------------------------------------------------------------
  * main()
 -----------------------------------------------------------------------------*/
@@ -365,9 +320,6 @@ int main()
     ls::utils::Pointer<SL_SceneGraph>   pGraph     {init_context()};
     QuadtreeType                        quadtree   {init_quadtree(1.f, 1.f)};
     SL_Context&                         context    = pGraph->mContext;
-    ls::utils::Pointer<bool[]>          pKeySyms   {new bool[65536]};
-
-    std::fill_n(pKeySyms.get(), 65536 , false);
 
     int shouldQuit = pWindow->init(IMAGE_WIDTH, IMAGE_HEIGHT);
 
@@ -375,9 +327,7 @@ int main()
     unsigned currFrames = 0;
     unsigned totalFrames = 0;
     float currSeconds = 0.f;
-    float dx = 0.f;
-    float dy = 0.f;
-    bool autorotate = true;
+    float prevSeconds = 0.f;
     unsigned numThreads = context.num_threads();
 
     size_t maxDepth = quadtree.depth();
@@ -386,7 +336,16 @@ int main()
     math::mat4 vpMatrix;
     SL_Transform camTrans;
     camTrans.type(SL_TransformType::SL_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
-    camTrans.extract_transforms(math::look_from(math::vec3{-768.f}, math::vec3{0.f}, math::vec3{0.f, -1.f, 0.f}));
+    camTrans.extract_transforms(math::look_from(math::vec3{0.f, 0.f, -1.f}, math::vec3{0.f}, math::vec3{0.f, -1.f, 0.f}));
+    camTrans.apply_transform();
+
+    {
+        const float worldDims = quadtree.radius();
+        //constexpr float    viewAngle  = math::radians(45.f);
+        //const math::mat4&& projMatrix = math::infinite_perspective(viewAngle, (float)pWindow->width() / (float)pWindow->height(), 0.001f);
+        const math::mat4&& projMatrix = math::ortho(-worldDims, worldDims, -worldDims, worldDims);
+        vpMatrix = projMatrix * camTrans.transform();
+    }
 
     if (shouldQuit)
     {
@@ -419,31 +378,9 @@ int main()
         {
             pWindow->pop_event(&evt);
 
-            if (evt.type == SL_WinEventType::WIN_EVENT_MOUSE_BUTTON_DOWN)
-            {
-                autorotate = false;
-            }
-            else if (evt.type == SL_WinEventType::WIN_EVENT_MOUSE_BUTTON_UP)
-            {
-                autorotate = true;
-            }
-            else if (evt.type == SL_WinEventType::WIN_EVENT_MOUSE_MOVED && !autorotate)
-            {
-                SL_MousePosEvent& mouse = evt.mousePos;
-                dx = (float)mouse.dx / (float)pWindow->width();
-                dy = (float)mouse.dy / (float)pWindow->height();
-                camTrans.rotate(math::vec3{2.f*dx, -2.f*dy, 0.f});
-            }
-            else if (evt.type == SL_WinEventType::WIN_EVENT_KEY_DOWN)
+            if (evt.type == SL_WinEventType::WIN_EVENT_KEY_UP)
             {
                 const SL_KeySymbol keySym = evt.keyboard.keysym;
-                pKeySyms[keySym] = true;
-            }
-            else if (evt.type == SL_WinEventType::WIN_EVENT_KEY_UP)
-            {
-                const SL_KeySymbol keySym = evt.keyboard.keysym;
-                pKeySyms[keySym] = false;
-
                 switch (keySym)
                 {
                     case SL_KeySymbol::KEY_SYM_SPACE:
@@ -506,15 +443,21 @@ int main()
 
             constexpr float loopTime = 30.f;
             constexpr float recipLoopTime = 1.f / loopTime;
-            if (currSeconds >= loopTime)
+
+            if (currSeconds - prevSeconds >= 1.f)
             {
                 std::cout << "FPS: " << (float)currFrames/currSeconds << std::endl;
+                prevSeconds = currSeconds;
+            }
+
+            if (currSeconds >= loopTime)
+            {
                 currFrames = 0;
                 currSeconds = 0.f;
             }
 
             #if SL_BENCHMARK_SCENE
-                if (totalFrames >= 1200)
+                if (totalFrames >= 1000)
                 {
                     shouldQuit = true;
                 }
@@ -524,18 +467,7 @@ int main()
             const float radomPy = math::sin(ls::math::radians((currSeconds*recipLoopTime) * 360.f)) * 384.f;
             quadtree = init_quadtree(radomPx, radomPy);
             maxDepth = quadtree.depth();
-            currDepth = maxDepth;
-
-            update_cam_position(camTrans, tickTime, pKeySyms);
-
-            if (camTrans.is_dirty())
-            {
-                camTrans.apply_transform();
-
-                constexpr float    viewAngle  = math::radians(45.f);
-                const math::mat4&& projMatrix = math::infinite_perspective(viewAngle, (float)pWindow->width() / (float)pWindow->height(), 0.001f);
-                vpMatrix = projMatrix * camTrans.transform();
-            }
+            currDepth = math::clamp<size_t>(currDepth, 0, maxDepth);
 
             if (pWindow->width() != pRenderBuf->width() || pWindow->height() != pRenderBuf->height())
             {
