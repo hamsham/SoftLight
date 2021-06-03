@@ -2,6 +2,7 @@
 #ifndef SL_ANIMATION_REEL_HPP
 #define SL_ANIMATION_REEL_HPP
 
+#include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Pointer.h"
 
 #include "lightsky/math/vec3.h"

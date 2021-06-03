@@ -15,6 +15,9 @@ namespace ls
        struct vec3_t;
 
        template<typename num_t>
+       union vec4_t;
+
+       template<typename num_t>
        struct quat_t;
    } // end math namespace
 } // end ls namespace
