@@ -55,9 +55,10 @@ inline LS_INLINE void sl_sort_minmax(__m128& a, __m128& b)  noexcept
         b = _mm_blendv_ps(bt, at, masks);
     #else
         const __m128 cmp  = _mm_cmplt_ps(a, b);
-        const __m128 mask = _mm_shuffle_ps(cmp, cmp, 0x55);
-        const __m128 at   = _mm_or_ps(_mm_and_ps(mask,    b), _mm_andnot_ps(mask, a));
-        const __m128 bt   = _mm_or_ps(_mm_andnot_ps(mask, b), _mm_and_ps(mask,    a));
+        const __m128i abx = _mm_xor_ps(a, b);
+        const __m128 mask = _mm_and_ps(abx, _mm_shuffle_ps(cmp, cmp, 0x55));
+        const __m128 at   = _mm_xor_ps(mask, a);
+        const __m128 bt   = _mm_xor_ps(mask, b);
         a = at;
         b = bt;
     #endif
