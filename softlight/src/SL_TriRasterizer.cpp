@@ -298,7 +298,7 @@ void SL_TriRasterizer::flush_scanlines(const SL_FragmentBin* pBin, uint32_t xMin
     const math::vec4* bcClipSpace = pBin->mBarycentricCoords;
     const math::vec4  depth       {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
     const math::vec4  homogenous  {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
-    depth_type*       pDepthBuf   = mFbo->get_depth_buffer()->row_pointer<depth_type>((uint16_t)y) + xMin;
+    depth_type*       pDepthBuf   = mFbo->get_depth_buffer()->row_pointer<depth_type>((uint16_t)y);
 
     constexpr DepthCmpFunc   depthCmpFunc;
     const SL_FragmentShader& fragShader    = mShader->mFragShader;
@@ -311,12 +311,11 @@ void SL_TriRasterizer::flush_scanlines(const SL_FragmentBin* pBin, uint32_t xMin
     const float yf = (float)y;
     const math::vec4&& bcY = math::fmadd(bcClipSpace[1], math::vec4{yf}, bcClipSpace[2]);
 
-    uint32_t x = xMin;
-    do
+    for (uint32_t x = xMin; x < xMax; ++x)
     {
         // calculate barycentric coordinates
         const math::vec4&& xf{(float)x};
-        const float          d         = _sl_get_depth_texel<depth_type>(pDepthBuf);
+        const float          d         = _sl_get_depth_texel<depth_type>(pDepthBuf + x);
         math::vec4&&         bc        = math::fmadd(bcClipSpace[0], xf, bcY);
         const float          z         = math::dot(depth, bc);
         const int_fast32_t&& depthTest = depthCmpFunc(z, d);
@@ -340,15 +339,11 @@ void SL_TriRasterizer::flush_scanlines(const SL_FragmentBin* pBin, uint32_t xMin
 
                 if (LS_LIKELY(haveDepthMask))
                 {
-                    *pDepthBuf = (depth_type)fragParams.coord.depth;
+                    pDepthBuf[x] = (depth_type)fragParams.coord.depth;
                 }
             }
         }
-
-        ++x;
-        ++pDepthBuf;
     }
-    while (x < xMax);
 }
 
 
