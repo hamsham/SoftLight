@@ -1063,3 +1063,12 @@ unsigned SL_RenderWindowCocoa::dpi() const noexcept
     CGSize displayMMs = CGDisplayScreenSize(displayId);
     return (unsigned)(displayMMs.width / (CGFloat)25.4);
 }
+
+
+
+/*-------------------------------------
+ * Get the contents of the clipboard
+-------------------------------------*/
+void SL_RenderWindowCocoa::request_clipboard() const noexcept
+{
+}

@@ -1049,3 +1049,12 @@ unsigned SL_RenderWindowWin32::dpi() const noexcept
 
     return (unsigned)(displayInches / widthMM + 0.5f); // round before truncate
 }
+
+
+
+/*-------------------------------------
+ * Get the contents of the clipboard
+-------------------------------------*/
+void SL_RenderWindowWin32::request_clipboard() const noexcept
+{
+}

@@ -423,9 +423,10 @@ class SL_SceneGraph
      * A movable reference to a SL_SceneGraph object who's data will be moved
      * into *this.
      *
-     * @return 0 if the import succeeded, non-zero if not.
+     * @return The new index of the imported graph's root node if the import
+     * succeeded, SCENE_NODE_ROOT_ID if not.
      */
-    int import(SL_SceneGraph& inGraph) noexcept;
+    size_t import(SL_SceneGraph& inGraph) noexcept;
 };
 
 

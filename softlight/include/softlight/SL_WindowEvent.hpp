@@ -39,6 +39,8 @@ enum SL_WinEventType : uint32_t
     WIN_EVENT_EXPOSED           = 0x00000400,
     WIN_EVENT_RESIZED           = 0x00000800,
     WIN_EVENT_MOVED             = 0x00001000,
+
+    WIN_EVENT_CLIPBOARD_PASTE   = 0x00002000,
 };
 
 
@@ -104,6 +106,16 @@ struct alignas(8) SL_WinUpdateEvent
 };
 
 
+
+/*-------------------------------------
+ * Clipboard paste events (64-bits)
+-------------------------------------*/
+struct alignas(8) SL_ClipboardEvent
+{
+    const unsigned char* paste;
+};
+
+
 /*-----------------------------------------------------------------------------
  * Generic event container
 -----------------------------------------------------------------------------*/
@@ -123,6 +135,7 @@ struct SL_WindowEvent
         SL_WheelEvent wheel;
         SL_MousePosEvent mousePos;
         SL_WinUpdateEvent window;
+        SL_ClipboardEvent clipboard;
     };
 };
 

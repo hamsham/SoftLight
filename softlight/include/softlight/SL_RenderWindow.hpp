@@ -117,6 +117,8 @@ class SL_RenderWindow
     virtual const void* native_handle() const noexcept = 0;
 
     virtual unsigned dpi() const noexcept = 0;
+
+    virtual void request_clipboard() const noexcept = 0;
 };
 
 

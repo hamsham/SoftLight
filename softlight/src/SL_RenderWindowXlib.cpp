@@ -1,5 +1,4 @@
 
-#include <cassert> // assert
 #include <cstdlib> // std::getenv
 #include <limits> // numeric_limits<>
 #include <memory> // std::move
@@ -106,7 +105,8 @@ SL_RenderWindowXlib::SL_RenderWindowXlib() noexcept :
     mMouseX{0},
     mMouseY{0},
     mKeysRepeat{true},
-    mCaptureMouse{false}
+    mCaptureMouse{false},
+    mClipboard{nullptr}
 {
     ls::utils::runtime_assert(XInitThreads() != False, ls::utils::LS_WARNING, "Unable to initialize Xlib for threading.");
 }
@@ -140,7 +140,8 @@ SL_RenderWindowXlib::SL_RenderWindowXlib(SL_RenderWindowXlib&& rw) noexcept :
     mMouseX{rw.mMouseX},
     mMouseY{rw.mMouseY},
     mKeysRepeat{rw.mKeysRepeat},
-    mCaptureMouse{rw.mCaptureMouse}
+    mCaptureMouse{rw.mCaptureMouse},
+    mClipboard{rw.mClipboard}
 {
     rw.mDisplay = nullptr;
     rw.mWindow = None;
@@ -154,6 +155,7 @@ SL_RenderWindowXlib::SL_RenderWindowXlib(SL_RenderWindowXlib&& rw) noexcept :
     rw.mMouseY = 0;
     rw.mKeysRepeat = true;
     rw.mCaptureMouse = false;
+    rw.mClipboard = nullptr;
 }
 
 
@@ -239,6 +241,9 @@ SL_RenderWindowXlib& SL_RenderWindowXlib::operator=(SL_RenderWindowXlib&& rw) no
 
     this->mCaptureMouse = rw.mCaptureMouse;
     rw.mCaptureMouse = false;
+
+    mClipboard = rw.mClipboard;
+    rw.mClipboard = nullptr;
 
     return *this;
 }
@@ -347,7 +352,7 @@ int SL_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
         | OwnerGrabButtonMask
         | 0;
 
-    assert(!this->valid());
+    ls::utils::runtime_assert(!this->valid(), ls::utils::LS_ERROR, "Cannot initialize an already valid window.");
 
     utils::fast_fill((char*)&visualTemplate, 0, sizeof(XVisualInfo));
     utils::fast_fill((char*)&windowAttribs, 0, sizeof(XSetWindowAttributes));
@@ -510,6 +515,9 @@ int SL_RenderWindowXlib::destroy() noexcept
 
         mKeysRepeat = true;
         mCaptureMouse = false;
+
+        delete [] mClipboard;
+        mClipboard = nullptr;
     }
 
     if (mDisplay)
@@ -530,8 +538,8 @@ int SL_RenderWindowXlib::destroy() noexcept
 -------------------------------------*/
 bool SL_RenderWindowXlib::set_size(unsigned width, unsigned height) noexcept
 {
-    assert(width <= std::numeric_limits<uint16_t>::max());
-    assert(height <= std::numeric_limits<uint16_t>::max());
+    LS_ASSERT(width <= std::numeric_limits<uint16_t>::max());
+    LS_ASSERT(height <= std::numeric_limits<uint16_t>::max());
 
     if (!valid() || !width || !height)
     {
@@ -687,7 +695,7 @@ void SL_RenderWindowXlib::update() noexcept
         default:
             // We should not be in a "starting" or "closed" state
             LS_LOG_ERR("Encountered unexpected window state ", mCurrentState, '.');
-            assert(false); // assertions are disabled on release builds
+            LS_DEBUG_ASSERT(false); // assertions are disabled on release builds
             mCurrentState = WindowStateInfo::WINDOW_CLOSING;
             break;
     }
@@ -730,7 +738,7 @@ bool SL_RenderWindowXlib::pause() noexcept
             // These states can't be used to transition to a paused state
         case WindowStateInfo::WINDOW_CLOSED:
         case WindowStateInfo::WINDOW_STARTING:
-            assert(false); // fail in case of error
+            LS_ASSERT(false); // fail in case of error
             break;
     }
 
@@ -767,7 +775,7 @@ bool SL_RenderWindowXlib::run() noexcept
             // These states can't be used to transition to a paused state
         case WindowStateInfo::WINDOW_CLOSED:
         case WindowStateInfo::WINDOW_STARTING:
-            assert(false); // fail in case of error
+            LS_ASSERT(false); // fail in case of error
             break;
     }
 
@@ -1004,6 +1012,16 @@ bool SL_RenderWindowXlib::peek_event(SL_WindowEvent* const pEvent) noexcept
             pEvent->pNativeWindow = pDestroy->window;
             break;
 
+        case SelectionNotify:
+            pEvent->type = SL_WinEventType::WIN_EVENT_CLIPBOARD_PASTE;
+            if (mClipboard)
+            {
+                delete [] mClipboard;
+                mClipboard = nullptr;
+            }
+            pEvent->clipboard.paste = mClipboard = read_clipboard(mLastEvent);
+            break;
+
         case ConfigureNotify:
             pConfig = &mLastEvent->xconfigure;
             pEvent->pNativeWindow = pConfig->window;
@@ -1074,8 +1092,8 @@ bool SL_RenderWindowXlib::set_keys_repeat(bool doKeysRepeat) noexcept
 -------------------------------------*/
 void SL_RenderWindowXlib::render(SL_WindowBuffer& buffer) noexcept
 {
-    assert(this->valid());
-    assert(buffer.native_handle() != nullptr);
+    LS_ASSERT(this->valid());
+    LS_ASSERT(buffer.native_handle() != nullptr);
 
     #if SL_ENABLE_XSHM != 0
         XShmPutImage(
@@ -1150,4 +1168,75 @@ unsigned SL_RenderWindowXlib::dpi() const noexcept
     const float widthMM = (float)DisplayWidthMM(mDisplay, screenId);
 
     return (unsigned)(displayInches / widthMM + 0.5f); // round before truncate
+}
+
+
+
+/*-------------------------------------
+ * Request the clipboard
+-------------------------------------*/
+void SL_RenderWindowXlib::request_clipboard() const noexcept
+{
+    if (!valid())
+    {
+        return;
+    }
+
+    Atom clipboardId = XInternAtom(mDisplay, "CLIPBOARD", 0);
+    Atom utf8Atom = XInternAtom(mDisplay, "UTF8_STRING", 0);
+    Atom clipProperty = XInternAtom(mDisplay, "XSEL_DATA", 0);
+
+    XConvertSelection(mDisplay, clipboardId, utf8Atom, clipProperty, mWindow, CurrentTime);
+    XFlush(mDisplay);
+}
+
+
+
+/*-------------------------------------
+ * Get the contents of the clipboard
+-------------------------------------*/
+unsigned char* SL_RenderWindowXlib::read_clipboard(const _XEvent* evt) const noexcept
+{
+    unsigned char* ret = nullptr;
+    Atom clipboardId = XInternAtom(mDisplay, "CLIPBOARD", 0);
+    Atom utf8Atom = XInternAtom(mDisplay, "UTF8_STRING", 0);
+    Atom strAtom = XInternAtom(mDisplay, "STRING", 0);
+    Atom clipProperty = XInternAtom(mDisplay, "XSEL_DATA", 0);
+
+    if (evt->xselection.selection == clipboardId && evt->xselection.property == clipProperty)
+    {
+        unsigned char *result = nullptr;
+        unsigned long bytesRead = 0;
+        unsigned long bytesRemaining = 0;
+        int resFormat = 0;
+        Atom targetAtom;
+
+        if (Success == XGetWindowProperty(
+            mDisplay,
+            evt->xselection.requestor,
+            clipProperty,
+            0, // offset
+            LONG_MAX-1,
+            True,
+            AnyPropertyType,
+            &targetAtom,
+            &resFormat,
+            &bytesRead,
+            &bytesRemaining,
+            &result))
+        {
+            // Not reading incrementally
+            if (targetAtom == utf8Atom || targetAtom == strAtom)
+            {
+                ret = new unsigned char[bytesRead + 1];
+                ls::utils::fast_memcpy(ret, result, bytesRead);
+                ret[bytesRead] = '\0';
+            }
+
+            XFree(result);
+            XDeleteProperty(evt->xselection.display, evt->xselection.requestor, evt->xselection.property);
+        }
+    }
+
+    return ret;
 }

@@ -97,6 +97,8 @@ class SL_RenderWindowCocoa final : public SL_RenderWindow
     const void* native_handle() const noexcept override;
 
     unsigned dpi() const noexcept override;
+
+    void request_clipboard() const noexcept override;
 };
 
 

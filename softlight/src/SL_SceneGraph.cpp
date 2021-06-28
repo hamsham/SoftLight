@@ -944,7 +944,7 @@ bool SL_SceneGraph::node_is_child(const size_t nodeIndex, const size_t parentId)
 /*-------------------------------------
  *
 -------------------------------------*/
-int SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
+size_t SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
 {
     const std::size_t baseVaoId  = mContext.vaos().size();
     const std::size_t baseMatId  = mMaterials.size();
@@ -1046,5 +1046,5 @@ int SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
 
     mContext.import(std::move(inContext));
 
-    return 0;
+    return baseNodeId;
 }

@@ -43,6 +43,10 @@ class SL_RenderWindowXlib final : public SL_RenderWindow
 
     bool mCaptureMouse;
 
+    unsigned char* mClipboard;
+
+    unsigned char* read_clipboard(const _XEvent*) const noexcept;
+
   public:
     virtual ~SL_RenderWindowXlib()  noexcept override;
 
@@ -111,6 +115,8 @@ class SL_RenderWindowXlib final : public SL_RenderWindow
     virtual const void* native_handle() const noexcept override;
 
     virtual unsigned dpi() const noexcept override;
+
+    void request_clipboard() const noexcept override;
 };
 
 

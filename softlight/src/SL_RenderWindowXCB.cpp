@@ -21,6 +21,7 @@ extern "C"
 }
 
 #include "lightsky/utils/Assertions.h"
+#include "lightsky/utils/Copy.h"
 #include "lightsky/utils/Log.h"
 
 #include "softlight/SL_WindowBufferXCB.hpp"
@@ -42,6 +43,22 @@ namespace
 inline LS_INLINE int _get_xcb_event(const void* pEvent) noexcept
 {
     return pEvent ? (~0x80 & reinterpret_cast<const xcb_generic_event_t*>(pEvent)->response_type) : XCB_NONE;
+}
+
+
+
+inline xcb_atom_t _get_xcb_atom(xcb_connection_t* connection, const char* xcbName, size_t nameLen) noexcept
+{
+    xcb_atom_t atom = None;
+    xcb_intern_atom_cookie_t cookie = xcb_intern_atom(connection, False, nameLen, xcbName);
+    xcb_intern_atom_reply_t* reply = xcb_intern_atom_reply(connection, cookie, nullptr);
+    if (reply)
+    {
+        atom = reply->atom;
+        free(reply);
+    }
+
+    return atom;
 }
 
 } // end anonymous namespace
@@ -83,7 +100,8 @@ SL_RenderWindowXCB::SL_RenderWindowXCB() noexcept :
     mMouseX{0},
     mMouseY{0},
     mKeysRepeat{true},
-    mCaptureMouse{false}
+    mCaptureMouse{false},
+    mClipboard{nullptr}
 {}
 
 
@@ -118,7 +136,8 @@ SL_RenderWindowXCB::SL_RenderWindowXCB(SL_RenderWindowXCB&& rw) noexcept :
     mMouseX{rw.mMouseX},
     mMouseY{rw.mMouseY},
     mKeysRepeat{rw.mKeysRepeat},
-    mCaptureMouse{rw.mCaptureMouse}
+    mCaptureMouse{rw.mCaptureMouse},
+    mClipboard{rw.mClipboard}
 {
     rw.mDisplay = nullptr;
     rw.mConnection = nullptr;
@@ -135,6 +154,7 @@ SL_RenderWindowXCB::SL_RenderWindowXCB(SL_RenderWindowXCB&& rw) noexcept :
     rw.mMouseY = 0;
     rw.mKeysRepeat = true;
     rw.mCaptureMouse = false;
+    rw.mClipboard = nullptr;
 }
 
 
@@ -229,6 +249,9 @@ SL_RenderWindowXCB& SL_RenderWindowXCB::operator=(SL_RenderWindowXCB&& rw) noexc
 
     this->mCaptureMouse = rw.mCaptureMouse;
     rw.mCaptureMouse = false;
+
+    mClipboard = rw.mClipboard;
+    rw.mClipboard = nullptr;
 
     return *this;
 }
@@ -327,7 +350,7 @@ int SL_RenderWindowXCB::init(unsigned width, unsigned height) noexcept
         return errCode;
     };
 
-    assert(!this->valid());
+    LS_ASSERT(!this->valid());
 
     LS_LOG_MSG("SL_RenderWindowXCB ", this, " initializing");
     {
@@ -379,6 +402,7 @@ int SL_RenderWindowXCB::init(unsigned width, unsigned height) noexcept
         LS_LOG_MSG("\tCreated window ID ", windowId, '.');
 
         xcb_create_window(pConnection, XCB_COPY_FROM_PARENT, windowId, pScreen->root, 0, 0, (uint16_t)width, (uint16_t)height, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, pScreen->root_visual, XCB_CW_EVENT_MASK, &eventMask);
+        xcb_change_window_attributes(pConnection, windowId, XCB_CW_BACK_PIXEL, &pScreen->black_pixel);
         LS_LOG_MSG("\tDone.");
     }
     xcb_map_window(pConnection, windowId);
@@ -497,6 +521,9 @@ int SL_RenderWindowXCB::destroy() noexcept
 
         mKeysRepeat = true;
         mCaptureMouse = false;
+
+        delete [] mClipboard;
+        mClipboard = nullptr;
     }
 
     mCurrentState = WindowStateInfo::WINDOW_CLOSED;
@@ -511,8 +538,8 @@ int SL_RenderWindowXCB::destroy() noexcept
 -------------------------------------*/
 bool SL_RenderWindowXCB::set_size(unsigned w, unsigned h) noexcept
 {
-    assert(w <= std::numeric_limits<uint16_t>::max());
-    assert(h <= std::numeric_limits<uint16_t>::max());
+    LS_ASSERT(w <= std::numeric_limits<uint16_t>::max());
+    LS_ASSERT(h <= std::numeric_limits<uint16_t>::max());
 
     if (!valid() || !w || !h)
     {
@@ -711,7 +738,7 @@ bool SL_RenderWindowXCB::pause() noexcept
             // These states can't be used to transition to a paused state
         case WindowStateInfo::WINDOW_CLOSED:
         case WindowStateInfo::WINDOW_STARTING:
-            assert(false); // fail in case of error
+            LS_ASSERT(false); // fail in case of error
             break;
     }
 
@@ -748,7 +775,7 @@ bool SL_RenderWindowXCB::run() noexcept
             // These states can't be used to transition to a paused state
         case WindowStateInfo::WINDOW_CLOSED:
         case WindowStateInfo::WINDOW_STARTING:
-            assert(false); // fail in case of error
+            LS_ASSERT(false); // fail in case of error
             break;
     }
 
@@ -1009,6 +1036,16 @@ bool SL_RenderWindowXCB::peek_event(SL_WindowEvent* const pEvent) noexcept
 
             break;
 
+        case XCB_SELECTION_NOTIFY:
+            pEvent->type = SL_WinEventType::WIN_EVENT_CLIPBOARD_PASTE;
+            if (mClipboard)
+            {
+                delete [] mClipboard;
+                mClipboard = nullptr;
+            }
+            pEvent->clipboard.paste = mClipboard = read_clipboard(mLastEvent);
+            break;
+
         default: // unhandled event
             pEvent->type = SL_WinEventType::WIN_EVENT_UNKNOWN;
             return false;
@@ -1053,8 +1090,8 @@ bool SL_RenderWindowXCB::set_keys_repeat(bool doKeysRepeat) noexcept
 -------------------------------------*/
 void SL_RenderWindowXCB::render(SL_WindowBuffer& buffer) noexcept
 {
-    assert(this->valid());
-    assert(buffer.native_handle() != nullptr);
+    LS_ASSERT(this->valid());
+    LS_ASSERT(buffer.native_handle() != nullptr);
 
     const uint32_t w = (uint32_t)width();
     const uint32_t h = (uint32_t)height();
@@ -1142,4 +1179,72 @@ unsigned SL_RenderWindowXCB::dpi() const noexcept
     const float widthMM = (float)DisplayWidthMM(mDisplay, screenId);
 
     return (unsigned)(displayInches / widthMM + 0.5f); // round before truncate
+}
+
+
+
+/*-------------------------------------
+ * Request the clipboard
+-------------------------------------*/
+void SL_RenderWindowXCB::request_clipboard() const noexcept
+{
+    if (!valid())
+    {
+        return;
+    }
+
+    constexpr const char clipboardName[] = "CLIPBOARD";
+    const xcb_atom_t clipboardAtom = _get_xcb_atom(mConnection, clipboardName, sizeof(clipboardName)-1);
+
+    constexpr const char utf8StrName[] = "UTF8_STRING";
+    const xcb_atom_t utf8Atom = _get_xcb_atom(mConnection, utf8StrName, sizeof(utf8StrName)-1);
+
+    constexpr const char xselStrName[] = "XSEL_DATA";
+    const xcb_atom_t xselAtom = _get_xcb_atom(mConnection, xselStrName, sizeof(xselStrName)-1);
+
+    xcb_convert_selection(mConnection, mWindow, clipboardAtom, utf8Atom, xselAtom, XCB_TIME_CURRENT_TIME);
+    xcb_flush(mConnection);
+}
+
+
+
+/*-------------------------------------
+ * Get the contents of the clipboard
+-------------------------------------*/
+unsigned char* SL_RenderWindowXCB::read_clipboard(const void* pEvent) const noexcept
+{
+    unsigned char* ret = nullptr;
+    const xcb_selection_notify_event_t* evt = reinterpret_cast<const xcb_selection_notify_event_t*>(pEvent);
+
+    constexpr const char clipboardName[] = "CLIPBOARD";
+    const xcb_atom_t clipboardAtom = _get_xcb_atom(mConnection, clipboardName, sizeof(clipboardName)-1);
+
+    constexpr const char xselStrName[] = "XSEL_DATA";
+    const xcb_atom_t xselAtom = _get_xcb_atom(mConnection, xselStrName, sizeof(xselStrName)-1);
+
+    constexpr const char utf8StrName[] = "UTF8_STRING";
+    const xcb_atom_t utf8Atom = _get_xcb_atom(mConnection, utf8StrName, sizeof(utf8StrName)-1);
+
+    if (evt->selection == clipboardAtom && evt->property == xselAtom)
+    {
+        xcb_get_property_cookie_t cookie = xcb_get_property(mConnection, True, evt->requestor, xselAtom, utf8Atom, 0, UINT32_MAX);
+        xcb_get_property_reply_t* reply = xcb_get_property_reply(mConnection, cookie, nullptr);
+        if (reply)
+        {
+            const unsigned long bytesRead = (unsigned long)xcb_get_property_value_length(reply);
+            if (bytesRead)
+            {
+                const unsigned char* result = (unsigned char*)xcb_get_property_value(reply);
+                ret = new unsigned char[bytesRead + 1];
+                ls::utils::fast_memcpy(ret, result, bytesRead);
+                ret[bytesRead] = '\0';
+            }
+
+            free(reply);
+        }
+
+        xcb_delete_property(mConnection, evt->requestor, evt->property);
+    }
+
+    return ret;
 }
