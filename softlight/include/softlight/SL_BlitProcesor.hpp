@@ -315,7 +315,6 @@ struct SL_Blit_RGBA_to_RGBA
 
 // I spent enough time on blitting... Here, I'm only optimizing for the most
 // common blit operations, from RGBAf & RGBA8 to RGBA8
-#if defined(LS_ARCH_X86)
 template<>
 struct SL_Blit_RGBA_to_RGBA<uint8_t, uint8_t, sizeof(SL_ColorRGBAType<uint8_t>)>
 {
@@ -329,7 +328,8 @@ struct SL_Blit_RGBA_to_RGBA<uint8_t, uint8_t, sizeof(SL_ColorRGBAType<uint8_t>)>
         const ptrdiff_t offset = outIndex * sizeof(SL_ColorRGBAType<uint8_t>);
         const int32_t   inColor = pTexture->texel<int32_t>((uint16_t)srcX, (uint16_t)srcY);
 
-        _mm_stream_si32(reinterpret_cast<int32_t*>(pOutBuf + offset), inColor);
+        //_mm_stream_s32(reinterpret_cast<int32_t*>(pOutBuf + offset), inColor);
+        *reinterpret_cast<int32_t*>(pOutBuf + offset) = inColor;
     }
 };
 
@@ -349,10 +349,10 @@ struct SL_Blit_RGBA_to_RGBA<float, uint8_t, sizeof(SL_ColorRGBAType<uint8_t>)>
         const SL_ColorRGBAType<float>   inColor = pTexture->texel<SL_ColorRGBAType<float>>((uint16_t)srcX, (uint16_t)srcY);
         const SL_ColorRGBAType<uint8_t> in = color_cast<uint8_t, float>(inColor);
 
-        _mm_stream_si32(reinterpret_cast<int32_t*>(pOutBuf + offset), reinterpret_cast<const int32_t&>(in));
+        //_mm_stream_si32(reinterpret_cast<int32_t*>(pOutBuf + offset), reinterpret_cast<const int32_t&>(in));
+        *reinterpret_cast<int32_t*>(pOutBuf + offset) = reinterpret_cast<const int32_t&>(in);
     }
 };
-#endif
 
 
 
