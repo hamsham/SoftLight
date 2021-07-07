@@ -816,13 +816,13 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
                 do
                 {
                     // calculate barycentric coordinates and perform a depth test
-                    const __m128  d         = _sl_get_depth_texel4<depth_type>(pDepth).simd;
                     const __m128  xBound    = _mm_castsi128_ps(_mm_cmplt_epi32(x4, xMax4));
                     math::mat4&&  bc        = math::outer(math::vec4{_mm_cvtepi32_ps(x4)}, bcClipSpace[0]) + bcY;
                     const __m128  z         = (depth * bc).simd;
+                    const __m128  d         = _sl_get_depth_texel4<depth_type>(pDepth).simd;
                     const int32_t depthTest = _mm_movemask_ps(_mm_and_ps(xBound, depthCmpFunc(z, d)));
 
-                    if (LS_UNLIKELY(0 != depthTest))
+                    if (LS_LIKELY(0 != depthTest))
                     {
                         const unsigned storeMask1  = (unsigned)_mm_popcnt_u32((unsigned)depthTest & 0x01u) + numQueuedFrags;
                         const unsigned storeMask2  = (unsigned)_mm_popcnt_u32((unsigned)depthTest & 0x03u) + numQueuedFrags;
@@ -840,6 +840,7 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
                             _mm_storel_pd(reinterpret_cast<double*>(outCoords->coord + storeMask2), xyz1);
                             _mm_storeh_pd(reinterpret_cast<double*>(outCoords->coord + storeMask3), xyz1);
                         }
+
                         __m128 persp4 = (homogenous * bc).simd;
                         persp4 = _mm_rcp_ps(persp4);
 

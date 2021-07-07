@@ -125,20 +125,39 @@ void SL_VertexProcessor::cleanup() noexcept
 {
     static_assert(ls::setup::IsBaseOf<SL_FragmentProcessor, RasterizerType>::value, "Template parameter 'RasterizerType' must derive from SL_FragmentProcessor.");
 
+    constexpr unsigned maxIters = 8;
+    unsigned currentIters = 1;
+
     mBusyProcessors->count.fetch_sub(1, std::memory_order_acq_rel);
-    do
+    while (mBusyProcessors->count.load(std::memory_order_consume))
     {
-        if (mFragProcessors->count.load(std::memory_order_consume))
+        if (LS_UNLIKELY(mFragProcessors->count.load(std::memory_order_consume)))
         {
+            currentIters = 1;
             flush_rasterizer<RasterizerType>();
         }
         else
         {
-            ls::setup::cpu_yield();
+            switch (currentIters)
+            {
+                case 8:
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                case 4:
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                case 2:
+                    ls::setup::cpu_yield();
+                default:
+                    ls::setup::cpu_yield();
+                    currentIters = ls::math::max(currentIters+currentIters, maxIters);
+            }
         }
-    } while (mBusyProcessors->count.load(std::memory_order_consume));
+    }
 
-    if (mBinsUsed->count.load(std::memory_order_consume))
+    if (LS_LIKELY(mBinsUsed->count.load(std::memory_order_consume)))
     {
         flush_rasterizer<RasterizerType>();
     }

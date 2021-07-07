@@ -188,23 +188,41 @@ void SL_ProcessorPool::flush() noexcept
 void SL_ProcessorPool::wait() noexcept
 {
     // Each thread will pause except for the main thread.
-    #if 0
-        for (unsigned threadId = 0; threadId < mNumThreads-1u; ++threadId)
+    if (mNumThreads > 16)
+    {
+        for (unsigned threadId = 0; threadId < mNumThreads - 1u; ++threadId)
         {
             mWorkers[threadId].wait();
         }
-
-        #else
-
-        for (unsigned threadId = 0; threadId < mNumThreads-1u; ++threadId)
+    }
+    else
+    {
+        constexpr unsigned maxIters = 8;
+        unsigned currentIters;
+        for (unsigned threadId = 0; threadId < mNumThreads - 1u; ++threadId)
         {
+            currentIters = 1;
             while (!mWorkers[threadId].ready())
             {
-                ls::setup::cpu_yield();
+                switch (currentIters)
+                {
+                    case 8:
+                        ls::setup::cpu_yield();
+                        ls::setup::cpu_yield();
+                        ls::setup::cpu_yield();
+                        ls::setup::cpu_yield();
+                    case 4:
+                        ls::setup::cpu_yield();
+                        ls::setup::cpu_yield();
+                    case 2:
+                        ls::setup::cpu_yield();
+                    default:
+                        ls::setup::cpu_yield();
+                        currentIters = ls::math::max(currentIters+currentIters, maxIters);
+                }
             }
         }
-
-    #endif
+    }
 }
 
 
