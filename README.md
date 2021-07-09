@@ -1,7 +1,7 @@
 # SoftLight
 A Software Renderer Using The LightSky Framework.
 
-[![Build Status](https://travis-ci.org/hamsham/SoftLight.svg?branch=master)](https://travis-ci.org/hamsham/SoftLight)
+[![Build](https://github.com/hamsham/SoftLight/actions/workflows/cmake.yml/badge.svg)](https://github.com/hamsham/SoftLight/actions/workflows/cmake.yml)
 
 
 
