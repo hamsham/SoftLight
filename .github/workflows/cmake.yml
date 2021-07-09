@@ -40,15 +40,15 @@ jobs:
         submodules: recursive
 
     - name: Install Linux dependencies
-      if: matrix.os == ubuntu-latest
+      if: matrix.os == "ubuntu-latest"
       run: sudo apt-get install x11-utils libx11-dev libx11-xcb-dev libxext-dev libxcb1-dev libxcb-image0-dev libxcb-shm0-dev subversion libassimp-dev libfreeimage-dev libfreetype6-dev libglm-dev libenet-dev
 
     - name: Install MacOS dependencies
-      if: matrix.os == macos-latest
+      if: matrix.os == "macos-latest"
       run: brew install assimp freeimage libxkbcommon subversion freetype enet glm
 
     - name: Install Windows dependencies
-      if: matrix.os == windows-latest
+      if: matrix.os == "windows-latest"
       run: choco install tortoisesvn
 
     - name: Configure CMake
