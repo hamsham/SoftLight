@@ -22,6 +22,7 @@ jobs:
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     runs-on: ${{matrix.os}}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -39,6 +40,18 @@ jobs:
     - uses: actions/checkout@v2
       with:
         submodules: recursive
+
+    - name: Install Linux dependencies
+      if: ${{matrix.os == ubuntu-latest}}
+      run: sudo apt-get install x11-utils libx11-dev libx11-xcb-dev libxext-dev libxcb1-dev libxcb-image0-dev libxcb-shm0-dev subversion libassimp-dev libfreeimage-dev libfreetype6-dev libglm-dev libenet-dev
+
+    - name: Install MacOS dependencies
+      if: ${{matrix.os == macos-latest}}
+      run: brew install assimp freeimage libxkbcommon subversion freetype enet glm
+
+    - name: Install Windows dependencies
+      if: ${{matrix.os == windows-latest}}
+      run: choco install tortoisesvn
 
     - name: Configure CMake
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -G"${{matrix.GENERATOR}}"
