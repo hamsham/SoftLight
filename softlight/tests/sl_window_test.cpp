@@ -109,7 +109,7 @@ int main()
                         break;
 
                     // Some backends have the same key values for upper and lower-case
-                    #if LS_OS_LINUX
+                    #ifdef LS_OS_LINUX
                     case SL_KeySymbol::KEY_SYM_V:
                     #endif
                     case SL_KeySymbol::KEY_SYM_v:
