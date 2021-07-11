@@ -503,6 +503,14 @@ void SL_TriProcessor::push_bin(size_t primIndex, const SL_TransformedVert& a, co
     while ((binId = pLocks->count.fetch_add(1, std::memory_order_acq_rel)) >= SL_SHADER_MAX_BINNED_PRIMS)
     {
         flush_rasterizer<SL_TriRasterizer>();
+
+        // Profiling indicates this is a small win on ARM devices. It could
+        // work on Intel CPIs but AMD's optimization guides discourage
+        // prefetching (due to the cost of cache evictions).
+        #ifdef LS_ARCH_ARM
+            LS_PREFETCH(pFragBins+binId, LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_NONTEMPORAL);
+            LS_PREFETCH(mBinIds+binId, LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_L1);
+        #endif
     }
 
     // place a triangle into the next available bin

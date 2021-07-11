@@ -466,11 +466,11 @@ void SL_TriRasterizer::flush_fragments(
     uint32_t              numQueuedFrags,
     const SL_FragCoord*   outCoords) const noexcept
 {
-    const SL_UniformBuffer* pUniforms     = mShader->mUniforms;
-    const SL_FragmentShader fragShader    = mShader->mFragShader;
-    const SL_FboOutputMask  fboOutMask    = sl_calc_fbo_out_mask(fragShader.numOutputs, (fragShader.blend != SL_BLEND_OFF));
-    const int_fast32_t      haveDepthMask = fragShader.depthMask == SL_DEPTH_MASK_ON;
-    SL_Texture*             pDepthBuf     = mFbo->get_depth_buffer();
+    const SL_UniformBuffer*  pUniforms     = mShader->mUniforms;
+    const SL_FragmentShader& fragShader    = mShader->mFragShader;
+    const SL_FboOutputMask   fboOutMask    = sl_calc_fbo_out_mask(fragShader.numOutputs, (fragShader.blend != SL_BLEND_OFF));
+    const int_fast32_t       haveDepthMask = fragShader.depthMask == SL_DEPTH_MASK_ON;
+    SL_Texture*              pDepthBuf     = mFbo->get_depth_buffer();
 
     SL_FragmentParam fragParams;
     fragParams.pUniforms = pUniforms;
@@ -891,6 +891,9 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
         {
             flush_fragments<depth_type>(pBin, numQueuedFrags, outCoords);
         }
+
+
+        LS_PREFETCH(pBinIds+1, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
     }
 }
 
@@ -1030,6 +1033,8 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
         {
             flush_fragments<depth_type>(pBin, numQueuedFrags, outCoords);
         }
+
+        LS_PREFETCH(pBinIds+1, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
     }
 }
 

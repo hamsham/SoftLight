@@ -57,9 +57,11 @@ SL_ProcessorPool::SL_ProcessorPool(unsigned numThreads) noexcept :
 {
     LS_ASSERT(numThreads > 0);
 
+    ls::utils::set_thread_affinity(ls::utils::get_thread_id(), 0);
+
     for (unsigned i = 0; i < numThreads-1u; ++i)
     {
-        new (&mWorkers[i]) ThreadedWorker{};
+        new (&mWorkers[i]) ThreadedWorker{i+1};
     }
 
     clear_fragment_bins();
@@ -90,9 +92,11 @@ SL_ProcessorPool::SL_ProcessorPool(const SL_ProcessorPool& p) noexcept :
     mWorkers{p.mNumThreads > 1 ? ls::utils::make_unique_aligned_array<SL_ProcessorPool::ThreadedWorker>(p.mNumThreads - 1) : nullptr},
     mNumThreads{p.mNumThreads}
 {
+    ls::utils::set_thread_affinity(ls::utils::get_thread_id(), 0);
+
     for (unsigned i = 0; i < p.mNumThreads-1u; ++i)
     {
-        new (&mWorkers[i]) ThreadedWorker{};
+        new (&mWorkers[i]) ThreadedWorker{i+1};
     }
 
     clear_fragment_bins();
@@ -188,39 +192,48 @@ void SL_ProcessorPool::flush() noexcept
 void SL_ProcessorPool::wait() noexcept
 {
     // Each thread will pause except for the main thread.
-    if (mNumThreads > 16)
+    constexpr unsigned maxIters = 32;
+    unsigned currentIters;
+    bool done;
+
+    for (unsigned threadId = 0; threadId < mNumThreads - 1u; ++threadId)
     {
-        for (unsigned threadId = 0; threadId < mNumThreads - 1u; ++threadId)
+        done = false;
+        currentIters = 1;
+
+        while (!done && !mWorkers[threadId].ready())
         {
-            mWorkers[threadId].wait();
-        }
-    }
-    else
-    {
-        constexpr unsigned maxIters = 8;
-        unsigned currentIters;
-        for (unsigned threadId = 0; threadId < mNumThreads - 1u; ++threadId)
-        {
-            currentIters = 1;
-            while (!mWorkers[threadId].ready())
+            switch (currentIters)
             {
-                switch (currentIters)
-                {
-                    case 8:
-                        ls::setup::cpu_yield();
-                        ls::setup::cpu_yield();
-                        ls::setup::cpu_yield();
-                        ls::setup::cpu_yield();
-                    case 4:
-                        ls::setup::cpu_yield();
-                        ls::setup::cpu_yield();
-                    case 2:
-                        ls::setup::cpu_yield();
-                    default:
-                        ls::setup::cpu_yield();
-                        currentIters = ls::math::max(currentIters+currentIters, maxIters);
-                }
+                case 32:
+                    mWorkers[threadId].wait();
+                    done = true;
+                    continue;
+
+                case 16:
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                case 8:
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                case 4:
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                case 2:
+                    ls::setup::cpu_yield();
+                default:
+                    ls::setup::cpu_yield();
             }
+
+            currentIters = ls::math::max(currentIters+currentIters, maxIters);
         }
     }
 }
@@ -252,9 +265,11 @@ unsigned SL_ProcessorPool::concurrency(unsigned inNumThreads) noexcept
         mWorkers = ls::utils::make_unique_aligned_array<SL_ProcessorPool::ThreadedWorker>(inNumThreads - 1);
     }
 
+    ls::utils::set_thread_affinity(ls::utils::get_thread_id(), 0);
+
     for (unsigned i = 0; i < inNumThreads-1u; ++i)
     {
-        new (&mWorkers[i]) ThreadedWorker{};
+        new (&mWorkers[i]) ThreadedWorker{i+1};
     }
 
     mNumThreads = inNumThreads;

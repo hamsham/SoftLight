@@ -125,7 +125,7 @@ void SL_VertexProcessor::cleanup() noexcept
 {
     static_assert(ls::setup::IsBaseOf<SL_FragmentProcessor, RasterizerType>::value, "Template parameter 'RasterizerType' must derive from SL_FragmentProcessor.");
 
-    constexpr unsigned maxIters = 8;
+    constexpr unsigned maxIters = 16;
     unsigned currentIters = 1;
 
     mBusyProcessors->count.fetch_sub(1, std::memory_order_acq_rel);
@@ -140,6 +140,15 @@ void SL_VertexProcessor::cleanup() noexcept
         {
             switch (currentIters)
             {
+                case 16:
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
                 case 8:
                     ls::setup::cpu_yield();
                     ls::setup::cpu_yield();
