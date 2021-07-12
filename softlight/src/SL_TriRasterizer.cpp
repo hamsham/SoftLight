@@ -891,9 +891,6 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
         {
             flush_fragments<depth_type>(pBin, numQueuedFrags, outCoords);
         }
-
-
-        LS_PREFETCH(pBinIds+1, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
     }
 }
 
@@ -1033,8 +1030,6 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
         {
             flush_fragments<depth_type>(pBin, numQueuedFrags, outCoords);
         }
-
-        LS_PREFETCH(pBinIds+1, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_NONTEMPORAL);
     }
 }
 
