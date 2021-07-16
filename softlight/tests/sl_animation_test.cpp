@@ -513,7 +513,7 @@ utils::Pointer<SL_SceneGraph> create_context()
     meshLoader.data().mCurrentTransforms[0].position(math::vec3{0.f, 0.f, -50.f});
     meshLoader.data().mCurrentTransforms[0].scale(math::vec3{20.f});
     retCode = pGraph->import(meshLoader.data());
-    assert(retCode == 0);
+    assert(retCode != 0);
 
     pGraph->update();
 
@@ -578,7 +578,7 @@ int main()
 
     SL_Transform camTrans;
     camTrans.type(SL_TransformType::SL_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
-    camTrans.extract_transforms(math::look_at(math::vec3{75.f}, math::vec3{0.f, 30.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
+    camTrans.look_at(math::vec3{75.f}, math::vec3{0.f, 30.f, 0.f}, math::vec3{0.f, 1.f, 0.f}, true);
     math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
 
     if (shouldQuit)

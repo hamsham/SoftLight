@@ -518,15 +518,14 @@ void SL_Transform::lock_y_axis(const bool isLocked) noexcept
 /*-------------------------------------
  * Looking at targets
 -------------------------------------*/
-void SL_Transform::look_at(const math::vec3& eye, const math::vec3& target, const math::vec3& up)
+void SL_Transform::look_at(const math::vec3& eye, const math::vec3& target, const math::vec3& up, bool absolutePosition)
 {
-    if (mType != SL_TRANSFORM_TYPE_MODEL)
+    if (absolutePosition)
     {
-        extract_transforms(math::look_from(eye, target, up));
+        extract_transforms(math::look_at(eye, target, up));
     }
     else
     {
-        extract_transforms(math::pure_look_at(eye, target, up));
-        position(eye);
+        extract_transforms(math::look_from(eye, target, up));
     }
 }

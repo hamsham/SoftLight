@@ -623,7 +623,7 @@ int main()
     bool               useEdgeFilter  = true;
 
     viewMatrix.type(SL_TransformType::SL_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
-    viewMatrix.extract_transforms(math::look_at(math::vec3{10.f, 30.f, 70.f}, math::vec3{0.f, 20.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
+    viewMatrix.look_at(math::vec3{10.f, 30.f, 70.f}, math::vec3{0.f, 20.f, 0.f}, math::vec3{0.f, 1.f, 0.f});
     viewMatrix.apply_transform();
 
     timer.start();

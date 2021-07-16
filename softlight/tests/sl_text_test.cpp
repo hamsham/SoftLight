@@ -387,7 +387,7 @@ int main()
 
     SL_Transform camTrans;
     camTrans.type(SL_TransformType::SL_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
-    camTrans.extract_transforms(math::look_at(math::vec3{30.f, -20.f, -55.f}, math::vec3{30.f, 40.f, 0.f}, math::vec3{0.f, -1.f, 0.f}));
+    camTrans.look_at(math::vec3{30.f, -20.f, -55.f}, math::vec3{30.f, 40.f, 0.f}, math::vec3{0.f, -1.f, 0.f}, true);
     math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
 
     if (shouldQuit)

@@ -484,7 +484,7 @@ class alignas(sizeof(ls::math::vec4)*4) SL_Transform
      * @param up
      * The direction which determines which way is upwards.
      */
-    void look_at(const ls::math::vec3& eye, const ls::math::vec3& target, const ls::math::vec3& up = {0.f, 1.f, 0.f});
+    void look_at(const ls::math::vec3& eye, const ls::math::vec3& target, const ls::math::vec3& up = {0.f, 1.f, 0.f}, bool absolutePosition = true);
 
     /**
      * @brief Set an orientation for view transformations.
@@ -605,7 +605,7 @@ inline bool SL_Transform::is_y_axis_locked() const noexcept
 -------------------------------------*/
 inline void SL_Transform::look_at(const ls::math::vec3& target)
 {
-    look_at(mPosition, target, ls::math::vec3{0.f, 1.f, 0.f});
+    look_at(mPosition, target, ls::math::vec3{0.f, 1.f, 0.f}, true);
 }
 
 
