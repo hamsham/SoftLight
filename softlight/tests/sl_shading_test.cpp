@@ -2,8 +2,9 @@
 #include <iostream>
 #include <thread>
 
-#include "lightsky/math/vec_utils.h"
 #include "lightsky/math/mat_utils.h"
+#include "lightsky/math/quat_utils.h"
+#include "lightsky/math/vec_utils.h"
 
 #include "lightsky/utils/Pointer.h"
 #include "lightsky/utils/StringUtils.h"
@@ -439,6 +440,7 @@ void render_scene(SL_SceneGraph* pGraph, const math::mat4& vpMatrix, size_t maxI
             const SL_Mesh&     m          = pGraph->mMeshes[nodeMeshId];
             const SL_Material& material   = pGraph->mMaterials[m.materialId];
 
+
             pUniforms->pTexture = material.pTextures[SL_MATERIAL_TEXTURE_AMBIENT];
 
             context.draw_instanced(m, maxInstances, 0, 0);
@@ -460,6 +462,10 @@ void update_instance_count(utils::Pointer<SL_SceneGraph>& pGraph, size_t instanc
     size_t instanceCount = instancesX * instancesY * instancesZ;
     pUniforms->instanceMatrix = utils::make_unique_aligned_array<math::mat4>(instanceCount);
 
+    float rx = (float)instancesX / 2.f;
+    float ry = (float)instancesY / 2.f;
+    float rz = (float)instancesZ / 2.f;
+
     for (size_t z = 0; z < instancesZ; ++z)
     {
         for (size_t y = 0; y < instancesY; ++y)
@@ -467,11 +473,38 @@ void update_instance_count(utils::Pointer<SL_SceneGraph>& pGraph, size_t instanc
             for (size_t x = 0; x < instancesX; ++x)
             {
                 SL_Transform tempTrans;
-                tempTrans.position(math::vec3{(float)x, (float)y, (float)z} * 10.f);
+                tempTrans.position(math::vec3{(float)x - rx + 0.5f, (float)y - ry + 0.5f, (float)z - rz + 0.5f} * 10.f);
                 tempTrans.apply_transform();
 
                 const size_t index = x + (instancesX * y + (instancesX * instancesY * z));
                 pUniforms->instanceMatrix[index] = tempTrans.transform();
+            }
+        }
+    }
+}
+
+
+
+/*-----------------------------------------------------------------------------
+ * Update the number of instances
+-----------------------------------------------------------------------------*/
+void update_instance_matrices(utils::UniqueAlignedArray<math::mat4>& matrices, const math::vec3& target, size_t instancesX, size_t instancesY, size_t instancesZ)
+{
+    float rx = (float)instancesX / 2.f;
+    float ry = (float)instancesY / 2.f;
+    float rz = (float)instancesZ / 2.f;
+    math::vec3 r{rx, ry, rz};
+
+    for (size_t z = 0; z < instancesZ; ++z)
+    {
+        for (size_t y = 0; y < instancesY; ++y)
+        {
+            for (size_t x = 0; x < instancesX; ++x)
+            {
+                const size_t index = x + (instancesX * y + (instancesX * instancesY * z));
+                math::mat4& mat = matrices[index];
+                const math::vec3 pos = math::vec3{(float)x - rx + 0.5f, (float)y - ry + 0.5f, (float)z - rz + 0.5f} * 10.f;
+                mat = math::look_at(pos, pos+target, math::vec3{0.f, -1.f, 0.f});
             }
         }
     }
@@ -572,10 +605,12 @@ int main()
     unsigned numThreads = context.num_threads();
 
     SL_Transform camTrans;
-    camTrans.type(SL_TransformType::SL_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
+    camTrans.type(SL_TransformType::SL_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
     math::vec3 viewPos = math::vec3{(float)instancesX, (float)instancesY, (float)instancesZ} * 15.f;
-    camTrans.extract_transforms(math::look_at(viewPos, math::vec3{0.f, 0.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
+    camTrans.look_at(viewPos, math::vec3{0.f}, math::vec3{0.f, 1.f, 0.f});
     math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
+
+    math::quat target{0.f, 0.f, 0.f, 1.f};
 
     if (shouldQuit)
     {
@@ -677,7 +712,7 @@ int main()
                         instancesZ = math::max<unsigned>(1, instancesZ-1);
                         update_instance_count(pGraph, instancesX, instancesY, instancesZ);
                         viewPos = math::vec3{(float)instancesX, (float)instancesY, (float)instancesZ} * 15.f;
-                        camTrans.extract_transforms(math::look_at(viewPos, math::vec3{0.f, 0.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
+                        camTrans.look_at(viewPos, math::vec3{0.f}, math::vec3{0.f, 1.f, 0.f});
                         std::cout << "Instance count decreased to (" << instancesX << 'x' << instancesY << 'x' << instancesZ << ") = " << instancesX*instancesY*instancesZ << std::endl;
                         break;
 
@@ -687,7 +722,7 @@ int main()
                         instancesZ = math::min<unsigned>(std::numeric_limits<unsigned>::max(), instancesZ+1);
                         update_instance_count(pGraph, instancesX, instancesY, instancesZ);
                         viewPos = math::vec3{(float)instancesX, (float)instancesY, (float)instancesZ} * 15.f;
-                        camTrans.extract_transforms(math::look_at(viewPos, math::vec3{0.f, 0.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
+                        camTrans.look_at(viewPos, math::vec3{0.f}, math::vec3{0.f, 1.f, 0.f});
                         std::cout << "Instance count decreased to (" << instancesX << 'x' << instancesY << 'x' << instancesZ << ") = " << instancesX*instancesY*instancesZ << std::endl;
                         break;
 
@@ -710,8 +745,8 @@ int main()
                 if (pWindow->is_mouse_captured())
                 {
                     SL_MousePosEvent& mouse = evt.mousePos;
-                    dx = ((float)mouse.dx / (float)pWindow->width()) * -0.05f;
-                    dy = ((float)mouse.dy / (float)pWindow->height()) * -0.05f;
+                    dx = ((float)mouse.dx / (float)pWindow->width()) * -0.5f;
+                    dy = ((float)mouse.dy / (float)pWindow->height()) * -0.5f;
                     camTrans.rotate(math::vec3{dx, dy, 0.f});
                 }
             }
@@ -740,8 +775,16 @@ int main()
                 camTrans.apply_transform();
             }
 
-            for (size_t i = instancesX*instancesY*instancesZ; i--;) {
-                pUniforms->instanceMatrix[i] = math::rotate(pUniforms->instanceMatrix[i], math::vec3{0.f, 1.f, 0.f}, tickTime);
+            // rotate and translate all instances
+            {
+                target = math::normalize(target * math::quat{0.f, tickTime*0.5f, 0.f, 1.f});
+                const math::mat3&& t = math::quat_to_mat3(target);
+
+                for (size_t i = instancesX * instancesY * instancesZ; i--;)
+                {
+                    const math::vec3&& pos = math::vec3_cast(pUniforms->instanceMatrix[i][3]);
+                    pUniforms->instanceMatrix[i] = math::translate(math::mat4{t}, pos);
+                }
             }
 
             pGraph->update();

@@ -677,14 +677,14 @@ void update_cam_position(SL_Transform& camTrans, float tickTime, utils::Pointer<
         camTrans.move(math::vec3{0.f, -camSpeed * tickTime, 0.f}, false);
     }
 
-    if (pKeys[SL_KeySymbol::KEY_SYM_d] || pKeys[SL_KeySymbol::KEY_SYM_D])
-    {
-        camTrans.move(math::vec3{-camSpeed * tickTime, 0.f, 0.f}, false);
-    }
-
     if (pKeys[SL_KeySymbol::KEY_SYM_a] || pKeys[SL_KeySymbol::KEY_SYM_A])
     {
         camTrans.move(math::vec3{camSpeed * tickTime, 0.f, 0.f}, false);
+    }
+
+    if (pKeys[SL_KeySymbol::KEY_SYM_d] || pKeys[SL_KeySymbol::KEY_SYM_D])
+    {
+        camTrans.move(math::vec3{-camSpeed * tickTime, 0.f, 0.f}, false);
     }
 }
 
@@ -881,8 +881,8 @@ int main()
 
     SL_Transform camTrans;
     camTrans.type(SL_TransformType::SL_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
-    camTrans.extract_transforms(math::look_at(math::vec3{0.f}, math::vec3{3.f, -5.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
-    //camTrans.extract_transforms(math::look_at(math::vec3{200.f, 150.f, 0.f}, math::vec3{0.f, 100.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
+    camTrans.look_at(math::vec3{0.f}, math::vec3{3.f, -5.f, 0.f}, math::vec3{0.f, 1.f, 0.f});
+    //camTrans.look_at(math::vec3{200.f, 150.f, 0.f}, math::vec3{0.f, 100.f, 0.f}, math::vec3{0.f, 1.f, 0.f});
 
     #if TEST_REVERSED_DEPTH
         math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);

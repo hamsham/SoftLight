@@ -520,16 +520,13 @@ void SL_Transform::lock_y_axis(const bool isLocked) noexcept
 -------------------------------------*/
 void SL_Transform::look_at(const math::vec3& eye, const math::vec3& target, const math::vec3& up)
 {
-    LS_DEBUG_ASSERT(mType != SL_TRANSFORM_TYPE_MODEL);
-
-    if (mType == SL_TRANSFORM_TYPE_VIEW_ARC
-    || mType == SL_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y)
+    if (mType != SL_TRANSFORM_TYPE_MODEL)
     {
         extract_transforms(math::look_from(eye, target, up));
     }
     else
     {
         extract_transforms(math::pure_look_at(eye, target, up));
-        position(-eye);
+        position(eye);
     }
 }

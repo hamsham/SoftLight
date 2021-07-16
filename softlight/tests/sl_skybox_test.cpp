@@ -502,7 +502,7 @@ int main()
     math::mat4 vpMatrix;
     SL_Transform camTrans;
     camTrans.type(SL_TransformType::SL_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
-    camTrans.extract_transforms(math::look_at(math::vec3{0.f, 0.f, 0.f}, math::vec3{1.f, 0.f, 0.f}, math::vec3{0.f, 1.f, 0.f}));
+    camTrans.look_at(math::vec3{0.f, 0.f, 0.f}, math::vec3{1.f, 0.f, 0.f}, math::vec3{0.f, 1.f, 0.f});
 
     int shouldQuit = pWindow->init(IMAGE_WIDTH, IMAGE_HEIGHT);
     if (shouldQuit)
@@ -595,7 +595,7 @@ int main()
                 if (pWindow->is_mouse_captured())
                 {
                     SL_MousePosEvent& mouse = evt.mousePos;
-                    dx = ((float)mouse.dx / (float)pWindow->width()) * 0.25f;
+                    dx = ((float)mouse.dx / (float)pWindow->width()) * -0.25f;
                     dy = ((float)mouse.dy / (float)pWindow->height()) * -0.25f;
                     camTrans.rotate(math::vec3{dx, dy, 0.f});
                 }
