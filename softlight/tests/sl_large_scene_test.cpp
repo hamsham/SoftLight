@@ -807,7 +807,7 @@ utils::Pointer<SL_SceneGraph> create_context()
     //retCode = meshLoader.load("testdata/sponza/sponza.obj", opts);
     assert(retCode != 0);
 
-    retCode = pGraph->import(meshLoader.data());
+    retCode = (int)pGraph->import(meshLoader.data());
     assert(retCode == 0);
 
     pGraph->mCurrentTransforms[0].scale( math::vec3{20.f});

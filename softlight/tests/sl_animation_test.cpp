@@ -503,7 +503,7 @@ utils::Pointer<SL_SceneGraph> create_context()
 
     meshLoader.data().mCurrentTransforms[1].rotate(math::vec3{LS_PI_OVER_4, LS_PI_OVER_3, 0.f});
     meshLoader.data().mCurrentTransforms[0].position(math::vec3{-20.f, 0.f, 20.f});
-    retCode = pGraph->import(meshLoader.data());
+    retCode = (int)pGraph->import(meshLoader.data());
     assert(retCode == 0);
 
     retCode = meshLoader.load("testdata/rover/testmesh.dae", opts);
@@ -512,7 +512,7 @@ utils::Pointer<SL_SceneGraph> create_context()
     meshLoader.data().mCurrentTransforms[0].rotate(math::vec3{0.f, 0.f, LS_PI_OVER_2});
     meshLoader.data().mCurrentTransforms[0].position(math::vec3{0.f, 0.f, -50.f});
     meshLoader.data().mCurrentTransforms[0].scale(math::vec3{20.f});
-    retCode = pGraph->import(meshLoader.data());
+    retCode = (int)pGraph->import(meshLoader.data());
     assert(retCode != 0);
 
     pGraph->update();

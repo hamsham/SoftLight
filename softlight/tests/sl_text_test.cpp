@@ -338,7 +338,7 @@ utils::Pointer<SL_SceneGraph> create_context()
         std::cerr << "Failed to load the test text mesh." << std::endl;
         return pGraph;
     }
-    retCode = pGraph->import(textMeshLoader.data());
+    retCode = (int)pGraph->import(textMeshLoader.data());
     assert(retCode == 0);
 
     pGraph->update();

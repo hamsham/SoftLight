@@ -31,7 +31,7 @@ utils::Pointer<SL_SceneGraph> load_scene(const std::string& fileName)
     retCode = meshLoader.load(fileName);
     assert(retCode != 0);
 
-    retCode = pGraph->import(meshLoader.data());
+    retCode = (int)pGraph->import(meshLoader.data());
     assert(retCode == 0);
 
     return pGraph;

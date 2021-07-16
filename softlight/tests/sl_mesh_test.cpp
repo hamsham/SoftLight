@@ -178,7 +178,7 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     retCode = meshLoader.load("testdata/heart/heart.obj");
     assert(retCode != 0);
 
-    retCode = pGraph->import(meshLoader.data());
+    retCode = (int)pGraph->import(meshLoader.data());
     assert(retCode == 0);
 
     // Always make sure the scene graph is updated before rendering
