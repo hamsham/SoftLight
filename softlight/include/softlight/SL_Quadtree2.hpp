@@ -1,8 +1,0 @@
-//
-// Created by hammy on 5/28/21.
-//
-
-#ifndef SOFTLIGHT_SL_QUADTREE2_HPP
-#define SOFTLIGHT_SL_QUADTREE2_HPP
-
-#endif //SOFTLIGHT_SL_QUADTREE2_HPP
