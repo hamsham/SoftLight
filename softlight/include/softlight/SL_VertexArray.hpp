@@ -3,7 +3,8 @@
 #define SL_VERTEX_ARRAY_HPP
 
 #include <cstddef> // ptrdiff_t
-#include <vector>
+
+#include "lightsky/utils/Pointer.h"
 
 #include "softlight/SL_Geometry.hpp" // SL_Dimension, SL_DataType
 
@@ -14,17 +15,21 @@ class SL_VertexArray
     static constexpr uint32_t SL_INVALID_BUFFER_ID = std::numeric_limits<uint32_t>::max();
 
   private:
-    uint64_t mVboId;
+    struct BindInfo
+    {
+        SL_Dimension dimens;
+        SL_DataType type;
+        ptrdiff_t offset;
+        ptrdiff_t stride;
+    };
 
-    uint64_t mIboId;
+    std::size_t mVboId;
 
-    std::vector<SL_Dimension> mDimens;
+    std::size_t mIboId;
 
-    std::vector<SL_DataType> mTypes;
+    ls::utils::UniqueAlignedArray<BindInfo> mBindings;
 
-    std::vector<ptrdiff_t> mOffsets;
-
-    std::vector<ptrdiff_t> mStrides;
+    uint64_t mNumBindings;
 
   public:
     ~SL_VertexArray() noexcept;
@@ -88,7 +93,7 @@ class SL_VertexArray
 --------------------------------------*/
 inline std::size_t SL_VertexArray::num_bindings() const noexcept
 {
-    return mDimens.size();
+    return mNumBindings;
 }
 
 
@@ -98,7 +103,7 @@ inline std::size_t SL_VertexArray::num_bindings() const noexcept
 --------------------------------------*/
 inline ptrdiff_t SL_VertexArray::offset(std::size_t bindId) const noexcept
 {
-    return mOffsets[bindId];
+    return mBindings[bindId].offset;
 }
 
 
@@ -108,7 +113,8 @@ inline ptrdiff_t SL_VertexArray::offset(std::size_t bindId) const noexcept
 --------------------------------------*/
 inline ptrdiff_t SL_VertexArray::offset(std::size_t bindId, std::size_t vertId) const noexcept
 {
-    return mOffsets[bindId] + (mStrides[bindId] * vertId);
+    const SL_VertexArray::BindInfo& binding = mBindings[bindId];
+    return binding.offset + (binding.stride * vertId);
 }
 
 
@@ -118,7 +124,7 @@ inline ptrdiff_t SL_VertexArray::offset(std::size_t bindId, std::size_t vertId) 
 --------------------------------------*/
 inline ptrdiff_t SL_VertexArray::stride(std::size_t bindId) const noexcept
 {
-    return mStrides[bindId];
+    return mBindings[bindId].stride;
 }
 
 
@@ -128,7 +134,7 @@ inline ptrdiff_t SL_VertexArray::stride(std::size_t bindId) const noexcept
 --------------------------------------*/
 inline SL_DataType SL_VertexArray::type(std::size_t bindId) const noexcept
 {
-    return mTypes[bindId];
+    return mBindings[bindId].type;
 }
 
 
@@ -138,7 +144,7 @@ inline SL_DataType SL_VertexArray::type(std::size_t bindId) const noexcept
 --------------------------------------*/
 inline SL_Dimension SL_VertexArray::dimensions(std::size_t bindId) const noexcept
 {
-    return mDimens[bindId];
+    return mBindings[bindId].dimens;
 }
 
 

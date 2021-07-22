@@ -21,10 +21,8 @@ SL_VertexArray::~SL_VertexArray() noexcept
 SL_VertexArray::SL_VertexArray() noexcept :
     mVboId{SL_INVALID_BUFFER_ID},
     mIboId{SL_INVALID_BUFFER_ID},
-    mDimens{},
-    mTypes{},
-    mOffsets{},
-    mStrides{}
+    mBindings{nullptr},
+    mNumBindings{0}
 {}
 
 
@@ -35,11 +33,23 @@ SL_VertexArray::SL_VertexArray() noexcept :
 SL_VertexArray::SL_VertexArray(const SL_VertexArray& v) noexcept :
     mVboId{v.mVboId},
     mIboId{v.mIboId},
-    mDimens{v.mDimens},
-    mTypes{v.mTypes},
-    mOffsets{v.mOffsets},
-    mStrides{v.mStrides}
-{}
+    mBindings{v.mBindings ? ls::utils::make_unique_aligned_array<SL_VertexArray::BindInfo>(v.num_bindings()) : nullptr},
+    mNumBindings{v.num_bindings()}
+{
+    if (mBindings)
+    {
+        for (std::size_t i = 0; i < v.num_bindings(); ++i)
+        {
+            mBindings[i] = v.mBindings[i];
+        }
+    }
+    else
+    {
+        mVboId = SL_INVALID_BUFFER_ID;
+        mIboId = SL_INVALID_BUFFER_ID;
+        mNumBindings = 0;
+    }
+}
 
 
 
@@ -49,13 +59,12 @@ SL_VertexArray::SL_VertexArray(const SL_VertexArray& v) noexcept :
 SL_VertexArray::SL_VertexArray(SL_VertexArray&& v) noexcept :
     mVboId{v.mVboId},
     mIboId{v.mIboId},
-    mDimens{std::move(v.mDimens)},
-    mTypes{std::move(v.mTypes)},
-    mOffsets{std::move(v.mOffsets)},
-    mStrides{std::move(v.mStrides)}
+    mBindings{std::move(v.mBindings)},
+    mNumBindings{std::move(v.mNumBindings)}
 {
     v.mVboId = SL_INVALID_BUFFER_ID;
     v.mIboId = SL_INVALID_BUFFER_ID;
+    v.mNumBindings = 0;
 }
 
 
@@ -70,10 +79,22 @@ SL_VertexArray& SL_VertexArray::operator=(const SL_VertexArray& v) noexcept
         mVboId = v.mVboId;
         mIboId = v.mIboId;
 
-        mDimens = v.mDimens;
-        mTypes = v.mTypes;
-        mOffsets = v.mOffsets;
-        mStrides = v.mStrides;
+        mBindings = ls::utils::make_unique_aligned_array<SL_VertexArray::BindInfo>(v.num_bindings());
+        if (mBindings)
+        {
+            for (std::size_t i = 0; i < v.num_bindings(); ++i)
+            {
+                mBindings[i] = v.mBindings[i];
+            }
+
+            mNumBindings = v.mNumBindings;
+        }
+        else
+        {
+            mVboId = SL_INVALID_BUFFER_ID;
+            mIboId = SL_INVALID_BUFFER_ID;
+            mNumBindings = 0;
+        }
     }
 
     return *this;
@@ -94,10 +115,8 @@ SL_VertexArray& SL_VertexArray::operator=(SL_VertexArray&& v) noexcept
         mIboId = v.mIboId;
         v.mIboId = SL_INVALID_BUFFER_ID;
 
-        mDimens = std::move(v.mDimens);
-        mTypes = std::move(v.mTypes);
-        mOffsets = std::move(v.mOffsets);
-        mStrides = std::move(v.mStrides);
+        mBindings = std::move(v.mBindings);
+        mNumBindings = std::move(v.mNumBindings);
     }
 
     return *this;
@@ -118,21 +137,19 @@ int SL_VertexArray::set_num_bindings(std::size_t numBindings) noexcept
     int ret = 0;
 
     // increased the number of bindings
-    if (numBindings > mDimens.size())
+    if (numBindings > mNumBindings)
     {
-        ret = (int)(numBindings - mDimens.size());
+        ret = (int)(numBindings - mNumBindings);
     }
-    else if (numBindings < mDimens.size())
+    else if (numBindings < mNumBindings)
     {
         // decreased the number of bindings
-        ret = (int)(mDimens.size() - numBindings);
+        ret = (int)(mNumBindings - numBindings);
         ret = -ret;
     }
 
-    mDimens.resize(numBindings);
-    mTypes.resize(numBindings);
-    mOffsets.resize(numBindings);
-    mStrides.resize(numBindings);
+    mBindings = ls::utils::make_unique_aligned_array<SL_VertexArray::BindInfo>(numBindings);
+    mNumBindings = mBindings ? numBindings : 0;
 
     return ret;
 }
@@ -149,10 +166,11 @@ void SL_VertexArray::set_binding(
     SL_Dimension numDimens,
     SL_DataType vertType) noexcept
 {
-    mDimens[bindId]  = numDimens;
-    mTypes[bindId]   = vertType;
-    mOffsets[bindId] = offset;
-    mStrides[bindId] = stride;
+    SL_VertexArray::BindInfo& binding = mBindings[bindId];
+    binding.dimens  = numDimens;
+    binding.type   = vertType;
+    binding.offset = offset;
+    binding.stride = stride;
 }
 
 
@@ -162,10 +180,28 @@ void SL_VertexArray::set_binding(
 --------------------------------------*/
 void SL_VertexArray::remove_binding(std::size_t bindId) noexcept
 {
-    mDimens.erase(mDimens.begin() + bindId);
-    mTypes.erase(mTypes.begin() + bindId);
-    mOffsets.erase(mOffsets.begin() + bindId);
-    mStrides.erase(mStrides.begin() + bindId);
+    if (!mNumBindings)
+    {
+        return;
+    }
+    if (bindId == mNumBindings-1)
+    {
+        mNumBindings -= 1;
+    }
+    else if (bindId == 0 && mNumBindings == 1)
+    {
+        mBindings.reset();
+        mNumBindings = 0;
+    }
+    else
+    {
+        for (std::size_t i = bindId; i < mNumBindings-1; ++i)
+        {
+            mBindings[i] = mBindings[i+1];
+        }
+
+        mNumBindings -= 1;
+    }
 }
 
 
@@ -177,8 +213,6 @@ void SL_VertexArray::terminate() noexcept
 {
     mVboId = SL_INVALID_BUFFER_ID;
     mIboId = SL_INVALID_BUFFER_ID;
-    mDimens.clear();
-    mTypes.clear();
-    mOffsets.clear();
-    mStrides.clear();
+    mBindings.reset();
+    mNumBindings = 0;
 }
