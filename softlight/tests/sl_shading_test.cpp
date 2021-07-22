@@ -607,7 +607,7 @@ int main()
     SL_Transform camTrans;
     camTrans.type(SL_TransformType::SL_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
     math::vec3 viewPos = math::vec3{(float)instancesX, (float)instancesY, (float)instancesZ} * 15.f;
-    camTrans.look_at(viewPos, math::vec3{0.f}, math::vec3{0.f, 1.f, 0.f});
+    camTrans.look_at(viewPos, math::vec3{0.f}, math::vec3{0.f, 1.f, 0.f}, false);
     math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
 
     math::quat target{0.f, 0.f, 0.f, 1.f};
@@ -712,7 +712,7 @@ int main()
                         instancesZ = math::max<unsigned>(1, instancesZ-1);
                         update_instance_count(pGraph, instancesX, instancesY, instancesZ);
                         viewPos = math::vec3{(float)instancesX, (float)instancesY, (float)instancesZ} * 15.f;
-                        camTrans.look_at(viewPos, math::vec3{0.f}, math::vec3{0.f, 1.f, 0.f});
+                        camTrans.look_at(viewPos, math::vec3{0.f}, math::vec3{0.f, 1.f, 0.f}, false);
                         std::cout << "Instance count decreased to (" << instancesX << 'x' << instancesY << 'x' << instancesZ << ") = " << instancesX*instancesY*instancesZ << std::endl;
                         break;
 
@@ -722,7 +722,7 @@ int main()
                         instancesZ = math::min<unsigned>(std::numeric_limits<unsigned>::max(), instancesZ+1);
                         update_instance_count(pGraph, instancesX, instancesY, instancesZ);
                         viewPos = math::vec3{(float)instancesX, (float)instancesY, (float)instancesZ} * 15.f;
-                        camTrans.look_at(viewPos, math::vec3{0.f}, math::vec3{0.f, 1.f, 0.f});
+                        camTrans.look_at(viewPos, math::vec3{0.f}, math::vec3{0.f, 1.f, 0.f}, false);
                         std::cout << "Instance count decreased to (" << instancesX << 'x' << instancesY << 'x' << instancesZ << ") = " << instancesX*instancesY*instancesZ << std::endl;
                         break;
 
