@@ -145,8 +145,8 @@ struct alignas(sizeof(float)*4) SL_ScanlineBounds
             const __m128 v11        = _mm_set_ss(v1y);
             const __m128 p201       = _mm_set_ss(p20y);
             const __m128 d0         = _mm_sub_ss(yv, v01);
-            const __m128 alpha      = _mm_mul_ss(d0, p201);
             const __m128 d1         = _mm_sub_ss(yv, v11);
+            const __m128 alpha      = _mm_mul_ss(d0, p201);
 
             const __m128 v00        = _mm_set_ss(v0x);
             const __m128 v10        = _mm_set_ss(v1x);

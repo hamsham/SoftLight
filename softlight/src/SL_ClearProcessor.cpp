@@ -31,7 +31,7 @@ void SL_ClearProcessor::clear_texture(const color_type& inColor) noexcept
     color_type* pOutBuf = mBackBuffer->texel_pointer<color_type>(0, 0) + begin;
     const color_type* pEnd = mBackBuffer->texel_pointer<color_type>(0, 0) + end;
 
-    while (LS_UNLIKELY(pOutBuf != pEnd))
+    while (LS_LIKELY(pOutBuf != pEnd))
     {
         *pOutBuf++ = inColor;
     }
@@ -51,7 +51,7 @@ void SL_ClearProcessor::clear_texture<SL_ColorRType<float>>(const SL_ColorRType<
     int32_t* pOutBuf = mBackBuffer->texel_pointer<int32_t>(0, 0) + begin;
     const int32_t* pEnd = mBackBuffer->texel_pointer<int32_t>(0, 0) + end;
 
-    while (LS_UNLIKELY(pOutBuf != pEnd))
+    while (LS_LIKELY(pOutBuf != pEnd))
     {
         _mm_stream_si32(pOutBuf++, inColor);
     }
@@ -70,7 +70,7 @@ void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint8_t>>(const SL_ColorR
     int32_t* pOutBuf = mBackBuffer->texel_pointer<int32_t>(0, 0) + begin;
     const int32_t* pEnd = mBackBuffer->texel_pointer<int32_t>(0, 0) + end;
 
-    while (LS_UNLIKELY(pOutBuf != pEnd))
+    while (LS_LIKELY(pOutBuf != pEnd))
     {
         _mm_stream_si32(pOutBuf++, inColor);
     }
@@ -90,7 +90,7 @@ void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint32_t>>(const SL_Color
     __m128i* pOutBuf = mBackBuffer->texel_pointer<__m128i>(0, 0) + begin;
     const __m128i* pEnd = mBackBuffer->texel_pointer<__m128i>(0, 0) + end;
 
-    while (LS_UNLIKELY(pOutBuf != pEnd))
+    while (LS_LIKELY(pOutBuf != pEnd))
     {
         _mm_stream_si128(pOutBuf++, inColor);
     }
@@ -110,7 +110,7 @@ void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<float>>(const SL_ColorRGB
     __m128i* pOutBuf = mBackBuffer->texel_pointer<__m128i>(0, 0) + begin;
     const __m128i* pEnd = mBackBuffer->texel_pointer<__m128i>(0, 0) + end;
 
-    while (LS_UNLIKELY(pOutBuf != pEnd))
+    while (LS_LIKELY(pOutBuf != pEnd))
     {
         _mm_stream_si128(pOutBuf++, inColor);
     }

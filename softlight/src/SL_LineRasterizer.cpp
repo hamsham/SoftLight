@@ -267,7 +267,7 @@ void SL_LineRasterizer::render_line(
 
         if (haveOutputs && depthMask)
         {
-            fbo->put_depth_pixel<depth_type>(fragParams.coord.x, fragParams.coord.y, (depth_type)z);
+            fbo->put_depth_pixel<depth_type>(fragParams.coord.x, fragParams.coord.y, (depth_type)fragParams.coord.depth);
         }
     }
 }

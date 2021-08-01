@@ -841,31 +841,45 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
                             _mm_storeh_pd(reinterpret_cast<double*>(outCoords->coord + storeMask3), xyz1);
                         }
 
-                        __m128 persp4 = (homogenous * bc).simd;
-                        persp4 = _mm_rcp_ps(persp4);
+                        __m128 persp4;
+                        {
+                            bc[0].simd = _mm_mul_ps(homogenous.simd, bc[0].simd);
+                            bc[1].simd = _mm_mul_ps(homogenous.simd, bc[1].simd);
+                            bc[2].simd = _mm_mul_ps(homogenous.simd, bc[2].simd);
+                            bc[3].simd = _mm_mul_ps(homogenous.simd, bc[3].simd);
+
+                            // transpose, then add
+                            const __m128 t0 = _mm_unpacklo_ps(bc[0].simd, bc[1].simd);
+                            const __m128 t1 = _mm_unpacklo_ps(bc[2].simd, bc[3].simd);
+                            const __m128 t2 = _mm_unpackhi_ps(bc[0].simd, bc[1].simd);
+                            const __m128 t3 = _mm_unpackhi_ps(bc[2].simd, bc[3].simd);
+
+                            __m128 sum0 = _mm_movehl_ps(t1, t0);
+                            __m128 sum1 = _mm_movehl_ps(t3, t2);
+                            sum0 = _mm_add_ps(sum0, _mm_movelh_ps(t0, t1));
+                            sum1 = _mm_add_ps(sum1, _mm_movelh_ps(t2, t3));
+
+                            persp4 = _mm_rcp_ps(_mm_add_ps(sum1, sum0));
+                        }
 
                         {
                             const __m128 persp0 = _mm_permute_ps(persp4, 0x00);
-                            const __m128 bc0 = _mm_mul_ps(bc[0].simd, homogenous.simd);
-                            bc[0].simd = _mm_mul_ps(bc0, persp0);
+                            bc[0].simd = _mm_mul_ps(bc[0].simd, persp0);
                             _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + numQueuedFrags), bc[0].simd);
                         }
                         {
                             const __m128 persp1 = _mm_permute_ps(persp4, 0x55);
-                            const __m128 bc1 = _mm_mul_ps(bc[1].simd, homogenous.simd);
-                            bc[1].simd = _mm_mul_ps(bc1, persp1);
+                            bc[1].simd = _mm_mul_ps(bc[1].simd, persp1);
                             _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + storeMask1), bc[1].simd);
                         }
                         {
                             const __m128 persp2 = _mm_permute_ps(persp4, 0xAA);
-                            const __m128 bc2 = _mm_mul_ps(bc[2].simd, homogenous.simd);
-                            bc[2].simd = _mm_mul_ps(bc2, persp2);
+                            bc[2].simd = _mm_mul_ps(bc[2].simd, persp2);
                             _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + storeMask2), bc[2].simd);
                         }
                         {
                             const __m128 persp3 = _mm_permute_ps(persp4, 0xFF);
-                            const __m128 bc3 = _mm_mul_ps(bc[3].simd, homogenous.simd);
-                            bc[3].simd = _mm_mul_ps(bc3, persp3);
+                            bc[3].simd = _mm_mul_ps(bc[3].simd, persp3);
                             _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + storeMask3), bc[3].simd);
                         }
 
@@ -982,33 +996,37 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
 
                     if (LS_LIKELY(storeMask4 != 0))
                     {
-                        unsigned rasterCount = math::sum(storeMask4);
+                        const unsigned storeMask0 = numQueuedFrags;
+                        const unsigned storeMask1 = numQueuedFrags+storeMask4[0];
+                        const unsigned storeMask2 = numQueuedFrags+storeMask4[1]+storeMask4[0];
+                        const unsigned storeMask3 = numQueuedFrags+storeMask4[2]+storeMask4[1]+storeMask4[0];
 
-                        storeMask4[3] = storeMask4[2]+storeMask4[1]+storeMask4[0];
-                        storeMask4[2] = storeMask4[1]+storeMask4[0];
-                        storeMask4[1] = storeMask4[0];
-                        storeMask4[0] = 0;
-                        storeMask4 += numQueuedFrags;
+                        const uint16_t y16 = (uint16_t)y;
+                        const math::vec4_t<uint16_t>&& x16 = (math::vec4_t<uint16_t>)x4;
 
-                        math::vec4&& persp4 = homogenous * bc;
-                        persp4 = math::rcp(persp4);
+                        outCoords->coord[storeMask0] = SL_FragCoordXYZ{x16.v[0], y16, z.v[0]};
+                        outCoords->coord[storeMask1] = SL_FragCoordXYZ{x16.v[1], y16, z.v[1]};
+                        outCoords->coord[storeMask2] = SL_FragCoordXYZ{x16.v[2], y16, z.v[2]};
+                        outCoords->coord[storeMask3] = SL_FragCoordXYZ{x16.v[3], y16, z.v[3]};
 
-                        bc[0] *= homogenous;
-                        bc[1] *= homogenous;
-                        bc[2] *= homogenous;
-                        bc[3] *= homogenous;
+                        math::vec4 persp4;
+                        {
+                            bc[0] = homogenous * bc[0];
+                            bc[1] = homogenous * bc[1];
+                            bc[2] = homogenous * bc[2];
+                            bc[3] = homogenous * bc[3];
 
-                        outCoords->bc[storeMask4[0]] = bc[0] * persp4[0];
-                        outCoords->bc[storeMask4[1]] = bc[1] * persp4[1];
-                        outCoords->bc[storeMask4[2]] = bc[2] * persp4[2];
-                        outCoords->bc[storeMask4[3]] = bc[3] * persp4[3];
+                            // transpose, then add
+                            math::mat4&& t = math::transpose(bc);
+                            persp4 = math::rcp((t[0] + t[1]) + (t[2] + t[3]));
+                        }
 
-                        outCoords->coord[storeMask4[0]] = SL_FragCoordXYZ{(uint16_t)x4.v[0], (uint16_t)y, z.v[0]};
-                        outCoords->coord[storeMask4[1]] = SL_FragCoordXYZ{(uint16_t)x4.v[1], (uint16_t)y, z.v[1]};
-                        outCoords->coord[storeMask4[2]] = SL_FragCoordXYZ{(uint16_t)x4.v[2], (uint16_t)y, z.v[2]};
-                        outCoords->coord[storeMask4[3]] = SL_FragCoordXYZ{(uint16_t)x4.v[3], (uint16_t)y, z.v[3]};
+                        outCoords->bc[storeMask0] = bc[0] * persp4[0];
+                        outCoords->bc[storeMask1] = bc[1] * persp4[1];
+                        outCoords->bc[storeMask2] = bc[2] * persp4[2];
+                        outCoords->bc[storeMask3] = bc[3] * persp4[3];
 
-                        numQueuedFrags += rasterCount;
+                        numQueuedFrags += math::sum(storeMask4);
                         if (LS_UNLIKELY(numQueuedFrags > SL_SHADER_MAX_QUEUED_FRAGS - 4))
                         {
                             flush_fragments<depth_type>(pBin, numQueuedFrags, outCoords);
