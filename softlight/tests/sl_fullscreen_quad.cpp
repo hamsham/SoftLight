@@ -50,7 +50,7 @@ namespace utils = ls::utils;
 #endif /* SL_TEST_MAX_THREADS */
 
 #ifndef SL_BENCHMARK_SCENE
-    #define SL_BENCHMARK_SCENE 1
+    #define SL_BENCHMARK_SCENE 0
 #endif /* SL_BENCHMARK_SCENE */
 
 
@@ -60,7 +60,7 @@ namespace utils = ls::utils;
 -----------------------------------------------------------------------------*/
 struct MeshTestUniforms
 {
-    math::mat4        modelMatrix;
+    math::mat4        mvMatrix;
     math::mat4        mvpMatrix;
     math::vec4        lightPos;
     SL_ColorRGBAf     lightCol;
@@ -81,9 +81,9 @@ math::vec4 _mesh_test_vert_shader(SL_VertexParam& param)
     const math::vec4&&      uv        = math::vec4_cast(v->const_element<1>(), 0.f, 0.f);
     const math::vec4&&      norm      = math::vec4_cast(v->const_element<2>(), 0.f);
 
-    param.pVaryings[0] = pUniforms->modelMatrix * vert;
+    param.pVaryings[0] = pUniforms->mvMatrix * vert;
     param.pVaryings[1] = uv;
-    param.pVaryings[2] = pUniforms->modelMatrix * norm;
+    param.pVaryings[2] = pUniforms->mvMatrix * norm;
 
     return pUniforms->mvpMatrix * vert;
 }
@@ -119,7 +119,7 @@ bool _mesh_test_frag_shader(SL_FragmentParam& fragParams)
     math::vec4&&            pixel      = color_cast<float, uint8_t>(pixelF);
     math::vec4&&            lightDir   = math::normalize(pUniforms->lightPos - pos); // Light direction calculation
     const float             lightAngle = math::max(math::dot(lightDir, norm), 0.f); // Diffuse light calculation
-    const math::vec4&&      composite  = pixel + pUniforms->lightCol * lightAngle;
+    const math::vec4&&      composite  = pixel * pUniforms->lightCol * lightAngle;
     const math::vec4&&      output     = math::clamp(composite, math::vec4{0.f}, math::vec4{1.f});
     const int               amOdd      = ((fragParams.coord.x & 1) == (fragParams.coord.y & 1));
     const SL_ColorYCoCgAf&& pixelYcocg = ycocg_cast<float>(output);
@@ -500,9 +500,9 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     SL_UniformBuffer& ubo = context.ubo(uboId);
     MeshTestUniforms* pUniforms = ubo.as<MeshTestUniforms>();
 
-    pUniforms->lightPos = math::vec4{20.f, 100.f, 20.f, 0.f};
-    pUniforms->lightCol = math::vec4{0.125f, 0.09f, 0.08f, 1.f};
-    pUniforms->modelMatrix = math::mat4{1.f};
+    pUniforms->lightPos = math::vec4{2.f, 10.f, 2.f, 0.f};
+    pUniforms->lightCol = math::vec4{0.9f, 0.8f, 1.f, 1.f};
+    pUniforms->mvMatrix = math::mat4{1.f};
     pUniforms->mvpMatrix = math::mat4{1.f};
     size_t testShaderId0 = context.create_shader(vertShader0,  fragShader0,  uboId);
     size_t testShaderId1 = context.create_shader(vertShader1,  fragShader1,  uboId);
@@ -527,10 +527,11 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
 /*-----------------------------------------------------------------------------
  * Render a scene
 -----------------------------------------------------------------------------*/
-void mesh_test_render(SL_SceneGraph* pGraph, const math::mat4& vpMatrix, bool useEdgeFiltering)
+void mesh_test_render(SL_SceneGraph* pGraph, const math::mat4& projMatrix, const math::mat4& viewMatrix, bool useEdgeFiltering)
 {
-    SL_Context&       context   = pGraph->mContext;
-    MeshTestUniforms* pUniforms = context.ubo(0).as<MeshTestUniforms>();
+    SL_Context&        context   = pGraph->mContext;
+    MeshTestUniforms*  pUniforms = context.ubo(0).as<MeshTestUniforms>();
+    const math::mat4&& vpMatrix = projMatrix * viewMatrix;
 
     for (size_t i = 1; i < pGraph->mNodes.size(); ++i)
     {
@@ -546,8 +547,8 @@ void mesh_test_render(SL_SceneGraph* pGraph, const math::mat4& vpMatrix, bool us
         const size_t numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
         const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
 
-        pUniforms->modelMatrix = modelMat;
-        pUniforms->mvpMatrix   = vpMatrix * modelMat;
+        pUniforms->mvMatrix  = viewMatrix * modelMat;
+        pUniforms->mvpMatrix = vpMatrix * modelMat;
 
         for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
         {
@@ -685,7 +686,7 @@ int main()
 
             context.clear_framebuffer(0, 0, SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0}, 0.0);
 
-            mesh_test_render(pGraph.get(), projMatrix* viewMatrix.transform(), useEdgeFilter);
+            mesh_test_render(pGraph.get(), projMatrix, viewMatrix.transform(), useEdgeFilter);
 
             context.blit(*pRenderBuf, 2);
             pWindow->render(*pRenderBuf);
