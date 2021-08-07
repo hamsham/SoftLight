@@ -114,25 +114,21 @@ bool _mesh_test_frag_shader(SL_FragmentParam& fragParams)
     const SL_Texture*       albedo    = pUniforms->pTexture;
 
     // normalize the texture colors to within (0.f, 1.f)
-    math::vec3_t<uint8_t>&& pixel8 = sl_sample_trilinear<SL_ColorRGB8, SL_WrapMode::EDGE>(*albedo, uv[0], uv[1]);
-    math::vec4_t<uint8_t>&& pixelF = math::vec4_cast<uint8_t>(pixel8, 255);
-    math::vec4&&            pixel  = color_cast<float, uint8_t>(pixelF);
+    math::vec3_t<uint8_t>&& pixel8     = sl_sample_trilinear<SL_ColorRGB8, SL_WrapMode::EDGE>(*albedo, uv[0], uv[1]);
+    math::vec4_t<uint8_t>&& pixelF     = math::vec4_cast<uint8_t>(pixel8, 255);
+    math::vec4&&            pixel      = color_cast<float, uint8_t>(pixelF);
+    math::vec4&&            lightDir   = math::normalize(pUniforms->lightPos - pos); // Light direction calculation
+    const float             lightAngle = math::max(math::dot(lightDir, norm), 0.f); // Diffuse light calculation
+    const math::vec4&&      composite  = pixel + pUniforms->lightCol * lightAngle;
+    const math::vec4&&      output     = math::clamp(composite, math::vec4{0.f}, math::vec4{1.f});
+    const int               amOdd      = ((fragParams.coord.x & 1) == (fragParams.coord.y & 1));
+    const SL_ColorYCoCgAf&& pixelYcocg = ycocg_cast<float>(output);
 
-    // Light direction calculation
-    math::vec4&& lightDir = math::normalize(pUniforms->lightPos - pos);
-
-    // Diffuse light calculation
-    const float lightAngle = math::max(math::dot(lightDir, norm), 0.f);
-
-    const math::vec4&& composite = pixel + pUniforms->lightCol * lightAngle;
-    const math::vec4&& output = math::clamp(composite, math::vec4{0.f}, math::vec4{1.f});
-
-    const int amOdd = ((fragParams.coord.x & 1) == (fragParams.coord.y & 1));
-
-    SL_ColorYCoCgAf&& pixelYcocg  = ycocg_cast<float>(output);
-    const float       chrominance = amOdd ? pixelYcocg.cg : pixelYcocg.co;
-
-    fragParams.pOutputs[0] = math::vec4{pixelYcocg.y, chrominance, 0.f, 0.f};
+    // The original algorithm did not need a negative chrominance value. This
+    // is simply because of conversion issues due to color casting in the
+    // software renderer
+    const float chrominance = amOdd ? pixelYcocg.cg : pixelYcocg.co;
+    fragParams.pOutputs[0] = math::vec4{pixelYcocg.y, -chrominance, 0.f, 0.f};
 
     return true;
 }
@@ -235,14 +231,16 @@ bool _filtered_ycocg_frag_shader(SL_FragmentParam& fragParams)
         return true;
     }
 
-
     const float co    = pixel0[1];
     const float cg    = adjust_chroma(albedo, x0, y0, y);//+norm255);
     const bool  amOdd = ((x0 & 1) == (y0 & 1));
     const float outCo = amOdd ? cg : co;
     const float outCg = amOdd ? co : cg;
 
-    fragParams.pOutputs[0] = rgb_cast<float>(SL_ColorYCoCgAf{y, outCo, outCg, 1.f});
+    // The original algorithm did not need negative chrominance values. This
+    // is simply because of conversion issues due to color casting in the
+    // software renderer
+    fragParams.pOutputs[0] = rgb_cast<float>(SL_ColorYCoCgAf{y, -outCo, -outCg, 0.f});
     return true;
 }
 
@@ -288,7 +286,10 @@ bool _unfiltered_ycocg_frag_shader(SL_FragmentParam& fragParams)
     const float        co     = amOdd ? pixel1[1] : pixel0[1];
     const float        cg     = amOdd ? pixel0[1] : pixel1[1];
 
-    fragParams.pOutputs[0] = rgb_cast<float>(SL_ColorYCoCgAf{y, co, cg, 1.f});
+    // The original algorithm did not need negative chrominance values. This
+    // is simply because of conversion issues due to color casting in the
+    // software renderer
+    fragParams.pOutputs[0] = rgb_cast<float>(SL_ColorYCoCgAf{y, -co, -cg, 1.f});
     return true;
 }
 
@@ -482,7 +483,7 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     assert(retCode != 0);
 
     retCode = (int)pGraph->import(meshLoader.data());
-    assert(retCode == 0);
+    assert(retCode != 0);
 
     // Always make sure the scene graph is updated before rendering
     pGraph->mCurrentTransforms[1].move(math::vec3{0.f, 30.f, 0.f});

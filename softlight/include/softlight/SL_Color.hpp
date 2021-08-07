@@ -1055,9 +1055,9 @@ template <typename T>
 constexpr SL_ColorTypeYCoCg<T> ycocg_cast(const SL_ColorRGBType<T>& p) noexcept
 {
     return SL_ColorTypeYCoCg<T>{
-        (T)((p[0]/T{4}) + (p[1]/T{2}) - (p[2]/T{4})),
+        (T)((p[0]/T{4}) + (p[1]/T{2}) + (p[2]/T{4})),
         (T)((p[0]/T{2})               + (p[2]/T{2})),
-        (T)((p[0]/T{4}) - (p[1]/T{2}) - (p[2]/T{4}))
+        (T)((p[1]/T{2}) - (p[0]/T{4}) - (p[2]/T{4}))
     };
 }
 
@@ -1070,9 +1070,9 @@ template <typename T>
 constexpr SL_ColorRGBType<T> rgb_cast(const SL_ColorTypeYCoCg<T>& p) noexcept
 {
     return SL_ColorRGBType<T>{
-        (T)(p.y + p.co + p.cg),
-        (T)(p.y        - p.cg),
-        (T)(p.co - p.y - p.cg),
+        (T)(p.y + p.co - p.cg),
+        (T)(p.y        + p.cg),
+        (T)(p.y - p.co - p.cg),
     };
 }
 
@@ -1088,9 +1088,9 @@ template <typename T>
 constexpr SL_ColorTypeYCoCgA<T> ycocg_cast(const SL_ColorRGBAType<T>& p) noexcept
 {
     return SL_ColorTypeYCoCgA<T>{
-        (T)((p[0]/T{4}) + (p[1]/T{2}) - (p[2]/T{4})),
-        (T)((p[0]/T{2})               + (p[2]/T{2})),
-        (T)((p[0]/T{4}) - (p[1]/T{2}) - (p[2]/T{4})),
+        (T)((p[0]/T{4}) + (p[1]/T{2}) + (p[2]/T{4})),
+        (T)((p[0]/T{2})               - (p[2]/T{2})),
+        (T)((p[1]/T{2}) - (p[0]/T{4}) - (p[2]/T{4})),
         p[3]
     };
 }
@@ -1112,9 +1112,9 @@ inline SL_ColorTypeYCoCgA<float> ycocg_cast(const SL_ColorRGBAType<float>& p) no
 #elif defined(LS_ARM_NEON)
 inline SL_ColorTypeYCoCgA<float> ycocg_cast(const SL_ColorRGBAType<float>& p) noexcept
 {
-    constexpr float32x4_t a{1.f,  0.25f, 0.5f,  0.25f};
-    constexpr float32x4_t b{0.f, -0.5f,  0.f,   0.5f};
-    constexpr float32x4_t c{0.f, -0.25f, 0.5f, -0.25f};
+    constexpr float32x4_t a{ 0.25f, 0.5f,  0.25f, 1.f};
+    constexpr float32x4_t b{ 0.5f,  0.f,  -0.5f,  0.f};
+    constexpr float32x4_t c{-0.25f, 0.5f, -0.25f, 0.f};
 
     const float32x4_t ycocg = vmlaq_f32(vmlaq_f32(vmulq_f32(p.simd, a), p.simd, b), p.simd, c);
 
@@ -1134,9 +1134,9 @@ template <typename T>
 constexpr SL_ColorRGBAType<T> rgb_cast(const SL_ColorTypeYCoCgA<T>& p) noexcept
 {
     return SL_ColorRGBAType<T>{
-        (T)(p.y + p.co + p.cg),
-        (T)(p.y        - p.cg),
-        (T)(p.co - p.y - p.cg),
+        (T)(p.y + p.co - p.cg),
+        (T)(p.y        + p.cg),
+        (T)(p.y - p.co - p.cg),
         p.a
     };
 }
