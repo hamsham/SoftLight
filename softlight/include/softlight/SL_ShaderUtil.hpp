@@ -285,7 +285,13 @@ struct SL_DepthFuncLT
         };
     }
 
-    #if defined(LS_X86_SSE)
+    #if defined(LS_X86_AVX)
+        inline LS_INLINE __m128 operator()(__m128 a, __m128 b) const noexcept
+        {
+            return _mm_cmp_ps(a, b, _CMP_LT_OQ);
+        }
+
+    #elif defined(LS_X86_SSE)
         inline LS_INLINE __m128 operator()(__m128 a, __m128 b) const noexcept
         {
             return _mm_cmplt_ps(a, b);
@@ -319,7 +325,13 @@ struct SL_DepthFuncLE
         };
     }
 
-    #if defined(LS_X86_SSE)
+    #if defined(LS_X86_AVX)
+        inline LS_INLINE __m128 operator()(__m128 a, __m128 b) const noexcept
+        {
+            return _mm_cmp_ps(a, b, _CMP_LE_OQ);
+        }
+
+    #elif defined(LS_X86_SSE)
         inline LS_INLINE __m128 operator()(__m128 a, __m128 b) const noexcept
         {
             return _mm_cmple_ps(a, b);
@@ -353,7 +365,13 @@ struct SL_DepthFuncGT
         };
     }
 
-    #if defined(LS_X86_SSE)
+    #if defined(LS_X86_AVX)
+        inline LS_INLINE __m128 operator()(__m128 a, __m128 b) const noexcept
+        {
+            return _mm_cmp_ps(a, b, _CMP_GT_OQ);
+        }
+
+    #elif defined(LS_X86_SSE)
         inline LS_INLINE __m128 operator()(__m128 a, __m128 b) const noexcept
         {
             return _mm_cmpgt_ps(a, b);
@@ -387,7 +405,13 @@ struct SL_DepthFuncGE
         };
     }
 
-    #if defined(LS_X86_SSE)
+    #if defined(LS_X86_AVX)
+        inline LS_INLINE __m128 operator()(__m128 a, __m128 b) const noexcept
+        {
+            return _mm_cmp_ps(a, b, _CMP_GE_OQ);
+        }
+
+    #elif defined(LS_X86_SSE)
         inline LS_INLINE __m128 operator()(__m128 a, __m128 b) const noexcept
         {
             return _mm_cmpge_ps(a, b);
@@ -421,7 +445,13 @@ struct SL_DepthFuncEQ
         };
     }
 
-    #if defined(LS_X86_SSE)
+    #if defined(LS_X86_AVX)
+        inline LS_INLINE __m128 operator()(__m128 a, __m128 b) const noexcept
+        {
+            return _mm_cmp_ps(a, b, _CMP_EQ_OQ);
+        }
+
+    #elif defined(LS_X86_SSE)
         inline LS_INLINE __m128 operator()(__m128 a, __m128 b) const noexcept
         {
             return _mm_cmpeq_ps(a, b);
@@ -455,7 +485,13 @@ struct SL_DepthFuncNE
         };
     }
 
-    #if defined(LS_X86_SSE)
+    #if defined(LS_X86_AVX)
+        inline LS_INLINE __m128 operator()(__m128 a, __m128 b) const noexcept
+        {
+            return _mm_cmp_ps(a, b, _CMP_NEQ_OQ);
+        }
+
+    #elif defined(LS_X86_SSE)
         inline LS_INLINE __m128 operator()(__m128 a, __m128 b) const noexcept
         {
             return _mm_cmpneq_ps(a, b);

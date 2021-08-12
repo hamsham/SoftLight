@@ -48,7 +48,7 @@ constexpr LS_INLINE data_t sl_scanline_offset(
 inline LS_INLINE void sl_sort_minmax(__m128& a, __m128& b)  noexcept
 {
     #if defined(LS_X86_AVX)
-        const __m128 masks = _mm_permute_ps(_mm_cmplt_ps(a, b), 0x55);
+        const __m128 masks = _mm_permute_ps(_mm_cmp_ps(a, b, _CMP_LT_OQ), 0x55);
         const __m128 at   = a;
         const __m128 bt   = b;
         a = _mm_blendv_ps(at, bt, masks);
@@ -137,7 +137,7 @@ struct alignas(sizeof(float)*4) SL_ScanlineBounds
         p10xy = (p1[0] - p0[0]) * ls::math::rcp(p1[1] - p0[1]);
     }
 
-    inline void LS_INLINE step(const float yf, int32_t& xMin, int32_t& xMax) const noexcept
+    inline LS_INLINE void step(const float yf, int32_t& xMin, int32_t& xMax) const noexcept
     {
         #if defined(LS_X86_AVX)
             const __m128 yv         = _mm_set_ss(yf);
@@ -221,6 +221,45 @@ struct alignas(sizeof(float)*4) SL_ScanlineBounds
             sl_sort_minmax(lo, hi, xMin, xMax);
         #endif
     }
+
+    #if defined(LS_X86_SSE2)
+    inline LS_INLINE void step(const __m128 y, __m128i& xMin, __m128i& xMax) const noexcept
+    {
+        const __m128 v01        = _mm_set_ss(v0y);
+        const __m128 v11        = _mm_set_ss(v1y);
+        const __m128 p201       = _mm_set_ss(p20y);
+        const __m128 d0         = _mm_sub_ss(y, v01);
+        const __m128 d1         = _mm_sub_ss(y, v11);
+        const __m128 alpha      = _mm_mul_ss(d0, p201);
+
+        #if defined(LS_X86_AVX)
+            const __m128 v00        = _mm_set_ss(v0x);
+            const __m128 v10        = _mm_set_ss(v1x);
+            const __m128 p1001      = _mm_set_ss(p10xy);
+            const __m128 p200       = _mm_set_ss(p20x);
+            const __m128 p2101      = _mm_set_ss(p21xy);
+            const __m128 lo         = _mm_fmadd_ss( p200,  alpha, v00);
+            const __m128 pdv0       = _mm_fmadd_ss( p1001, d0,    v00);
+            const __m128 pdv1       = _mm_fmadd_ss( p2101, d1,    v10);
+            const __m128 hi         = _mm_blendv_ps(pdv0,  pdv1,  d1);
+
+        #else
+            const __m128 v00        = _mm_set_ss(v0x);
+            const __m128 p200       = _mm_set_ss(p20x);
+            const __m128 lo         = _mm_add_ss(_mm_mul_ss(p200,  alpha), v00);
+            const __m128 p1001      = _mm_set_ss(p10xy);
+            const __m128 pdv0       = _mm_add_ss(_mm_mul_ss(p1001, d0),    v00);
+            const __m128 cmpMask    = _mm_cmplt_ps(d1, _mm_setzero_ps());
+            const __m128 v10        = _mm_set_ss(v1x);
+            const __m128 p2101      = _mm_set_ss(p21xy);
+            const __m128 pdv1       = _mm_add_ss(_mm_mul_ss(p2101, d1),    v10);
+            const __m128 hi         = _mm_or_ps(_mm_andnot_ps(cmpMask, pdv0), _mm_and_ps(cmpMask, pdv1));
+        #endif
+
+        xMin = _mm_cvtps_epi32(_mm_broadcastss_ps(_mm_min_ss(lo, hi)));
+        xMax = _mm_cvtps_epi32(_mm_broadcastss_ps(_mm_max_ss(lo, hi)));
+    }
+    #endif
 };
 
 
