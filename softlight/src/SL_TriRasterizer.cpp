@@ -883,8 +883,8 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
                         {
                             //const __m128 xy = _mm_castsi128_ps(_mm_or_si128(_mm_and_si128(x4, _mm_set1_epi32(0x0000FFFF)), _mm_slli_epi32(_mm_set1_epi32(y), 16)));
                             const __m128i xy   = _mm_or_si128(x4, _mm_set1_epi32(y16));
-                            const __m128i xyz0 = _mm_unpacklo_epi32(xy, z);
-                            const __m128i xyz1 = _mm_unpackhi_epi32(xy, z);
+                            const __m128i xyz0 = _mm_unpacklo_epi32(xy, _mm_castps_si128(z));
+                            const __m128i xyz1 = _mm_unpackhi_epi32(xy, _mm_castps_si128(z));
 
                             _mm_storel_pd(reinterpret_cast<double*>(outCoords->coord + numQueuedFrags), _mm_castsi128_pd(xyz0));
                             _mm_storeh_pd(reinterpret_cast<double*>(outCoords->coord + storeMask1),     _mm_castsi128_pd(xyz0));
