@@ -514,26 +514,32 @@ void SL_TriProcessor::push_bin(size_t primIndex, const SL_TransformedVert& a, co
     bin.mScreenCoords[1] = p1;
     bin.mScreenCoords[2] = p2;
 
-    // Copy all per-vertex coordinates and varyings to the fragment bins
-    // which will need the data for interpolation. The perspective-divide
-    // is only used for rendering triangles.
+    // In case these formulas look unfamiliar, these are partial derivatives
+    // used in the generation of barycentric coordinates. See the branch below
+    // for the general formulas, and SL_TriRasterizer.cpp for their
+    // application.
     {
-        const math::vec4&& p0p1 = p0 - p1;
-        const math::vec4&& p0p2 = p0 - p2;
-        const math::vec4&& p1p0 = p1 - p0;
-        const math::vec4&& p1p2 = p1 - p2;
-        const math::vec4&& p2p0 = p2 - p0;
-        const math::vec4&& p2p1 = p2 - p1;
+        const math::vec2&& xy  = math::vec2_cast(p0 - p1);
+        const math::vec2&& zy  = math::vec2_cast(p2 - p1);
+        const math::mat4&& pt = math::transpose(math::mat4{
+            p0,
+            p1,
+            p2,
+            math::vec4{0.f}
+        });
 
-        const float denom = math::rcp((p0p2[0])*(p1p0[1]) - (p0p1[0])*(p2p0[1]));
-        bin.mBarycentricCoords[0] = denom*math::vec4(p1p2[1], p2p0[1], p0p1[1], 0.f);
-        bin.mBarycentricCoords[1] = denom*math::vec4(p2p1[0], p0p2[0], p1p0[0], 0.f);
-        bin.mBarycentricCoords[2] = denom*math::vec4(
-            p1[0]*p2[1] - p2[0]*p1[1],
-            p2[0]*p0[1] - p0[0]*p2[1],
-            p0[0]*p1[1] - p1[0]*p0[1],
-            0.f
-        );
+        // A 2D cross product is simply the determinant of a 2x2 matrix
+        const float denom = math::rcp(math::cross(zy, xy));
+        //const float denom = math::rcp(math::determinant(math::mat2{zy, xy}));
+
+        // cross-products
+        const math::vec4&& ddx = math::cross(pt[1], math::vec4{1.f});
+        const math::vec4&& ddy = math::cross(math::vec4{1.f}, pt[0]);
+        const math::vec4&& ddz = math::cross(pt[0], pt[1]);
+
+        bin.mBarycentricCoords[0] = denom * ddx;
+        bin.mBarycentricCoords[1] = denom * ddy;
+        bin.mBarycentricCoords[2] = denom * ddz;
     }
 
     switch (numVaryings)

@@ -839,19 +839,18 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
 
         do
         {
-            // calculate the bounds of the current scan-line
-            const int32_t y16 = y << 16;
-            const __m128 yf = _mm_cvtepi32_ps(_mm_set1_epi32(y));
-
             // In this rasterizer, we're only rendering the absolute pixels
             // contained within the triangle edges. However this will serve as a
             // guard against any pixels we don't want to render.
             __m128i xMin;
             __m128i xMax;
+            // calculate the bounds of the current scan-line
+            const __m128 yf = _mm_cvtepi32_ps(_mm_set1_epi32(y));
             scanline.step(yf, xMin, xMax);
 
             if (LS_LIKELY(_mm_test_all_ones(_mm_cmplt_epi32(xMin, xMax))))
             {
+                const int32_t     y16    = y << 16;
                 const depth_type* pDepth = depthBuffer->row_pointer<depth_type>((uintptr_t)y) + _mm_cvtsi128_si32(xMin);
                 const __m128      bcY    = _mm_fmadd_ps(bcClipSpace1, yf, bcClipSpace2);
                 __m128i           x4     = _mm_add_epi32(_mm_set_epi32(3, 2, 1, 0), xMin);
