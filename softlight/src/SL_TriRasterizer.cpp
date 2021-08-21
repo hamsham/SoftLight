@@ -548,16 +548,24 @@ void SL_TriRasterizer::render_wireframe(const SL_Texture* depthBuffer) const noe
             // In this rasterizer, we're only rendering the absolute pixels
             // contained within the triangle edges. However this will serve as a
             // guard against any pixels we don't want to render.
-            int32_t xMinMax[2];
-            scanline.step(yf, xMinMax[0], xMinMax[1]);
-            xMinMax[1] -= 1;
+            int32_t xMinMax0[2], xMinMax1[2];
+            scanline.step(yf, xMinMax0[0], xMinMax0[1]);
+            scanline.step(yf-1.f, xMinMax1[0], xMinMax1[1]);
+            const int32_t d0 = math::max(math::abs(xMinMax0[0]-xMinMax1[0]), 1);
+            const int32_t d1 = math::max(math::abs(xMinMax0[1]-xMinMax1[1]), 1);
 
             const depth_type* const pDepth = depthBuffer->row_pointer<depth_type>(y);
 
-            for (unsigned ix = 0; ix < 2; ++ix)
+            for (int32_t ix = 0, x = xMinMax0[0]; x < xMinMax0[1]; ++ix, ++x)
             {
+                // skip to the start of the next horizontal edge
+                if (LS_UNLIKELY(ix == d0))
+                {
+                    x = math::max(xMinMax0[0], xMinMax0[1]-d1-1);
+                    continue;
+                }
+
                 // calculate barycentric coordinates
-                const int32_t x  = xMinMax[ix];
                 const float   xf = (float)x;
                 math::vec4&&  bc = math::fmadd(bcClipSpace[0], math::vec4{xf, xf, xf, 0.f}, bcY);
                 const float   z  = math::dot(depth, bc);
