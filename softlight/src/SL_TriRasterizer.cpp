@@ -663,9 +663,15 @@ void SL_TriRasterizer::render_triangle(const SL_Texture* depthBuffer) const noex
         const int32_t     scanLineOffset = bboxMinY + sl_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
         const math::vec4* bcClipSpace    = pBin->mBarycentricCoords;
 
+        int32_t y = scanLineOffset;
+        if (y >= bboxMaxY)
+        {
+            continue;
+        }
+
         scanline.init(pPoints[0], pPoints[1], pPoints[2]);
 
-        for (int32_t y = scanLineOffset; y < bboxMaxY; y += increment)
+        do
         {
             // calculate the bounds of the current scan-line
             const float yf = (float)y;
@@ -677,29 +683,34 @@ void SL_TriRasterizer::render_triangle(const SL_Texture* depthBuffer) const noex
             int32_t x;
             int32_t xMax;
             scanline.step(yf, x, xMax);
+
+            if (LS_UNLIKELY(x >= xMax))
+            {
+                y += increment;
+                continue;
+            }
+
             math::vec4&& xf{(float)x};
             math::vec4&& bcX = math::fmadd(bcClipSpace[0], xf, bcY);
+            const depth_type* pDepth = depthBuffer->row_pointer<depth_type>(y) + x;
 
-            while (x < xMax)
+            do
             {
-                const depth_type* pDepth = depthBuffer->row_pointer<depth_type>(y) + x;
-
                 // calculate barycentric coordinates
                 const float d  = _sl_get_depth_texel<depth_type>(pDepth);
-                math::vec4  bc = bcX;
-                const float z  = math::dot(depth, bc);
-
+                const float z  = math::dot(depth, bcX);
                 const int_fast32_t&& depthTest = depthCmpFunc(z, d);
 
                 if (LS_LIKELY(depthTest))
                 {
                     // perspective correction
-                    bc *= homogenous;
-                    const float persp = math::sum(bc);
-                    outCoords->coord[numQueuedFrags].x = (uint16_t)x;
-                    outCoords->coord[numQueuedFrags].y = (uint16_t)y;
+                    const math::vec4&& bc    = bcX * homogenous;
+                    const math::vec4&& persp = {math::sum_inv(bc)};
+
+                    outCoords->bc[numQueuedFrags]          = bc * persp;
+                    outCoords->coord[numQueuedFrags].x     = (uint16_t)x;
+                    outCoords->coord[numQueuedFrags].y     = (uint16_t)y;
                     outCoords->coord[numQueuedFrags].depth = z;
-                    outCoords->bc[numQueuedFrags] = bc * math::rcp(persp);
 
                     ++numQueuedFrags;
 
@@ -713,8 +724,10 @@ void SL_TriRasterizer::render_triangle(const SL_Texture* depthBuffer) const noex
                 bcX += bcClipSpace[0];
                 ++x;
                 ++pDepth;
-            }
-        }
+            } while (LS_UNLIKELY(x < xMax));
+
+            y += increment;
+        } while (LS_UNLIKELY(y < bboxMaxY));
 
         // cleanup remaining fragments
         if (LS_LIKELY(numQueuedFrags > 0))
@@ -856,102 +869,105 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
             const __m128 yf = _mm_cvtepi32_ps(_mm_set1_epi32(y));
             scanline.step(yf, xMin, xMax);
 
-            if (LS_LIKELY(_mm_test_all_ones(_mm_cmplt_epi32(xMin, xMax))))
+            if (LS_UNLIKELY(!_mm_test_all_ones(_mm_cmplt_epi32(xMin, xMax))))
             {
-                const int32_t     y16    = y << 16;
-                const depth_type* pDepth = depthBuffer->row_pointer<depth_type>((uintptr_t)y) + _mm_cvtsi128_si32(xMin);
-                const __m128      bcY    = _mm_fmadd_ps(bcClipSpace1, yf, bcClipSpace2);
-                __m128i           x4     = _mm_add_epi32(_mm_set_epi32(3, 2, 1, 0), xMin);
-                const __m128i     xMax4  = xMax;
+                y += increment;
+                continue;
+            }
 
-                __m128 bc[4];
-                _sl_vec4_outer_ps(_mm_cvtepi32_ps(x4), bcClipSpace0, bc);
-                bc[0] = _mm_add_ps(bc[0], bcY);
-                bc[1] = _mm_add_ps(bc[1], bcY);
-                bc[2] = _mm_add_ps(bc[2], bcY);
-                bc[3] = _mm_add_ps(bc[3], bcY);
-                const __m128 bcX = _mm_mul_ps(bcClipSpace0, _mm_set1_ps(4.f));
+            const int32_t     y16    = y << 16;
+            const depth_type* pDepth = depthBuffer->row_pointer<depth_type>((uintptr_t)y) + _mm_cvtsi128_si32(xMin);
+            const __m128      bcY    = _mm_fmadd_ps(bcClipSpace1, yf, bcClipSpace2);
+            __m128i           x4     = _mm_add_epi32(_mm_set_epi32(3, 2, 1, 0), xMin);
+            const __m128i     xMax4  = xMax;
 
-                do
+            __m128 bc[4];
+            _sl_vec4_outer_ps(_mm_cvtepi32_ps(x4), bcClipSpace0, bc);
+            bc[0] = _mm_add_ps(bc[0], bcY);
+            bc[1] = _mm_add_ps(bc[1], bcY);
+            bc[2] = _mm_add_ps(bc[2], bcY);
+            bc[3] = _mm_add_ps(bc[3], bcY);
+            const __m128 bcX = _mm_mul_ps(bcClipSpace0, _mm_set1_ps(4.f));
+
+            do
+            {
+                // calculate barycentric coordinates and perform a depth test
+                const __m128  xBound    = _mm_castsi128_ps(_mm_cmplt_epi32(x4, xMax4));
+                const __m128  z         = _sl_mul_vec4_mat4_ps(depth, bc);
+                const __m128  d         = _sl_get_depth_texel4<depth_type>(pDepth).simd;
+                const int32_t depthTest = _mm_movemask_ps(_mm_and_ps(xBound, depthCmpFunc(z, d)));
+
+                if (LS_LIKELY(depthTest))
                 {
-                    // calculate barycentric coordinates and perform a depth test
-                    const __m128  xBound    = _mm_castsi128_ps(_mm_cmplt_epi32(x4, xMax4));
-                    const __m128  z         = _sl_mul_vec4_mat4_ps(depth, bc);
-                    const __m128  d         = _sl_get_depth_texel4<depth_type>(pDepth).simd;
-                    const int32_t depthTest = _mm_movemask_ps(_mm_and_ps(xBound, depthCmpFunc(z, d)));
+                    const unsigned storeMask1  = (unsigned)_mm_popcnt_u32((unsigned)depthTest & 0x01u) + numQueuedFrags;
+                    const unsigned storeMask2  = (unsigned)_mm_popcnt_u32((unsigned)depthTest & 0x03u) + numQueuedFrags;
+                    const unsigned storeMask3  = (unsigned)_mm_popcnt_u32((unsigned)depthTest & 0x07u) + numQueuedFrags;
+                    const unsigned rasterCount = (unsigned)_mm_popcnt_u32((unsigned)depthTest & 0x0Fu);
 
-                    if (LS_LIKELY(depthTest))
                     {
-                        const unsigned storeMask1  = (unsigned)_mm_popcnt_u32((unsigned)depthTest & 0x01u) + numQueuedFrags;
-                        const unsigned storeMask2  = (unsigned)_mm_popcnt_u32((unsigned)depthTest & 0x03u) + numQueuedFrags;
-                        const unsigned storeMask3  = (unsigned)_mm_popcnt_u32((unsigned)depthTest & 0x07u) + numQueuedFrags;
-                        const unsigned rasterCount = (unsigned)_mm_popcnt_u32((unsigned)depthTest & 0x0Fu);
+                        //const __m128 xy = _mm_castsi128_ps(_mm_or_si128(_mm_and_si128(x4, _mm_set1_epi32(0x0000FFFF)), _mm_slli_epi32(_mm_set1_epi32(y), 16)));
+                        const __m128i xy   = _mm_or_si128(x4, _mm_set1_epi32(y16));
+                        const __m128i xyz0 = _mm_unpacklo_epi32(xy, _mm_castps_si128(z));
+                        const __m128i xyz1 = _mm_unpackhi_epi32(xy, _mm_castps_si128(z));
 
-                        {
-                            //const __m128 xy = _mm_castsi128_ps(_mm_or_si128(_mm_and_si128(x4, _mm_set1_epi32(0x0000FFFF)), _mm_slli_epi32(_mm_set1_epi32(y), 16)));
-                            const __m128i xy   = _mm_or_si128(x4, _mm_set1_epi32(y16));
-                            const __m128i xyz0 = _mm_unpacklo_epi32(xy, _mm_castps_si128(z));
-                            const __m128i xyz1 = _mm_unpackhi_epi32(xy, _mm_castps_si128(z));
-
-                            _mm_storel_pd(reinterpret_cast<double*>(outCoords->coord + numQueuedFrags), _mm_castsi128_pd(xyz0));
-                            _mm_storeh_pd(reinterpret_cast<double*>(outCoords->coord + storeMask1),     _mm_castsi128_pd(xyz0));
-                            _mm_storel_pd(reinterpret_cast<double*>(outCoords->coord + storeMask2),     _mm_castsi128_pd(xyz1));
-                            _mm_storeh_pd(reinterpret_cast<double*>(outCoords->coord + storeMask3),     _mm_castsi128_pd(xyz1));
-                        }
-
-                        {
-                            __m128 bc0 = _mm_mul_ps(homogenous, bc[0]);
-                            __m128 bc1 = _mm_mul_ps(homogenous, bc[1]);
-                            __m128 bc2 = _mm_mul_ps(homogenous, bc[2]);
-                            __m128 bc3 = _mm_mul_ps(homogenous, bc[3]);
-
-                            // transpose, then add
-                            const __m128 t0 = _mm_unpacklo_ps(bc0, bc1);
-                            const __m128 t1 = _mm_unpacklo_ps(bc2, bc3);
-                            const __m128 t2 = _mm_unpackhi_ps(bc0, bc1);
-                            const __m128 t3 = _mm_unpackhi_ps(bc2, bc3);
-
-                            __m128 sum0 = _mm_movehl_ps(t1, t0);
-                            __m128 sum1 = _mm_movehl_ps(t3, t2);
-                            sum0 = _mm_add_ps(sum0, _mm_movelh_ps(t0, t1));
-                            sum1 = _mm_add_ps(sum1, _mm_movelh_ps(t2, t3));
-
-                            const __m128 persp4 = _mm_rcp_ps(_mm_add_ps(sum1, sum0));
-                            const __m128 persp0 = _mm_permute_ps(persp4, 0x00);
-                            const __m128 persp1 = _mm_permute_ps(persp4, 0x55);
-                            const __m128 persp2 = _mm_permute_ps(persp4, 0xAA);
-                            const __m128 persp3 = _mm_permute_ps(persp4, 0xFF);
-
-                            bc0 = _mm_mul_ps(bc0, persp0);
-                            bc1 = _mm_mul_ps(bc1, persp1);
-                            bc2 = _mm_mul_ps(bc2, persp2);
-                            bc3 = _mm_mul_ps(bc3, persp3);
-
-                            _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + numQueuedFrags), bc0);
-                            _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + storeMask1),     bc1);
-                            _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + storeMask2),     bc2);
-                            _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + storeMask3),     bc3);
-                        }
-
-                        numQueuedFrags += rasterCount;
-                        if (LS_UNLIKELY(numQueuedFrags > SL_SHADER_MAX_QUEUED_FRAGS - 4))
-                        {
-                            flush_fragments<depth_type>(pBin, numQueuedFrags, outCoords);
-                            numQueuedFrags = 0;
-                        }
+                        _mm_storel_pd(reinterpret_cast<double*>(outCoords->coord + numQueuedFrags), _mm_castsi128_pd(xyz0));
+                        _mm_storeh_pd(reinterpret_cast<double*>(outCoords->coord + storeMask1),     _mm_castsi128_pd(xyz0));
+                        _mm_storel_pd(reinterpret_cast<double*>(outCoords->coord + storeMask2),     _mm_castsi128_pd(xyz1));
+                        _mm_storeh_pd(reinterpret_cast<double*>(outCoords->coord + storeMask3),     _mm_castsi128_pd(xyz1));
                     }
 
-                    bc[0] = _mm_add_ps(bc[0], bcX);
-                    bc[1] = _mm_add_ps(bc[1], bcX);
-                    bc[2] = _mm_add_ps(bc[2], bcX);
-                    bc[3] = _mm_add_ps(bc[3], bcX);
+                    {
+                        __m128 bc0 = _mm_mul_ps(homogenous, bc[0]);
+                        __m128 bc1 = _mm_mul_ps(homogenous, bc[1]);
+                        __m128 bc2 = _mm_mul_ps(homogenous, bc[2]);
+                        __m128 bc3 = _mm_mul_ps(homogenous, bc[3]);
 
-                    x4 = _mm_add_epi32(x4, _mm_set1_epi32(4));
+                        // transpose, then add
+                        const __m128 t0 = _mm_unpacklo_ps(bc0, bc1);
+                        const __m128 t1 = _mm_unpacklo_ps(bc2, bc3);
+                        const __m128 t2 = _mm_unpackhi_ps(bc0, bc1);
+                        const __m128 t3 = _mm_unpackhi_ps(bc2, bc3);
 
-                    pDepth += 4;
+                        __m128 sum0 = _mm_movehl_ps(t1, t0);
+                        __m128 sum1 = _mm_movehl_ps(t3, t2);
+                        sum0 = _mm_add_ps(sum0, _mm_movelh_ps(t0, t1));
+                        sum1 = _mm_add_ps(sum1, _mm_movelh_ps(t2, t3));
+
+                        const __m128 persp4 = _mm_rcp_ps(_mm_add_ps(sum1, sum0));
+                        const __m128 persp0 = _mm_permute_ps(persp4, 0x00);
+                        const __m128 persp1 = _mm_permute_ps(persp4, 0x55);
+                        const __m128 persp2 = _mm_permute_ps(persp4, 0xAA);
+                        const __m128 persp3 = _mm_permute_ps(persp4, 0xFF);
+
+                        bc0 = _mm_mul_ps(bc0, persp0);
+                        bc1 = _mm_mul_ps(bc1, persp1);
+                        bc2 = _mm_mul_ps(bc2, persp2);
+                        bc3 = _mm_mul_ps(bc3, persp3);
+
+                        _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + numQueuedFrags), bc0);
+                        _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + storeMask1),     bc1);
+                        _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + storeMask2),     bc2);
+                        _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + storeMask3),     bc3);
+                    }
+
+                    numQueuedFrags += rasterCount;
+                    if (LS_UNLIKELY(numQueuedFrags > SL_SHADER_MAX_QUEUED_FRAGS - 4))
+                    {
+                        flush_fragments<depth_type>(pBin, numQueuedFrags, outCoords);
+                        numQueuedFrags = 0;
+                    }
                 }
-                while (_mm_movemask_epi8(_mm_cmplt_epi32(x4, xMax4)));
+
+                bc[0] = _mm_add_ps(bc[0], bcX);
+                bc[1] = _mm_add_ps(bc[1], bcX);
+                bc[2] = _mm_add_ps(bc[2], bcX);
+                bc[3] = _mm_add_ps(bc[3], bcX);
+
+                x4 = _mm_add_epi32(x4, _mm_set1_epi32(4));
+
+                pDepth += 4;
             }
+            while (_mm_movemask_epi8(_mm_cmplt_epi32(x4, xMax4)));
 
             y += increment;
         }

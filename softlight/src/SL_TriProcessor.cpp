@@ -485,10 +485,10 @@ void SL_TriProcessor::push_bin(size_t primIndex, const SL_TransformedVert& a, co
     const math::vec4& p2 = c.vert;
 
     // establish a bounding box to detect overlap with a thread's tiles
-    const float bboxMinX = math::min(p0[0], p1[0], p2[0]);
-    const float bboxMinY = math::min(p0[1], p1[1], p2[1]);
-    const float bboxMaxX = math::max(p0[0], p1[0], p2[0]);
-    const float bboxMaxY = math::max(p0[1], p1[1], p2[1]);
+    const float bboxMinX = math::min(p0.v[0], p1.v[0], p2.v[0]);
+    const float bboxMinY = math::min(p0.v[1], p1.v[1], p2.v[1]);
+    const float bboxMaxX = math::max(p0.v[0], p1.v[0], p2.v[0]);
+    const float bboxMaxY = math::max(p0.v[1], p1.v[1], p2.v[1]);
 
     const int isPrimHidden = (bboxMaxX-bboxMinX < 1.f) || (bboxMaxY-bboxMinY < 1.f);
     if (LS_UNLIKELY(isPrimHidden))
@@ -533,9 +533,9 @@ void SL_TriProcessor::push_bin(size_t primIndex, const SL_TransformedVert& a, co
         //const float denom = math::rcp(math::determinant(math::mat2{zy, xy}));
 
         // cross-products
-        const math::vec4&& ddx = math::cross(pt[1], math::vec4{1.f});
-        const math::vec4&& ddy = math::cross(math::vec4{1.f}, pt[0]);
-        const math::vec4&& ddz = math::cross(pt[0], pt[1]);
+        const math::vec4&& ddx = math::cross(pt.m[1], math::vec4{1.f});
+        const math::vec4&& ddy = math::cross(math::vec4{1.f}, pt.m[0]);
+        const math::vec4&& ddz = math::cross(pt.m[0], pt.m[1]);
 
         bin.mBarycentricCoords[0] = denom * ddx;
         bin.mBarycentricCoords[1] = denom * ddy;
