@@ -11,6 +11,20 @@
 /*-----------------------------------------------------------------------------
  * Forward Declarations
 -----------------------------------------------------------------------------*/
+namespace ls
+{
+namespace math
+{
+
+template <typename T>
+union vec4_t;
+
+template <typename T>
+struct mat4_t;
+
+} // end math namespace
+} // end ls namespace
+
 template <typename data_t>
 union SL_BinCounter;
 

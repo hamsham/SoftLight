@@ -140,22 +140,34 @@ inline LS_INLINE void sl_world_to_screen_coords_divided3(
 ) noexcept
 {
     #if defined(LS_X86_FMA)
+        const __m128 one = _mm_set1_ps(1.f);
         const __m128 dims = _mm_load_ps(&viewportDims);
         const __m128 halfDims = _mm_mul_ps(dims, _mm_set1_ps(0.5f));
-        const __m128 one = _mm_set1_ps(1.f);
         const __m128 wh = _mm_shuffle_ps(halfDims, one, 0x0E);
 
         __m128 v0 = _mm_add_ps(one, p0.simd);
-        v0 = _mm_floor_ps(_mm_fmadd_ps(v0, wh, dims));
-        p0.simd = _mm_shuffle_ps(_mm_max_ps(v0, _mm_setzero_ps()), p0.simd, 0xE4);
-
         __m128 v1 = _mm_add_ps(one, p1.simd);
-        v1 = _mm_floor_ps(_mm_fmadd_ps(v1, wh, dims));
-        p1.simd = _mm_shuffle_ps(_mm_max_ps(v1, _mm_setzero_ps()), p1.simd, 0xE4);
-
         __m128 v2 = _mm_add_ps(one, p2.simd);
-        v2 = _mm_floor_ps(_mm_fmadd_ps(v2, wh, dims));
-        p2.simd = _mm_shuffle_ps(_mm_max_ps(v2, _mm_setzero_ps()), p2.simd, 0xE4);
+
+        v0 = _mm_fmadd_ps(v0, wh, dims);
+        v1 = _mm_fmadd_ps(v1, wh, dims);
+        v2 = _mm_fmadd_ps(v2, wh, dims);
+
+        v0 = _mm_floor_ps(v0);
+        v1 = _mm_floor_ps(v1);
+        v2 = _mm_floor_ps(v2);
+
+        v0 = _mm_max_ps(v0, _mm_setzero_ps());
+        v1 = _mm_max_ps(v1, _mm_setzero_ps());
+        v2 = _mm_max_ps(v2, _mm_setzero_ps());
+
+        v0 = _mm_blend_ps(p0.simd, v0, 0x03);
+        v1 = _mm_blend_ps(p1.simd, v1, 0x03);
+        v2 = _mm_blend_ps(p2.simd, v2, 0x03);
+
+        _mm_store_ps(&p0, v0);
+        _mm_store_ps(&p1, v1);
+        _mm_store_ps(&p2, v2);
 
     #elif defined(LS_X86_SSE)
         const __m128 dims = _mm_load_ps(&viewportDims);
@@ -176,22 +188,25 @@ inline LS_INLINE void sl_world_to_screen_coords_divided3(
         p2.simd = _mm_shuffle_ps(_mm_max_ps(v2, _mm_setzero_ps()), p2.simd, 0xE4);
 
     #elif defined(LS_ARCH_AARCH64)
+        const float32x2_t one = vdup_n_f32(1.f);
         const float32x4_t dims = vld1q_f32(&viewportDims);
         const float32x2_t offset = vget_low_f32(dims);
         const float32x2_t wh = vmul_f32(vdup_n_f32(0.5f), vget_high_f32(dims));
-        const float32x2_t one = vdup_n_f32(1.f);
 
-        float32x2_t v0 = vadd_f32(vld1_f32(&p0), one);
-        v0 = vrndm_f32(vmla_f32(offset, wh, v0));
-        vst1_f32(&p0, vmax_f32(v0, vdup_n_f32(0.f)));
+        float32x2_t v0 = vadd_f32(vget_low_f32(p0.simd), one);
+        v0 = vrndm_f32(vfma_f32(offset, wh, v0));
+        v0 = vmax_f32(v0, vdup_n_f32(0.f));
+        vst1_f32(&p0, v0);
 
-        float32x2_t v1 = vadd_f32(vld1_f32(&p1), one);
-        v1 = vrndm_f32(vmla_f32(offset, wh, v1));
-        vst1_f32(&p1, vmax_f32(v1, vdup_n_f32(0.f)));
+        float32x2_t v1 = vadd_f32(vget_low_f32(p1.simd), one);
+        v1 = vrndm_f32(vfma_f32(offset, wh, v1));
+        v1 = vmax_f32(v1, vdup_n_f32(0.f));
+        vst1_f32(&p1, v1);
 
-        float32x2_t v2 = vadd_f32(vld1_f32(&p2), one);
-        v2 = vrndm_f32(vmla_f32(offset, wh, v2));
-        vst1_f32(&p2, vmax_f32(v2, vdup_n_f32(0.f)));
+        float32x2_t v2 = vadd_f32(vget_low_f32(p2.simd), one);
+        v2 = vrndm_f32(vfma_f32(offset, wh, v2));
+        v2 = vmax_f32(v2, vdup_n_f32(0.f));
+        vst1_f32(&p2, v2);
 
     #elif defined(LS_ARM_NEON)
         const float32x4_t dims = vld1q_f32(&viewportDims);
@@ -751,23 +766,26 @@ void SL_TriProcessor::clip_and_process_tris(
 /*--------------------------------------
  * Process Points
 --------------------------------------*/
-void SL_TriProcessor::process_verts(const SL_Mesh& m, size_t instanceId) noexcept
+void SL_TriProcessor::process_verts(
+    const SL_Mesh& m,
+    size_t instanceId,
+    const ls::math::mat4_t<float>& scissorMat,
+    const ls::math::vec4_t<float>& viewportDims) noexcept
 {
     if (mFragProcessors->count.load(std::memory_order_consume))
     {
         flush_rasterizer<SL_TriRasterizer>();
     }
 
-    SL_TransformedVert      pVert0;
-    SL_TransformedVert      pVert1;
-    SL_TransformedVert      pVert2;
-    const SL_VertexShader   vertShader   = mShader->mVertShader;
-    const SL_CullMode       cullMode     = vertShader.cullMode;
-    const auto              shader       = vertShader.shader;
-    const SL_VertexArray&   vao          = mContext->vao(m.vaoId);
-    const math::vec4&&      fboDims      = (math::vec4)math::vec4_t<int>{0, 0, mFbo->width(), mFbo->height()};
-    const SL_IndexBuffer*   pIbo         = vao.has_index_buffer() ? &mContext->ibo(vao.get_index_buffer()) : nullptr;
-    const int               usingIndices = (m.mode == RENDER_MODE_INDEXED_TRIANGLES) || (m.mode == RENDER_MODE_INDEXED_TRI_WIRE);
+    SL_TransformedVert     pVert0;
+    SL_TransformedVert     pVert1;
+    SL_TransformedVert     pVert2;
+    const SL_VertexShader& vertShader   = mShader->mVertShader;
+    const SL_CullMode      cullMode     = vertShader.cullMode;
+    const auto             shader       = vertShader.shader;
+    const SL_VertexArray&  vao          = mContext->vao(m.vaoId);
+    const SL_IndexBuffer*  pIbo         = vao.has_index_buffer() ? &mContext->ibo(vao.get_index_buffer()) : nullptr;
+    const int              usingIndices = (m.mode == RENDER_MODE_INDEXED_TRIANGLES) || (m.mode == RENDER_MODE_INDEXED_TRI_WIRE);
 
     SL_VertexParam params;
     params.pUniforms  = mShader->mUniforms;
@@ -790,10 +808,6 @@ void SL_TriProcessor::process_verts(const SL_Mesh& m, size_t instanceId) noexcep
         const size_t end   = m.elementEnd;
         const size_t step  = mNumThreads * 3u;
     #endif
-
-    const SL_ViewportState& viewState = mContext->viewport_state();
-    const math::mat4&& scissorMat = viewState.scissor_matrix(fboDims[2], fboDims[3]);
-    const math::vec4&& viewportDims = viewState.viewport_rect(fboDims[2], fboDims[3]);
 
     for (size_t i = begin; i < end; i += step)
     {
@@ -847,6 +861,17 @@ void SL_TriProcessor::process_verts(const SL_Mesh& m, size_t instanceId) noexcep
         {
             clip_and_process_tris(i, viewportDims, pVert0, pVert1, pVert2);
         }
+        else
+        {
+            continue;
+        }
+
+        #if SL_VERTEX_CACHING_ENABLED
+            if (LS_LIKELY(visStatus != SL_TRIANGLE_NOT_VISIBLE))
+            {
+                LS_PREFETCH(&ptvCache, LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_NONTEMPORAL);
+            }
+        #endif
     }
 }
 
@@ -857,18 +882,23 @@ void SL_TriProcessor::process_verts(const SL_Mesh& m, size_t instanceId) noexcep
 --------------------------------------*/
 void SL_TriProcessor::execute() noexcept
 {
+    const math::vec4&&      fboDims      = (math::vec4)math::vec4_t<int>{0, 0, mFbo->width(), mFbo->height()};
+    const SL_ViewportState& viewState    = mContext->viewport_state();
+    const math::mat4&&      scissorMat   = viewState.scissor_matrix(fboDims[2], fboDims[3]);
+    const math::vec4&&      viewportDims = viewState.viewport_rect(fboDims[2], fboDims[3]);
+
     if (mNumInstances == 1)
     {
         for (size_t i = 0; i < mNumMeshes; ++i)
         {
-            process_verts(mMeshes[i], 0);
+            process_verts(mMeshes[i], 0, scissorMat, viewportDims);
         }
     }
     else
     {
         for (size_t i = 0; i < mNumInstances; ++i)
         {
-            process_verts(mMeshes[0], i);
+            process_verts(mMeshes[0], i, scissorMat, viewportDims);
         }
     }
 

@@ -12,7 +12,7 @@
 #endif /* SL_VERTEX_CACHING_ENABLED */
 
 #ifndef SL_VERTEX_CACHE_SIZE
-    #define SL_VERTEX_CACHE_SIZE 4
+    #define SL_VERTEX_CACHE_SIZE 8
 #endif /* SL_VERTEX_CACHE_SIZE */
 
 

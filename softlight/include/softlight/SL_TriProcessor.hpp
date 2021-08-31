@@ -4,11 +4,10 @@
 
 #include "softlight/SL_VertexProcessor.hpp"
 
-struct SL_TransformedVert;
-
 
 
 /*-----------------------------------------------------------------------------
+ * Vertex processor for triangles & wireframe
 -----------------------------------------------------------------------------*/
 class SL_TriProcessor final : public SL_VertexProcessor
 {
@@ -23,7 +22,12 @@ class SL_TriProcessor final : public SL_VertexProcessor
         const SL_TransformedVert& c
     ) noexcept;
 
-    void process_verts(const SL_Mesh& m, size_t instanceId) noexcept;
+    void process_verts(
+        const SL_Mesh& m,
+        size_t instanceId,
+        const ls::math::mat4_t<float>& scissorMat,
+        const ls::math::vec4_t<float>& viewportDims
+    ) noexcept;
 
   public:
     virtual ~SL_TriProcessor() noexcept override {}

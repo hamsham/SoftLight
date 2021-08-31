@@ -249,6 +249,7 @@ set(SL_LIB_SOURCES
     src/SL_UniformBuffer.cpp
     src/SL_VertexArray.cpp
     src/SL_VertexBuffer.cpp
+    src/SL_VertexCache.cpp
     src/SL_VertexProcessor.cpp
     src/SL_ViewportState.cpp
     src/SL_WindowBuffer.cpp)

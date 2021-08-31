@@ -1,4 +1,6 @@
 
+#include <iostream>
+
 #include "lightsky/setup/Api.h" // LS_IMPERATIVE
 
 #include "lightsky/utils/Assertions.h" // LS_DEBUG_ASSERT
@@ -301,7 +303,7 @@ void SL_TriRasterizer::flush_scanlines(const SL_FragmentBin* pBin, uint32_t xMin
     const math::vec4* bcClipSpace = pBin->mBarycentricCoords;
     const math::vec4  depth       {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
     const math::vec4  homogenous  {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
-    depth_type*       pDepthBuf   = mFbo->get_depth_buffer()->row_pointer<depth_type>((uint16_t)y);
+    depth_type*       pDepthBuf   = mFbo->get_depth_buffer()->row_pointer<depth_type>((uint16_t)y) + xMin;
 
     constexpr DepthCmpFunc   depthCmpFunc;
     const SL_FragmentShader& fragShader    = mShader->mFragShader;
@@ -310,30 +312,28 @@ void SL_TriRasterizer::flush_scanlines(const SL_FragmentBin* pBin, uint32_t xMin
 
     SL_FragmentParam fragParams;
     fragParams.pUniforms = mShader->mUniforms;
+    fragParams.coord.y = (uint16_t)y;
 
     const float yf = (float)y;
     const math::vec4&& bcY = math::fmadd(bcClipSpace[1], math::vec4{yf}, bcClipSpace[2]);
-
     math::vec4&& bcX = math::fmadd(bcClipSpace[0], math::vec4{(float)xMin}, bcY);
+    uint32_t x = xMin;
 
-    for (uint32_t x = xMin; x < xMax; ++x, bcX += bcClipSpace[0])
+    do
     {
         // calculate barycentric coordinates
-        const float          d         = _sl_get_depth_texel<depth_type>(pDepthBuf + x);
-        math::vec4           bc        = bcX;
-        const float          z         = math::dot(depth, bc);
+        const float          d         = _sl_get_depth_texel<depth_type>(pDepthBuf);
+        const float          z         = math::dot(depth, bcX);
         const int_fast32_t&& depthTest = depthCmpFunc(z, d);
 
-        if (depthTest)
+        if (LS_LIKELY(depthTest))
         {
             fragParams.coord.x = (uint16_t)x;
-            fragParams.coord.y = (uint16_t)y;
             fragParams.coord.depth = z;
 
             // perspective correction
-            const float persp = math::rcp(math::dot(bc, homogenous));
-            bc *= homogenous;
-            bc *= persp;
+            const float persp = math::rcp(math::dot(bcX, homogenous));
+            const math::vec4&& bc = (bcX * homogenous) * persp;
 
             interpolate_tri_varyings(bc.v, fragShader.numVaryings, pBin->mVaryings, fragParams.pVaryings);
 
@@ -343,11 +343,15 @@ void SL_TriRasterizer::flush_scanlines(const SL_FragmentBin* pBin, uint32_t xMin
 
                 if (LS_LIKELY(haveDepthMask))
                 {
-                    pDepthBuf[x] = (depth_type)fragParams.coord.depth;
+                    *pDepthBuf = (depth_type)fragParams.coord.depth;
                 }
             }
         }
-    }
+
+        bcX += bcClipSpace[0];
+        ++pDepthBuf;
+        ++x;
+    } while (x < xMax);
 }
 
 
@@ -474,7 +478,7 @@ void SL_TriRasterizer::flush_fragments(
     const SL_FragmentShader& fragShader    = mShader->mFragShader;
     const SL_FboOutputMask   fboOutMask    = sl_calc_fbo_out_mask(fragShader.numOutputs, (fragShader.blend != SL_BLEND_OFF));
     const int_fast32_t       haveDepthMask = fragShader.depthMask == SL_DEPTH_MASK_ON;
-    SL_Texture*              pDepthBuf     = mFbo->get_depth_buffer();
+    SL_Texture* const        pDepthBuf     = mFbo->get_depth_buffer();
 
     SL_FragmentParam fragParams;
     fragParams.pUniforms = pUniforms;

@@ -190,20 +190,23 @@ void SL_PointProcessor::push_bin(size_t primIndex, const ls::math::vec4& viewpor
 /*--------------------------------------
  * Process Points
 --------------------------------------*/
-void SL_PointProcessor::process_verts(const SL_Mesh& m, size_t instanceId) noexcept
+void SL_PointProcessor::process_verts(
+    const SL_Mesh& m,
+    size_t instanceId,
+    const ls::math::mat4_t<float>& scissorMat,
+    const ls::math::vec4_t<float>& viewportDims) noexcept
 {
     if (mFragProcessors->count.load(std::memory_order_consume))
     {
         flush_rasterizer<SL_PointRasterizer>();
     }
 
-    SL_TransformedVert      pVert0;
-    const SL_VertexShader   vertShader   = mShader->mVertShader;
-    const auto              shader       = vertShader.shader;
-    const SL_VertexArray&   vao          = mContext->vao(m.vaoId);
-    const math::vec4&&      fboDims      = (math::vec4)math::vec4_t<int>{0, 0, mFbo->width(), mFbo->height()};
-    const SL_IndexBuffer*   pIbo         = vao.has_index_buffer() ? &mContext->ibo(vao.get_index_buffer()) : nullptr;
-    const bool              usingIndices = m.mode == RENDER_MODE_INDEXED_POINTS;
+    SL_TransformedVert     pVert0;
+    const SL_VertexShader& vertShader   = mShader->mVertShader;
+    const auto             shader       = vertShader.shader;
+    const SL_VertexArray&  vao          = mContext->vao(m.vaoId);
+    const SL_IndexBuffer*  pIbo         = vao.has_index_buffer() ? &mContext->ibo(vao.get_index_buffer()) : nullptr;
+    const bool             usingIndices = m.mode == RENDER_MODE_INDEXED_POINTS;
 
     SL_VertexParam params;
     params.pUniforms  = mShader->mUniforms;
@@ -227,10 +230,6 @@ void SL_PointProcessor::process_verts(const SL_Mesh& m, size_t instanceId) noexc
         const size_t end   = m.elementEnd;
         const size_t step  = mNumThreads;
     #endif
-
-    const SL_ViewportState& viewState = mContext->viewport_state();
-    const math::mat4&& scissorMat = viewState.scissor_matrix(fboDims[2], fboDims[3]);
-    const math::vec4&& viewportDims = viewState.viewport_rect(fboDims[2], fboDims[3]);
 
     for (size_t i = begin; i < end; i += step)
     {
@@ -261,18 +260,23 @@ void SL_PointProcessor::process_verts(const SL_Mesh& m, size_t instanceId) noexc
 --------------------------------------*/
 void SL_PointProcessor::execute() noexcept
 {
+    const math::vec4&&      fboDims      = (math::vec4)math::vec4_t<int>{0, 0, mFbo->width(), mFbo->height()};
+    const SL_ViewportState& viewState    = mContext->viewport_state();
+    const math::mat4&&      scissorMat   = viewState.scissor_matrix(fboDims[2], fboDims[3]);
+    const math::vec4&&      viewportDims = viewState.viewport_rect(fboDims[2], fboDims[3]);
+
     if (mNumInstances == 1)
     {
         for (size_t i = 0; i < mNumMeshes; ++i)
         {
-            process_verts(mMeshes[i], 0);
+            process_verts(mMeshes[i], 0, scissorMat, viewportDims);
         }
     }
     else
     {
         for (size_t i = 0; i < mNumInstances; ++i)
         {
-            process_verts(mMeshes[0], i);
+            process_verts(mMeshes[0], i, scissorMat, viewportDims);
         }
     }
 
