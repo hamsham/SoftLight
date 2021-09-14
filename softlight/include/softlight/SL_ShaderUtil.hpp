@@ -581,7 +581,7 @@ template <typename data_t>
 union alignas(sizeof(ls::math::vec4)) SL_BinCounterAtomic
 {
     std::atomic<typename ls::setup::EnableIf<ls::setup::IsIntegral<data_t>::value, data_t>::type> count;
-    unsigned char padding[sizeof(ls::math::vec4)];
+    unsigned char padding[sizeof(ls::math::vec4)*3];
 
     ~SL_BinCounterAtomic() noexcept {}
 

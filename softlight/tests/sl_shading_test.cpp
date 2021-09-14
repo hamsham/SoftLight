@@ -7,6 +7,7 @@
 #include "lightsky/math/vec_utils.h"
 
 #include "lightsky/utils/Pointer.h"
+#include "lightsky/utils/Sort.hpp"
 #include "lightsky/utils/StringUtils.h"
 #include "lightsky/utils/Time.hpp"
 #include "lightsky/utils/Tuple.h"
@@ -92,11 +93,10 @@ static_assert(sizeof(SphereVert) == sizeof(ls::math::vec4), "Cannot use preferre
 struct InstanceUniforms
 {
     const SL_Texture* pTexture;
-    utils::UniqueAlignedArray<math::mat4> instanceMatrix;
+    utils::UniqueAlignedArray<math::vec4> instancePos;
     math::mat4        modelMatrix;
     math::mat4        vpMatrix;
 };
-
 
 
 
@@ -110,13 +110,13 @@ math::vec4 _texture_vert_shader_impl(SL_VertexParam& param)
 {
     const InstanceUniforms* pUniforms   = param.pUniforms->as<InstanceUniforms>();
     const SphereVert* const v           = param.pVbo->element<SphereVert>(param.pVao->offset(0, param.vertId));
-    const math::vec4&&      vert        = math::vec4_cast(v->pos, 1.f);
+    const math::vec4&&      vert        = math::vec4_cast(v->pos, 0.f);
     const math::vec4&&      uv          = (math::vec4)math::vec4_cast<math::half>(v->uv, math::half{0.f}, math::half{0.f});
 
     const size_t       instanceId  = param.instanceId;
-    const math::mat4&  instanceMat = pUniforms->instanceMatrix[instanceId];
-    const math::mat4&& modelMat    = instanceMat * pUniforms->modelMatrix;
-    const math::vec4&& pos         = modelMat * vert;
+    const math::vec4&  instancePos = pUniforms->instancePos[instanceId];
+    const math::mat4&  modelMat    = pUniforms->modelMatrix;
+    const math::vec4&& pos         = (modelMat * vert) + instancePos;
 
     param.pVaryings[0] = vert;
     param.pVaryings[1] = uv;
@@ -431,7 +431,6 @@ void render_scene(SL_SceneGraph* pGraph, const math::mat4& vpMatrix, size_t maxI
         const size_t numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
         const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
 
-        pUniforms->modelMatrix = modelMat;
         pUniforms->vpMatrix    = vpMatrix * modelMat;
 
         for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
@@ -460,7 +459,7 @@ void update_instance_count(utils::Pointer<SL_SceneGraph>& pGraph, size_t instanc
     InstanceUniforms* pUniforms = context.ubo(0).as<InstanceUniforms>();
 
     size_t instanceCount = instancesX * instancesY * instancesZ;
-    pUniforms->instanceMatrix = utils::make_unique_aligned_array<math::mat4>(instanceCount);
+    pUniforms->instancePos = utils::make_unique_aligned_array<math::vec4>(instanceCount);
 
     float rx = (float)instancesX / 2.f;
     float ry = (float)instancesY / 2.f;
@@ -472,39 +471,11 @@ void update_instance_count(utils::Pointer<SL_SceneGraph>& pGraph, size_t instanc
         {
             for (size_t x = 0; x < instancesX; ++x)
             {
-                SL_Transform tempTrans;
-                tempTrans.position(math::vec3{(float)x - rx + 0.5f, (float)y - ry + 0.5f, (float)z - rz + 0.5f} * 10.f);
-                tempTrans.apply_transform();
+                math::vec4 instancePos = {(float)x - rx + 0.5f, (float)y - ry + 0.5f, (float)z - rz + 0.5f, 1.f};
+                instancePos *= math::vec4{10.f, 10.f, 10.f, 1.f};
 
                 const size_t index = x + (instancesX * y + (instancesX * instancesY * z));
-                pUniforms->instanceMatrix[index] = tempTrans.transform();
-            }
-        }
-    }
-}
-
-
-
-/*-----------------------------------------------------------------------------
- * Update the number of instances
------------------------------------------------------------------------------*/
-void update_instance_matrices(utils::UniqueAlignedArray<math::mat4>& matrices, const math::vec3& target, size_t instancesX, size_t instancesY, size_t instancesZ)
-{
-    float rx = (float)instancesX / 2.f;
-    float ry = (float)instancesY / 2.f;
-    float rz = (float)instancesZ / 2.f;
-    math::vec3 r{rx, ry, rz};
-
-    for (size_t z = 0; z < instancesZ; ++z)
-    {
-        for (size_t y = 0; y < instancesY; ++y)
-        {
-            for (size_t x = 0; x < instancesX; ++x)
-            {
-                const size_t index = x + (instancesX * y + (instancesX * instancesY * z));
-                math::mat4& mat = matrices[index];
-                const math::vec3 pos = math::vec3{(float)x - rx + 0.5f, (float)y - ry + 0.5f, (float)z - rz + 0.5f} * 10.f;
-                mat = math::look_at(pos, pos+target, math::vec3{0.f, -1.f, 0.f});
+                pUniforms->instancePos[index] = instancePos;
             }
         }
     }
@@ -768,8 +739,6 @@ int main()
             }
 
             update_cam_position(camTrans, tickTime, pKeySyms);
-
-            InstanceUniforms* pUniforms = context.ubo(0).as<InstanceUniforms>();
             if (camTrans.is_dirty())
             {
                 camTrans.apply_transform();
@@ -777,14 +746,9 @@ int main()
 
             // rotate and translate all instances
             {
+                InstanceUniforms* pUniforms = context.ubo(0).as<InstanceUniforms>();
                 target = math::normalize(target * math::quat{0.f, tickTime*0.5f, 0.f, 1.f});
-                const math::mat3&& t = math::quat_to_mat3(target);
-
-                for (size_t i = instancesX * instancesY * instancesZ; i--;)
-                {
-                    const math::vec3&& pos = math::vec3_cast(pUniforms->instanceMatrix[i][3]);
-                    pUniforms->instanceMatrix[i] = math::translate(math::mat4{t}, pos);
-                }
+                pUniforms->modelMatrix = math::quat_to_mat4(target);
             }
 
             pGraph->update();
@@ -805,7 +769,7 @@ int main()
         }
     }
 
-    context.ubo(0).as<InstanceUniforms>()->instanceMatrix.reset();
+    context.ubo(0).as<InstanceUniforms>()->instancePos.reset();
     pRenderBuf->terminate();
 
     return pWindow->destroy();

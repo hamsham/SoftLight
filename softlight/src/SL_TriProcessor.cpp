@@ -515,12 +515,15 @@ void SL_TriProcessor::push_bin(size_t primIndex, const SL_TransformedVert& a, co
     uint_fast64_t binId;
 
     // Attempt to grab a bin index. Flush the bins if they've filled up.
-    while ((binId = pLocks->count.fetch_add(1, std::memory_order_acq_rel)) >= SL_SHADER_MAX_BINNED_PRIMS)
+    while (true)
     {
-        flush_rasterizer<SL_TriRasterizer>();
+        binId = pLocks->count.fetch_add(1, std::memory_order_acq_rel);
+        if (LS_LIKELY(binId < SL_SHADER_MAX_BINNED_PRIMS))
+        {
+            break;
+        }
 
-        LS_PREFETCH(pFragBins+binId, LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_L1);
-        LS_PREFETCH(mBinIds+binId, LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_L1);
+        flush_rasterizer<SL_TriRasterizer>();
     }
 
     // place a triangle into the next available bin
@@ -534,8 +537,8 @@ void SL_TriProcessor::push_bin(size_t primIndex, const SL_TransformedVert& a, co
     // for the general formulas, and SL_TriRasterizer.cpp for their
     // application.
     {
-        const math::vec2&& xy  = math::vec2_cast(p0 - p1);
-        const math::vec2&& zy  = math::vec2_cast(p2 - p1);
+        const math::vec2&& xy = math::vec2_cast(p0 - p1);
+        const math::vec2&& zy = math::vec2_cast(p2 - p1);
         const math::mat4&& pt = math::transpose(math::mat4{
             p0,
             p1,
@@ -772,11 +775,6 @@ void SL_TriProcessor::process_verts(
     const ls::math::mat4_t<float>& scissorMat,
     const ls::math::vec4_t<float>& viewportDims) noexcept
 {
-    if (mFragProcessors->count.load(std::memory_order_consume))
-    {
-        flush_rasterizer<SL_TriRasterizer>();
-    }
-
     SL_TransformedVert     pVert0;
     SL_TransformedVert     pVert1;
     SL_TransformedVert     pVert2;
@@ -804,7 +802,8 @@ void SL_TriProcessor::process_verts(
 
         SL_PTVCache ptvCache{shader, params};
     #else
-        const size_t begin = m.elementBegin + mThreadId * 3u;
+        //const size_t begin = m.elementBegin + mThreadId * 3u;
+        const size_t begin = m.elementBegin + ((instanceId + mThreadId) % mNumThreads) * 3u;
         const size_t end   = m.elementEnd;
         const size_t step  = mNumThreads * 3u;
     #endif
@@ -882,6 +881,11 @@ void SL_TriProcessor::process_verts(
 --------------------------------------*/
 void SL_TriProcessor::execute() noexcept
 {
+    if (mFragProcessors->count.load(std::memory_order_consume))
+    {
+        flush_rasterizer<SL_TriRasterizer>();
+    }
+
     const math::vec4&&      fboDims      = (math::vec4)math::vec4_t<int>{0, 0, mFbo->width(), mFbo->height()};
     const SL_ViewportState& viewState    = mContext->viewport_state();
     const math::mat4&&      scissorMat   = viewState.scissor_matrix(fboDims[2], fboDims[3]);
