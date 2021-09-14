@@ -291,13 +291,22 @@ bool SL_SceneFilePreload::load(const std::string& filename, SL_SceneLoadOpts opt
     }
     else
     {
-        LS_LOG_MSG("\tMesh file successfully imported. Running post-process optimization.");
-
         const std::string::size_type baseDirIndex = filename.find_last_of(u8R"(\/)");
         if (baseDirIndex != std::string::npos)
         {
             mBaseFileDir = filename.substr(0, baseDirIndex + 1);
         }
+
+        // remove duplicate backslashes
+        for (std::string::size_type i = baseDirIndex; i > 0; --i)
+        {
+            if ((mBaseFileDir[i] == u'\\' || mBaseFileDir[i] == u'/') && mBaseFileDir[i] == mBaseFileDir[i-1])
+            {
+                mBaseFileDir.pop_back();
+            }
+        }
+
+        LS_LOG_MSG("\tMesh file successfully imported from ", mBaseFileDir, ". Running post-process optimization.");
     }
 
     const aiScene* const pScene = preload_mesh_data();
@@ -501,7 +510,8 @@ SL_SceneFileLoader::~SL_SceneFileLoader() noexcept
  * Constructor
 -------------------------------------*/
 SL_SceneFileLoader::SL_SceneFileLoader() noexcept :
-    mPreloader{}
+    mPreloader{},
+    mLoadedTextures{}
 {}
 
 
@@ -510,7 +520,8 @@ SL_SceneFileLoader::SL_SceneFileLoader() noexcept :
  * SceneResource Move Constructor
 -------------------------------------*/
 SL_SceneFileLoader::SL_SceneFileLoader(SL_SceneFileLoader&& s) noexcept :
-    mPreloader{std::move(s.mPreloader)}
+    mPreloader{std::move(s.mPreloader)},
+    mLoadedTextures{std::move(s.mLoadedTextures)}
 {}
 
 
@@ -521,6 +532,7 @@ SL_SceneFileLoader::SL_SceneFileLoader(SL_SceneFileLoader&& s) noexcept :
 SL_SceneFileLoader& SL_SceneFileLoader::operator=(SL_SceneFileLoader&& s) noexcept
 {
     mPreloader = std::move(s.mPreloader);
+    mLoadedTextures = std::move(s.mLoadedTextures);
 
     return *this;
 }
@@ -533,6 +545,7 @@ SL_SceneFileLoader& SL_SceneFileLoader::operator=(SL_SceneFileLoader&& s) noexce
 void SL_SceneFileLoader::unload() noexcept
 {
     mPreloader.unload();
+    mLoadedTextures.clear();
 }
 
 
@@ -807,8 +820,6 @@ int SL_SceneFileLoader::import_materials(const aiScene* const pScene) noexcept
         return 0;
     }
 
-    std::unordered_map<std::string, const SL_Texture*> loadedTextures;
-
     for (unsigned i = 0; i < numMaterials; ++i)
     {
         const aiMaterial* const pMaterial = pScene->mMaterials[i];
@@ -818,7 +829,7 @@ int SL_SceneFileLoader::import_materials(const aiScene* const pScene) noexcept
 
         for (unsigned j = 0; j < LS_ARRAY_SIZE(texTypes); ++j)
         {
-            import_texture_path(pMaterial, texTypes[j], newMaterial.pTextures, *imgLoader, loadedTextures);
+            import_texture_path(pMaterial, texTypes[j], newMaterial.pTextures, *imgLoader, mLoadedTextures);
         }
 
         aiColor3D inMatColor;

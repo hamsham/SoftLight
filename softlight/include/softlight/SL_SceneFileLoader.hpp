@@ -265,6 +265,8 @@ class SL_SceneFileLoader
   private:
     SL_SceneFilePreload mPreloader;
 
+    std::unordered_map<std::string, const SL_Texture*> mLoadedTextures;
+
     // Private functions
   private:
     bool load_scene(const aiScene* const pScene, SL_SceneLoadOpts opts) noexcept;
@@ -477,6 +479,17 @@ class SL_SceneFileLoader
      * used for validation, rendering, or something else.
      */
     SL_SceneGraph& data() noexcept;
+
+    /**
+     * @brief Retrieve the mapping of texture paths to SL_Texture objects.
+     *
+     * @note This mapping only contains path-to-texture mappings for textures
+     * which were successfully loaded.
+     *
+     * @return A mapping of external texture file paths to their in-memory
+     * SL_Texture objects.
+     */
+    const std::unordered_map<std::string, const SL_Texture*>& texture_path_mappings() const;
 };
 
 
@@ -495,6 +508,16 @@ inline const SL_SceneGraph& SL_SceneFileLoader::data() const noexcept
 inline SL_SceneGraph& SL_SceneFileLoader::data() noexcept
 {
     return mPreloader.mSceneData;
+}
+
+
+
+/*-------------------------------------
+ * Retrieve loaded texture objects and their paths.
+-------------------------------------*/
+inline const std::unordered_map<std::string, const SL_Texture*>& SL_SceneFileLoader::texture_path_mappings() const
+{
+    return mLoadedTextures;
 }
 
 
