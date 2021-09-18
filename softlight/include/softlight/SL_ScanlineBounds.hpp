@@ -35,7 +35,7 @@ constexpr LS_INLINE data_t sl_scanline_offset(
     const data_t fragmentY) noexcept
 {
     //return numThreads - 1 - (((fragmentY % numThreads) + threadId) % numThreads);
-    return numThreads - 1 - ((fragmentY + threadId) % numThreads);
+    return ((fragmentY + threadId) % numThreads);
 }
 
 

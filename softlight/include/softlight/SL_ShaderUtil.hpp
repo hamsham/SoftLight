@@ -671,6 +671,10 @@ struct alignas(alignof(uint64_t)) SL_FragCoordXYZ
     float depth;
 };
 
+static_assert(sizeof(SL_FragCoordXYZ) == sizeof(uint64_t), "Unexpected size of SL_FragCoordXYZ. Please update all functions using this structure.");
+
+
+
 struct SL_FragCoord
 {
     ls::math::vec4 bc[SL_SHADER_MAX_QUEUED_FRAGS]; // 32*4

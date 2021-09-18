@@ -407,11 +407,11 @@ void SL_TriRasterizer::iterate_tri_scanlines() const noexcept
         const math::vec4*     pPoints        = pBin->mScreenCoords;
         const int32_t         bboxMinY       = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
         const int32_t         bboxMaxY       = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
-        const int32_t         scanLineOffset = bboxMinY + sl_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
+        const int32_t         scanLineOffset = bboxMaxY - sl_scanline_offset<int32_t>(increment, yOffset, bboxMaxY);
 
         scanline.init(pPoints[0], pPoints[1], pPoints[2]);
 
-        for (int32_t y = scanLineOffset; y < bboxMaxY; y += increment)
+        for (int32_t y = scanLineOffset; y >= bboxMinY; y -= increment)
         {
             // calculate the bounds of the current scan-line
             const float yf = (float)y;
@@ -538,12 +538,12 @@ void SL_TriRasterizer::render_wireframe(const SL_Texture* depthBuffer) const noe
         const math::vec4  depth          {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
         const math::vec4  homogenous     {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
         const int32_t     bboxMinY       = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
-        const int32_t     scanLineOffset = bboxMinY + sl_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
         const int32_t     bboxMaxY       = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
+        const int32_t     scanLineOffset = bboxMaxY - sl_scanline_offset<int32_t>(increment, yOffset, bboxMaxY);
 
         scanline.init(pPoints[0], pPoints[1], pPoints[2]);
 
-        for (int32_t y = scanLineOffset; y < bboxMaxY; y += increment)
+        for (int32_t y = scanLineOffset; y >= bboxMinY; y -= increment)
         {
             // calculate the bounds of the current scan-line
             const float        yf     = (float)y;
@@ -664,11 +664,11 @@ void SL_TriRasterizer::render_triangle(const SL_Texture* depthBuffer) const noex
         const math::vec4  homogenous     {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
         const int32_t     bboxMinY       = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
         const int32_t     bboxMaxY       = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
-        const int32_t     scanLineOffset = bboxMinY + sl_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
+        const int32_t     scanLineOffset = bboxMaxY - sl_scanline_offset<int32_t>(increment, yOffset, bboxMaxY);
         const math::vec4* bcClipSpace    = pBin->mBarycentricCoords;
 
         int32_t y = scanLineOffset;
-        if (y >= bboxMaxY)
+        if (y < bboxMinY)
         {
             continue;
         }
@@ -690,7 +690,7 @@ void SL_TriRasterizer::render_triangle(const SL_Texture* depthBuffer) const noex
 
             if (LS_UNLIKELY(x >= xMax))
             {
-                y += increment;
+                y -= increment;
                 continue;
             }
 
@@ -730,8 +730,8 @@ void SL_TriRasterizer::render_triangle(const SL_Texture* depthBuffer) const noex
                 ++pDepth;
             } while (LS_UNLIKELY(x < xMax));
 
-            y += increment;
-        } while (LS_UNLIKELY(y < bboxMaxY));
+            y -= increment;
+        } while (LS_UNLIKELY(y >= bboxMinY));
 
         // cleanup remaining fragments
         if (LS_LIKELY(numQueuedFrags > 0))
@@ -842,10 +842,10 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
 
         const int32_t bboxMinY       = _mm_extract_epi32(_mm_cvtps_epi32(_mm_min_ps(_mm_min_ps(points0, points1), points2)), 1);
         const int32_t bboxMaxY       = _mm_extract_epi32(_mm_cvtps_epi32(_mm_max_ps(_mm_max_ps(points0, points1), points2)), 1);
-        const int32_t scanLineOffset = bboxMinY + sl_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
+        const int32_t scanLineOffset = bboxMaxY - sl_scanline_offset<int32_t>(increment, yOffset, bboxMaxY);
 
         int32_t y = scanLineOffset;
-        if (LS_UNLIKELY(y >= bboxMaxY))
+        if (LS_UNLIKELY(y < bboxMinY))
         {
             continue;
         }
@@ -875,7 +875,7 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
 
             if (LS_UNLIKELY(!_mm_test_all_ones(_mm_cmplt_epi32(xMin, xMax))))
             {
-                y += increment;
+                y -= increment;
                 continue;
             }
 
@@ -973,9 +973,9 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
             }
             while (_mm_movemask_epi8(_mm_cmplt_epi32(x4, xMax4)));
 
-            y += increment;
+            y -= increment;
         }
-        while (LS_UNLIKELY(y < bboxMaxY));
+        while (LS_UNLIKELY(y >= bboxMinY));
 
         if (LS_LIKELY(0 < numQueuedFrags))
         {
@@ -1026,11 +1026,11 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
         const math::vec4  homogenous     {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
         const int32_t     bboxMinY       = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
         const int32_t     bboxMaxY       = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
-        const int32_t     scanLineOffset = bboxMinY + sl_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
+        const int32_t     scanLineOffset = bboxMaxY - sl_scanline_offset<int32_t>(increment, yOffset, bboxMaxY);
         const math::vec4* bcClipSpace    = pBin->mBarycentricCoords;
 
         int32_t y = scanLineOffset;
-        if (LS_UNLIKELY(y >= bboxMaxY))
+        if (LS_UNLIKELY(y < bboxMinY))
         {
             continue;
         }
@@ -1122,9 +1122,9 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
                 while (x4.v[0] < xMax);
             }
 
-            y += increment;
+            y -= increment;
         }
-        while (y < bboxMaxY);
+        while (y >= bboxMinY);
 
         if (LS_LIKELY(0 < numQueuedFrags))
         {
