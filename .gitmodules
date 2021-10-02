@@ -14,3 +14,7 @@
 	path = light_game
 	url = https://github.com/hamsham/LightGame.git
 	branch = master
+[submodule "light_script"]
+	path = light_script
+	url = https://github.com/hamsham/LightScript.git
+	branch = master

@@ -20,8 +20,9 @@ include(external_deps.cmake)
 # #####################################
 # Internal Libraries
 # #####################################
-add_subdirectory(light_setup)
-add_subdirectory(light_utils)
-add_subdirectory(light_game)
-add_subdirectory(light_math)
-add_subdirectory(softlight)
+add_subdirectory(light_setup) # top-level
+add_subdirectory(light_utils) # depends on light_setup
+add_subdirectory(light_math) # depends on light_setup
+add_subdirectory(light_script) # independent
+add_subdirectory(light_game) # independent
+add_subdirectory(softlight) # depends on all submodules
