@@ -490,10 +490,19 @@ class SL_SceneFileLoader
      * SL_Texture objects.
      */
     const std::unordered_map<std::string, const SL_Texture*>& texture_path_mappings() const;
+
+    /**
+     * @brief Retrieve the types of VAOs loaded into memory.
+     *
+     * @return A std::vector of SL_VaoGroup types which represent the loaded
+     * VAO types of various meshes loaded from a file.
+     */
+    const std::vector<SL_VaoGroup>& vao_types() const;
 };
 
 
-/*-------------------------------------
+
+/*------------------- objects and their paths.------------------
  * Retrieve the loaded scene data (const)
 -------------------------------------*/
 inline const SL_SceneGraph& SL_SceneFileLoader::data() const noexcept
@@ -518,6 +527,16 @@ inline SL_SceneGraph& SL_SceneFileLoader::data() noexcept
 inline const std::unordered_map<std::string, const SL_Texture*>& SL_SceneFileLoader::texture_path_mappings() const
 {
     return mLoadedTextures;
+}
+
+
+
+/*-------------------------------------
+ * Retrieve loaded vao types
+-------------------------------------*/
+inline const std::vector<SL_VaoGroup>& SL_SceneFileLoader::vao_types() const
+{
+    return mPreloader.mVaoGroups;
 }
 
 
