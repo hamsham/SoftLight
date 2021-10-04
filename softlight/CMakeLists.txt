@@ -322,6 +322,7 @@ add_library(${PROJECT_NAME} ${SL_LIB_TYPE} ${SL_LIB_SOURCES} ${SL_LIB_HEADERS})
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
         LightSky::Game
+        LightSky::Script
         LightSky::Math
         LightSky::Utils
         LightSky::Setup
