@@ -180,7 +180,10 @@ set(SL_LIB_HEADERS
     include/softlight/SL_VertexProcessor.hpp
     include/softlight/SL_ViewportState.hpp
     include/softlight/SL_WindowBuffer.hpp
-    include/softlight/SL_WindowEvent.hpp)
+    include/softlight/SL_WindowEvent.hpp
+
+    include/softlight/script/SL_SceneGraphScript.hpp
+)
 
 if (WIN32)
     set(SL_LIB_HEADERS
@@ -252,7 +255,10 @@ set(SL_LIB_SOURCES
     src/SL_VertexCache.cpp
     src/SL_VertexProcessor.cpp
     src/SL_ViewportState.cpp
-    src/SL_WindowBuffer.cpp)
+    src/SL_WindowBuffer.cpp
+
+    src/script/SL_SceneGraphScript.cpp
+)
 
 if(WIN32)
     message("-- Win32 window backend enabled.")
@@ -319,6 +325,8 @@ endif()
 
 add_library(${PROJECT_NAME} ${SL_LIB_TYPE} ${SL_LIB_SOURCES} ${SL_LIB_HEADERS})
 
+ls_configure_target(${PROJECT_NAME})
+
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
         LightSky::Game
@@ -360,6 +368,7 @@ target_include_directories(${PROJECT_NAME} SYSTEM BEFORE
 )
 
 
+
 # -------------------------------------
 # Library Installation Setup
 # -------------------------------------
@@ -369,6 +378,7 @@ install(TARGETS ${PROJECT_NAME}
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
 )
+
 install(DIRECTORY include/softlight DESTINATION include)
 
 install(EXPORT SoftLight
