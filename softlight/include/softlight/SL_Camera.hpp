@@ -2,6 +2,8 @@
 #ifndef SL_CAMERA_HPP
 #define SL_CAMERA_HPP
 
+#include "lightsky/script/Script.h"
+
 #include "lightsky/math/vec2.h"
 #include "lightsky/math/vec3.h"
 #include "lightsky/math/mat4.h"
@@ -12,10 +14,15 @@
  Forward Declarations
 -----------------------------------------------------------------------------*/
 class SL_Camera;
-
 class SL_BoundingBox;
-
+class SL_SceneGraph;
 class SL_Transform;
+
+namespace slscript
+{
+    template <ls::script::hash_t, typename var_type>
+    class SL_SceneGraphScript;
+} // end slscript namespace
 
 
 
@@ -134,6 +141,8 @@ enum SL_ProjectionType : uint32_t
 -----------------------------------------------------------------------------*/
 class SL_Camera
 {
+    friend class slscript::SL_SceneGraphScript<LS_SCRIPT_HASH_FUNC("SL_SceneGraph"), SL_SceneGraph*>;
+
     friend class SceneFileLoader;
 
   public:

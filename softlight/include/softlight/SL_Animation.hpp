@@ -6,6 +6,8 @@
 #include <string>
 #include <utility> // std::forward
 
+#include "lightsky/script/Script.h"
+
 #include "lightsky/utils/Hash.h"
 
 #include "softlight/SL_AnimationProperty.hpp"
@@ -18,6 +20,13 @@
 -----------------------------------------------------------------------------*/
 struct SL_SceneNode;
 class SL_SceneGraph;
+
+namespace slscript
+{
+    template <ls::script::hash_t, typename var_type>
+    class SL_SceneGraphScript;
+} // end slscript namespace
+
 
 
 /**------------------------------------
@@ -44,6 +53,7 @@ enum SL_AnimPlayMode
 ------------------------------------------------------------------------------*/
 class SL_Animation
 {
+    friend class slscript::SL_SceneGraphScript<LS_SCRIPT_HASH_FUNC("SL_SceneGraph"), SL_SceneGraph*>;
 
     // Allow scene graphs to delete animation tracks based on the scene node
     friend class SL_SceneGraph;

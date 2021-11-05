@@ -6,6 +6,8 @@
 
 #include "lightsky/utils/AlignedAllocator.hpp"
 
+#include "lightsky/script/Script.h"
+
 #include "softlight/SL_Context.hpp"
 #include "softlight/SL_SceneNode.hpp"
 #include "softlight/SL_Setup.hpp"
@@ -34,6 +36,13 @@ struct SL_Material;
 class SL_Transform;
 class SL_BoundingBox;
 
+namespace slscript
+{
+    template <ls::script::hash_t, typename var_type>
+    class SL_SceneGraphScript;
+
+} // end slscript namespace
+
 
 
 /**----------------------------------------------------------------------------
@@ -42,6 +51,8 @@ class SL_BoundingBox;
 -----------------------------------------------------------------------------*/
 class SL_SceneGraph
 {
+    friend class slscript::SL_SceneGraphScript<LS_SCRIPT_HASH_FUNC("SL_SceneGraph"), SL_SceneGraph*>;
+
   public: // member objects
     /**
      * Referenced by camera-type scene nodes using their
