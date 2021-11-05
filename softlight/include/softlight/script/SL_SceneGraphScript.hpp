@@ -11,15 +11,12 @@ class SL_SceneGraph;
 
 
 
-namespace slscript
-{
+LS_SCRIPT_OVERRIDE_VAR_LOAD(LS_STATIC_API, SL_SceneGraph*);
 
-
+LS_SCRIPT_OVERRIDE_VAR_SAVE(LS_STATIC_API, SL_SceneGraph*);
 
 LS_SCRIPT_DECLARE_VAR(SL_SceneGraphScript, SL_SceneGraph*);
 
 
-
-} // end slscript namespace
 
 #endif /* SL_SCENE_GRAPH_SCRIPT_HPP */
