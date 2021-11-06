@@ -43,6 +43,7 @@ inline uint_fast32_t LS_INLINE sl_swizzle_3d_index(uint_fast32_t x, uint_fast32_
     static_assert(ls::math::is_pow2<uint_fast32_t>(texels_per_chunk), "Texels-per-chunk must be a power of two.");
     static_assert(texels_per_chunk == (1 << shifts_per_chunk), "texels_per_chunk != 2^shifts_per_chunk.");
 
+    //const uint_fast32_t idsPerBlock = texels_per_chunk * texels_per_chunk * (isFlatImage ? 1 : texels_per_chunk);
     const uint_fast32_t idsPerBlock = texels_per_chunk*texels_per_chunk*texels_per_chunk;
 
     const uint_fast32_t tileX       = x >> shifts_per_chunk;

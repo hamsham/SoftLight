@@ -537,10 +537,12 @@ enum SL_ShaderLimits
  * Padded data types to avoid false sharing
 -----------------------------------------------------------------------------*/
 template <typename data_t>
-union alignas(sizeof(ls::math::vec4)) SL_BinCounter
+union alignas(16) SL_BinCounter
 {
-    typename ls::setup::EnableIf<ls::setup::IsIntegral<data_t>::value, data_t>::type count;
-    unsigned char padding[sizeof(ls::math::vec4)];
+    alignas(16) typename ls::setup::EnableIf<ls::setup::IsIntegral<data_t>::value, data_t>::type count;
+    unsigned char padding[16-sizeof(data_t)];
+
+    static_assert(sizeof(count)+sizeof(padding) == 16, "Invalid structure alignment.");
 
     ~SL_BinCounter() noexcept {}
 
@@ -578,10 +580,12 @@ union alignas(sizeof(ls::math::vec4)) SL_BinCounter
 
 
 template <typename data_t>
-union alignas(sizeof(ls::math::vec4)) SL_BinCounterAtomic
+union alignas(64) SL_BinCounterAtomic
 {
-    std::atomic<typename ls::setup::EnableIf<ls::setup::IsIntegral<data_t>::value, data_t>::type> count;
-    unsigned char padding[sizeof(ls::math::vec4)*3];
+    alignas(64) std::atomic<typename ls::setup::EnableIf<ls::setup::IsIntegral<data_t>::value, data_t>::type> count;
+    unsigned char padding[64-sizeof(data_t)];
+
+    static_assert(sizeof(count)+sizeof(padding) == 64, "Invalid structure alignment.");
 
     ~SL_BinCounterAtomic() noexcept {}
 

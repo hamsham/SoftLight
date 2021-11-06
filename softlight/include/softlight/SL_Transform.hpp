@@ -4,9 +4,24 @@
 
 #include <cstdint>
 
+#include "lightsky/script/Script.h"
+
 #include "lightsky/math/vec3.h"
 #include "lightsky/math/mat4.h"
 #include "lightsky/math/quat.h"
+
+
+
+/*-----------------------------------------------------------------------------
+ Forward Declarations
+-----------------------------------------------------------------------------*/
+class SL_SceneGraph;
+
+namespace slscript
+{
+    template <ls::script::hash_t, typename var_type>
+    class SL_SceneGraphScript;
+} // end slscript namespace
 
 
 
@@ -43,6 +58,8 @@ enum SL_TransformType : uint32_t
 ----------------------------------------------------------------------------*/
 class alignas(sizeof(ls::math::vec4)*4) SL_Transform
 {
+    friend class slscript::SL_SceneGraphScript<LS_SCRIPT_HASH_FUNC("SL_SceneGraph"), SL_SceneGraph*>;
+
   public:
     /**
      * Array index of a parent transformation in a Scene Graph.

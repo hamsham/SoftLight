@@ -233,7 +233,7 @@ void SL_ProcessorPool::wait() noexcept
                     ls::setup::cpu_yield();
             }
 
-            currentIters = ls::math::max(currentIters+currentIters, maxIters);
+            currentIters = ls::math::min(currentIters+currentIters, maxIters);
         }
     }
 }

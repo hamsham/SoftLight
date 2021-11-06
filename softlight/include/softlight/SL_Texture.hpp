@@ -5,13 +5,12 @@
 #include <cstddef> // ptrdiff_t
 
 #include "lightsky/setup/Arch.h"
-#include "lightsky/setup/Api.h"
 
 #include "lightsky/math/fixed.h"
-#include "lightsky/math/scalar_utils.h"
 #include "lightsky/math/vec_utils.h"
 
 #include "softlight/SL_Color.hpp" // SL_ColorDataType
+#include "softlight/SL_Swizzle.hpp"
 
 
 
@@ -39,7 +38,7 @@ enum SL_TexWrapMode : uint16_t
 enum SL_TexChunkInfo : uint32_t
 {
     SL_TEXELS_PER_CHUNK = 4,
-    SL_TEXEL_SHIFTS_PER_CHUNK = 2 // 2^SL_TEXEL_SHIFTS_PER_CHUNK = SL_TEXELS_PER_CHUNK
+    SL_TEXEL_SHIFTS_PER_CHUNK = sl_swizzle_ctz<uint32_t>(SL_TEXELS_PER_CHUNK) // log2(SL_TEXELS_PER_CHUNK)
 };
 
 
@@ -73,7 +72,7 @@ class alignas(sizeof(uint64_t)) SL_Texture
 
     uint16_t mBytesPerTexel; // 2 bytes
 
-    uint32_t mNumChannels; // 4 bytes
+    uint16_t mNumChannels; // 2 bytes
 
     char* mTexels; // 4-8 bytes
 
@@ -227,18 +226,7 @@ inline LS_INLINE ptrdiff_t SL_Texture::map_coordinate<SL_TexelOrder::SL_TEXELS_O
 template <>
 inline LS_INLINE ptrdiff_t SL_Texture::map_coordinate<SL_TexelOrder::SL_TEXELS_SWIZZLED>(uint_fast32_t x, uint_fast32_t y) const noexcept
 {
-    constexpr uint_fast32_t idsPerBlock = SL_TEXELS_PER_CHUNK*SL_TEXELS_PER_CHUNK;
-    const uint_fast32_t     tileX       = x >> SL_TEXEL_SHIFTS_PER_CHUNK;
-    const uint_fast32_t     tileY       = y >> SL_TEXEL_SHIFTS_PER_CHUNK;
-    const uint_fast32_t     tileId      = (tileX + (mWidth >> SL_TEXEL_SHIFTS_PER_CHUNK) * tileY);
-
-    // We're only getting the remainder of a power of 2. Use bit operations
-    // instead of a modulo.
-    const uint_fast32_t     innerX      = x & (SL_TEXELS_PER_CHUNK-1u);
-    const uint_fast32_t     innerY      = y & (SL_TEXELS_PER_CHUNK-1u);
-    const uint_fast32_t     innerId     = innerX + (innerY << SL_TEXEL_SHIFTS_PER_CHUNK);
-
-    return (ptrdiff_t)(innerId + tileId * idsPerBlock);
+    return (ptrdiff_t)sl_swizzle_2d_index<SL_TEXELS_PER_CHUNK, SL_TEXEL_SHIFTS_PER_CHUNK>(x, y, mWidth);
 }
 
 
@@ -268,19 +256,7 @@ inline LS_INLINE ptrdiff_t SL_Texture::map_coordinate<SL_TexelOrder::SL_TEXELS_O
 template <>
 inline LS_INLINE ptrdiff_t SL_Texture::map_coordinate<SL_TexelOrder::SL_TEXELS_SWIZZLED>(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
 {
-    const uint_fast32_t idsPerBlock = SL_TEXELS_PER_CHUNK * SL_TEXELS_PER_CHUNK * ((mDepth > 1) ? LS_ENUM_VAL(SL_TEXELS_PER_CHUNK) : 1);
-
-    const uint_fast32_t tileX       = x >> SL_TEXEL_SHIFTS_PER_CHUNK;
-    const uint_fast32_t tileY       = y >> SL_TEXEL_SHIFTS_PER_CHUNK;
-    const uint_fast32_t tileZ       = z >> SL_TEXEL_SHIFTS_PER_CHUNK;
-    const uint_fast32_t tileId      = tileX + ((mWidth >> SL_TEXEL_SHIFTS_PER_CHUNK) * (tileY + ((mHeight >> SL_TEXEL_SHIFTS_PER_CHUNK) * tileZ)));
-
-    const uint_fast32_t innerX      = x & (SL_TEXELS_PER_CHUNK-1u);
-    const uint_fast32_t innerY      = y & (SL_TEXELS_PER_CHUNK-1u);
-    const uint_fast32_t innerZ      = z & (SL_TEXELS_PER_CHUNK-1u);
-    const uint_fast32_t innerId     = innerX + ((innerY << SL_TEXEL_SHIFTS_PER_CHUNK) + (SL_TEXELS_PER_CHUNK * (innerZ << SL_TEXEL_SHIFTS_PER_CHUNK)));
-
-    return (ptrdiff_t)(innerId + tileId * idsPerBlock);
+    return (ptrdiff_t)sl_swizzle_3d_index<SL_TEXELS_PER_CHUNK, SL_TEXEL_SHIFTS_PER_CHUNK>(x, y, z, mWidth, mHeight);
 }
 
 
@@ -381,7 +357,7 @@ inline LS_INLINE uint16_t SL_Texture::bpp() const noexcept
 -------------------------------------*/
 inline LS_INLINE uint32_t SL_Texture::channels() const noexcept
 {
-    return mNumChannels;
+    return (uint32_t)mNumChannels;
 }
 
 

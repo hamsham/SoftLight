@@ -547,7 +547,7 @@ void SL_TriProcessor::push_bin(size_t primIndex, const SL_TransformedVert& a, co
         });
 
         // A 2D cross product is simply the determinant of a 2x2 matrix
-        const float denom = math::rcp(math::cross(zy, xy));
+        const math::vec4&& denom = {math::rcp(math::cross(zy, xy))};
         //const float denom = math::rcp(math::determinant(math::mat2{zy, xy}));
 
         // cross-products
@@ -641,9 +641,9 @@ void SL_TriProcessor::clip_and_process_tris(
 
     const auto _copy_verts = [](int maxVerts, const math::vec4* inVerts, math::vec4* outVerts) noexcept->void
     {
-        for (unsigned i = maxVerts; i--;)
+        while (maxVerts--)
         {
-            outVerts[i] = inVerts[i];
+            outVerts[maxVerts] = inVerts[maxVerts];
         }
     };
 

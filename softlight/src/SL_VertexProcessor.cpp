@@ -27,10 +27,12 @@ template <typename RasterizerType>
 void SL_VertexProcessor::flush_rasterizer() const noexcept
 {
     // Allow the other threads to know when they're ready for processing
-    const int_fast64_t    numThreads = (int_fast64_t)mNumThreads;
-    const int_fast64_t    syncPoint1 = -numThreads - 1;
-    const int_fast64_t    tileId     = mFragProcessors->count.fetch_add(1ll, std::memory_order_acq_rel);
-    const SL_FragmentBin* pBins      = mFragBins;
+    const int_fast64_t    numThreads   = (int_fast64_t)mNumThreads;
+    const int_fast64_t    syncPoint1   = -numThreads - 1;
+    const int_fast64_t    tileId       = mFragProcessors->count.fetch_add(1ll, std::memory_order_acq_rel);
+    const SL_FragmentBin* pBins        = mFragBins;
+    constexpr unsigned    maxIters     = 8;
+    unsigned              currentIters = 1;
     uint_fast64_t         maxElements;
     int_fast64_t          syncPoint2;
 
@@ -65,16 +67,43 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
         }
 
         // Let all threads know they can process fragments.
-        mFragProcessors->count.store(syncPoint1, std::memory_order_release);
+        std::atomic_thread_fence(std::memory_order_release);
+        std::atomic_store_explicit(&mFragProcessors->count, syncPoint1, std::memory_order_relaxed);
     }
     else
     {
-        while (mFragProcessors->count.load(std::memory_order_consume) > 0)
+        do
         {
-            ls::setup::cpu_yield();
-        }
+            int_fast64_t activeProcCount = mFragProcessors->count.load(std::memory_order_relaxed);
+            std::atomic_thread_fence(std::memory_order_acquire);
 
-        maxElements = math::min<uint64_t>(mBinsUsed->count.load(std::memory_order_consume), SL_SHADER_MAX_BINNED_PRIMS);
+            if (LS_LIKELY(activeProcCount < 0))
+            {
+                break;
+            }
+
+            switch (currentIters)
+            {
+                case 8:
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                case 4:
+                    ls::setup::cpu_yield();
+                    ls::setup::cpu_yield();
+                case 2:
+                    ls::setup::cpu_yield();
+                default:
+                    ls::setup::cpu_yield();
+                    currentIters = ls::math::min(currentIters+currentIters, maxIters);
+            }
+        }
+        while (true);
+
+        maxElements = mBinsUsed->count.load(std::memory_order_relaxed);
+        std::atomic_thread_fence(std::memory_order_acquire);
+        maxElements = math::min<uint64_t>(maxElements, SL_SHADER_MAX_BINNED_PRIMS);
     }
 
     static_assert(ls::setup::IsBaseOf<SL_FragmentProcessor, RasterizerType>::value, "Template parameter 'RasterizerType' must derive from SL_FragmentProcessor.");
@@ -82,7 +111,7 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
 
     const SL_ViewportState& viewState = mContext->viewport_state();
 
-    rasterizer.mThreadId = (uint16_t)tileId;
+    rasterizer.mThreadId = (uint16_t)mThreadId;
     rasterizer.mMode = mRenderMode;
     rasterizer.mNumProcessors = (uint32_t)mNumThreads;
     rasterizer.mNumBins = (uint32_t)maxElements;
@@ -97,22 +126,47 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
 
     // Indicate to all threads we can now process more vertices
     syncPoint2 = mFragProcessors->count.fetch_add(1, std::memory_order_acq_rel);
+    if (syncPoint2 == -2)
+    {
+        std::atomic_thread_fence(std::memory_order_release);
+        mBinsUsed->count.store(0, std::memory_order_relaxed);
+        mFragProcessors->count.store(0, std::memory_order_relaxed);
+        return;
+    }
 
     // Wait for the last thread to reset the number of available bins.
-    while (mFragProcessors->count.load(std::memory_order_consume) < 0)
+    int_fast64_t shouldContinue;
+    currentIters = 1;
+
+    do
     {
-        if (syncPoint2 == -2)
+        shouldContinue = mFragProcessors->count.load(std::memory_order_relaxed);
+        std::atomic_thread_fence(std::memory_order_acquire);
+
+        if (LS_UNLIKELY(shouldContinue >= 0))
         {
-            mBinsUsed->count.store(0, std::memory_order_release);
-            mFragProcessors->count.store(0, std::memory_order_release);
             break;
         }
-        else
+
+        // wait until all fragments are rendered across the other threads
+        switch (currentIters)
         {
-            // wait until all fragments are rendered across the other threads
-            ls::setup::cpu_yield();
+            case 8:
+                ls::setup::cpu_yield();
+                ls::setup::cpu_yield();
+                ls::setup::cpu_yield();
+                ls::setup::cpu_yield();
+            case 4:
+                ls::setup::cpu_yield();
+                ls::setup::cpu_yield();
+            case 2:
+                ls::setup::cpu_yield();
+            default:
+                ls::setup::cpu_yield();
+                currentIters = ls::math::min(currentIters+currentIters, maxIters);
         }
     }
+    while (true);
 }
 
 
@@ -124,31 +178,22 @@ template <typename RasterizerType>
 void SL_VertexProcessor::cleanup() noexcept
 {
     static_assert(ls::setup::IsBaseOf<SL_FragmentProcessor, RasterizerType>::value, "Template parameter 'RasterizerType' must derive from SL_FragmentProcessor.");
-
-    constexpr unsigned maxIters = 16;
+    std::atomic<uint_fast64_t>& busyProcessors = mBusyProcessors->count;
+    std::atomic<int_fast64_t>& fragProcessors = mFragProcessors->count;
+    constexpr unsigned maxIters = 8;
     unsigned currentIters = 1;
 
-    mBusyProcessors->count.fetch_sub(1, std::memory_order_acq_rel);
-    while (mBusyProcessors->count.load(std::memory_order_consume))
+    busyProcessors.fetch_sub(1, std::memory_order_acq_rel);
+    while (busyProcessors.load(std::memory_order_consume))
     {
-        if (LS_UNLIKELY(mFragProcessors->count.load(std::memory_order_consume)))
+        if (LS_UNLIKELY(fragProcessors.load(std::memory_order_consume)))
         {
-            currentIters = 1;
             flush_rasterizer<RasterizerType>();
         }
         else
         {
             switch (currentIters)
             {
-                case 16:
-                    ls::setup::cpu_yield();
-                    ls::setup::cpu_yield();
-                    ls::setup::cpu_yield();
-                    ls::setup::cpu_yield();
-                    ls::setup::cpu_yield();
-                    ls::setup::cpu_yield();
-                    ls::setup::cpu_yield();
-                    ls::setup::cpu_yield();
                 case 8:
                     ls::setup::cpu_yield();
                     ls::setup::cpu_yield();
@@ -161,7 +206,7 @@ void SL_VertexProcessor::cleanup() noexcept
                     ls::setup::cpu_yield();
                 default:
                     ls::setup::cpu_yield();
-                    currentIters = ls::math::max(currentIters+currentIters, maxIters);
+                    currentIters = ls::math::min(currentIters+currentIters, maxIters);
             }
         }
     }

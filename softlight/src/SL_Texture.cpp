@@ -251,7 +251,7 @@ int SL_Texture::init(SL_ColorDataType type, uint16_t w, uint16_t h, uint16_t d) 
     mDepth         = d;
     mType          = type;
     mBytesPerTexel = (uint16_t)bpt;
-    mNumChannels   = (uint32_t)sl_elements_per_color(type);
+    mNumChannels   = (uint16_t)sl_elements_per_color(type);
     mTexels        = pData;
 
     return 0;

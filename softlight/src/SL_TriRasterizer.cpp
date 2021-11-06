@@ -299,12 +299,6 @@ inline LS_INLINE math::vec4 _sl_get_depth_texel4(const depth_type* pDepth)
 template <class DepthCmpFunc, typename depth_type>
 void SL_TriRasterizer::flush_scanlines(const SL_FragmentBin* pBin, uint32_t xMin, uint32_t xMax, uint32_t y) const noexcept
 {
-    const math::vec4* pPoints     = pBin->mScreenCoords;
-    const math::vec4* bcClipSpace = pBin->mBarycentricCoords;
-    const math::vec4  depth       {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
-    const math::vec4  homogenous  {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
-    depth_type*       pDepthBuf   = mFbo->get_depth_buffer()->row_pointer<depth_type>((uint16_t)y) + xMin;
-
     constexpr DepthCmpFunc   depthCmpFunc;
     const SL_FragmentShader& fragShader    = mShader->mFragShader;
     const SL_FboOutputMask   fboOutMask    = sl_calc_fbo_out_mask(fragShader.numOutputs, fragShader.blend != SL_BLEND_OFF);
@@ -315,9 +309,17 @@ void SL_TriRasterizer::flush_scanlines(const SL_FragmentBin* pBin, uint32_t xMin
     fragParams.coord.y = (uint16_t)y;
 
     const float yf = (float)y;
+    uint32_t x = xMin;
+
+    depth_type*       pDepthBuf   = mFbo->get_depth_buffer()->row_pointer<depth_type>((uint16_t)y) + xMin;
+
+    const math::vec4* pPoints     = pBin->mScreenCoords;
+    const math::vec4  depth       {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
+    const math::vec4  homogenous  {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
+
+    const math::vec4* bcClipSpace = pBin->mBarycentricCoords;
     const math::vec4&& bcY = math::fmadd(bcClipSpace[1], math::vec4{yf}, bcClipSpace[2]);
     math::vec4&& bcX = math::fmadd(bcClipSpace[0], math::vec4{(float)xMin}, bcY);
-    uint32_t x = xMin;
 
     do
     {
@@ -534,14 +536,15 @@ void SL_TriRasterizer::render_wireframe(const SL_Texture* depthBuffer) const noe
 
         uint32_t          numQueuedFrags = 0;
         const math::vec4* pPoints        = pBin->mScreenCoords;
-        const math::vec4* bcClipSpace    = pBin->mBarycentricCoords;
-        const math::vec4  depth          {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
-        const math::vec4  homogenous     {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
         const int32_t     bboxMinY       = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
         const int32_t     bboxMaxY       = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
         const int32_t     scanLineOffset = bboxMaxY - sl_scanline_offset<int32_t>(increment, yOffset, bboxMaxY);
 
         scanline.init(pPoints[0], pPoints[1], pPoints[2]);
+
+        const math::vec4* bcClipSpace = pBin->mBarycentricCoords;
+        const math::vec4  depth       {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
+        const math::vec4  homogenous  {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
 
         for (int32_t y = scanLineOffset; y >= bboxMinY; y -= increment)
         {
@@ -660,12 +663,9 @@ void SL_TriRasterizer::render_triangle(const SL_Texture* depthBuffer) const noex
 
         uint32_t          numQueuedFrags = 0;
         const math::vec4* pPoints        = pBin->mScreenCoords;
-        const math::vec4  depth          {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
-        const math::vec4  homogenous     {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
         const int32_t     bboxMinY       = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
         const int32_t     bboxMaxY       = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
         const int32_t     scanLineOffset = bboxMaxY - sl_scanline_offset<int32_t>(increment, yOffset, bboxMaxY);
-        const math::vec4* bcClipSpace    = pBin->mBarycentricCoords;
 
         int32_t y = scanLineOffset;
         if (y < bboxMinY)
@@ -674,6 +674,10 @@ void SL_TriRasterizer::render_triangle(const SL_Texture* depthBuffer) const noex
         }
 
         scanline.init(pPoints[0], pPoints[1], pPoints[2]);
+
+        const math::vec4  depth       {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
+        const math::vec4  homogenous  {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
+        const math::vec4* bcClipSpace = pBin->mBarycentricCoords;
 
         do
         {
@@ -832,9 +836,7 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
     for (uint32_t i = 0; i < numBins; ++i)
     {
         const uint32_t binId = pBinIds[i].count;
-        const uint32_t binId2 = pBinIds[i+(i < numBins)].count;
         const SL_FragmentBin* const pBin = pBins+binId;
-        LS_PREFETCH(pBins+binId2, LS_PREFETCH_ACCESS_R, LS_PREFETCH_LEVEL_L3);
 
         const __m128 points0 = _mm_load_ps(reinterpret_cast<const float*>(pBin->mScreenCoords+0));
         const __m128 points1 = _mm_load_ps(reinterpret_cast<const float*>(pBin->mScreenCoords+1));
@@ -850,12 +852,12 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
             continue;
         }
 
-        scanline.init(math::vec4{points0}, math::vec4{points1}, math::vec4{points2});
-
         const __m128 d01        = _mm_unpackhi_ps(points0, points1);
         const __m128 h01        = _mm_insert_ps(_mm_permute_ps(points0, 0xFF), points1, 0xD0);
         const __m128 depth      = _mm_insert_ps(d01, points2, 0xA8);
         const __m128 homogenous = _mm_insert_ps(h01, points2, 0xE8);
+
+        scanline.init(math::vec4{points0}, math::vec4{points1}, math::vec4{points2});
 
         const __m128 bcClipSpace0   = _mm_load_ps(reinterpret_cast<const float*>(pBin->mBarycentricCoords+0));
         const __m128 bcClipSpace1   = _mm_load_ps(reinterpret_cast<const float*>(pBin->mBarycentricCoords+1));
@@ -1022,12 +1024,9 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
 
         unsigned          numQueuedFrags = 0;
         const math::vec4* pPoints        = pBin->mScreenCoords;
-        const math::vec4  depth          {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
-        const math::vec4  homogenous     {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
         const int32_t     bboxMinY       = (int32_t)math::min(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
         const int32_t     bboxMaxY       = (int32_t)math::max(pPoints[0][1], pPoints[1][1], pPoints[2][1]);
         const int32_t     scanLineOffset = bboxMaxY - sl_scanline_offset<int32_t>(increment, yOffset, bboxMaxY);
-        const math::vec4* bcClipSpace    = pBin->mBarycentricCoords;
 
         int32_t y = scanLineOffset;
         if (LS_UNLIKELY(y < bboxMinY))
@@ -1035,7 +1034,12 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
             continue;
         }
 
+        const math::vec4 depth      {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
+        const math::vec4 homogenous {pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
+
         scanline.init(pPoints[0], pPoints[1], pPoints[2]);
+
+        const math::vec4* bcClipSpace = pBin->mBarycentricCoords;
 
         do
         {
