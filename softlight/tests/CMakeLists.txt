@@ -170,6 +170,7 @@ endif()
 function(sl_add_test target sources)
     add_executable(${target} ${sources} ${ARGN})
     target_link_libraries(${target} softlight LightSky::Math LightSky::Game LightSky::Utils LightSky::Setup ${SL_EXTERNAL_LIBS})
+	ls_configure_target(${target})
 endfunction(sl_add_test)
 
 sl_add_test(sl_animation_test          sl_animation_test.cpp)
