@@ -57,8 +57,6 @@ if (BUILD_FREEIMAGE OR FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NO
                 "https://svn.code.sf.net/p/freeimage/svn/FreeImage/trunk"
             SVN_TRUST_CERT
                 TRUE
-            UPDATE_COMMAND
-                ${Subversion_SVN_EXECUTABLE} update
             CONFIGURE_COMMAND
                 ""
             BUILD_COMMAND
@@ -79,8 +77,6 @@ if (BUILD_FREEIMAGE OR FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NO
                 "https://svn.code.sf.net/p/freeimage/svn/FreeImage/trunk"
             SVN_TRUST_CERT
                 TRUE
-            UPDATE_COMMAND
-                ${Subversion_SVN_EXECUTABLE} update
             CONFIGURE_COMMAND
                 ""
             BUILD_COMMAND
