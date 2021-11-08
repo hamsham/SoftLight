@@ -14,7 +14,7 @@ LS_SCRIPT_DEFINE_VAR(SL_SceneGraphScript, SL_SceneGraph*);
 /*-------------------------------------
  * Scene Graph Serialization
 -------------------------------------*/
-LS_SCRIPT_OVERRIDE_VAR_SAVE(LS_STATIC_API, SL_SceneGraph*)
+LS_SCRIPT_OVERRIDE_VAR_SAVE(LS_SCRIPT_STATIC_API, SL_SceneGraph*)
 {
     const SL_SceneGraph* pGraph = data;
     ostr << (const void*)pGraph;
@@ -24,7 +24,7 @@ LS_SCRIPT_OVERRIDE_VAR_SAVE(LS_STATIC_API, SL_SceneGraph*)
 /*-------------------------------------
  * Scene Graph Deserialization
 -------------------------------------*/
-LS_SCRIPT_OVERRIDE_VAR_LOAD(LS_EXPORT_API, SL_SceneGraph*)
+LS_SCRIPT_OVERRIDE_VAR_LOAD(LS_SCRIPT_EXPORT_API, SL_SceneGraph*)
 {
     (void)varImporter;
     (void)funcImporter;
