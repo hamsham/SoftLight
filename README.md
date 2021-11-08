@@ -38,12 +38,13 @@ MSVC 2019. Softlight should work on any modern architecture (tested on i686,
 x64, ARM, AARCH64, and PowerPC-EL64), the project has been tested on the
 following compilers:
 
-| GCC   | Clang* | MSVC** | MinGW-W64** |
-| ----- | ------ | ------ | ----------- |
-| 4.8.2 | 3.5    | 2017   | 5.1.0       |
-| 5.0.0 | 3.6    | 2019   | 7.4.0       |
-| 7.3.0 | 6.0    |        | 8.4.0       |
-| 9.3.0 | 10.0   |        |             |
+| GCC    | Clang* | MSVC** | MinGW-W64** |
+| ------ | ------ | ------ | ----------- |
+| 4.8.2  | 3.5    | 2017   | 5.1.0       |
+| 5.0.0  | 3.6    | 2019   | 7.4.0       |
+| 7.3.0  | 6.0    | 2022   | 8.4.0       |
+| 9.3.0  | 10.0   |        | 11.0.0      |
+| 11.1.0 | 12.0   |        |             |
 
 \* Benchmarking has consistently shown Clang generates and builds the most
 optimized code.
@@ -99,7 +100,9 @@ system to speed up build times.
 SoftLight uses the following submodules:
 - [LightSetup](https://github.com/hamsham/LightSetup)
 - [LightUtils](https://github.com/hamsham/LightUtils)
-- [LightMath](https://github.com/hamsham/LightMat)
+- [LightMath](https://github.com/hamsham/LightMath)
+- [LightGame](https://github.com/hamsham/LightGame)
+- [LightScript](https://github.com/hamsham/LightScript)
 
 Cloning the repository should be done recursively, using the following steps:
 1. `git clone --recursive https://github.com/hamsham/SoftLight`
@@ -112,17 +115,17 @@ Cloning the repository should be done recursively, using the following steps:
 SoftLight is a very flexible software rasterizer. Compiling the code will
 generate a set of tests you can use to play around with. Some interesting
 examples include:
- * Parallel Mesh Instancing (`instancing_test.cpp`): Toggle threaded
+ * Parallel Mesh Instancing (`sl_instancing_test.cpp`): Toggle threaded
  instancing by pressing the `F2` key.
- * Skinning and animation (`animation_test.cpp`).
- * Large indoor environment rendering (`live_scene_test.cpp`): Press the `F1`
+ * Skinning and animation (`sl_animation_test.cpp`).
+ * Large indoor environment rendering (`sl_large_scene_test.cpp`): Press the `F1`
  Key to capture the mouse and explore the environment using the WASD keys. You
  can also toggle PBR-based rendering with the `F2` key as well as change the
  number of threads used for rendering by using the up/down arrow keys.
- * Full-screen quad rendering (`fs_quad.cpp`). Render to an offscreen [Compact
+ * Full-screen quad rendering (`sl_fullscreen_quad.cpp`). Render to an offscreen [Compact
  YCoCg Framebuffer](http://jcgt.org/published/0001/01/02/) then reconstruct
  the image in a second render pass.
- * Volumetric voxel rendering (`volume_test.cpp`).
+ * Volumetric voxel rendering (`sl_volume_rendering_test.cpp`).
 
 Check out the below screenshots to see what else it can do!
 
@@ -150,13 +153,16 @@ render, and manipulate a 3D scene in real-time.
 
 
 ## TODO
-- [ ] Implement stencil buffers.
 - [ ] Provide support for mip-mapping.
-- [ ] Anti-aliasing using FXAA.
-- [ ] Doxygen-based documentation for the software rendering module.
+- [ ] Migrate shader system to use modern "pipeline" syntax (similar to Metal & Vulkan).
+- [ ] Migrate framebuffer system to render passes (similar to Metal & Vulkan).
+- [ ] Finish support for render state objects (including depth-stencil states).
+- [ ] Complete Doxygen-based documentation for the software rendering module.
 - [ ] Additional Unit Tests.
 - [ ] Create additional examples.
-- [ ] Create Geometry Shader API
+- [ ] Wrap the rendering module in a C API for project portability.
+- [ ] Migrate high-level scene graph constructs into LightGame.
+- [ ] Add SDL2 backend support.
 
 
 
