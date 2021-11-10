@@ -105,9 +105,10 @@ SoftLight uses the following submodules:
 - [LightScript](https://github.com/hamsham/LightScript)
 
 Cloning the repository should be done recursively, using the following steps:
-1. `git clone --recursive https://github.com/hamsham/SoftLight`
-2. `git submodule foreach git checkout master`
-3. `git submodule foreach git pull origin master`
+1. `git clone --recursive https://github.com/hamsham/SoftLight.git`
+2. `cd SoftLight`
+3. `git submodule foreach git checkout master`
+4. `git submodule foreach git pull origin master`
 
 
 

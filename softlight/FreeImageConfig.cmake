@@ -91,13 +91,20 @@ if (BUILD_FREEIMAGE OR FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NO
 
     # Add the imported library target
     add_library(freeimage ${FREEIMAGE_LIB_TYPE} IMPORTED)
-    set_target_properties(freeimage PROPERTIES IMPORTED_LOCATION ${EXTERNAL_PROJECT_PREFIX}/lib/${FREEIMAGE_LIB})
+
+    if (MSVC)
+        set_target_properties(freeimage PROPERTIES IMPORTED_LOCATION ${EXTERNAL_PROJECT_PREFIX}/bin/${FREEIMAGE_DLL})
+        set_target_properties(freeimage PROPERTIES IMPORTED_IMPLIB   ${EXTERNAL_PROJECT_PREFIX}/lib/${FREEIMAGE_LIB})
+    else()
+        set_target_properties(freeimage PROPERTIES IMPORTED_LOCATION ${EXTERNAL_PROJECT_PREFIX}/lib/${FREEIMAGE_LIB})
+    endif()
+
     add_dependencies(freeimage FreeImage)
 
-    set(FREEIMAGE_INCLUDE_PATH CACHE EPATH ${EXTERNAL_PROJECT_PREFIX}/include "The directory where FreeImage.h resides")
+    set(FREEIMAGE_INCLUDE_PATH CACHE PATH ${EXTERNAL_PROJECT_PREFIX}/include "The directory where FreeImage.h resides")
 
     if (WIN32)
-        set(FREEIMAGE_LIBRARIES ${EXTERNAL_PROJECT_PREFIX}/lib/${FREEIMAGE_LIB} ws2_32)
+        set(FREEIMAGE_LIBRARIES freeimage ws2_32)
     else()
         set(FREEIMAGE_LIBRARIES freeimage)
     endif()
