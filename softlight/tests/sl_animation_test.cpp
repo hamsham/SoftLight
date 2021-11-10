@@ -751,5 +751,9 @@ int main()
 
     pRenderBuf->terminate();
 
+    std::cout
+        << "Rendered " << totalFrames << " frames in " << totalSeconds << " seconds ("
+        << ((double)totalFrames/(double)totalSeconds) << " average fps)." << std::endl;
+
     return pWindow->destroy();
 }

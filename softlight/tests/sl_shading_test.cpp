@@ -566,6 +566,7 @@ int main()
 
     utils::Clock<float> timer;
     unsigned currFrames = 0;
+    unsigned totalFrames = 0;
     float currSeconds = 0.f;
     float totalSeconds = 0.f;
     float dx = 0.f;
@@ -728,6 +729,7 @@ int main()
             const float tickTime = timer.tick_time().count();
 
             ++currFrames;
+            ++totalFrames;
             currSeconds += tickTime;
             totalSeconds += tickTime;
 
@@ -771,6 +773,10 @@ int main()
 
     context.ubo(0).as<InstanceUniforms>()->instancePos.reset();
     pRenderBuf->terminate();
+
+    std::cout
+        << "Rendered " << totalFrames << " frames in " << totalSeconds << " seconds ("
+        << ((double)totalFrames/(double)totalSeconds) << " average fps)." << std::endl;
 
     return pWindow->destroy();
 }
