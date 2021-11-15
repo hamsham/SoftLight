@@ -7,13 +7,26 @@
 
 #include <utility> // std::move
 
+#include "lightsky/setup/Compiler.h"
+
 #include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Log.h"
 
 #include "softlight/SL_Geometry.hpp" // SL_DataType
 #include "softlight/SL_ImgFile.hpp"
 
+// Ignore errors regarding different code page mismatches
+#ifdef LS_COMPILER_MSC
+    #pragma warning(push)
+    #pragma warning(disable:4828)
+#endif
+
 #include <FreeImage.h>
+
+#ifdef LS_COMPILER_MSC
+    #pragma warning(pop)
+#endif
+
 
 
 /*-----------------------------------------------------------------------------

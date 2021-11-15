@@ -16,16 +16,25 @@ if (BUILD_ASSIMP OR NOT ASSIMP_INCLUDE_DIR OR NOT ASSIMP_LIBRARIES)
     mark_as_advanced(ASSIMP_BRANCH)
 
     if (MINGW)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Os -Wa,-mbig-obj")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Os -Wa,-mbig-obj")
+        set(ASSIMP_C_FLAGS "${CMAKE_C_FLAGS} -Os -Wa,-mbig-obj")
+        set(ASSIMP_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Os -Wa,-mbig-obj")
+    elseif (MSVC)
+        set(ASSIMP_C_FLAGS "${CMAKE_C_FLAGS} /p:CharacterSet=Unicode")
+        set(ASSIMP_CXX_FLAGS "${CMAKE_CXX_FLAGS} /p:CharacterSet=Unicode")
+    else()
+        set(ASSIMP_C_FLAGS "${CMAKE_C_FLAGS}")
+        set(ASSIMP_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     endif()
+
+    mark_as_advanced(ASSIMP_CXX_FLAGS)
+    mark_as_advanced(ASSIMP_C_FLAGS)
 
     # Configure build options
     set(ASSIMP_BUILD_FLAGS
         -DCMAKE_CXX_COMPILER:STRING=${CMAKE_CXX_COMPILER}
-        -DCMAKE_CXX_FLAGS:STRING=${CMAKE_CXX_FLAGS}
+        -DCMAKE_CXX_FLAGS:STRING=${ASSIMP_CXX_FLAGS}
         -DCMAKE_C_COMPILER:STRING=${CMAKE_C_COMPILER}
-        -DCMAKE_C_FLAGS:STRING=${CMAKE_C_FLAGS}
+        -DCMAKE_C_FLAGS:STRING=${ASSIMP_C_FLAGS}
         -DCMAKE_RC_COMPILER:FILEPATH=${CMAKE_RC_COMPILER}
         -DCMAKE_INSTALL_PREFIX:FILEPATH=${EXTERNAL_PROJECT_PREFIX}
         -DCMAKE_SYSTEM_NAME:STRING=${CMAKE_SYSTEM_NAME}

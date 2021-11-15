@@ -11,6 +11,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 
 # #####################################
+# Global compile options
+# #####################################
+add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
+add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+
+
+
+# #####################################
 # 3rd-party libraries
 # #####################################
 include(external_deps.cmake)
