@@ -839,33 +839,34 @@ int SL_SceneFileLoader::import_materials(const aiScene* const pScene) noexcept
         if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_COLOR_TRANSPARENT, inMatColor))
         {
             LS_LOG_MSG("\t\t\tUsing transparent material: ", inMatColor.r, ", ", inMatColor.g, ", ", inMatColor.b);
-            inTransparent = (float)math::min(inMatColor.r, inMatColor.g, inMatColor.b);
+            inTransparent = (float)math::min<ai_real>(1.f, math::max<ai_real>(0.f, inMatColor.r, inMatColor.g, inMatColor.b));
         }
 
+        // Assimp uses BGR formatting for material colors. We must convert back to RGB
         if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_COLOR_AMBIENT, inMatColor))
         {
             LS_LOG_MSG("\t\t\tUsing ambient material: ", inMatColor.r, ", ", inMatColor.g, ", ", inMatColor.b);
-            newMaterial.ambient[0] = inMatColor.r;
+            newMaterial.ambient[0] = inMatColor.b;
             newMaterial.ambient[1] = inMatColor.g;
-            newMaterial.ambient[2] = inMatColor.b;
+            newMaterial.ambient[2] = inMatColor.r;
             newMaterial.ambient[3] = inTransparent;
         }
 
         if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, inMatColor))
         {
             LS_LOG_MSG("\t\t\tUsing diffuse material: ", inMatColor.r, ", ", inMatColor.g, ", ", inMatColor.b);
-            newMaterial.diffuse[0] = inMatColor.r;
+            newMaterial.diffuse[0] = inMatColor.b;
             newMaterial.diffuse[1] = inMatColor.g;
-            newMaterial.diffuse[2] = inMatColor.b;
+            newMaterial.diffuse[2] = inMatColor.r;
             newMaterial.diffuse[3] = inTransparent;
         }
 
         if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_COLOR_SPECULAR, inMatColor))
         {
             LS_LOG_MSG("\t\t\tUsing specular material: ", inMatColor.r, ", ", inMatColor.g, ", ", inMatColor.b);
-            newMaterial.specular[0] = inMatColor.r;
+            newMaterial.specular[0] = inMatColor.b;
             newMaterial.specular[1] = inMatColor.g;
-            newMaterial.specular[2] = inMatColor.b;
+            newMaterial.specular[2] = inMatColor.r;
             newMaterial.specular[3] = inTransparent;
         }
 
