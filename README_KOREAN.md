@@ -81,8 +81,9 @@ SoftLight는 다음 하위 모듈을 사용합니다.
 
 리포지토리 복제는 다음 단계를 사용하여 재귀적으로 수행해야 합니다.
 1. `git clone --recursive https://github.com/hamsham/SoftLight`
-2. `git submodule foreach git checkout master`
-3. `git submodule foreach git pull origin master`
+2. `cd SoftLight`
+3. `git submodule foreach git checkout master`
+4. `git submodule foreach git pull origin master`
 
 
 
