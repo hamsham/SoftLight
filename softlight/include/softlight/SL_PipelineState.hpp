@@ -63,6 +63,33 @@ enum SL_BlendMode : uint8_t
 
 
 
+/*-------------------------------------
+ * Varying Calculation
+-------------------------------------*/
+enum SL_VaryingCount : uint8_t
+{
+    SL_VARYING_COUNT_0,
+    SL_VARYING_COUNT_1,
+    SL_VARYING_COUNT_2,
+    SL_VARYING_COUNT_3,
+    SL_VARYING_COUNT_4,
+};  // 5 states = 3 bits
+
+
+
+/*-------------------------------------
+ * Pipeline Outputs
+-------------------------------------*/
+enum SL_RenderTargetCount : uint8_t
+{
+    SL_RENDER_TARGET_COUNT_1,
+    SL_RENDER_TARGET_COUNT_2,
+    SL_RENDER_TARGET_COUNT_3,
+    SL_RENDER_TARGET_COUNT_4,
+};  // 4 states = 2 bits
+
+
+
 /*-----------------------------------------------------------------------------
  * Render Pipeline State Storage
  *
@@ -71,40 +98,35 @@ enum SL_BlendMode : uint8_t
  * the SL_PipelineState is copied into the software rasterizer, which should be
  * as freakishly fast as possible.
 -----------------------------------------------------------------------------*/
-class SL_PipelineState
+class alignas(alignof(uint16_t)) SL_PipelineState
 {
+  public:
+    typedef uint16_t value_type;
+
   private:
-    enum SL_PipelineStateShifts : uint32_t
-    {
-        SL_CULL_MODE_SHIFTS  = 0,
-        SL_DEPTH_TEST_SHIFTS = 2,
-        SL_DEPTH_MASK_SHIFTS = 5,
-        SL_BLEND_MODE_SHIFTS = 6
-    };
+    value_type mStates;
 
-    enum SL_PipelineStateMask : uint32_t
-    {
-        SL_CULL_MODE_MASK  = 0x00000003,
-        SL_DEPTH_TEST_MASK = 0x0000001C,
-        SL_DEPTH_MASK_MASK = 0x00000020,
-        SL_BLEND_MODE_MASK = 0x000001C0
-    };
+    // Helper structures to ensure compile-time validation of bit masks
+    template <typename enum_type>
+    struct PipelineEnumBits;
 
-    static constexpr uint32_t cull_mode_to_bits(SL_CullMode cm) noexcept;
+    // Currently 14/16 bits are used. "value_type" can be updated to uint32_t
+    // if more bits are needed in the future, along with the class's alignment.
+    template <> struct PipelineEnumBits<SL_CullMode>          { enum : value_type {mask = 0x00000003}; enum : value_type {shifts = 0}; };
+    template <> struct PipelineEnumBits<SL_DepthTest>         { enum : value_type {mask = 0x0000001C}; enum : value_type {shifts = 2}; };
+    template <> struct PipelineEnumBits<SL_DepthMask>         { enum : value_type {mask = 0x00000020}; enum : value_type {shifts = 5}; };
+    template <> struct PipelineEnumBits<SL_BlendMode>         { enum : value_type {mask = 0x000001C0}; enum : value_type {shifts = 6}; };
+    template <> struct PipelineEnumBits<SL_VaryingCount>      { enum : value_type {mask = 0x00000E00}; enum : value_type {shifts = 9}; };
+    template <> struct PipelineEnumBits<SL_RenderTargetCount> { enum : value_type {mask = 0x00003000}; enum : value_type {shifts = 12}; };
 
-    static constexpr SL_CullMode cull_mode_from_bits(uint32_t bits) noexcept;
+    template <typename enum_type>
+    static constexpr enum_type enum_value_from_bits(value_type bits) noexcept;
 
-    static constexpr uint32_t depth_test_to_bits(SL_DepthTest dt) noexcept;
+    template <typename enum_type>
+    static constexpr value_type enum_value_to_bits(enum_type value) noexcept;
 
-    static constexpr SL_DepthTest depth_test_from_bits(uint32_t bits) noexcept;
-
-    static constexpr uint32_t depth_mask_to_bits(SL_DepthMask dm) noexcept;
-
-    static constexpr SL_DepthMask depth_mask_from_bits(uint32_t bits) noexcept;
-
-    static constexpr uint32_t blend_mode_to_bits(SL_BlendMode bm) noexcept;
-
-    static constexpr SL_BlendMode blend_mode_from_bits(uint32_t bits) noexcept;
+    template <typename enum_type>
+    static constexpr value_type set_enum_bits(value_type bits, enum_type value) noexcept;
 
   public:
     ~SL_PipelineState() noexcept = default;
@@ -121,7 +143,7 @@ class SL_PipelineState
 
     void reset() noexcept;
 
-    constexpr uint32_t bits() const noexcept;
+    constexpr value_type bits() const noexcept;
 
     void cull_mode(SL_CullMode cm) noexcept;
 
@@ -139,8 +161,13 @@ class SL_PipelineState
 
     constexpr SL_BlendMode blend_mode() const noexcept;
 
-  private:
-    uint32_t mStates;
+    void num_varyings(SL_VaryingCount vc) noexcept;
+
+    constexpr SL_VaryingCount num_varyings() const noexcept;
+
+    void num_render_targets(SL_RenderTargetCount rt) noexcept;
+
+    constexpr SL_RenderTargetCount num_render_targets() const noexcept;
 };
 
 
@@ -148,82 +175,29 @@ class SL_PipelineState
 /*-----------------------------------------------------------------------------
  * Rasterization State Storage (Implementations)
 -----------------------------------------------------------------------------*/
+void sl_reset(SL_PipelineState& state) noexcept;
+
+
+
 /*-------------------------------------
- * Cull Mode to bits
+ * Enumerations to & from bits
 -------------------------------------*/
-constexpr uint32_t SL_PipelineState::cull_mode_to_bits(SL_CullMode cm) noexcept
+template <typename enum_type>
+constexpr enum_type SL_PipelineState::enum_value_from_bits(SL_PipelineState::value_type bits) noexcept
 {
-    return static_cast<uint32_t>(cm << SL_PipelineState::SL_CULL_MODE_SHIFTS);
+    return static_cast<enum_type>((bits & PipelineEnumBits<enum_type>::mask) >> PipelineEnumBits<enum_type>::shifts);
 }
 
-
-
-/*-------------------------------------
- * Cull Mode from bits
--------------------------------------*/
-constexpr SL_CullMode SL_PipelineState::cull_mode_from_bits(uint32_t bits) noexcept
+template <typename enum_type>
+constexpr SL_PipelineState::value_type SL_PipelineState::enum_value_to_bits(enum_type value) noexcept
 {
-    return static_cast<SL_CullMode>((bits & SL_PipelineState::SL_CULL_MODE_MASK) >> SL_PipelineState::SL_CULL_MODE_SHIFTS);
+    return static_cast<SL_PipelineState::value_type>(value << PipelineEnumBits<enum_type>::shifts) & static_cast<SL_PipelineState::value_type>(PipelineEnumBits<enum_type>::mask);
 }
 
-
-
-/*-------------------------------------
- * Depth Test to bits
--------------------------------------*/
-constexpr uint32_t SL_PipelineState::depth_test_to_bits(SL_DepthTest dt) noexcept
+template <typename enum_type>
+constexpr SL_PipelineState::value_type SL_PipelineState::set_enum_bits(SL_PipelineState::value_type bits, enum_type value) noexcept
 {
-    return static_cast<uint32_t>(dt << SL_PipelineState::SL_DEPTH_TEST_SHIFTS);
-}
-
-
-
-/*-------------------------------------
- * Depth Test from bits
--------------------------------------*/
-constexpr SL_DepthTest SL_PipelineState::depth_test_from_bits(uint32_t bits) noexcept
-{
-    return static_cast<SL_DepthTest>((bits & SL_PipelineState::SL_DEPTH_TEST_MASK) >> SL_PipelineState::SL_DEPTH_TEST_SHIFTS);
-}
-
-
-
-/*-------------------------------------
- * Depth Mask to bits
--------------------------------------*/
-constexpr uint32_t SL_PipelineState::depth_mask_to_bits(SL_DepthMask dm) noexcept
-{
-    return static_cast<uint32_t>(dm << SL_PipelineState::SL_DEPTH_MASK_SHIFTS);
-}
-
-
-
-/*-------------------------------------
- * Depth Mask from bits
--------------------------------------*/
-constexpr SL_DepthMask SL_PipelineState::depth_mask_from_bits(uint32_t bits) noexcept
-{
-    return static_cast<SL_DepthMask>((bits & SL_PipelineState::SL_DEPTH_MASK_MASK) >> SL_PipelineState::SL_DEPTH_MASK_SHIFTS);
-}
-
-
-
-/*-------------------------------------
- * Blend mode to bits
--------------------------------------*/
-constexpr uint32_t SL_PipelineState::blend_mode_to_bits(SL_BlendMode bm) noexcept
-{
-    return static_cast<uint32_t>(bm << SL_PipelineState::SL_BLEND_MODE_SHIFTS);
-}
-
-
-
-/*-------------------------------------
- * blend mode from bits
--------------------------------------*/
-constexpr SL_BlendMode SL_PipelineState::blend_mode_from_bits(uint32_t bits) noexcept
-{
-    return static_cast<SL_BlendMode>((bits & SL_PipelineState::SL_BLEND_MODE_MASK) >> SL_PipelineState::SL_BLEND_MODE_SHIFTS);
+    return (bits | PipelineEnumBits<enum_type>::mask) & enum_value_to_bits<enum_type>(value);
 }
 
 
@@ -232,11 +206,13 @@ constexpr SL_BlendMode SL_PipelineState::blend_mode_from_bits(uint32_t bits) noe
  * Constructor
 -------------------------------------*/
 constexpr SL_PipelineState::SL_PipelineState() noexcept :
-    mStates{(uint32_t)(
-        SL_PipelineState::cull_mode_to_bits(SL_CullMode::SL_CULL_BACK_FACE) |
-        SL_PipelineState::depth_test_to_bits(SL_DepthTest::SL_DEPTH_TEST_LESS_THAN) |
-        SL_PipelineState::depth_mask_to_bits(SL_DepthMask::SL_DEPTH_MASK_ON) |
-        SL_PipelineState::blend_mode_to_bits(SL_BlendMode::SL_BLEND_OFF)
+    mStates{(SL_PipelineState::value_type)(
+        SL_PipelineState::enum_value_to_bits<SL_CullMode>(SL_CullMode::SL_CULL_BACK_FACE) |
+        SL_PipelineState::enum_value_to_bits<SL_DepthTest>(SL_DepthTest::SL_DEPTH_TEST_LESS_THAN) |
+        SL_PipelineState::enum_value_to_bits<SL_DepthMask>(SL_DepthMask::SL_DEPTH_MASK_ON) |
+        SL_PipelineState::enum_value_to_bits<SL_BlendMode>(SL_BlendMode::SL_BLEND_OFF) |
+        SL_PipelineState::enum_value_to_bits<SL_VaryingCount>(SL_VaryingCount::SL_VARYING_COUNT_0) |
+        SL_PipelineState::enum_value_to_bits<SL_RenderTargetCount>(SL_RenderTargetCount::SL_RENDER_TARGET_COUNT_1)
     )}
 {}
 
@@ -266,7 +242,6 @@ constexpr SL_PipelineState::SL_PipelineState(SL_PipelineState&& rs) noexcept :
 inline SL_PipelineState& SL_PipelineState::operator=(const SL_PipelineState& rs) noexcept
 {
     mStates = rs.mStates;
-
     return *this;
 }
 
@@ -278,24 +253,7 @@ inline SL_PipelineState& SL_PipelineState::operator=(const SL_PipelineState& rs)
 inline SL_PipelineState& SL_PipelineState::operator=(SL_PipelineState&& rs) noexcept
 {
     mStates = rs.mStates;
-    rs.reset();
-
     return *this;
-}
-
-
-
-/*-------------------------------------
- * Reset Internal State
--------------------------------------*/
-inline void SL_PipelineState::reset() noexcept
-{
-    mStates = (uint32_t)(0
-                         | SL_PipelineState::cull_mode_to_bits(SL_CullMode::SL_CULL_BACK_FACE)
-                         | SL_PipelineState::depth_test_to_bits(SL_DepthTest::SL_DEPTH_TEST_LESS_THAN)
-                         | SL_PipelineState::depth_mask_to_bits(SL_DepthMask::SL_DEPTH_MASK_ON)
-                         | SL_PipelineState::blend_mode_to_bits(SL_BlendMode::SL_BLEND_OFF)
-                         | 0);
 }
 
 
@@ -303,7 +261,7 @@ inline void SL_PipelineState::reset() noexcept
 /*-------------------------------------
  * Get the internal state
 -------------------------------------*/
-constexpr uint32_t SL_PipelineState::bits() const noexcept
+constexpr SL_PipelineState::value_type SL_PipelineState::bits() const noexcept
 {
     return mStates;
 }
@@ -315,7 +273,7 @@ constexpr uint32_t SL_PipelineState::bits() const noexcept
 -------------------------------------*/
 inline void SL_PipelineState::cull_mode(SL_CullMode cm) noexcept
 {
-    mStates = (mStates & ~SL_CULL_MODE_MASK) | cull_mode_to_bits(cm);
+    mStates = SL_PipelineState::set_enum_bits<SL_CullMode>(mStates, cm);
 }
 
 
@@ -325,7 +283,7 @@ inline void SL_PipelineState::cull_mode(SL_CullMode cm) noexcept
 -------------------------------------*/
 constexpr SL_CullMode SL_PipelineState::cull_mode() const noexcept
 {
-    return cull_mode_from_bits(mStates);
+    return SL_PipelineState::enum_value_from_bits<SL_CullMode>(mStates);
 }
 
 
@@ -335,7 +293,7 @@ constexpr SL_CullMode SL_PipelineState::cull_mode() const noexcept
 -------------------------------------*/
 inline void SL_PipelineState::depth_test(SL_DepthTest dt) noexcept
 {
-    mStates = (mStates & ~SL_DEPTH_TEST_MASK) | depth_test_to_bits(dt);
+    mStates = SL_PipelineState::set_enum_bits<SL_DepthTest>(mStates, dt);
 }
 
 
@@ -345,7 +303,7 @@ inline void SL_PipelineState::depth_test(SL_DepthTest dt) noexcept
 -------------------------------------*/
 constexpr SL_DepthTest SL_PipelineState::depth_test() const noexcept
 {
-    return depth_test_from_bits(mStates);
+    return SL_PipelineState::enum_value_from_bits<SL_DepthTest>(mStates);
 }
 
 
@@ -355,7 +313,7 @@ constexpr SL_DepthTest SL_PipelineState::depth_test() const noexcept
 -------------------------------------*/
 inline void SL_PipelineState::depth_mask(SL_DepthMask dm) noexcept
 {
-    mStates = (mStates & ~SL_DEPTH_MASK_MASK) | depth_mask_to_bits(dm);
+    mStates = SL_PipelineState::set_enum_bits<SL_DepthMask>(mStates, dm);
 }
 
 
@@ -365,7 +323,7 @@ inline void SL_PipelineState::depth_mask(SL_DepthMask dm) noexcept
 -------------------------------------*/
 constexpr SL_DepthMask SL_PipelineState::depth_mask() const noexcept
 {
-    return depth_mask_from_bits(mStates);
+    return SL_PipelineState::enum_value_from_bits<SL_DepthMask>(mStates);
 }
 
 
@@ -375,7 +333,7 @@ constexpr SL_DepthMask SL_PipelineState::depth_mask() const noexcept
 -------------------------------------*/
 inline void SL_PipelineState::blend_mode(SL_BlendMode bm) noexcept
 {
-    mStates = (mStates & ~SL_BLEND_MODE_MASK) | blend_mode_to_bits(bm);
+    mStates = SL_PipelineState::set_enum_bits<SL_BlendMode>(mStates, bm);
 }
 
 
@@ -385,7 +343,43 @@ inline void SL_PipelineState::blend_mode(SL_BlendMode bm) noexcept
 -------------------------------------*/
 constexpr SL_BlendMode SL_PipelineState::blend_mode() const noexcept
 {
-    return blend_mode_from_bits(mStates);
+    return SL_PipelineState::enum_value_from_bits<SL_BlendMode>(mStates);
+}
+
+/*-------------------------------------
+ * varying count setter
+-------------------------------------*/
+inline void SL_PipelineState::num_varyings(SL_VaryingCount vc) noexcept
+{
+    mStates = SL_PipelineState::set_enum_bits<SL_VaryingCount>(mStates, vc);
+}
+
+
+
+/*-------------------------------------
+ * varying count getter
+-------------------------------------*/
+constexpr SL_VaryingCount SL_PipelineState::num_varyings() const noexcept
+{
+    return SL_PipelineState::enum_value_from_bits<SL_VaryingCount>(mStates);
+}
+
+/*-------------------------------------
+ * render target count setter
+-------------------------------------*/
+inline void SL_PipelineState::num_render_targets(SL_RenderTargetCount rt) noexcept
+{
+    mStates = SL_PipelineState::set_enum_bits<SL_RenderTargetCount>(mStates, rt);
+}
+
+
+
+/*-------------------------------------
+ * render target count getter
+-------------------------------------*/
+constexpr SL_RenderTargetCount SL_PipelineState::num_render_targets() const noexcept
+{
+    return SL_PipelineState::enum_value_from_bits<SL_RenderTargetCount>(mStates);
 }
 
 

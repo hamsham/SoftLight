@@ -234,6 +234,7 @@ set(SL_LIB_SOURCES
     src/SL_LineRasterizer.cpp
     src/SL_Material.cpp
     src/SL_Mesh.cpp
+    src/SL_PipelineState.cpp
     src/SL_PointProcessor.cpp
     src/SL_PointRasterizer.cpp
     src/SL_ProcessorPool.cpp
