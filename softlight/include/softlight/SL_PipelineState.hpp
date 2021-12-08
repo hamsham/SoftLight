@@ -93,7 +93,7 @@ enum SL_RenderTargetCount : uint8_t
 /*-------------------------------------
  * Helper structures to ensure compile-time validation of bit masks
 -------------------------------------*/
-namespace SL_PipelineBitDetail
+namespace sl_detail
 {
     typedef uint16_t value_type;
 
@@ -102,12 +102,12 @@ namespace SL_PipelineBitDetail
 
     // Currently 14/16 bits are used. "value_type" can be updated to uint32_t
     // if more bits are needed in the future, along with the class's alignment.
-    template <> struct PipelineEnumBits<SL_CullMode>          { enum : SL_PipelineBitDetail::value_type {mask = 0x0003}; enum : SL_PipelineBitDetail::value_type {shifts = 0}; };
-    template <> struct PipelineEnumBits<SL_DepthTest>         { enum : SL_PipelineBitDetail::value_type {mask = 0x001C}; enum : SL_PipelineBitDetail::value_type {shifts = 2}; };
-    template <> struct PipelineEnumBits<SL_DepthMask>         { enum : SL_PipelineBitDetail::value_type {mask = 0x0020}; enum : SL_PipelineBitDetail::value_type {shifts = 5}; };
-    template <> struct PipelineEnumBits<SL_BlendMode>         { enum : SL_PipelineBitDetail::value_type {mask = 0x01C0}; enum : SL_PipelineBitDetail::value_type {shifts = 6}; };
-    template <> struct PipelineEnumBits<SL_VaryingCount>      { enum : SL_PipelineBitDetail::value_type {mask = 0x0E00}; enum : SL_PipelineBitDetail::value_type {shifts = 9}; };
-    template <> struct PipelineEnumBits<SL_RenderTargetCount> { enum : SL_PipelineBitDetail::value_type {mask = 0x3000}; enum : SL_PipelineBitDetail::value_type {shifts = 12}; };
+    template <> struct PipelineEnumBits<SL_CullMode>          { enum : sl_detail::value_type {mask = 0x0003, shifts = 0}; };
+    template <> struct PipelineEnumBits<SL_DepthTest>         { enum : sl_detail::value_type {mask = 0x001C, shifts = 2}; };
+    template <> struct PipelineEnumBits<SL_DepthMask>         { enum : sl_detail::value_type {mask = 0x0020, shifts = 5}; };
+    template <> struct PipelineEnumBits<SL_BlendMode>         { enum : sl_detail::value_type {mask = 0x01C0, shifts = 6}; };
+    template <> struct PipelineEnumBits<SL_VaryingCount>      { enum : sl_detail::value_type {mask = 0x0E00, shifts = 9}; };
+    template <> struct PipelineEnumBits<SL_RenderTargetCount> { enum : sl_detail::value_type {mask = 0x3000, shifts = 12}; };
 
 } // end SL_PipelineBitDetail namespace
 
@@ -124,7 +124,7 @@ namespace SL_PipelineBitDetail
 class alignas(alignof(uint16_t)) SL_PipelineState
 {
   public:
-    typedef SL_PipelineBitDetail::value_type value_type;
+    typedef sl_detail::value_type value_type;
 
   private:
     value_type mStates;
@@ -195,19 +195,22 @@ void sl_reset(SL_PipelineState& state) noexcept;
 template <typename enum_type>
 constexpr enum_type SL_PipelineState::enum_value_from_bits(SL_PipelineState::value_type bits) noexcept
 {
-    return static_cast<enum_type>((bits & SL_PipelineBitDetail::PipelineEnumBits<enum_type>::mask) >> SL_PipelineBitDetail::PipelineEnumBits<enum_type>::shifts);
+    using namespace sl_detail;
+    return static_cast<enum_type>((bits & PipelineEnumBits<enum_type>::mask) >> PipelineEnumBits<enum_type>::shifts);
 }
 
 template <typename enum_type>
 constexpr SL_PipelineState::value_type SL_PipelineState::enum_value_to_bits(enum_type value) noexcept
 {
-    return static_cast<SL_PipelineState::value_type>(value << SL_PipelineBitDetail::PipelineEnumBits<enum_type>::shifts) & static_cast<SL_PipelineState::value_type>(SL_PipelineBitDetail::PipelineEnumBits<enum_type>::mask);
+    using namespace sl_detail;
+    return static_cast<SL_PipelineState::value_type>(value << PipelineEnumBits<enum_type>::shifts) & static_cast<SL_PipelineState::value_type>(PipelineEnumBits<enum_type>::mask);
 }
 
 template <typename enum_type>
 constexpr SL_PipelineState::value_type SL_PipelineState::set_enum_bits(SL_PipelineState::value_type bits, enum_type value) noexcept
 {
-    return (bits | SL_PipelineBitDetail::PipelineEnumBits<enum_type>::mask) & enum_value_to_bits<enum_type>(value);
+    using namespace sl_detail;
+    return (bits | PipelineEnumBits<enum_type>::mask) & enum_value_to_bits<enum_type>(value);
 }
 
 
