@@ -90,6 +90,29 @@ enum SL_RenderTargetCount : uint8_t
 
 
 
+/*-------------------------------------
+ * Helper structures to ensure compile-time validation of bit masks
+-------------------------------------*/
+namespace SL_PipelineBitDetail
+{
+    typedef uint16_t value_type;
+
+    template <typename enum_type>
+    struct PipelineEnumBits;
+
+    // Currently 14/16 bits are used. "value_type" can be updated to uint32_t
+    // if more bits are needed in the future, along with the class's alignment.
+    template <> struct PipelineEnumBits<SL_CullMode>          { enum : SL_PipelineBitDetail::value_type {mask = 0x0003}; enum : SL_PipelineBitDetail::value_type {shifts = 0}; };
+    template <> struct PipelineEnumBits<SL_DepthTest>         { enum : SL_PipelineBitDetail::value_type {mask = 0x001C}; enum : SL_PipelineBitDetail::value_type {shifts = 2}; };
+    template <> struct PipelineEnumBits<SL_DepthMask>         { enum : SL_PipelineBitDetail::value_type {mask = 0x0020}; enum : SL_PipelineBitDetail::value_type {shifts = 5}; };
+    template <> struct PipelineEnumBits<SL_BlendMode>         { enum : SL_PipelineBitDetail::value_type {mask = 0x01C0}; enum : SL_PipelineBitDetail::value_type {shifts = 6}; };
+    template <> struct PipelineEnumBits<SL_VaryingCount>      { enum : SL_PipelineBitDetail::value_type {mask = 0x0E00}; enum : SL_PipelineBitDetail::value_type {shifts = 9}; };
+    template <> struct PipelineEnumBits<SL_RenderTargetCount> { enum : SL_PipelineBitDetail::value_type {mask = 0x3000}; enum : SL_PipelineBitDetail::value_type {shifts = 12}; };
+
+} // end SL_PipelineBitDetail namespace
+
+
+
 /*-----------------------------------------------------------------------------
  * Render Pipeline State Storage
  *
@@ -101,23 +124,10 @@ enum SL_RenderTargetCount : uint8_t
 class alignas(alignof(uint16_t)) SL_PipelineState
 {
   public:
-    typedef uint16_t value_type;
+    typedef SL_PipelineBitDetail::value_type value_type;
 
   private:
     value_type mStates;
-
-    // Helper structures to ensure compile-time validation of bit masks
-    template <typename enum_type>
-    struct PipelineEnumBits;
-
-    // Currently 14/16 bits are used. "value_type" can be updated to uint32_t
-    // if more bits are needed in the future, along with the class's alignment.
-    template <> struct PipelineEnumBits<SL_CullMode>          { enum : value_type {mask = 0x00000003}; enum : value_type {shifts = 0}; };
-    template <> struct PipelineEnumBits<SL_DepthTest>         { enum : value_type {mask = 0x0000001C}; enum : value_type {shifts = 2}; };
-    template <> struct PipelineEnumBits<SL_DepthMask>         { enum : value_type {mask = 0x00000020}; enum : value_type {shifts = 5}; };
-    template <> struct PipelineEnumBits<SL_BlendMode>         { enum : value_type {mask = 0x000001C0}; enum : value_type {shifts = 6}; };
-    template <> struct PipelineEnumBits<SL_VaryingCount>      { enum : value_type {mask = 0x00000E00}; enum : value_type {shifts = 9}; };
-    template <> struct PipelineEnumBits<SL_RenderTargetCount> { enum : value_type {mask = 0x00003000}; enum : value_type {shifts = 12}; };
 
     template <typename enum_type>
     static constexpr enum_type enum_value_from_bits(value_type bits) noexcept;
@@ -185,19 +195,19 @@ void sl_reset(SL_PipelineState& state) noexcept;
 template <typename enum_type>
 constexpr enum_type SL_PipelineState::enum_value_from_bits(SL_PipelineState::value_type bits) noexcept
 {
-    return static_cast<enum_type>((bits & PipelineEnumBits<enum_type>::mask) >> PipelineEnumBits<enum_type>::shifts);
+    return static_cast<enum_type>((bits & SL_PipelineBitDetail::PipelineEnumBits<enum_type>::mask) >> SL_PipelineBitDetail::PipelineEnumBits<enum_type>::shifts);
 }
 
 template <typename enum_type>
 constexpr SL_PipelineState::value_type SL_PipelineState::enum_value_to_bits(enum_type value) noexcept
 {
-    return static_cast<SL_PipelineState::value_type>(value << PipelineEnumBits<enum_type>::shifts) & static_cast<SL_PipelineState::value_type>(PipelineEnumBits<enum_type>::mask);
+    return static_cast<SL_PipelineState::value_type>(value << SL_PipelineBitDetail::PipelineEnumBits<enum_type>::shifts) & static_cast<SL_PipelineState::value_type>(SL_PipelineBitDetail::PipelineEnumBits<enum_type>::mask);
 }
 
 template <typename enum_type>
 constexpr SL_PipelineState::value_type SL_PipelineState::set_enum_bits(SL_PipelineState::value_type bits, enum_type value) noexcept
 {
-    return (bits | PipelineEnumBits<enum_type>::mask) & enum_value_to_bits<enum_type>(value);
+    return (bits | SL_PipelineBitDetail::PipelineEnumBits<enum_type>::mask) & enum_value_to_bits<enum_type>(value);
 }
 
 
