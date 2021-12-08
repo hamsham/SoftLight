@@ -3,26 +3,26 @@
 #include <iostream>
 #include <iomanip>
 
+#include "softlight/SL_Swizzle.hpp"
 #include "softlight/SL_Texture.hpp"
 
 
 
 int main()
 {
-    constexpr unsigned w = 8;
-    constexpr unsigned h = 16;
-    constexpr unsigned d = 16;
+    constexpr uint_fast32_t w = 8;
+    constexpr uint_fast32_t h = 16;
+    constexpr uint_fast32_t d = 8;
+    constexpr uint_fast32_t tpc = SL_TexChunkInfo::SL_TEXELS_PER_CHUNK;
+    constexpr uint_fast32_t spc = SL_TexChunkInfo::SL_TEXEL_SHIFTS_PER_CHUNK;
 
-    SL_Texture tex;
-    tex.init(SL_COLOR_R_8U, w, h, d);
-
-    for (unsigned z = 0; z < d; ++z)
+    for (uint_fast32_t z = 0; z < d; ++z)
     {
-        for (unsigned y = 0; y < h; ++y)
+        for (uint_fast32_t y = 0; y < h; ++y)
         {
-            for (unsigned x = 0; x < w; ++x)
+            for (uint_fast32_t x = 0; x < w; ++x)
             {
-                std::cout << std::setw(4) << tex.map_coordinate<SL_TexelOrder::SL_TEXELS_SWIZZLED>(x, y, z) << ' ';
+                std::cout << std::setw(4) << sl_swizzle_3d_index<tpc, spc>(x, y, z, w, h) << ' ';
             }
 
             std::cout << std::endl;
@@ -30,8 +30,6 @@ int main()
 
         std::cout << "---------------------------------------" << std::endl;
     }
-
-    tex.terminate();
 
     return 0;
 }
