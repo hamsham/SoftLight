@@ -11,6 +11,8 @@
 
 #include <vector>
 
+#include "lightsky/setup/Types.h" // ls::setup::forward
+
 #include "lightsky/math/vec2.h"
 #include "lightsky/math/vec_utils.h"
 
@@ -224,8 +226,8 @@ class SL_Quadtree
     void clear() noexcept;
 
     /**
-     * @brief Insert (copy) an object into *this, creating sub-tree partitions
-     * if needed.
+     * @brief Insert an object into *this, creating sub-tree partitions if
+     * needed.
      *
      * @param location
      * The 2D spatial location of the object to be stored.
@@ -235,16 +237,19 @@ class SL_Quadtree
      *
      * @param value
      * The data to be stored. This object must be copy-constructable,
-     * copy-assignable, move-constructable, and move-assignable.
+     * copy-assignable, move-constructable, or move-assignable.
      *
      * @return TRUE if the data was successfully inserted into *this or a
      * sub-tree, FALSE if an error occurred.
      */
-    bool insert(const ls::math::vec2& location, float radius, const T& value) noexcept;
+    bool insert(const ls::math::vec2& location, float radius, T&& value) noexcept;
 
     /**
-     * @brief Insert (move) an object into *this, creating sub-tree partitions
-     * if needed.
+     * @brief Insert an object into *this, creating sub-tree partitions if
+     * needed.
+     *
+     * @tparam Args
+     * Arguments for constructing a type T in-place
      *
      * @param location
      * The 2D spatial location of the object to be stored.
@@ -252,14 +257,14 @@ class SL_Quadtree
      * @param radius
      * The maximum bounding-radius occupied by the input object.
      *
-     * @param value
-     * The data to be stored. This object must be copy-constructable,
-     * copy-assignable, move-constructable, and move-assignable.
+     * @param args
+     * The data to construct a type T in-place.
      *
      * @return TRUE if the data was successfully inserted into *this or a
      * sub-tree, FALSE if an error occurred.
      */
-    bool emplace(const ls::math::vec2& location, float radius, T&& value) noexcept;
+    template <typename... Args>
+    bool emplace(const ls::math::vec2& location, float radius, Args&&... args) noexcept;
 
     /**
      * @brief Locate the closest sub-partition referenced by a point in 2D
@@ -560,7 +565,7 @@ bool SL_Quadtree<T, MaxDepth, Allocator>::emplace_internal(const ls::math::vec2&
         const float r2 = pTree->mRadius * 0.5f;
         if (radius > r2 || currDepth == MaxDepth)
         {
-            pTree->mData.push_back(value);
+            pTree->mData.push_back(ls::setup::forward<T>(value));
             return true;
         }
 
@@ -586,7 +591,7 @@ bool SL_Quadtree<T, MaxDepth, Allocator>::emplace_internal(const ls::math::vec2&
         // rather than split the object across the intersecting sub-nodes
         if (nodeId ^ overlaps)
         {
-            pTree->mData.push_back(value);
+            pTree->mData.push_back(ls::setup::forward<T>(value));
             return true;
         }
 
@@ -698,9 +703,9 @@ void SL_Quadtree<T, MaxDepth, Allocator>::clear() noexcept
  * Insert an object into *this
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-inline bool SL_Quadtree<T, MaxDepth, Allocator>::insert(const ls::math::vec2& location, float radius, const T& value) noexcept
+inline bool SL_Quadtree<T, MaxDepth, Allocator>::insert(const ls::math::vec2& location, float radius, T&& value) noexcept
 {
-    return this->emplace_internal(location, radius, T{value}, 0);
+    return this->emplace_internal(location, radius, ls::setup::forward<T>(value), 0);
 }
 
 
@@ -709,9 +714,10 @@ inline bool SL_Quadtree<T, MaxDepth, Allocator>::insert(const ls::math::vec2& lo
  * Emplace an object into *this
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-inline bool SL_Quadtree<T, MaxDepth, Allocator>::emplace(const ls::math::vec2& location, float radius, T&& value) noexcept
+template <typename... Args>
+inline bool SL_Quadtree<T, MaxDepth, Allocator>::emplace(const ls::math::vec2& location, float radius, Args&&... args) noexcept
 {
-    return this->emplace_internal(location, radius, value, 0);
+    return this->emplace_internal(location, radius, T{ls::setup::forward<Args>(args)...}, 0);
 }
 
 
