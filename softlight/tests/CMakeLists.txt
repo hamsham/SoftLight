@@ -199,3 +199,48 @@ sl_add_test(sl_vertex_info             sl_vertex_info.cpp)
 sl_add_test(sl_volume_rendering_test   sl_volume_rendering_test.cpp)
 sl_add_test(sl_window_test             sl_window_test.cpp)
 sl_add_test(sl_z_curve_test            sl_z_curve_test.cpp)
+
+
+
+# -------------------------------------
+# Extended tests
+# -------------------------------------
+find_path(SDL2_INCLUDE_PATH
+	NAMES
+		SDL2/SDL.h
+		SDL2/SDL_main.h
+	PATHS
+		/usr/include
+		/usr/local/include
+		/opt/local/include
+)
+
+find_library(SDL2_LIBRARY
+	NAMES
+		SDL2
+	PATHS
+		/usr/lib64
+		/usr/lib
+		/usr/local/lib64
+		/usr/local/lib
+		/opt/local/lib
+)
+
+find_library(SDL2_MAIN_LIBRARY
+	NAMES
+		SDL2main
+	PATHS
+		/usr/lib64
+		/usr/lib
+		/usr/local/lib64
+		/usr/local/lib
+		/opt/local/lib
+)
+
+if (SDL2_INCLUDE_PATH AND SDL2_LIBRARY AND SDL2_MAIN_LIBRARY)
+	message("-- Found SDL2: ${SDL2_INCLUDE_PATH}")
+	message("-- Building SDL2 examples")
+
+	sl_add_test(sl_sdl2_test sl_sdl2_test.cpp)
+	target_link_libraries(sl_sdl2_test ${SDL2_LIBRARY} ${SDL2_MAIN_LIBRARY})
+endif()
