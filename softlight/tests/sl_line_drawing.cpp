@@ -15,6 +15,7 @@
 #include <cassert>
 #include <cstring>
 
+#include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Pointer.h"
 
 #include "softlight/SL_Geometry.hpp"
@@ -113,11 +114,11 @@ int run_benchmark(
     coord_shrt_t w2, h2;
     const SL_ColorRGB8* pImg2 = sl_img_load_ppm(w2, h2, filename.c_str());
 
-    assert(w == w2);
-    assert(h == h2);
-    assert(pImg2 != nullptr);
-    assert(sl_img_save_ppm(w2, h2, pImg2, filename2.c_str()) == 0);
-    assert(memcmp(img.get(), pImg2, (std::size_t)(w2 * h2)) == 0);
+    LS_ASSERT(w == w2);
+    LS_ASSERT(h == h2);
+    LS_ASSERT(pImg2 != nullptr);
+    LS_ASSERT(sl_img_save_ppm(w2, h2, pImg2, filename2.c_str()) == 0);
+    LS_ASSERT(memcmp(img.get(), pImg2, (std::size_t)(w2 * h2)) == 0);
 
     delete pImg2;
 

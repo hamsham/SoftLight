@@ -89,7 +89,7 @@ int main()
     SL_Context& context = pGraph->mContext;
 
     retCode = context.num_threads(1);
-    assert(retCode == 1);
+    LS_ASSERT(retCode == 1);
 
     size_t fboId = context.create_framebuffer();
     size_t texId = context.create_texture();

@@ -1,5 +1,4 @@
 
-#include <cassert> // assert
 #include <cstdlib> // std::getenv
 #include <cstring> // std::strlen
 #include <limits> // numeric_limits<>

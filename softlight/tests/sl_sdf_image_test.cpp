@@ -142,48 +142,48 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     size_t fboId = context.create_framebuffer();
     SL_Framebuffer& fbo = context.framebuffer(fboId);
     retCode = fbo.reserve_color_buffers(1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     size_t texRgbId = context.create_texture();
     SL_Texture& texRgb = context.texture(texRgbId);
     retCode = texRgb.init(SL_ColorDataType::SL_COLOR_R_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = fbo.attach_color_buffer(0, texRgb);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     size_t depthId  = context.create_texture();
     SL_Texture& texDepth = context.texture(depthId);
     retCode = texDepth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = fbo.attach_depth_buffer(texDepth);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     context.clear_framebuffer(0, 0, SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0}, 0.0);
 
     retCode = fbo.valid();
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     // texture 2
     size_t sdfId  = context.create_texture();
     SL_Texture& texSdf = context.texture(sdfId);
     retCode = texSdf.init(SL_ColorDataType::SDFDataType, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     // texture 3
     size_t sdfId1  = context.create_texture();
     SL_Texture& texSdf1 = context.texture(sdfId1);
     retCode = texSdf1.init(SL_ColorDataType::SDFScratchDataType, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     SL_SceneLoadOpts&& opts = sl_default_scene_load_opts();
     opts.packNormals = true;
     retCode = meshLoader.load("testdata/towerG.obj", opts);
-    assert(retCode != 0);
+    LS_ASSERT(retCode != 0);
 
     retCode = (int)pGraph->import(meshLoader.data());
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     // Always make sure the scene graph is updated before rendering
     pGraph->mCurrentTransforms[1].scale(math::vec3{4.f});
@@ -200,7 +200,7 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     pUniforms->mvpMatrix = math::mat4{1.f};
     size_t testShaderId = context.create_shader(vertShader, fragShader, uboId);
 
-    assert(testShaderId == 0);
+    LS_ASSERT(testShaderId == 0);
     (void)testShaderId;
 
     (void)retCode;

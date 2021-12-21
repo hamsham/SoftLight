@@ -3,6 +3,9 @@
 #include <memory> // std::move()
 #include <thread>
 
+#include <SDL2/SDL_main.h>
+#include <SDL2/SDL.h>
+
 #include "lightsky/math/vec_utils.h"
 #include "lightsky/math/mat_utils.h"
 #include "lightsky/math/quat_utils.h"
@@ -19,12 +22,10 @@
 #include "softlight/SL_Context.hpp"
 #include "softlight/SL_IndexBuffer.hpp"
 #include "softlight/SL_Framebuffer.hpp"
-#include "softlight/SL_KeySym.hpp"
 #include "softlight/SL_Material.hpp"
 #include "softlight/SL_Mesh.hpp"
 #include "softlight/SL_PackedVertex.hpp"
 #include "softlight/SL_Plane.hpp"
-#include "softlight/SL_RenderWindow.hpp"
 #include "softlight/SL_Sampler.hpp"
 #include "softlight/SL_SceneFileLoader.hpp"
 #include "softlight/SL_SceneGraph.hpp"
@@ -33,8 +34,6 @@
 #include "softlight/SL_UniformBuffer.hpp"
 #include "softlight/SL_VertexArray.hpp"
 #include "softlight/SL_VertexBuffer.hpp"
-#include "softlight/SL_WindowBuffer.hpp"
-#include "softlight/SL_WindowEvent.hpp"
 
 #ifndef IMAGE_WIDTH
     #define IMAGE_WIDTH 1280
@@ -51,14 +50,6 @@
 #ifndef SL_BENCHMARK_SCENE
     #define SL_BENCHMARK_SCENE 0
 #endif /* SL_BENCHMARK_SCENE */
-
-#ifndef SL_TEST_BUMP_MAPS
-    #define SL_TEST_BUMP_MAPS 0
-#endif /* SL_TEST_BUMP_MAPS */
-
-#ifndef TEST_REVERSED_DEPTH
-    #define TEST_REVERSED_DEPTH 1
-#endif
 
 namespace math = ls::math;
 namespace utils = ls::utils;
@@ -94,10 +85,6 @@ struct MeshUniforms
 {
     const SL_Texture* pTexture;
 
-#if SL_TEST_BUMP_MAPS
-    const SL_Texture* pBump;
-#endif
-
     math::vec4 camPos;
     Light light;
     PointLight point;
@@ -105,78 +92,6 @@ struct MeshUniforms
     math::mat4 modelMatrix;
     math::mat4 mvpMatrix;
 };
-
-
-
-/*-----------------------------------------------------------------------------
- * PBR Helper functions
------------------------------------------------------------------------------*/
-// Calculate the metallic component of a surface
-template <class vec_type = math::vec4>
-inline vec_type fresnel_schlick(float cosTheta, const vec_type& surfaceReflection)
-{
-    return math::fmadd(vec_type{1.f} - surfaceReflection, vec_type{math::pow(1.f - cosTheta, 5.f)}, surfaceReflection);
-}
-
-
-
-// normal distribution function within a hemisphere
-template <class vec_type = math::vec4>
-inline float distribution_ggx(const vec_type& norm, const vec_type& hemisphere, float roughness)
-{
-    float roughSquared = roughness * roughness;
-    float roughQuad    = roughSquared * roughSquared;
-    float nDotH        = math::max(math::dot(norm, hemisphere), 0.f);
-    float nDotH2       = nDotH * nDotH;
-    float distribution = nDotH2 * (roughQuad - 1.f) + 1.f;
-
-    return nDotH2 / (LS_PI * distribution  * distribution);
-}
-
-
-
-// Determine how a surface's roughness affects how it reflects light
-inline float geometry_schlick_ggx(float normDotView, float roughness)
-{
-    roughness += 1.f;
-    roughness = (roughness*roughness) * 0.125f; // 1/8
-
-    float geometry = normDotView * (1.f - roughness) + roughness;
-    return normDotView / geometry;
-}
-
-
-
-// PBR Geometry function for determining how light bounces off a surface
-template <class vec_type = math::vec4>
-inline float geometry_smith(const vec_type& norm, const vec_type& viewDir, const vec_type& radiance, float roughness)
-{
-    float normDotView = math::max(math::dot(norm, viewDir), 0.f);
-    float normDotRad = math::max(math::dot(norm, radiance), 0.f);
-
-    return geometry_schlick_ggx(normDotView, roughness) * geometry_schlick_ggx(normDotRad, roughness);
-}
-
-
-
-/*-----------------------------------------------------------------------------
- * Bump Mapping Helper functions
------------------------------------------------------------------------------*/
-#if SL_TEST_BUMP_MAPS
-inline LS_INLINE math::vec4 bumped_normal(const SL_Texture* bumpMap, const math::vec4& uv) noexcept
-{
-    const float stepX = 1.f / (float)bumpMap->width();
-    const float stepY = 1.f / (float)bumpMap->height();
-
-    math::vec4_t<uint8_t> b;
-    b[0] = sl_sample_nearest<SL_ColorRType<uint8_t>, SL_WrapMode::REPEAT>(*bumpMap, uv[0],       uv[1]).r;
-    b[1] = sl_sample_nearest<SL_ColorRType<uint8_t>, SL_WrapMode::REPEAT>(*bumpMap, uv[0]+stepX, uv[1]).r;
-    b[2] = sl_sample_nearest<SL_ColorRType<uint8_t>, SL_WrapMode::REPEAT>(*bumpMap, uv[0],       uv[1]+stepY).r;
-    b[3] = 0;
-
-    return color_cast<float, uint8_t>(b) * 2.f - 1.f;
-}
-#endif
 
 
 
@@ -219,168 +134,67 @@ SL_VertexShader normal_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-bool _normal_frag_shader_impl(SL_FragmentParam& fragParams)
-{
-    const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
-    const math::vec4&    pos       = fragParams.pVaryings[0];
-    math::vec4&&         norm      = math::normalize(fragParams.pVaryings[1]);
-    float                attenuation;
-    math::vec4           diffuse;
-    float                specular;
-
-    constexpr float diffuseMultiplier = 4.f;
-    constexpr float specularity = 0.5f;
-    constexpr float shininess = 50.f;
-
-    // Light direction calculation
-    const Light& l         = pUniforms->light;
-    math::vec4&& lightDir  = l.pos - pos;
-    const float  lightDist = math::length(lightDir);
-
-    // normalize
-    lightDir = lightDir * math::rcp(lightDist);
-
-    const math::vec4 ambient = l.ambient;
-
-    // Diffuse light calculation
-    {
-        const PointLight& p    = pUniforms->point;
-        const float lightAngle = math::max(math::dot(lightDir, norm), 0.f);
-        const float constant   = p.constant;
-        const float linear     = p.linear;
-        const float quadratic  = p.quadratic;
-
-        attenuation = math::rcp(constant + (linear * lightDist) + (quadratic * lightDist * lightDist));
-        diffuse     = l.diffuse * (lightAngle * attenuation) * diffuseMultiplier;
-    }
-
-    // specular reflection calculation
-    {
-        const math::vec4&  eyeVec     = math::normalize(pUniforms->camPos - pos);
-        const math::vec4&& halfVec    = math::normalize(lightDir + eyeVec);
-        const float        reflectDir = math::max(math::dot(norm, halfVec), 0.f);
-
-        specular = specularity * math::pow(reflectDir, shininess);
-    }
-
-    // output composition
-    {
-        const math::vec4&& accumulation = math::min(diffuse+specular+ambient, math::vec4{1.f});
-
-        fragParams.pOutputs[0] = accumulation;
-    }
-
-    return true;
-}
-
-
-
-bool _normal_frag_shader_pbr(SL_FragmentParam& fragParams)
-{
-    const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
-    const math::vec4     pos       = fragParams.pVaryings[0];
-    const math::vec4     norm      = math::normalize(fragParams.pVaryings[1]);
-    math::vec4&          output    = fragParams.pOutputs[0];
-
-    // surface model
-    const math::vec4     camPos           = pUniforms->camPos;
-    const math::vec4     viewDir          = math::normalize(camPos - pos);
-    const math::vec4     lightPos         = pUniforms->light.pos;
-    const math::vec4     albedo           = math::vec4{1.f};
-    constexpr float      metallic         = 0.8f;
-    constexpr float      roughness        = 0.025f;
-    constexpr float      ambientIntensity = 0.5f;
-    constexpr float      diffuseIntensity = 50.f;
-
-    // Metallic reflectance at a normal incidence
-    // 0.04f should be close to plastic.
-    const math::vec4   surfaceConstant   = {0.875f, 0.875f, 0.875f, 1.f};
-    const math::vec4&& surfaceReflection = math::mix(surfaceConstant, albedo, metallic);
-
-    math::vec4         lightDir0         = {0.f};
-
-    math::vec4         lightDirN         = lightPos - pos;
-    const float        distance          = math::length(lightDirN);
-    lightDirN                            = lightDirN * math::rcp(distance); // normalize
-    math::vec4         hemisphere        = math::normalize(viewDir + lightDirN);
-    const float        attenuation       = math::rcp(distance);
-    math::vec4         radianceObj       = pUniforms->light.diffuse * attenuation * diffuseIntensity;
-
-    const float        ndf               = distribution_ggx(norm, hemisphere, roughness);
-    const float        geom              = geometry_smith(norm, viewDir, lightDirN, roughness);
-    const math::vec4   fresnel           = fresnel_schlick(math::max(math::dot(hemisphere, viewDir), 0.f), surfaceReflection);
-
-    const math::vec4   brdf              = fresnel * ndf * geom;
-    const float        cookTorrance      = 4.f * math::max(math::dot(norm, viewDir), 0.f) * math::max(math::dot(norm, lightDirN), 0.f) + LS_EPSILON;  // avoid divide-by-0
-    const math::vec4   specular          = brdf * math::rcp(cookTorrance);
-
-    const math::vec4&  specContrib       = fresnel;
-    const math::vec4   refractRatio      = (math::vec4{1.f} - specContrib) * (math::vec4{1.f} - metallic);
-
-    const float normDotLight             = math::max(math::dot(lightDirN, norm), 0.f);
-    lightDir0                            += (refractRatio * albedo * LS_PI_INVERSE + specular) * radianceObj * normDotLight;
-
-    const math::vec4   ambient           = pUniforms->light.ambient * ambientIntensity;
-
-    // Color normalization and light contribution
-    math::vec4 outRGB = albedo * (ambient + lightDir0);
-
-    // Tone mapping
-    //outRGB *= math::rcp(outRGB + math::vec4{1.f, 1.f, 1.f, 0.f});
-
-    // HDR Tone mapping
-    const float exposure = 4.f;
-    outRGB = math::vec4{1.f} - math::exp(-outRGB * exposure);
-    outRGB[3] = 1.f;
-
-    // Gamma correction
-    //const math::vec4 gamma = {1.f / 2.2f};
-    //outRGB = math::clamp(math::pow(outRGB, gamma), math::vec4{0.f}, math::vec4{1.f});
-    //outRGB[3] = 1.f;
-
-    output = outRGB;
-
-    return true;
-}
-
-
-
 SL_FragmentShader normal_frag_shader()
 {
     SL_FragmentShader shader;
     shader.numVaryings = 2;
     shader.numOutputs  = 1;
     shader.blend       = SL_BLEND_OFF;
-
-    #ifdef TEST_REVERSED_DEPTH
     shader.depthTest = SL_DEPTH_TEST_GREATER_EQUAL;
-    #else
-    shader.depthTest = SL_DEPTH_TEST_LESS_EQUAL;
-    #endif
-
     shader.depthMask   = SL_DEPTH_MASK_ON;
-    shader.shader      = _normal_frag_shader_impl;
+    shader.shader      = [](SL_FragmentParam& fragParams)->bool
+    {
+        const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
+        const math::vec4&    pos       = fragParams.pVaryings[0];
+        math::vec4&&         norm      = math::normalize(fragParams.pVaryings[1]);
+        float                attenuation;
+        math::vec4           diffuse;
+        float                specular;
 
-    return shader;
-}
+        constexpr float diffuseMultiplier = 4.f;
+        constexpr float specularity = 0.5f;
+        constexpr float shininess = 50.f;
 
+        // Light direction calculation
+        const Light& l         = pUniforms->light;
+        math::vec4&& lightDir  = l.pos - pos;
+        const float  lightDist = math::length(lightDir);
 
+        // normalize
+        lightDir = lightDir * math::rcp(lightDist);
 
-SL_FragmentShader normal_frag_shader_pbr()
-{
-    SL_FragmentShader shader;
-    shader.numVaryings = 2;
-    shader.numOutputs  = 1;
-    shader.blend       = SL_BLEND_OFF;
+        const math::vec4 ambient = l.ambient;
 
-    #ifdef TEST_REVERSED_DEPTH
-    shader.depthTest = SL_DEPTH_TEST_GREATER_EQUAL;
-    #else
-    shader.depthTest = SL_DEPTH_TEST_LESS_EQUAL;
-    #endif
+        // Diffuse light calculation
+        {
+            const PointLight& p    = pUniforms->point;
+            const float lightAngle = math::max(math::dot(lightDir, norm), 0.f);
+            const float constant   = p.constant;
+            const float linear     = p.linear;
+            const float quadratic  = p.quadratic;
 
-    shader.depthMask   = SL_DEPTH_MASK_ON;
-    shader.shader      = _normal_frag_shader_pbr;
+            attenuation = math::rcp(constant + (linear * lightDist) + (quadratic * lightDist * lightDist));
+            diffuse     = l.diffuse * (lightAngle * attenuation) * diffuseMultiplier;
+        }
+
+        // specular reflection calculation
+        {
+            const math::vec4&  eyeVec     = math::normalize(pUniforms->camPos - pos);
+            const math::vec4&& halfVec    = math::normalize(lightDir + eyeVec);
+            const float        reflectDir = math::max(math::dot(norm, halfVec), 0.f);
+
+            specular = specularity * math::pow(reflectDir, shininess);
+        }
+
+        // output composition
+        {
+            const math::vec4&& accumulation = math::min(diffuse+specular+ambient, math::vec4{1.f});
+
+            fragParams.pOutputs[0] = accumulation;
+        }
+
+        return true;
+    };
 
     return shader;
 }
@@ -428,222 +242,93 @@ SL_VertexShader texture_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-bool _texture_frag_shader_spot(SL_FragmentParam& fragParams)
-{
-    const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
-    const math::vec4&    pos       = fragParams.pVaryings[0];
-    const math::vec4&    uv        = fragParams.pVaryings[1];
-    math::vec4&&         norm      = math::normalize(fragParams.pVaryings[2]);
-    const SL_Texture*    albedo    = pUniforms->pTexture;
-    float                attenuation;
-    math::vec4           pixel;
-    math::vec4           diffuse;
-    float                specular;
-
-    constexpr float diffuseMultiplier = 4.f;
-    constexpr float specularity = 0.5f;
-    constexpr float shininess = 50.f;
-
-    // normalize the texture colors to within (0.f, 1.f)
-    if (albedo->channels() == 3)
-    {
-        const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT>(*albedo, uv[0], uv[1]);
-        pixel = color_cast<float, uint8_t>(math::vec4_cast<uint8_t>(pixel8, 255));
-    }
-    else
-    {
-        pixel = color_cast<float, uint8_t>(sl_sample_nearest<math::vec4_t<uint8_t>, SL_WrapMode::REPEAT>(*albedo, uv[0], uv[1]));
-    }
-
-    #if SL_TEST_BUMP_MAPS
-        const SL_Texture* bumpMap = pUniforms->pBump;
-        if (bumpMap)
-        {
-            const math::vec4&& bumpedNorm = bumped_normal(bumpMap, uv);
-            norm = math::normalize(norm * bumpedNorm);
-        }
-    #endif
-
-    // Light direction calculation
-    const Light& l         = pUniforms->light;
-    math::vec4&& lightDir  = l.pos - pos;
-    const float  lightDist = math::length(lightDir);
-
-    // normalize
-    lightDir = lightDir * math::rcp(lightDist);
-
-    const math::vec4 ambient = l.ambient;
-
-    // Diffuse light calculation
-    {
-        const PointLight& p    = pUniforms->point;
-        const float lightAngle = math::max(math::dot(lightDir, norm), 0.f);
-        const float constant   = p.constant;
-        const float linear     = p.linear;
-        const float quadratic  = p.quadratic;
-
-        attenuation = math::rcp(constant + (linear * lightDist) + (quadratic * lightDist * lightDist));
-        diffuse     = l.diffuse * (lightAngle * attenuation) * diffuseMultiplier;
-    }
-
-    // gamma corection
-    pixel = math::pow(pixel, math::vec4{2.2f});
-
-    // specular reflection calculation
-    {
-        const math::vec4&  eyeVec     = math::normalize(pUniforms->camPos - pos);
-        const math::vec4&& halfVec    = math::normalize(lightDir + eyeVec);
-        const float        reflectDir = math::max(math::dot(norm, halfVec), 0.f);
-
-        specular = specularity * math::pow(reflectDir, shininess);
-    }
-
-    // output composition
-    {
-        const math::vec4&& accumulation = math::min(diffuse+specular+ambient, math::vec4{1.f});
-
-        fragParams.pOutputs[0] = pixel * accumulation;
-    }
-
-    return true;
-}
-
-
-
-bool _texture_frag_shader_pbr(SL_FragmentParam& fragParams)
-{
-    const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
-    const math::vec4     pos       = fragParams.pVaryings[0];
-    const math::vec4     uv        = fragParams.pVaryings[1];
-    math::vec4&&         norm      = math::normalize(fragParams.pVaryings[2]);
-    math::vec4&          output    = fragParams.pOutputs[0];
-    const SL_Texture*    pTexture  = pUniforms->pTexture;
-    math::vec4           pixel;
-
-    // normalize the texture colors to within (0.f, 1.f)
-    if (pTexture->channels() == 3)
-    {
-        const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT>(*pTexture, uv[0], uv[1]);
-        const math::vec4_t<uint8_t>&& pixelF = math::vec4_cast<uint8_t>(pixel8, 255);
-        pixel = color_cast<float, uint8_t>(pixelF);
-    }
-    else
-    {
-        const math::vec4_t<uint8_t>&& pixelF = sl_sample_nearest<math::vec4_t<uint8_t>, SL_WrapMode::REPEAT>(*pTexture, uv[0], uv[1]);
-        pixel = color_cast<float, uint8_t>(pixelF);
-    }
-
-    #if SL_TEST_BUMP_MAPS
-        const SL_Texture* bumpMap = pUniforms->pBump;
-        if (bumpMap)
-        {
-            const math::vec4&& bumpedNorm = bumped_normal(bumpMap, uv);
-            norm = math::normalize(norm * bumpedNorm);
-        }
-    #endif
-
-    // gamma correction
-    pixel = math::pow(pixel, math::vec4{2.2f});
-
-    // surface model
-    const math::vec4     camPos           = pUniforms->camPos;
-    const math::vec4     viewDir          = math::normalize(camPos - pos);
-    const math::vec4     lightPos         = pUniforms->light.pos;
-    const math::vec4     albedo           = pixel;
-    constexpr float      metallic         = 0.4f;
-    constexpr float      roughness        = 0.35f;
-    constexpr float      ambientIntensity = 0.5f;
-    constexpr float      diffuseIntensity = 50.f;
-
-    // Metallic reflectance at a normal incidence
-    // 0.04f should be close to plastic.
-    const math::vec4   surfaceConstant   = {0.4f, 0.4f, 0.4f, 1.f};
-    const math::vec4&& surfaceReflection = math::mix(surfaceConstant, albedo, metallic);
-
-    math::vec4         lightDir0         = {0.f};
-
-    math::vec4         lightDirN         = lightPos - pos;
-    const float        distance          = math::length(lightDirN);
-    lightDirN                            = lightDirN * math::rcp(distance); // normalize
-    math::vec4         hemisphere        = math::normalize(viewDir + lightDirN);
-    const float        attenuation       = math::rcp(distance);
-    math::vec4         radianceObj       = pUniforms->light.diffuse * attenuation * diffuseIntensity;
-
-    const float        ndf               = distribution_ggx(norm, hemisphere, roughness);
-    const float        geom              = geometry_smith(norm, viewDir, lightDirN, roughness);
-    const math::vec4   fresnel           = fresnel_schlick(math::max(math::dot(hemisphere, viewDir), 0.f), surfaceReflection);
-
-    const math::vec4   brdf              = fresnel * ndf * geom;
-    const float        cookTorrance      = 4.f * math::max(math::dot(norm, viewDir), 0.f) * math::max(math::dot(norm, lightDirN), 0.f) + LS_EPSILON;  // avoid divide-by-0
-    const math::vec4   specular          = brdf * math::rcp(cookTorrance);
-
-    const math::vec4&  specContrib       = fresnel;
-    const math::vec4   refractRatio      = (math::vec4{1.f} - specContrib) * (math::vec4{1.f} - metallic);
-
-    const float normDotLight             = math::max(math::dot(lightDirN, norm), 0.f);
-    lightDir0                            += (refractRatio * albedo * LS_PI_INVERSE + specular) * radianceObj * normDotLight;
-
-    const math::vec4   ambient           = pUniforms->light.ambient * ambientIntensity;
-
-    // Color normalization and light contribution
-    math::vec4 outRGB = albedo * (ambient + lightDir0);
-
-    // Tone mapping
-    //outRGB *= math::rcp(outRGB + math::vec4{1.f, 1.f, 1.f, 0.f});
-
-    // HDR Tone mapping
-    const float exposure = 4.f;
-    outRGB = math::vec4{1.f} - math::exp(-outRGB * exposure);
-    outRGB[3] = 1.f;
-
-    // Gamma correction
-    //const math::vec4 gamma = {1.f / 2.2f};
-    //outRGB = math::clamp(math::pow(outRGB, gamma), math::vec4{0.f}, math::vec4{1.f});
-    //outRGB[3] = 1.f;
-
-    output = outRGB;
-
-    return true;
-}
-
-
-
 SL_FragmentShader texture_frag_shader()
 {
     SL_FragmentShader shader;
     shader.numVaryings = 3;
     shader.numOutputs  = 1;
     shader.blend       = SL_BLEND_OFF;
-
-    #ifdef TEST_REVERSED_DEPTH
     shader.depthTest = SL_DEPTH_TEST_GREATER_EQUAL;
-    #else
-    shader.depthTest = SL_DEPTH_TEST_LESS_EQUAL;
-    #endif
-
     shader.depthMask   = SL_DEPTH_MASK_ON;
-    shader.shader      = _texture_frag_shader_spot;
+    shader.shader      = [](SL_FragmentParam& fragParams)->bool
+    {
+        const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
+        const math::vec4&    pos       = fragParams.pVaryings[0];
+        const math::vec4&    uv        = fragParams.pVaryings[1];
+        math::vec4&&         norm      = math::normalize(fragParams.pVaryings[2]);
+        const SL_Texture*    albedo    = pUniforms->pTexture;
+        float                attenuation;
+        math::vec4           pixel;
+        math::vec4           diffuse;
+        float                specular;
 
-    return shader;
-}
+        constexpr float diffuseMultiplier = 4.f;
+        constexpr float specularity = 0.5f;
+        constexpr float shininess = 50.f;
 
+        // normalize the texture colors to within (0.f, 1.f)
+        if (albedo->channels() == 3)
+        {
+            const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT>(*albedo, uv[0], uv[1]);
+            pixel = color_cast<float, uint8_t>(math::vec4_cast<uint8_t>(pixel8, 255));
+        }
+        else
+        {
+            pixel = color_cast<float, uint8_t>(sl_sample_nearest<math::vec4_t<uint8_t>, SL_WrapMode::REPEAT>(*albedo, uv[0], uv[1]));
+        }
 
+        #if SL_TEST_BUMP_MAPS
+        const SL_Texture* bumpMap = pUniforms->pBump;
+        if (bumpMap)
+        {
+            const math::vec4&& bumpedNorm = bumped_normal(bumpMap, uv);
+            norm = math::normalize(norm * bumpedNorm);
+        }
+        #endif
 
-SL_FragmentShader texture_frag_shader_pbr()
-{
-    SL_FragmentShader shader;
-    shader.numVaryings = 3;
-    shader.numOutputs  = 1;
-    shader.blend       = SL_BLEND_OFF;
+        // Light direction calculation
+        const Light& l         = pUniforms->light;
+        math::vec4&& lightDir  = l.pos - pos;
+        const float  lightDist = math::length(lightDir);
 
-    #ifdef TEST_REVERSED_DEPTH
-    shader.depthTest = SL_DEPTH_TEST_GREATER_EQUAL;
-    #else
-    shader.depthTest = SL_DEPTH_TEST_LESS_EQUAL;
-    #endif
+        // normalize
+        lightDir = lightDir * math::rcp(lightDist);
 
-    shader.depthMask   = SL_DEPTH_MASK_ON;
-    shader.shader      = _texture_frag_shader_pbr;
+        const math::vec4 ambient = l.ambient;
+
+        // Diffuse light calculation
+        {
+            const PointLight& p    = pUniforms->point;
+            const float lightAngle = math::max(math::dot(lightDir, norm), 0.f);
+            const float constant   = p.constant;
+            const float linear     = p.linear;
+            const float quadratic  = p.quadratic;
+
+            attenuation = math::rcp(constant + (linear * lightDist) + (quadratic * lightDist * lightDist));
+            diffuse     = l.diffuse * (lightAngle * attenuation) * diffuseMultiplier;
+        }
+
+        // gamma corection
+        pixel = math::pow(pixel, math::vec4{2.2f});
+
+        // specular reflection calculation
+        {
+            const math::vec4&  eyeVec     = math::normalize(pUniforms->camPos - pos);
+            const math::vec4&& halfVec    = math::normalize(lightDir + eyeVec);
+            const float        reflectDir = math::max(math::dot(norm, halfVec), 0.f);
+
+            specular = specularity * math::pow(reflectDir, shininess);
+        }
+
+        // output composition
+        {
+            const math::vec4&& accumulation = math::min(diffuse+specular+ambient, math::vec4{1.f});
+
+            fragParams.pOutputs[0] = pixel * accumulation;
+        }
+
+        return true;
+    };
 
     return shader;
 }
@@ -657,32 +342,32 @@ void update_cam_position(SL_Transform& camTrans, float tickTime, utils::Pointer<
 {
     const float camSpeed = 100.f;
 
-    if (pKeys[SL_KeySymbol::KEY_SYM_w] || pKeys[SL_KeySymbol::KEY_SYM_W])
+    if (pKeys[SDL_SCANCODE_W])
     {
         camTrans.move(math::vec3{0.f, 0.f, camSpeed * tickTime}, false);
     }
 
-    if (pKeys[SL_KeySymbol::KEY_SYM_s] || pKeys[SL_KeySymbol::KEY_SYM_S])
+    if (pKeys[SDL_SCANCODE_S])
     {
         camTrans.move(math::vec3{0.f, 0.f, -camSpeed * tickTime}, false);
     }
 
-    if (pKeys[SL_KeySymbol::KEY_SYM_e] || pKeys[SL_KeySymbol::KEY_SYM_E])
+    if (pKeys[SDL_SCANCODE_E])
     {
         camTrans.move(math::vec3{0.f, camSpeed * tickTime, 0.f}, false);
     }
 
-    if (pKeys[SL_KeySymbol::KEY_SYM_q] || pKeys[SL_KeySymbol::KEY_SYM_Q])
+    if (pKeys[SDL_SCANCODE_Q])
     {
         camTrans.move(math::vec3{0.f, -camSpeed * tickTime, 0.f}, false);
     }
 
-    if (pKeys[SL_KeySymbol::KEY_SYM_a] || pKeys[SL_KeySymbol::KEY_SYM_A])
+    if (pKeys[SDL_SCANCODE_A])
     {
         camTrans.move(math::vec3{camSpeed * tickTime, 0.f, 0.f}, false);
     }
 
-    if (pKeys[SL_KeySymbol::KEY_SYM_d] || pKeys[SL_KeySymbol::KEY_SYM_D])
+    if (pKeys[SDL_SCANCODE_D])
     {
         camTrans.move(math::vec3{-camSpeed * tickTime, 0.f, 0.f}, false);
     }
@@ -693,7 +378,7 @@ void update_cam_position(SL_Transform& camTrans, float tickTime, utils::Pointer<
 /*-------------------------------------
  * Render the Scene
 -------------------------------------*/
-void render_scene(SL_SceneGraph* pGraph, unsigned w, unsigned h, const math::mat4& projection, const SL_Transform& camTrans, bool usePbr)
+void render_scene(SL_SceneGraph* pGraph, unsigned w, unsigned h, const math::mat4& projection, const SL_Transform& camTrans)
 {
     SL_Context&    context   = pGraph->mContext;
     MeshUniforms*  pUniforms = context.ubo(0).as<MeshUniforms>();
@@ -748,11 +433,6 @@ void render_scene(SL_SceneGraph* pGraph, unsigned w, unsigned h, const math::mat
             pUniforms->light.ambient = material.ambient;
             pUniforms->light.diffuse = material.diffuse;
 
-            if (usePbr)
-            {
-                shaderId += 2;
-            }
-
             context.draw(m, shaderId, 0);
         }
     }
@@ -776,39 +456,39 @@ utils::Pointer<SL_SceneGraph> create_context()
     size_t depthId = context.create_texture();
 
     retCode = context.num_threads(SL_TEST_MAX_THREADS);
-    assert(retCode == (int)SL_TEST_MAX_THREADS);
+    LS_ASSERT(retCode == (int)SL_TEST_MAX_THREADS);
 
     SL_Texture& tex = context.texture(texId);
     retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     SL_Texture& depth = context.texture(depthId);
     retCode = depth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     SL_Framebuffer& fbo = context.framebuffer(fboId);
     retCode = fbo.reserve_color_buffers(1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = fbo.attach_color_buffer(0, tex);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = fbo.attach_depth_buffer(depth);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     fbo.clear_color_buffers();
     fbo.clear_depth_buffer();
 
     retCode = fbo.valid();
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     opts.packNormals = true;
     retCode = meshLoader.load("testdata/sibenik/sibenik.obj", opts);
     //retCode = meshLoader.load("testdata/sponza/sponza.obj", opts);
-    assert(retCode != 0);
+    LS_ASSERT(retCode != 0);
 
     retCode = (int)pGraph->import(meshLoader.data());
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     pGraph->mCurrentTransforms[0].scale( math::vec3{20.f});
     //pGraph->mCurrentTransforms[0].scale(math::vec3{0.25f});
@@ -819,8 +499,6 @@ utils::Pointer<SL_SceneGraph> create_context()
     const SL_VertexShader&&   texVertShader     = texture_vert_shader();
     const SL_FragmentShader&& normFragShader    = normal_frag_shader();
     const SL_FragmentShader&& texFragShader     = texture_frag_shader();
-    const SL_FragmentShader&& normFragShaderPbr = normal_frag_shader_pbr();
-    const SL_FragmentShader&& texFragShaderPbr  = texture_frag_shader_pbr();
 
     size_t uboId = context.create_ubo();
     SL_UniformBuffer& ubo = context.ubo(uboId);
@@ -835,17 +513,11 @@ utils::Pointer<SL_SceneGraph> create_context()
 
     size_t texShaderId     = context.create_shader(texVertShader,  texFragShader,     uboId);
     size_t normShaderId    = context.create_shader(normVertShader, normFragShader,    uboId);
-    size_t texShaderPbrId  = context.create_shader(texVertShader,  texFragShaderPbr,  uboId);
-    size_t normShaderPbrId = context.create_shader(normVertShader, normFragShaderPbr, uboId);
 
-    assert(texShaderId == 0);
-    assert(normShaderId == 1);
-    assert(texShaderPbrId == 2);
-    assert(normShaderPbrId == 3);
+    LS_ASSERT(texShaderId == 0);
+    LS_ASSERT(normShaderId == 1);
     (void)texShaderId;
     (void)normShaderId;
-    (void)texShaderPbrId;
-    (void)normShaderPbrId;
     (void)retCode;
 
     return pGraph;
@@ -854,20 +526,155 @@ utils::Pointer<SL_SceneGraph> create_context()
 
 
 /*-----------------------------------------------------------------------------
+ * SDL Texture Handling
+-----------------------------------------------------------------------------*/
+inline SDL_PixelFormatEnum sl_pixel_fmt_to_sdl(const SL_ColorDataType slFmt) noexcept
+{
+    switch (slFmt)
+    {
+        case SL_COLOR_RGB_8U: return SDL_PIXELFORMAT_BGR888;
+        case SL_COLOR_RGBA_8U: return SDL_PIXELFORMAT_ARGB8888;
+
+        default:
+            break;
+    }
+
+    return SDL_PIXELFORMAT_UNKNOWN;
+}
+
+
+
+inline int sl_get_texture_pitch(const SL_Texture& pTex) noexcept
+{
+    int w = (int)pTex.width();
+    int bpp = (int)sl_bytes_per_color(pTex.type());
+    return w * bpp;
+}
+
+
+
+int select_sdl_render_driver() noexcept
+{
+    int numDrivers = SDL_GetNumRenderDrivers();
+    for (int i = 0; i < numDrivers; ++i)
+    {
+        SDL_RendererInfo info;
+        SDL_GetRenderDriverInfo(i, &info);
+        if (info.flags & (SDL_RENDERER_ACCELERATED|SDL_RENDERER_TARGETTEXTURE))
+        {
+            for (unsigned fmtId = 0; fmtId < info.num_texture_formats; ++fmtId)
+            {
+                if (info.texture_formats[fmtId] == SDL_PIXELFORMAT_ARGB8888)
+                {
+                    return i;
+                }
+            }
+        }
+    }
+
+    return -1;
+}
+
+
+
+inline void update_sdl_backbuffer(SL_Texture& tex, SDL_Texture* pBackbuffer) noexcept
+{
+    #if 0
+        void* pTexData = nullptr;
+        int pitch = 0;
+
+        SDL_LockTexture(pBackbuffer, nullptr, &pTexData, &pitch);
+
+        if (!pTexData || pitch != sl_get_texture_pitch(tex))
+        {
+            LS_ASSERT(false);
+        }
+
+        utils::fast_memcpy(pTexData, tex.data(), (uint_fast64_t)pitch*(uint_fast64_t)tex.height());
+        SDL_UnlockTexture(pBackbuffer);
+
+    #else
+        SDL_UpdateTexture(pBackbuffer, nullptr, tex.data(), sl_get_texture_pitch(tex));
+    #endif
+}
+
+
+
+/*-----------------------------------------------------------------------------
  *
 -----------------------------------------------------------------------------*/
-int main()
+extern "C" SDLMAIN_DECLSPEC int main(int argc, char* argv[])
 {
-    utils::Pointer<SL_RenderWindow> pWindow{std::move(SL_RenderWindow::create())};
-    utils::Pointer<SL_WindowBuffer> pRenderBuf{SL_WindowBuffer::create()};
-    utils::Pointer<SL_SceneGraph>   pGraph{std::move(create_context())};
-    utils::Pointer<bool[]>          pKeySyms{new bool[256]};
+    (void)argc;
+    (void)argv;
 
-    std::fill_n(pKeySyms.get(), 256, false);
+    SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "1");
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) < 0)
+    {
+        LS_LOG_ERR(
+            "Unable to initialize SDL due to an internal library error: \"",
+            SDL_GetError(), "\"\n",
+            "Complain to your local programmer.\n"
+        );
+        return -1;
+    }
 
+    SDL_LogSetAllPriority(SDL_LOG_PRIORITY_VERBOSE);
+    LS_LOG_MSG("Successfully initialized SDL.");
+
+    SDL_Window* pWindow = SDL_CreateWindow("SoftLight", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, IMAGE_WIDTH, IMAGE_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+    if (!pWindow)
+    {
+        LS_LOG_ERR("Unable to create a display.\n", SDL_GetError());
+        SDL_Quit();
+        return -2;
+    }
+    else
+    {
+        LS_LOG_MSG("Successfully created a window through SDL.");
+    }
+
+    int renderDriverId = select_sdl_render_driver();
+    SDL_Renderer* pRenderer = SDL_CreateRenderer(pWindow, renderDriverId, SDL_RENDERER_ACCELERATED|SDL_RENDERER_TARGETTEXTURE);
+    if (!pRenderer)
+    {
+        LS_LOG_ERR("Unable to instantiate an accelerated render backend.");
+        SDL_DestroyWindow(pWindow);
+        SDL_Quit();
+        return -3;
+    }
+    else
+    {
+        LS_LOG_MSG("Successfully instantiated an accelerated render backend (", renderDriverId, ").");
+        SDL_SetRenderDrawBlendMode(pRenderer, SDL_BLENDMODE_NONE);
+    }
+
+    utils::Pointer<bool[]> pKeySyms{new bool[SDL_NUM_SCANCODES]};
+    std::fill_n(pKeySyms.get(), SDL_NUM_SCANCODES, false);
+
+    utils::Pointer<SL_SceneGraph> pGraph{std::move(create_context())};
     SL_Context& context = pGraph->mContext;
 
-    int shouldQuit = pWindow->init(IMAGE_WIDTH, IMAGE_HEIGHT);
+    SDL_Texture* pBackBuffer = SDL_CreateTexture(pRenderer, sl_pixel_fmt_to_sdl(context.texture(0).type()), SDL_TEXTUREACCESS_STREAMING, IMAGE_WIDTH, IMAGE_HEIGHT);
+    if (!pBackBuffer)
+    {
+        LS_LOG_ERR("Unable to instantiate a backbuffer texture.");
+        SDL_DestroyRenderer(pRenderer);
+        SDL_DestroyWindow(pWindow);
+        SDL_Quit();
+        return -4;
+    }
+    else
+    {
+        uint32_t fmt;
+        int access, w, h;
+        SDL_QueryTexture(pBackBuffer, &fmt, &access, &w, &h);
+        LS_LOG_MSG("Successfully instantiated a (backbuffer ", w, 'x', h, ").");
+    }
+
+    int shouldQuit = 0;
+    bool mouseCapture = false;
+    bool amPaused = false;
 
     utils::Clock<float> timer;
     unsigned currFrames = 0;
@@ -876,7 +683,6 @@ int main()
     float totalSeconds = 0.f;
     float dx = 0.f;
     float dy = 0.f;
-    bool usePbr = false;
     unsigned numThreads = context.num_threads();
 
     SL_Transform camTrans;
@@ -884,113 +690,113 @@ int main()
     camTrans.look_at(math::vec3{0.f}, math::vec3{3.f, -5.f, 0.f}, math::vec3{0.f, 1.f, 0.f});
     //camTrans.look_at(math::vec3{200.f, 150.f, 0.f}, math::vec3{0.f, 100.f, 0.f}, math::vec3{0.f, 1.f, 0.f});
 
-    #if TEST_REVERSED_DEPTH
-        math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
-    #else
-        math::mat4 projMatrix = math::perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 10.f, 500.f);
-    #endif
+    math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
 
-    if (shouldQuit)
-    {
-        return shouldQuit;
-    }
-
-    if (!pWindow->run())
-    {
-        std::cerr << "Unable to run the test window!" << std::endl;
-        pWindow->destroy();
-        return -1;
-    }
-
-    if (pRenderBuf->init(*pWindow, IMAGE_WIDTH, IMAGE_HEIGHT) != 0 || pWindow->set_title("Mesh Test") != 0)
-    {
-        return -2;
-    }
-
-    pWindow->set_keys_repeat(false); // text mode
     timer.start();
 
     while (!shouldQuit)
     {
-        pWindow->update();
-        SL_WindowEvent evt;
+        SDL_Event evt;
+        bool haveEvent = false;
 
-        if (pWindow->has_event())
+        if (amPaused)
         {
-            pWindow->pop_event(&evt);
-
-            if (evt.type == SL_WinEventType::WIN_EVENT_RESIZED)
+            if (SDL_WaitEvent(&evt) == 1)
             {
-                std::cout<< "Window resized: " << evt.window.width << 'x' << evt.window.height << std::endl;
-                pRenderBuf->terminate();
-                pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
-                context.texture(0).init(context.texture(0).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
-                context.texture(1).init(context.texture(1).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
-
-                #if TEST_REVERSED_DEPTH
-                    projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
-                #else
-                    projMatrix = math::perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.1f, 500.f);
-                #endif
+                haveEvent = true;
             }
+        }
+        else
+        {
+            haveEvent = 0 != SDL_PollEvent(&evt);
+        }
 
-            if (evt.type == SL_WinEventType::WIN_EVENT_KEY_DOWN)
+        if (haveEvent)
+        {
+            if (evt.type == SDL_WINDOWEVENT)
             {
-                const SL_KeySymbol keySym = evt.keyboard.keysym;
-                pKeySyms[keySym] = true;
-            }
-            else if (evt.type == SL_WinEventType::WIN_EVENT_KEY_UP)
-            {
-                const SL_KeySymbol keySym = evt.keyboard.keysym;
-                pKeySyms[keySym] = false;
-
-                switch (keySym)
+                if (evt.window.windowID != SDL_GetWindowID(pWindow))
                 {
-                    case SL_KeySymbol::KEY_SYM_SPACE:
-                        if (pWindow->state() == WindowStateInfo::WINDOW_RUNNING)
+                    //continue;
+                }
+
+                if (evt.window.event == SDL_WINDOWEVENT_CLOSE)
+                {
+                    LS_LOG_MSG("Window close event caught. Exiting.");
+                    shouldQuit = true;
+                }
+                else if (evt.window.event == SDL_WINDOWEVENT_RESIZED)
+                {
+                    LS_LOG_MSG("Window resized: ", evt.window.data1, 'x', evt.window.data2);
+                    context.texture(0).init(context.texture(0).type(), (uint16_t)evt.window.data1, (uint16_t)evt.window.data2);
+                    context.texture(1).init(context.texture(1).type(), (uint16_t)evt.window.data1, (uint16_t)evt.window.data2);
+                    projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)evt.window.data1/(float)evt.window.data2, 0.01f);
+
+                    SDL_DestroyTexture(pBackBuffer);
+                    pBackBuffer = SDL_CreateTexture(pRenderer, sl_pixel_fmt_to_sdl(context.texture(0).type()), SDL_TEXTUREACCESS_STREAMING, evt.window.data1, evt.window.data2);
+                    if (!pBackBuffer)
+                    {
+                        LS_LOG_ERR("Unable to resize the backbuffer.");
+                        shouldQuit = true;
+                    }
+                    else
+                    {
+                        LS_LOG_MSG("Successfully resized the backbuffer (", evt.window.data1, 'x', evt.window.data2, ").");
+                    }
+                }
+            }
+            else if (evt.type == SDL_KEYDOWN)
+            {
+                pKeySyms[evt.key.keysym.scancode] = true;
+            }
+            else if (evt.type == SDL_KEYUP)
+            {
+                pKeySyms[evt.key.keysym.scancode] = false;
+
+                switch (evt.key.keysym.scancode)
+                {
+                    case SDL_SCANCODE_SPACE:
+                        if (!amPaused)
                         {
-                            std::cout << "Space button pressed. Pausing." << std::endl;
-                            pWindow->pause();
+                            LS_LOG_MSG("Space button pressed. Pausing.");
+                            timer.stop();
                         }
                         else
                         {
-                            std::cout << "Space button pressed. Resuming." << std::endl;
-                            pWindow->run();
+                            LS_LOG_MSG("Space button pressed. Resuming.");
                             timer.start();
                         }
+
+                        amPaused = !amPaused;
                         break;
 
-                    case SL_KeySymbol::KEY_SYM_LEFT:
-                        pWindow->set_size(IMAGE_WIDTH / 2, IMAGE_HEIGHT / 2);
+                    case SDL_SCANCODE_LEFT:
+                        SDL_SetWindowSize(pWindow, IMAGE_WIDTH / 2, IMAGE_HEIGHT / 2);
                         break;
 
-                    case SL_KeySymbol::KEY_SYM_RIGHT:
-                        pWindow->set_size(IMAGE_WIDTH, IMAGE_HEIGHT);
+                    case SDL_SCANCODE_RIGHT:
+                        SDL_SetWindowSize(pWindow, IMAGE_WIDTH, IMAGE_HEIGHT);
                         break;
 
-                    case SL_KeySymbol::KEY_SYM_UP:
+                    case SDL_SCANCODE_UP:
                         numThreads = math::min(numThreads + 1u, std::thread::hardware_concurrency());
                         context.num_threads(numThreads);
                         break;
 
-                    case SL_KeySymbol::KEY_SYM_DOWN:
+                    case SDL_SCANCODE_DOWN:
                         numThreads = math::max(numThreads - 1u, 1u);
                         context.num_threads(numThreads);
                         break;
 
-                    case SL_KeySymbol::KEY_SYM_F1:
-                        pWindow->set_mouse_capture(!pWindow->is_mouse_captured());
-                        pWindow->set_keys_repeat(!pWindow->keys_repeat()); // no text mode
-                        std::cout << "Mouse Capture: " << pWindow->is_mouse_captured() << std::endl;
+                    case SDL_SCANCODE_F1:
+                        mouseCapture = !mouseCapture;
+                        SDL_SetRelativeMouseMode(mouseCapture ? SDL_TRUE : SDL_FALSE);
+                        SDL_CaptureMouse(mouseCapture ? SDL_TRUE : SDL_FALSE);
+                        LS_LOG_MSG("Mouse Capture: ", (int)mouseCapture);
                         break;
 
-                    case SL_KeySymbol::KEY_SYM_F2:
-                        usePbr = !usePbr;
-                        std::cout << "PBR Rendering: " << usePbr << std::endl;
-                        break;
-
-                    case SL_KeySymbol::KEY_SYM_ESCAPE:
-                        std::cout << "Escape button pressed. Exiting." << std::endl;
+                    case SDL_SCANCODE_ESCAPE:
+                        LS_LOG_MSG("Escape button pressed. Exiting.");
                         shouldQuit = true;
                         break;
 
@@ -998,19 +804,27 @@ int main()
                         break;
                 }
             }
-            else if (evt.type == SL_WinEventType::WIN_EVENT_CLOSING)
+            else if (evt.type == SDL_QUIT)
             {
-                std::cout << "Window close event caught. Exiting." << std::endl;
+                LS_LOG_MSG("User quit event caught. Exiting.");
                 shouldQuit = true;
             }
-            else if (evt.type == SL_WinEventType::WIN_EVENT_MOUSE_MOVED)
+            else if (evt.type == SDL_MOUSEMOTION)
             {
-                if (pWindow->is_mouse_captured())
+                if (!amPaused && mouseCapture)
                 {
-                    SL_MousePosEvent& mouse = evt.mousePos;
-                    dx = (float)mouse.dx / (float)pWindow->dpi() * -0.05f;
-                    dy = (float)mouse.dy / (float)pWindow->dpi() * -0.05f;
-                    camTrans.rotate(math::vec3{dx, dy, 0.f});
+                    float dpi, hdpi, vdpi;
+                    if (SDL_GetDisplayDPI(SDL_GetWindowDisplayIndex(pWindow), &dpi, &hdpi, &vdpi))
+                    {
+                        LS_LOG_ERR(SDL_GetError());
+                        SDL_ClearError();
+                    }
+                    else
+                    {
+                        dx = (float)evt.motion.xrel / (float)hdpi * 0.05f;
+                        dy = (float)evt.motion.yrel / (float)vdpi * 0.05f;
+                        camTrans.rotate(math::vec3{dx, dy, 0.f});
+                    }
                 }
             }
         }
@@ -1026,14 +840,14 @@ int main()
 
             if (currSeconds >= 0.5f)
             {
-                //std::cout << "MS/F: " << 1000.f*(currSeconds/(float)currFrames) << std::endl;
-                std::cout << "FPS: " << utils::to_str((float)currFrames/currSeconds) << std::endl;
+                //LS_LOG_MSG("MS/F: ", 1000.f*(currSeconds/(float)currFrames));
+                LS_LOG_MSG("FPS: ", utils::to_str((float)currFrames/currSeconds));
                 currFrames = 0;
                 currSeconds = 0.f;
             }
 
             #if SL_BENCHMARK_SCENE
-                if (totalFrames >= 1200)
+                if (totalFrames >= 5000)
                 {
                     shouldQuit = true;
                 }
@@ -1051,31 +865,24 @@ int main()
 
             pGraph->update();
 
-            #if TEST_REVERSED_DEPTH
-                context.clear_framebuffer(0, 0, SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0}, 0.0);
-            #else
-                context.clear_framebuffer(0, 0, SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0}, 1.0);
-            #endif
+            SL_Texture& frontBuffer = context.texture(0);
+            context.clear_framebuffer(0, 0, SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0}, 0.0);
+            render_scene(pGraph.get(), (unsigned)frontBuffer.width(), (unsigned)frontBuffer.height(), projMatrix, camTrans);
+            update_sdl_backbuffer(frontBuffer, pBackBuffer);
 
-            render_scene(pGraph.get(), pWindow->width(), pWindow->height(), projMatrix, camTrans, usePbr);
-
-            context.blit(*pRenderBuf, 0);
-            pWindow->render(*pRenderBuf);
-        }
-
-        // All events handled. Now check on the state of the window.
-        if (pWindow->state() == WindowStateInfo::WINDOW_CLOSING)
-        {
-            std::cout << "Window close state encountered. Exiting." << std::endl;
-            shouldQuit = true;
+            SDL_RenderCopyEx(pRenderer, pBackBuffer, nullptr, nullptr, 0.0, nullptr, SDL_FLIP_VERTICAL);
+            SDL_RenderPresent(pRenderer);
         }
     }
 
-    pRenderBuf->terminate();
+    LS_LOG_MSG(
+        "Rendered ", totalFrames, " frames in ", totalSeconds, " seconds (",
+        ((double)totalFrames/(double)totalSeconds), " average fps).");
 
-    std::cout
-        << "Rendered " << totalFrames << " frames in " << totalSeconds << " seconds ("
-        << ((double)totalFrames/(double)totalSeconds) << " average fps)." << std::endl;
+    SDL_DestroyTexture(pBackBuffer);
+    SDL_DestroyRenderer(pRenderer);
+    SDL_DestroyWindow(pWindow);
+    SDL_Quit();
 
-    return pWindow->destroy();
+    return 0;
 }

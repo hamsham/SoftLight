@@ -572,7 +572,7 @@ bool SL_SceneFileLoader::load(const std::string& filename, SL_SceneLoadOpts opts
 -------------------------------------*/
 bool SL_SceneFileLoader::load(SL_SceneFilePreload&& p) noexcept
 {
-    LS_DEBUG_ASSERT(&p != &mPreloader);
+    LS_ASSERT(&p != &mPreloader);
 
     unload();
 
@@ -1071,7 +1071,7 @@ bool SL_SceneFileLoader::import_mesh_data(const aiScene* const pScene, const SL_
         SL_VaoGroup&            meshGroup   = tempVboMarks[meshGroupId];
         size_t                  numIndices  = 0;
 
-        LS_DEBUG_ASSERT(meshGroup.vertType == vertType);
+        LS_ASSERT(meshGroup.vertType == vertType);
 
         SL_Mesh& mesh   = meshes[meshId];
         SL_BoundingBox& box = bounds[meshId];
@@ -1298,7 +1298,7 @@ size_t SL_SceneFileLoader::get_mesh_group_marker(
         }
     }
 
-    LS_DEBUG_ASSERT(false);
+    LS_ASSERT(false);
 
     return (size_t)-1;
 }
@@ -1404,10 +1404,10 @@ void SL_SceneFileLoader::read_node_hierarchy(
     }
 
     // CYA
-    LS_DEBUG_ASSERT(nodeList.size() == nodeNames.size());
-    LS_DEBUG_ASSERT(nodeList.size() == baseTransforms.size());
-    LS_DEBUG_ASSERT(nodeList.size() == currTransforms.size());
-    LS_DEBUG_ASSERT(nodeList.size() == modelMatrices.size());
+    LS_ASSERT(nodeList.size() == nodeNames.size());
+    LS_ASSERT(nodeList.size() == baseTransforms.size());
+    LS_ASSERT(nodeList.size() == currTransforms.size());
+    LS_ASSERT(nodeList.size() == modelMatrices.size());
 
     // recursively load node children
     for (unsigned childId = 0; childId < pInNode->mNumChildren; ++childId)
@@ -1432,10 +1432,10 @@ void SL_SceneFileLoader::import_mesh_node(const aiNode* const pNode, SL_SceneNod
     // The check for how many meshes a scene node has must have already been
     // performed.
     const unsigned numMeshes = pNode->mNumMeshes;
-    LS_DEBUG_ASSERT(numMeshes > 0);
+    LS_ASSERT(numMeshes > 0);
 
     utils::Pointer<size_t[]> meshIds{new size_t[numMeshes]};
-    LS_DEBUG_ASSERT(meshIds.get());
+    LS_ASSERT(meshIds.get());
 
     // map the internal indices to the assimp node's mesh list
     for (unsigned i = 0; i < numMeshes; ++i)

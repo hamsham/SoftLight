@@ -418,7 +418,9 @@ void SL_Camera::update()
             mProjection = math::infinite_perspective(mFov, mAspectW / mAspectH, mZNear);
             break;
 
-        default:LS_DEBUG_ASSERT(false);
+        default:
+            LS_DEBUG_ASSERT(false);
+            LS_UNREACHABLE();
             break;
     }
 }

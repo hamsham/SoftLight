@@ -1,7 +1,5 @@
 
 #include <algorithm> // std::move (overload)
-#include <cassert>
-#include <iostream>
 #include <iterator> // std::back_inserter
 #include <utility> // std::move
 

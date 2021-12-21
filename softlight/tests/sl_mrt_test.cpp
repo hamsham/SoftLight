@@ -45,7 +45,7 @@ namespace utils = ls::utils;
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SL_TEST_MAX_THREADS
-    #define SL_TEST_MAX_THREADS (ls::math::max<unsigned>(std::thread::hardware_concurrency(), 2u) - 1u)
+    #define SL_TEST_MAX_THREADS 1//(ls::math::max<unsigned>(std::thread::hardware_concurrency(), 2u) - 1u)
 #endif /* SL_TEST_MAX_THREADS */
 
 #ifndef SL_BENCHMARK_SCENE
@@ -160,42 +160,42 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
 
     SL_Texture& texDepth = context.texture(depthId);
     retCode = texDepth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     SL_Texture& texRgb = context.texture(texRgbId);
     retCode = texRgb.init(SL_ColorDataType::SL_COLOR_RGB_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     SL_Texture& texPos = context.texture(texPosId);
     retCode = texPos.init(SL_ColorDataType::SL_COLOR_RGB_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     SL_Texture& texUv = context.texture(texUvId);
     retCode = texUv.init(SL_ColorDataType::SL_COLOR_RG_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     SL_Texture& texNorm = context.texture(texNormId);
     retCode = texNorm.init(SL_ColorDataType::SL_COLOR_RGB_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     SL_Framebuffer& fbo = context.framebuffer(fboId);
     retCode = fbo.reserve_color_buffers(4);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = fbo.attach_color_buffer(0, texRgb);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = fbo.attach_color_buffer(1, texPos);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = fbo.attach_color_buffer(2, texUv);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = fbo.attach_color_buffer(3, texNorm);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = fbo.attach_depth_buffer(texDepth);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     constexpr std::array<size_t, 4> attachIds{0, 1, 2, 3};
     constexpr std::array<SL_ColorRGBAd, 4> colors{
@@ -207,13 +207,13 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     context.clear_framebuffer(0, attachIds, colors, 0.0);
 
     retCode = fbo.valid();
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = meshLoader.load("testdata/african_head/african_head.obj");
-    assert(retCode != 0);
+    LS_ASSERT(retCode != 0);
 
     retCode = (int)pGraph->import(meshLoader.data());
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     // Always make sure the scene graph is updated before rendering
     pGraph->mCurrentTransforms[1].move(math::vec3{0.f, 30.f, 0.f});
@@ -231,7 +231,7 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     pUniforms->mvpMatrix = math::mat4{1.f};
     size_t testShaderId = context.create_shader(vertShader, fragShader, uboId);
 
-    assert(testShaderId == 0);
+    LS_ASSERT(testShaderId == 0);
     (void)testShaderId;
 
     (void)retCode;

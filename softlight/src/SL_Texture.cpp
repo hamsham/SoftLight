@@ -9,7 +9,6 @@
     #include <unistd.h> // posix_memalign(), sysconf(_SC_PAGESIZE)
 #endif
 
-#include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Copy.h"
 #include "lightsky/utils/Pointer.h" // aligned allocation
 
@@ -229,10 +228,6 @@ SL_Texture& SL_Texture::operator=(SL_Texture&& r) noexcept
 -------------------------------------*/
 int SL_Texture::init(SL_ColorDataType type, uint16_t w, uint16_t h, uint16_t d) noexcept
 {
-    LS_DEBUG_ASSERT(w > 0);
-    LS_DEBUG_ASSERT(h > 0);
-    LS_DEBUG_ASSERT(d > 0);
-
     const size_t bpt = sl_bytes_per_color(type);
     char* pData = _sl_allocate_texture(w, h, d, bpt);
 

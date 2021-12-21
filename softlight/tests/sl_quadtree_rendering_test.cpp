@@ -161,7 +161,7 @@ int scene_load_cube(SL_SceneGraph& graph)
     vao.set_binding(0, numVboBytes, stride, SL_Dimension::VERTEX_DIMENSION_2, SL_DataType::VERTEX_DATA_FLOAT);
     numVboBytes += sizeof(verts);
 
-    assert(numVboBytes == (numVerts*stride));
+    LS_ASSERT(numVboBytes == (numVerts*stride));
 
     graph.mMeshes.emplace_back(SL_Mesh());
     SL_Mesh& mesh = graph.mMeshes.back();
@@ -192,39 +192,39 @@ utils::Pointer<SL_SceneGraph> init_context()
 
     SL_Texture& tex = context.texture(texId);
     retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     SL_Texture& depth = context.texture(depthId);
     retCode = depth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     SL_Framebuffer& fbo = context.framebuffer(fboId);
     retCode = fbo.reserve_color_buffers(1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = fbo.attach_color_buffer(0, tex);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = fbo.attach_depth_buffer(depth);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     fbo.clear_color_buffers();
     fbo.clear_depth_buffer();
 
     retCode = fbo.valid();
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = scene_load_cube(*pGraph);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     const SL_VertexShader&&   boxVertShader = box_vert_shader();
     const SL_FragmentShader&& boxFragShader = box_frag_shader();
 
     size_t uboId = context.create_ubo();
-    assert(uboId == 0);
+    LS_ASSERT(uboId == 0);
 
     size_t boxShaderId = context.create_shader(boxVertShader, boxFragShader, uboId);
-    assert(boxShaderId == 0);
+    LS_ASSERT(boxShaderId == 0);
     (void)boxShaderId;
 
     pGraph->update();

@@ -8,11 +8,11 @@
 #include <windowsx.h>
 #include <winuser.h>
 
-#include <cassert>
 #include <string>
 
 #include "lightsky/setup/Compiler.h"
 
+#include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Log.h"
 
 #include "softlight/SL_Color.hpp"
@@ -297,7 +297,7 @@ int SL_RenderWindowWin32::set_title(const char* const pName) noexcept
 -------------------------------------*/
 int SL_RenderWindowWin32::init(unsigned width, unsigned height) noexcept
 {
-    assert(!this->valid());
+    LS_ASSERT(!this->valid());
 
     LS_LOG_MSG("SL_RenderWindowWin32 ", this, " initializing");
 
@@ -598,7 +598,7 @@ void SL_RenderWindowWin32::update() noexcept
         default:
             // We should not be in a "starting" or "closed" state
             LS_LOG_ERR("Encountered unexpected window state ", mCurrentState, '.');
-            assert(false); // assertions are disabled on release builds
+            LS_ASSERT(false); // assertions are disabled on release builds
             mCurrentState = WindowStateInfo::WINDOW_CLOSING;
             return;
     }
@@ -686,7 +686,7 @@ bool SL_RenderWindowWin32::pause() noexcept
         // These states can't be used to transition to a paused state
         case WindowStateInfo::WINDOW_CLOSED:
         case WindowStateInfo::WINDOW_STARTING:
-            assert(false); // fail in case of error
+            LS_ASSERT(false); // fail in case of error
             break;
     }
 
@@ -724,7 +724,7 @@ bool SL_RenderWindowWin32::run() noexcept
         // These states can't be used to transition to a paused state
         case WindowStateInfo::WINDOW_CLOSED:
         case WindowStateInfo::WINDOW_STARTING:
-            assert(false); // fail in case of error
+            LS_ASSERT(false); // fail in case of error
             break;
     }
 
@@ -962,8 +962,8 @@ bool SL_RenderWindowWin32::set_keys_repeat(bool doKeysRepeat) noexcept
 -------------------------------------*/
 void SL_RenderWindowWin32::render(SL_WindowBuffer& buffer) noexcept
 {
-    assert(this->valid());
-    assert(buffer.native_handle() != nullptr);
+    LS_ASSERT(this->valid());
+    LS_ASSERT(buffer.native_handle() != nullptr);
 
     SL_WindowBufferWin32& pWinBuffer = static_cast<SL_WindowBufferWin32&>(buffer);
 

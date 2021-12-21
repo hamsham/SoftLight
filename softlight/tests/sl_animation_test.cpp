@@ -465,31 +465,31 @@ utils::Pointer<SL_SceneGraph> create_context()
     size_t depthId = context.create_texture();
 
     retCode = context.num_threads(SL_TEST_MAX_THREADS);
-    assert(retCode == (int)SL_TEST_MAX_THREADS);
+    LS_ASSERT(retCode == (int)SL_TEST_MAX_THREADS);
 
     SL_Texture& tex = context.texture(texId);
     retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     SL_Texture& depth = context.texture(depthId);
     retCode = depth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     SL_Framebuffer& fbo = context.framebuffer(fboId);
     retCode = fbo.reserve_color_buffers(1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = fbo.attach_color_buffer(0, tex);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = fbo.attach_depth_buffer(depth);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     fbo.clear_color_buffers();
     fbo.clear_depth_buffer();
 
     retCode = fbo.valid();
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     SL_SceneLoadOpts opts = sl_default_scene_load_opts();
     opts.packUvs = true;
@@ -499,21 +499,21 @@ utils::Pointer<SL_SceneGraph> create_context()
     opts.genSmoothNormals = true;
 
     retCode = meshLoader.load("testdata/bob/Bob.md5mesh", opts);
-    assert(retCode != 0);
+    LS_ASSERT(retCode != 0);
 
     meshLoader.data().mCurrentTransforms[1].rotate(math::vec3{LS_PI_OVER_4, LS_PI_OVER_3, 0.f});
     meshLoader.data().mCurrentTransforms[0].position(math::vec3{-20.f, 0.f, 20.f});
     retCode = (int)pGraph->import(meshLoader.data());
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = meshLoader.load("testdata/rover/testmesh.dae", opts);
-    assert(retCode != 0);
+    LS_ASSERT(retCode != 0);
 
     meshLoader.data().mCurrentTransforms[0].rotate(math::vec3{0.f, 0.f, LS_PI_OVER_2});
     meshLoader.data().mCurrentTransforms[0].position(math::vec3{0.f, 0.f, -50.f});
     meshLoader.data().mCurrentTransforms[0].scale(math::vec3{20.f});
     retCode = (int)pGraph->import(meshLoader.data());
-    assert(retCode != 0);
+    LS_ASSERT(retCode != 0);
 
     pGraph->update();
 
@@ -526,18 +526,18 @@ utils::Pointer<SL_SceneGraph> create_context()
     const SL_VertexShader&&   texSkinVertShader = textured_skin_vert_shader();
 
     size_t uboId = context.create_ubo();
-    assert(uboId == 0);
+    LS_ASSERT(uboId == 0);
 
     size_t noTexShaderId  = context.create_shader(noTexVertShader,  noTexFragShader,  uboId);
-    assert(noTexShaderId == 0);
+    LS_ASSERT(noTexShaderId == 0);
     (void)noTexShaderId;
 
     size_t texShaderId  = context.create_shader(texVertShader,  texFragShader,  uboId);
-    assert(texShaderId == 1);
+    LS_ASSERT(texShaderId == 1);
     (void)texShaderId;
 
     size_t skinTexShaderId  = context.create_shader(texSkinVertShader,  texFragShader,  uboId);
-    assert(skinTexShaderId == 2);
+    LS_ASSERT(skinTexShaderId == 2);
     (void)skinTexShaderId;
 
     (void)retCode;

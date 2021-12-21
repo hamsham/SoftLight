@@ -16,7 +16,6 @@
     #endif /* max */
 #endif /* LS_COMPILER_MSC */
 
-#include <cassert>
 #include <cstdint> // fixed-width types
 #include <limits> // c++ limits
 

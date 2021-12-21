@@ -186,30 +186,26 @@ inline LS_INLINE math::vec4 bumped_normal(const SL_Texture* bumpMap, const math:
 /*--------------------------------------
  * Vertex Shader
 --------------------------------------*/
-math::vec4 _normal_vert_shader_impl(SL_VertexParam& param)
-{
-    // Used to retrieve packed verex data in a single call
-    typedef Tuple<math::vec3, int32_t> Vertex;
-
-    const MeshUniforms* pUniforms = param.pUniforms->as<MeshUniforms>();
-    const Vertex*       v         = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));
-    const math::vec4&&  vert      = math::vec4_cast(v->const_element<0>(), 1.f);
-    const math::vec4&&  norm      = sl_unpack_vertex_vec4(v->const_element<1>());
-
-    param.pVaryings[0] = pUniforms->modelMatrix * vert;
-    param.pVaryings[1] = pUniforms->modelMatrix * norm;
-
-    return pUniforms->mvpMatrix * vert;
-}
-
-
-
 SL_VertexShader normal_vert_shader()
 {
     SL_VertexShader shader;
     shader.numVaryings = 2;
     shader.cullMode    = SL_CULL_BACK_FACE;
-    shader.shader      = _normal_vert_shader_impl;
+    shader.shader      = [](SL_VertexParam& param)->math::vec4
+    {
+        // Used to retrieve packed verex data in a single call
+        typedef Tuple<math::vec3, int32_t> Vertex;
+
+        const MeshUniforms* pUniforms = param.pUniforms->as<MeshUniforms>();
+        const Vertex*       v         = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));
+        const math::vec4&&  vert      = math::vec4_cast(v->const_element<0>(), 1.f);
+        const math::vec4&&  norm      = sl_unpack_vertex_vec4(v->const_element<1>());
+
+        param.pVaryings[0] = pUniforms->modelMatrix * vert;
+        param.pVaryings[1] = pUniforms->modelMatrix * norm;
+
+        return pUniforms->mvpMatrix * vert;
+    };
 
     return shader;
 }
@@ -219,132 +215,6 @@ SL_VertexShader normal_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-bool _normal_frag_shader_impl(SL_FragmentParam& fragParams)
-{
-    const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
-    const math::vec4&    pos       = fragParams.pVaryings[0];
-    math::vec4&&         norm      = math::normalize(fragParams.pVaryings[1]);
-    float                attenuation;
-    math::vec4           diffuse;
-    float                specular;
-
-    constexpr float diffuseMultiplier = 4.f;
-    constexpr float specularity = 0.5f;
-    constexpr float shininess = 50.f;
-
-    // Light direction calculation
-    const Light& l         = pUniforms->light;
-    math::vec4&& lightDir  = l.pos - pos;
-    const float  lightDist = math::length(lightDir);
-
-    // normalize
-    lightDir = lightDir * math::rcp(lightDist);
-
-    const math::vec4 ambient = l.ambient;
-
-    // Diffuse light calculation
-    {
-        const PointLight& p    = pUniforms->point;
-        const float lightAngle = math::max(math::dot(lightDir, norm), 0.f);
-        const float constant   = p.constant;
-        const float linear     = p.linear;
-        const float quadratic  = p.quadratic;
-
-        attenuation = math::rcp(constant + (linear * lightDist) + (quadratic * lightDist * lightDist));
-        diffuse     = l.diffuse * (lightAngle * attenuation) * diffuseMultiplier;
-    }
-
-    // specular reflection calculation
-    {
-        const math::vec4&  eyeVec     = math::normalize(pUniforms->camPos - pos);
-        const math::vec4&& halfVec    = math::normalize(lightDir + eyeVec);
-        const float        reflectDir = math::max(math::dot(norm, halfVec), 0.f);
-
-        specular = specularity * math::pow(reflectDir, shininess);
-    }
-
-    // output composition
-    {
-        const math::vec4&& accumulation = math::min(diffuse+specular+ambient, math::vec4{1.f});
-
-        fragParams.pOutputs[0] = accumulation;
-    }
-
-    return true;
-}
-
-
-
-bool _normal_frag_shader_pbr(SL_FragmentParam& fragParams)
-{
-    const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
-    const math::vec4     pos       = fragParams.pVaryings[0];
-    const math::vec4     norm      = math::normalize(fragParams.pVaryings[1]);
-    math::vec4&          output    = fragParams.pOutputs[0];
-
-    // surface model
-    const math::vec4     camPos           = pUniforms->camPos;
-    const math::vec4     viewDir          = math::normalize(camPos - pos);
-    const math::vec4     lightPos         = pUniforms->light.pos;
-    const math::vec4     albedo           = math::vec4{1.f};
-    constexpr float      metallic         = 0.8f;
-    constexpr float      roughness        = 0.025f;
-    constexpr float      ambientIntensity = 0.5f;
-    constexpr float      diffuseIntensity = 50.f;
-
-    // Metallic reflectance at a normal incidence
-    // 0.04f should be close to plastic.
-    const math::vec4   surfaceConstant   = {0.875f, 0.875f, 0.875f, 1.f};
-    const math::vec4&& surfaceReflection = math::mix(surfaceConstant, albedo, metallic);
-
-    math::vec4         lightDir0         = {0.f};
-
-    math::vec4         lightDirN         = lightPos - pos;
-    const float        distance          = math::length(lightDirN);
-    lightDirN                            = lightDirN * math::rcp(distance); // normalize
-    math::vec4         hemisphere        = math::normalize(viewDir + lightDirN);
-    const float        attenuation       = math::rcp(distance);
-    math::vec4         radianceObj       = pUniforms->light.diffuse * attenuation * diffuseIntensity;
-
-    const float        ndf               = distribution_ggx(norm, hemisphere, roughness);
-    const float        geom              = geometry_smith(norm, viewDir, lightDirN, roughness);
-    const math::vec4   fresnel           = fresnel_schlick(math::max(math::dot(hemisphere, viewDir), 0.f), surfaceReflection);
-
-    const math::vec4   brdf              = fresnel * ndf * geom;
-    const float        cookTorrance      = 4.f * math::max(math::dot(norm, viewDir), 0.f) * math::max(math::dot(norm, lightDirN), 0.f) + LS_EPSILON;  // avoid divide-by-0
-    const math::vec4   specular          = brdf * math::rcp(cookTorrance);
-
-    const math::vec4&  specContrib       = fresnel;
-    const math::vec4   refractRatio      = (math::vec4{1.f} - specContrib) * (math::vec4{1.f} - metallic);
-
-    const float normDotLight             = math::max(math::dot(lightDirN, norm), 0.f);
-    lightDir0                            += (refractRatio * albedo * LS_PI_INVERSE + specular) * radianceObj * normDotLight;
-
-    const math::vec4   ambient           = pUniforms->light.ambient * ambientIntensity;
-
-    // Color normalization and light contribution
-    math::vec4 outRGB = albedo * (ambient + lightDir0);
-
-    // Tone mapping
-    //outRGB *= math::rcp(outRGB + math::vec4{1.f, 1.f, 1.f, 0.f});
-
-    // HDR Tone mapping
-    const float exposure = 4.f;
-    outRGB = math::vec4{1.f} - math::exp(-outRGB * exposure);
-    outRGB[3] = 1.f;
-
-    // Gamma correction
-    //const math::vec4 gamma = {1.f / 2.2f};
-    //outRGB = math::clamp(math::pow(outRGB, gamma), math::vec4{0.f}, math::vec4{1.f});
-    //outRGB[3] = 1.f;
-
-    output = outRGB;
-
-    return true;
-}
-
-
-
 SL_FragmentShader normal_frag_shader()
 {
     SL_FragmentShader shader;
@@ -359,7 +229,59 @@ SL_FragmentShader normal_frag_shader()
     #endif
 
     shader.depthMask   = SL_DEPTH_MASK_ON;
-    shader.shader      = _normal_frag_shader_impl;
+    shader.shader      = [](SL_FragmentParam& fragParams)->bool
+    {
+        const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
+        const math::vec4&    pos       = fragParams.pVaryings[0];
+        math::vec4&&         norm      = math::normalize(fragParams.pVaryings[1]);
+        float                attenuation;
+        math::vec4           diffuse;
+        float                specular;
+
+        constexpr float diffuseMultiplier = 4.f;
+        constexpr float specularity = 0.5f;
+        constexpr float shininess = 50.f;
+
+        // Light direction calculation
+        const Light& l         = pUniforms->light;
+        math::vec4&& lightDir  = l.pos - pos;
+        const float  lightDist = math::length(lightDir);
+
+        // normalize
+        lightDir = lightDir * math::rcp(lightDist);
+
+        const math::vec4 ambient = l.ambient;
+
+        // Diffuse light calculation
+        {
+            const PointLight& p    = pUniforms->point;
+            const float lightAngle = math::max(math::dot(lightDir, norm), 0.f);
+            const float constant   = p.constant;
+            const float linear     = p.linear;
+            const float quadratic  = p.quadratic;
+
+            attenuation = math::rcp(constant + (linear * lightDist) + (quadratic * lightDist * lightDist));
+            diffuse     = l.diffuse * (lightAngle * attenuation) * diffuseMultiplier;
+        }
+
+        // specular reflection calculation
+        {
+            const math::vec4&  eyeVec     = math::normalize(pUniforms->camPos - pos);
+            const math::vec4&& halfVec    = math::normalize(lightDir + eyeVec);
+            const float        reflectDir = math::max(math::dot(norm, halfVec), 0.f);
+
+            specular = specularity * math::pow(reflectDir, shininess);
+        }
+
+        // output composition
+        {
+            const math::vec4&& accumulation = math::min(diffuse+specular+ambient, math::vec4{1.f});
+
+            fragParams.pOutputs[0] = accumulation;
+        }
+
+        return true;
+    };
 
     return shader;
 }
@@ -380,7 +302,73 @@ SL_FragmentShader normal_frag_shader_pbr()
     #endif
 
     shader.depthMask   = SL_DEPTH_MASK_ON;
-    shader.shader      = _normal_frag_shader_pbr;
+    shader.shader      = [](SL_FragmentParam& fragParams)->bool
+    {
+        const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
+        const math::vec4     pos       = fragParams.pVaryings[0];
+        const math::vec4     norm      = math::normalize(fragParams.pVaryings[1]);
+        math::vec4&          output    = fragParams.pOutputs[0];
+
+        // surface model
+        const math::vec4     camPos           = pUniforms->camPos;
+        const math::vec4     viewDir          = math::normalize(camPos - pos);
+        const math::vec4     lightPos         = pUniforms->light.pos;
+        const math::vec4     albedo           = math::vec4{1.f};
+        constexpr float      metallic         = 0.8f;
+        constexpr float      roughness        = 0.025f;
+        constexpr float      ambientIntensity = 0.5f;
+        constexpr float      diffuseIntensity = 50.f;
+
+        // Metallic reflectance at a normal incidence
+        // 0.04f should be close to plastic.
+        const math::vec4   surfaceConstant   = {0.875f, 0.875f, 0.875f, 1.f};
+        const math::vec4&& surfaceReflection = math::mix(surfaceConstant, albedo, metallic);
+
+        math::vec4         lightDir0         = {0.f};
+
+        math::vec4         lightDirN         = lightPos - pos;
+        const float        distance          = math::length(lightDirN);
+        lightDirN                            = lightDirN * math::rcp(distance); // normalize
+        math::vec4         hemisphere        = math::normalize(viewDir + lightDirN);
+        const float        attenuation       = math::rcp(distance);
+        math::vec4         radianceObj       = pUniforms->light.diffuse * attenuation * diffuseIntensity;
+
+        const float        ndf               = distribution_ggx(norm, hemisphere, roughness);
+        const float        geom              = geometry_smith(norm, viewDir, lightDirN, roughness);
+        const math::vec4   fresnel           = fresnel_schlick(math::max(math::dot(hemisphere, viewDir), 0.f), surfaceReflection);
+
+        const math::vec4   brdf              = fresnel * ndf * geom;
+        const float        cookTorrance      = 4.f * math::max(math::dot(norm, viewDir), 0.f) * math::max(math::dot(norm, lightDirN), 0.f) + LS_EPSILON;  // avoid divide-by-0
+        const math::vec4   specular          = brdf * math::rcp(cookTorrance);
+
+        const math::vec4&  specContrib       = fresnel;
+        const math::vec4   refractRatio      = (math::vec4{1.f} - specContrib) * (math::vec4{1.f} - metallic);
+
+        const float normDotLight             = math::max(math::dot(lightDirN, norm), 0.f);
+        lightDir0                            += (refractRatio * albedo * LS_PI_INVERSE + specular) * radianceObj * normDotLight;
+
+        const math::vec4   ambient           = pUniforms->light.ambient * ambientIntensity;
+
+        // Color normalization and light contribution
+        math::vec4 outRGB = albedo * (ambient + lightDir0);
+
+        // Tone mapping
+        //outRGB *= math::rcp(outRGB + math::vec4{1.f, 1.f, 1.f, 0.f});
+
+        // HDR Tone mapping
+        const float exposure = 4.f;
+        outRGB = math::vec4{1.f} - math::exp(-outRGB * exposure);
+        outRGB[3] = 1.f;
+
+        // Gamma correction
+        //const math::vec4 gamma = {1.f / 2.2f};
+        //outRGB = math::clamp(math::pow(outRGB, gamma), math::vec4{0.f}, math::vec4{1.f});
+        //outRGB[3] = 1.f;
+
+        output = outRGB;
+
+        return true;
+    };
 
     return shader;
 }
@@ -393,32 +381,28 @@ SL_FragmentShader normal_frag_shader_pbr()
 /*--------------------------------------
  * Vertex Shader
 --------------------------------------*/
-math::vec4 _texture_vert_shader_impl(SL_VertexParam& param)
-{
-    // Used to retrieve packed verex data in a single call
-    typedef Tuple<math::vec3, math::vec2, int32_t> Vertex;
-
-    const MeshUniforms* pUniforms = param.pUniforms->as<MeshUniforms>();
-    const Vertex*       v         = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));
-    const math::vec4&&  vert      = math::vec4_cast(v->const_element<0>(), 1.f);
-    const math::vec4&&  uv        = math::vec4_cast(v->const_element<1>(), 0.f, 0.f);
-    const math::vec4&&  norm      = sl_unpack_vertex_vec4(v->const_element<2>());
-
-    param.pVaryings[0] = pUniforms->modelMatrix * vert;
-    param.pVaryings[1] = uv;
-    param.pVaryings[2] = pUniforms->modelMatrix * norm;
-
-    return pUniforms->mvpMatrix * vert;
-}
-
-
-
 SL_VertexShader texture_vert_shader()
 {
     SL_VertexShader shader;
     shader.numVaryings = 3;
     shader.cullMode = SL_CULL_BACK_FACE;
-    shader.shader = _texture_vert_shader_impl;
+    shader.shader = [](SL_VertexParam& param)->math::vec4
+    {
+        // Used to retrieve packed verex data in a single call
+        typedef Tuple<math::vec3, math::vec2, int32_t> Vertex;
+
+        const MeshUniforms* pUniforms = param.pUniforms->as<MeshUniforms>();
+        const Vertex*       v         = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));
+        const math::vec4&&  vert      = math::vec4_cast(v->const_element<0>(), 1.f);
+        const math::vec4&&  uv        = math::vec4_cast(v->const_element<1>(), 0.f, 0.f);
+        const math::vec4&&  norm      = sl_unpack_vertex_vec4(v->const_element<2>());
+
+        param.pVaryings[0] = pUniforms->modelMatrix * vert;
+        param.pVaryings[1] = uv;
+        param.pVaryings[2] = pUniforms->modelMatrix * norm;
+
+        return pUniforms->mvpMatrix * vert;
+    };
 
     return shader;
 }
@@ -428,186 +412,6 @@ SL_VertexShader texture_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-bool _texture_frag_shader_spot(SL_FragmentParam& fragParams)
-{
-    const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
-    const math::vec4&    pos       = fragParams.pVaryings[0];
-    const math::vec4&    uv        = fragParams.pVaryings[1];
-    math::vec4&&         norm      = math::normalize(fragParams.pVaryings[2]);
-    const SL_Texture*    albedo    = pUniforms->pTexture;
-    float                attenuation;
-    math::vec4           pixel;
-    math::vec4           diffuse;
-    float                specular;
-
-    constexpr float diffuseMultiplier = 4.f;
-    constexpr float specularity = 0.5f;
-    constexpr float shininess = 50.f;
-
-    // normalize the texture colors to within (0.f, 1.f)
-    if (albedo->channels() == 3)
-    {
-        const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT>(*albedo, uv[0], uv[1]);
-        pixel = color_cast<float, uint8_t>(math::vec4_cast<uint8_t>(pixel8, 255));
-    }
-    else
-    {
-        pixel = color_cast<float, uint8_t>(sl_sample_nearest<math::vec4_t<uint8_t>, SL_WrapMode::REPEAT>(*albedo, uv[0], uv[1]));
-    }
-
-    #if SL_TEST_BUMP_MAPS
-        const SL_Texture* bumpMap = pUniforms->pBump;
-        if (bumpMap)
-        {
-            const math::vec4&& bumpedNorm = bumped_normal(bumpMap, uv);
-            norm = math::normalize(norm * bumpedNorm);
-        }
-    #endif
-
-    // Light direction calculation
-    const Light& l         = pUniforms->light;
-    math::vec4&& lightDir  = l.pos - pos;
-    const float  lightDist = math::length(lightDir);
-
-    // normalize
-    lightDir = lightDir * math::rcp(lightDist);
-
-    const math::vec4 ambient = l.ambient;
-
-    // Diffuse light calculation
-    {
-        const PointLight& p    = pUniforms->point;
-        const float lightAngle = math::max(math::dot(lightDir, norm), 0.f);
-        const float constant   = p.constant;
-        const float linear     = p.linear;
-        const float quadratic  = p.quadratic;
-
-        attenuation = math::rcp(constant + (linear * lightDist) + (quadratic * lightDist * lightDist));
-        diffuse     = l.diffuse * (lightAngle * attenuation) * diffuseMultiplier;
-    }
-
-    // gamma corection
-    pixel = math::pow(pixel, math::vec4{2.2f});
-
-    // specular reflection calculation
-    {
-        const math::vec4&  eyeVec     = math::normalize(pUniforms->camPos - pos);
-        const math::vec4&& halfVec    = math::normalize(lightDir + eyeVec);
-        const float        reflectDir = math::max(math::dot(norm, halfVec), 0.f);
-
-        specular = specularity * math::pow(reflectDir, shininess);
-    }
-
-    // output composition
-    {
-        const math::vec4&& accumulation = math::min(diffuse+specular+ambient, math::vec4{1.f});
-
-        fragParams.pOutputs[0] = pixel * accumulation;
-    }
-
-    return true;
-}
-
-
-
-bool _texture_frag_shader_pbr(SL_FragmentParam& fragParams)
-{
-    const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
-    const math::vec4     pos       = fragParams.pVaryings[0];
-    const math::vec4     uv        = fragParams.pVaryings[1];
-    math::vec4&&         norm      = math::normalize(fragParams.pVaryings[2]);
-    math::vec4&          output    = fragParams.pOutputs[0];
-    const SL_Texture*    pTexture  = pUniforms->pTexture;
-    math::vec4           pixel;
-
-    // normalize the texture colors to within (0.f, 1.f)
-    if (pTexture->channels() == 3)
-    {
-        const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT>(*pTexture, uv[0], uv[1]);
-        const math::vec4_t<uint8_t>&& pixelF = math::vec4_cast<uint8_t>(pixel8, 255);
-        pixel = color_cast<float, uint8_t>(pixelF);
-    }
-    else
-    {
-        const math::vec4_t<uint8_t>&& pixelF = sl_sample_nearest<math::vec4_t<uint8_t>, SL_WrapMode::REPEAT>(*pTexture, uv[0], uv[1]);
-        pixel = color_cast<float, uint8_t>(pixelF);
-    }
-
-    #if SL_TEST_BUMP_MAPS
-        const SL_Texture* bumpMap = pUniforms->pBump;
-        if (bumpMap)
-        {
-            const math::vec4&& bumpedNorm = bumped_normal(bumpMap, uv);
-            norm = math::normalize(norm * bumpedNorm);
-        }
-    #endif
-
-    // gamma correction
-    pixel = math::pow(pixel, math::vec4{2.2f});
-
-    // surface model
-    const math::vec4     camPos           = pUniforms->camPos;
-    const math::vec4     viewDir          = math::normalize(camPos - pos);
-    const math::vec4     lightPos         = pUniforms->light.pos;
-    const math::vec4     albedo           = pixel;
-    constexpr float      metallic         = 0.4f;
-    constexpr float      roughness        = 0.35f;
-    constexpr float      ambientIntensity = 0.5f;
-    constexpr float      diffuseIntensity = 50.f;
-
-    // Metallic reflectance at a normal incidence
-    // 0.04f should be close to plastic.
-    const math::vec4   surfaceConstant   = {0.4f, 0.4f, 0.4f, 1.f};
-    const math::vec4&& surfaceReflection = math::mix(surfaceConstant, albedo, metallic);
-
-    math::vec4         lightDir0         = {0.f};
-
-    math::vec4         lightDirN         = lightPos - pos;
-    const float        distance          = math::length(lightDirN);
-    lightDirN                            = lightDirN * math::rcp(distance); // normalize
-    math::vec4         hemisphere        = math::normalize(viewDir + lightDirN);
-    const float        attenuation       = math::rcp(distance);
-    math::vec4         radianceObj       = pUniforms->light.diffuse * attenuation * diffuseIntensity;
-
-    const float        ndf               = distribution_ggx(norm, hemisphere, roughness);
-    const float        geom              = geometry_smith(norm, viewDir, lightDirN, roughness);
-    const math::vec4   fresnel           = fresnel_schlick(math::max(math::dot(hemisphere, viewDir), 0.f), surfaceReflection);
-
-    const math::vec4   brdf              = fresnel * ndf * geom;
-    const float        cookTorrance      = 4.f * math::max(math::dot(norm, viewDir), 0.f) * math::max(math::dot(norm, lightDirN), 0.f) + LS_EPSILON;  // avoid divide-by-0
-    const math::vec4   specular          = brdf * math::rcp(cookTorrance);
-
-    const math::vec4&  specContrib       = fresnel;
-    const math::vec4   refractRatio      = (math::vec4{1.f} - specContrib) * (math::vec4{1.f} - metallic);
-
-    const float normDotLight             = math::max(math::dot(lightDirN, norm), 0.f);
-    lightDir0                            += (refractRatio * albedo * LS_PI_INVERSE + specular) * radianceObj * normDotLight;
-
-    const math::vec4   ambient           = pUniforms->light.ambient * ambientIntensity;
-
-    // Color normalization and light contribution
-    math::vec4 outRGB = albedo * (ambient + lightDir0);
-
-    // Tone mapping
-    //outRGB *= math::rcp(outRGB + math::vec4{1.f, 1.f, 1.f, 0.f});
-
-    // HDR Tone mapping
-    const float exposure = 4.f;
-    outRGB = math::vec4{1.f} - math::exp(-outRGB * exposure);
-    outRGB[3] = 1.f;
-
-    // Gamma correction
-    //const math::vec4 gamma = {1.f / 2.2f};
-    //outRGB = math::clamp(math::pow(outRGB, gamma), math::vec4{0.f}, math::vec4{1.f});
-    //outRGB[3] = 1.f;
-
-    output = outRGB;
-
-    return true;
-}
-
-
-
 SL_FragmentShader texture_frag_shader()
 {
     SL_FragmentShader shader;
@@ -622,7 +426,85 @@ SL_FragmentShader texture_frag_shader()
     #endif
 
     shader.depthMask   = SL_DEPTH_MASK_ON;
-    shader.shader      = _texture_frag_shader_spot;
+    shader.shader      = [](SL_FragmentParam& fragParams)->bool
+    {
+        const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
+        const math::vec4&    pos       = fragParams.pVaryings[0];
+        const math::vec4&    uv        = fragParams.pVaryings[1];
+        math::vec4&&         norm      = math::normalize(fragParams.pVaryings[2]);
+        const SL_Texture*    albedo    = pUniforms->pTexture;
+        float                attenuation;
+        math::vec4           pixel;
+        math::vec4           diffuse;
+        float                specular;
+
+        constexpr float diffuseMultiplier = 4.f;
+        constexpr float specularity = 0.5f;
+        constexpr float shininess = 50.f;
+
+        // normalize the texture colors to within (0.f, 1.f)
+        if (albedo->channels() == 3)
+        {
+            const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT>(*albedo, uv[0], uv[1]);
+            pixel = color_cast<float, uint8_t>(math::vec4_cast<uint8_t>(pixel8, 255));
+        }
+        else
+        {
+            pixel = color_cast<float, uint8_t>(sl_sample_nearest<math::vec4_t<uint8_t>, SL_WrapMode::REPEAT>(*albedo, uv[0], uv[1]));
+        }
+
+        #if SL_TEST_BUMP_MAPS
+        const SL_Texture* bumpMap = pUniforms->pBump;
+        if (bumpMap)
+        {
+            const math::vec4&& bumpedNorm = bumped_normal(bumpMap, uv);
+            norm = math::normalize(norm * bumpedNorm);
+        }
+        #endif
+
+        // Light direction calculation
+        const Light& l         = pUniforms->light;
+        math::vec4&& lightDir  = l.pos - pos;
+        const float  lightDist = math::length(lightDir);
+
+        // normalize
+        lightDir = lightDir * math::rcp(lightDist);
+
+        const math::vec4 ambient = l.ambient;
+
+        // Diffuse light calculation
+        {
+            const PointLight& p    = pUniforms->point;
+            const float lightAngle = math::max(math::dot(lightDir, norm), 0.f);
+            const float constant   = p.constant;
+            const float linear     = p.linear;
+            const float quadratic  = p.quadratic;
+
+            attenuation = math::rcp(constant + (linear * lightDist) + (quadratic * lightDist * lightDist));
+            diffuse     = l.diffuse * (lightAngle * attenuation) * diffuseMultiplier;
+        }
+
+        // gamma corection
+        pixel = math::pow(pixel, math::vec4{2.2f});
+
+        // specular reflection calculation
+        {
+            const math::vec4&  eyeVec     = math::normalize(pUniforms->camPos - pos);
+            const math::vec4&& halfVec    = math::normalize(lightDir + eyeVec);
+            const float        reflectDir = math::max(math::dot(norm, halfVec), 0.f);
+
+            specular = specularity * math::pow(reflectDir, shininess);
+        }
+
+        // output composition
+        {
+            const math::vec4&& accumulation = math::min(diffuse+specular+ambient, math::vec4{1.f});
+
+            fragParams.pOutputs[0] = pixel * accumulation;
+        }
+
+        return true;
+    };
 
     return shader;
 }
@@ -643,7 +525,101 @@ SL_FragmentShader texture_frag_shader_pbr()
     #endif
 
     shader.depthMask   = SL_DEPTH_MASK_ON;
-    shader.shader      = _texture_frag_shader_pbr;
+    shader.shader      = [](SL_FragmentParam& fragParams)->bool
+    {
+        const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
+        const math::vec4     pos       = fragParams.pVaryings[0];
+        const math::vec4     uv        = fragParams.pVaryings[1];
+        math::vec4&&         norm      = math::normalize(fragParams.pVaryings[2]);
+        math::vec4&          output    = fragParams.pOutputs[0];
+        const SL_Texture*    pTexture  = pUniforms->pTexture;
+        math::vec4           pixel;
+
+        // normalize the texture colors to within (0.f, 1.f)
+        if (pTexture->channels() == 3)
+        {
+            const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT>(*pTexture, uv[0], uv[1]);
+            const math::vec4_t<uint8_t>&& pixelF = math::vec4_cast<uint8_t>(pixel8, 255);
+            pixel = color_cast<float, uint8_t>(pixelF);
+        }
+        else
+        {
+            const math::vec4_t<uint8_t>&& pixelF = sl_sample_nearest<math::vec4_t<uint8_t>, SL_WrapMode::REPEAT>(*pTexture, uv[0], uv[1]);
+            pixel = color_cast<float, uint8_t>(pixelF);
+        }
+
+        #if SL_TEST_BUMP_MAPS
+        const SL_Texture* bumpMap = pUniforms->pBump;
+        if (bumpMap)
+        {
+            const math::vec4&& bumpedNorm = bumped_normal(bumpMap, uv);
+            norm = math::normalize(norm * bumpedNorm);
+        }
+        #endif
+
+        // gamma correction
+        pixel = math::pow(pixel, math::vec4{2.2f});
+
+        // surface model
+        const math::vec4     camPos           = pUniforms->camPos;
+        const math::vec4     viewDir          = math::normalize(camPos - pos);
+        const math::vec4     lightPos         = pUniforms->light.pos;
+        const math::vec4     albedo           = pixel;
+        constexpr float      metallic         = 0.4f;
+        constexpr float      roughness        = 0.35f;
+        constexpr float      ambientIntensity = 0.5f;
+        constexpr float      diffuseIntensity = 50.f;
+
+        // Metallic reflectance at a normal incidence
+        // 0.04f should be close to plastic.
+        const math::vec4   surfaceConstant   = {0.4f, 0.4f, 0.4f, 1.f};
+        const math::vec4&& surfaceReflection = math::mix(surfaceConstant, albedo, metallic);
+
+        math::vec4         lightDir0         = {0.f};
+
+        math::vec4         lightDirN         = lightPos - pos;
+        const float        distance          = math::length(lightDirN);
+        lightDirN                            = lightDirN * math::rcp(distance); // normalize
+        math::vec4         hemisphere        = math::normalize(viewDir + lightDirN);
+        const float        attenuation       = math::rcp(distance);
+        math::vec4         radianceObj       = pUniforms->light.diffuse * attenuation * diffuseIntensity;
+
+        const float        ndf               = distribution_ggx(norm, hemisphere, roughness);
+        const float        geom              = geometry_smith(norm, viewDir, lightDirN, roughness);
+        const math::vec4   fresnel           = fresnel_schlick(math::max(math::dot(hemisphere, viewDir), 0.f), surfaceReflection);
+
+        const math::vec4   brdf              = fresnel * ndf * geom;
+        const float        cookTorrance      = 4.f * math::max(math::dot(norm, viewDir), 0.f) * math::max(math::dot(norm, lightDirN), 0.f) + LS_EPSILON;  // avoid divide-by-0
+        const math::vec4   specular          = brdf * math::rcp(cookTorrance);
+
+        const math::vec4&  specContrib       = fresnel;
+        const math::vec4   refractRatio      = (math::vec4{1.f} - specContrib) * (math::vec4{1.f} - metallic);
+
+        const float normDotLight             = math::max(math::dot(lightDirN, norm), 0.f);
+        lightDir0                            += (refractRatio * albedo * LS_PI_INVERSE + specular) * radianceObj * normDotLight;
+
+        const math::vec4   ambient           = pUniforms->light.ambient * ambientIntensity;
+
+        // Color normalization and light contribution
+        math::vec4 outRGB = albedo * (ambient + lightDir0);
+
+        // Tone mapping
+        //outRGB *= math::rcp(outRGB + math::vec4{1.f, 1.f, 1.f, 0.f});
+
+        // HDR Tone mapping
+        const float exposure = 4.f;
+        outRGB = math::vec4{1.f} - math::exp(-outRGB * exposure);
+        outRGB[3] = 1.f;
+
+        // Gamma correction
+        //const math::vec4 gamma = {1.f / 2.2f};
+        //outRGB = math::clamp(math::pow(outRGB, gamma), math::vec4{0.f}, math::vec4{1.f});
+        //outRGB[3] = 1.f;
+
+        output = outRGB;
+
+        return true;
+    };
 
     return shader;
 }
@@ -776,39 +752,39 @@ utils::Pointer<SL_SceneGraph> create_context()
     size_t depthId = context.create_texture();
 
     retCode = context.num_threads(SL_TEST_MAX_THREADS);
-    assert(retCode == (int)SL_TEST_MAX_THREADS);
+    LS_ASSERT(retCode == (int)SL_TEST_MAX_THREADS);
 
     SL_Texture& tex = context.texture(texId);
     retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     SL_Texture& depth = context.texture(depthId);
     retCode = depth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     SL_Framebuffer& fbo = context.framebuffer(fboId);
     retCode = fbo.reserve_color_buffers(1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = fbo.attach_color_buffer(0, tex);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = fbo.attach_depth_buffer(depth);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     fbo.clear_color_buffers();
     fbo.clear_depth_buffer();
 
     retCode = fbo.valid();
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     opts.packNormals = true;
     retCode = meshLoader.load("testdata/sibenik/sibenik.obj", opts);
     //retCode = meshLoader.load("testdata/sponza/sponza.obj", opts);
-    assert(retCode != 0);
+    LS_ASSERT(retCode != 0);
 
     retCode = (int)pGraph->import(meshLoader.data());
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     pGraph->mCurrentTransforms[0].scale( math::vec3{20.f});
     //pGraph->mCurrentTransforms[0].scale(math::vec3{0.25f});
@@ -838,10 +814,10 @@ utils::Pointer<SL_SceneGraph> create_context()
     size_t texShaderPbrId  = context.create_shader(texVertShader,  texFragShaderPbr,  uboId);
     size_t normShaderPbrId = context.create_shader(normVertShader, normFragShaderPbr, uboId);
 
-    assert(texShaderId == 0);
-    assert(normShaderId == 1);
-    assert(texShaderPbrId == 2);
-    assert(normShaderPbrId == 3);
+    LS_ASSERT(texShaderId == 0);
+    LS_ASSERT(normShaderId == 1);
+    LS_ASSERT(texShaderPbrId == 2);
+    LS_ASSERT(normShaderPbrId == 3);
     (void)texShaderId;
     (void)normShaderId;
     (void)texShaderPbrId;
@@ -1033,7 +1009,7 @@ int main()
             }
 
             #if SL_BENCHMARK_SCENE
-                if (totalFrames >= 1200)
+                if (totalFrames >= 5000)
                 {
                     shouldQuit = true;
                 }

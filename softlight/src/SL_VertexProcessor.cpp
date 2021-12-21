@@ -67,21 +67,12 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
         }
 
         // Let all threads know they can process fragments.
-        std::atomic_thread_fence(std::memory_order_release);
-        std::atomic_store_explicit(&mFragProcessors->count, syncPoint1, std::memory_order_relaxed);
+        mFragProcessors->count.store(syncPoint1, std::memory_order_release);
     }
     else
     {
-        do
+        while (mFragProcessors->count.load(std::memory_order_consume) > 0)
         {
-            int_fast64_t activeProcCount = mFragProcessors->count.load(std::memory_order_relaxed);
-            std::atomic_thread_fence(std::memory_order_acquire);
-
-            if (LS_LIKELY(activeProcCount < 0))
-            {
-                break;
-            }
-
             switch (currentIters)
             {
                 case 8:
@@ -99,11 +90,8 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
                     currentIters = ls::math::min(currentIters+currentIters, maxIters);
             }
         }
-        while (true);
 
-        maxElements = mBinsUsed->count.load(std::memory_order_relaxed);
-        std::atomic_thread_fence(std::memory_order_acquire);
-        maxElements = math::min<uint64_t>(maxElements, SL_SHADER_MAX_BINNED_PRIMS);
+        maxElements = math::min<uint64_t>(mBinsUsed->count.load(std::memory_order_consume), SL_SHADER_MAX_BINNED_PRIMS);
     }
 
     static_assert(ls::setup::IsBaseOf<SL_FragmentProcessor, RasterizerType>::value, "Template parameter 'RasterizerType' must derive from SL_FragmentProcessor.");
@@ -126,28 +114,16 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
 
     // Indicate to all threads we can now process more vertices
     syncPoint2 = mFragProcessors->count.fetch_add(1, std::memory_order_acq_rel);
+
     if (syncPoint2 == -2)
     {
-        std::atomic_thread_fence(std::memory_order_release);
-        mBinsUsed->count.store(0, std::memory_order_relaxed);
-        mFragProcessors->count.store(0, std::memory_order_relaxed);
+        mBinsUsed->count.store(0, std::memory_order_release);
+        mFragProcessors->count.store(0, std::memory_order_release);
         return;
     }
 
-    // Wait for the last thread to reset the number of available bins.
-    int_fast64_t shouldContinue;
-    currentIters = 1;
-
     do
     {
-        shouldContinue = mFragProcessors->count.load(std::memory_order_relaxed);
-        std::atomic_thread_fence(std::memory_order_acquire);
-
-        if (LS_UNLIKELY(shouldContinue >= 0))
-        {
-            break;
-        }
-
         // wait until all fragments are rendered across the other threads
         switch (currentIters)
         {
@@ -166,7 +142,7 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
                 currentIters = ls::math::min(currentIters+currentIters, maxIters);
         }
     }
-    while (true);
+    while (mFragProcessors->count.load(std::memory_order_consume) < 0);
 }
 
 

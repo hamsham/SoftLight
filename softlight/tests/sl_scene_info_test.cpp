@@ -29,10 +29,10 @@ utils::Pointer<SL_SceneGraph> load_scene(const std::string& fileName)
     utils::Pointer<SL_SceneGraph> pGraph{new SL_SceneGraph{}};
 
     retCode = meshLoader.load(fileName);
-    assert(retCode != 0);
+    LS_ASSERT(retCode != 0);
 
     retCode = (int)pGraph->import(meshLoader.data());
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     return pGraph;
 }

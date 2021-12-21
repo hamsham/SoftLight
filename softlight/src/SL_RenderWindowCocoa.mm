@@ -353,7 +353,7 @@ int SL_RenderWindowCocoa::set_title(const char* const pName) noexcept
 -------------------------------------*/
 int SL_RenderWindowCocoa::init(unsigned width, unsigned height) noexcept
 {
-    assert(!this->valid());
+    LS_ASSERT(!this->valid());
 
     LS_LOG_MSG("SL_RenderWindowCocoa ", this, " initializing");
     sl_window_init_app();
@@ -655,7 +655,7 @@ void SL_RenderWindowCocoa::update() noexcept
         default:
             // We should not be in a "starting" or "closed" state
             LS_LOG_ERR("Encountered unexpected window state ", mCurrentState, '.');
-            assert(false); // assertions are disabled on release builds
+            LS_ASSERT(false); // assertions are disabled on release builds
             mCurrentState = WindowStateInfo::WINDOW_CLOSING;
             return;
     }
@@ -709,7 +709,7 @@ bool SL_RenderWindowCocoa::pause() noexcept
         // These states can't be used to transition to a paused state
         case WindowStateInfo::WINDOW_CLOSED:
         case WindowStateInfo::WINDOW_STARTING:
-            assert(false); // fail in case of error
+            LS_ASSERT(false); // fail in case of error
             break;
     }
 
@@ -746,7 +746,7 @@ bool SL_RenderWindowCocoa::run() noexcept
         // These states can't be used to transition to a paused state
         case WindowStateInfo::WINDOW_CLOSED:
         case WindowStateInfo::WINDOW_STARTING:
-            assert(false); // fail in case of error
+            LS_ASSERT(false); // fail in case of error
             break;
     }
 
@@ -978,8 +978,8 @@ bool SL_RenderWindowCocoa::set_keys_repeat(bool doKeysRepeat) noexcept
 -------------------------------------*/
 void SL_RenderWindowCocoa::render(SL_WindowBuffer& buffer) noexcept
 {
-    assert(this->valid());
-    assert(buffer.native_handle() != nullptr);
+    LS_ASSERT(this->valid());
+    LS_ASSERT(buffer.native_handle() != nullptr);
 
     SL_WindowBufferCocoa& buf  = static_cast<SL_WindowBufferCocoa&>(buffer);
     //CGImageRef            img  = (CGImageRef)buf.native_handle();

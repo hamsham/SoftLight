@@ -108,7 +108,7 @@ SL_RenderWindowXlib::SL_RenderWindowXlib() noexcept :
     mCaptureMouse{false},
     mClipboard{nullptr}
 {
-    ls::utils::runtime_assert(XInitThreads() != False, ls::utils::LS_WARNING, "Unable to initialize Xlib for threading.");
+    ls::utils::runtime_assert(XInitThreads() != False, ls::utils::ErrorLevel::LS_WARNING, "Unable to initialize Xlib for threading.");
 }
 
 
@@ -352,7 +352,7 @@ int SL_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
         | OwnerGrabButtonMask
         | 0;
 
-    ls::utils::runtime_assert(!this->valid(), ls::utils::LS_ERROR, "Cannot initialize an already valid window.");
+    ls::utils::runtime_assert(!this->valid(), ls::utils::ErrorLevel::LS_ERROR, "Cannot initialize an already valid window.");
 
     utils::fast_fill((char*)&visualTemplate, 0, sizeof(XVisualInfo));
     utils::fast_fill((char*)&windowAttribs, 0, sizeof(XSetWindowAttributes));
@@ -369,7 +369,7 @@ int SL_RenderWindowXlib::init(unsigned width, unsigned height) noexcept
         LS_LOG_MSG("\tDone.");
     }
     {
-    LS_LOG_MSG("Querying X server for display configuration.");
+        LS_LOG_MSG("Querying X server for display configuration.");
         int numVisuals;
         visualTemplate.screen       = DefaultScreen(pDisplay);
         visualTemplate.depth        = 24;

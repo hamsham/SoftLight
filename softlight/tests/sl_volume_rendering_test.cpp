@@ -500,39 +500,39 @@ utils::Pointer<SL_SceneGraph> init_volume_context()
 
     SL_Texture& tex = context.texture(texId);
     retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_FLOAT, IMAGE_WIDTH/2, IMAGE_HEIGHT/2, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     SL_Texture& depth = context.texture(depthId);
     retCode = depth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH/2, IMAGE_HEIGHT/2, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     SL_Framebuffer& fbo = context.framebuffer(fboId);
     retCode = fbo.reserve_color_buffers(1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = fbo.attach_color_buffer(0, tex);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = fbo.attach_depth_buffer(depth);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     fbo.clear_color_buffers();
     fbo.clear_depth_buffer();
 
     retCode = fbo.valid();
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = read_volume_file(*pGraph); // creates volume at texture index 2
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = create_opacity_map(*pGraph); // creates volume at texture index 3
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = create_color_map(*pGraph); // creates volume at texture index 4
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = scene_load_cube(*pGraph, math::vec3{1.f, 1.f, 1.f});
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     const SL_VertexShader&&   volVertShader = volume_vert_shader();
     const SL_FragmentShader&& volFragShader = volume_frag_shader();
@@ -546,7 +546,7 @@ utils::Pointer<SL_SceneGraph> init_volume_context()
     pUniforms->pColorMap = &context.texture(4);
 
     size_t volShaderId = context.create_shader(volVertShader, volFragShader, uboId);
-    assert(volShaderId == 0);
+    LS_ASSERT(volShaderId == 0);
     (void)volShaderId;
 
     pGraph->update();

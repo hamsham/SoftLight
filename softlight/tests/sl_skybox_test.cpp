@@ -329,7 +329,7 @@ int scene_load_cube(SL_SceneGraph& graph)
         vao.set_binding(1, numVboBytes, stride, SL_Dimension::VERTEX_DIMENSION_3, SL_DataType::VERTEX_DATA_FLOAT);
         numVboBytes += sizeof(uvs);
 
-        assert(numVboBytes == (numVerts * stride * 2));
+        LS_ASSERT(numVboBytes == (numVerts * stride * 2));
     }
 
     graph.mMeshes.emplace_back(SL_Mesh());
@@ -361,27 +361,27 @@ utils::Pointer<SL_SceneGraph> init_sky_context()
 
     SL_Texture& tex = context.texture(texId);
     retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     SL_Texture& depth = context.texture(depthId);
     retCode = depth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     SL_Framebuffer& fbo = context.framebuffer(fboId);
     retCode = fbo.reserve_color_buffers(1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = fbo.attach_color_buffer(0, tex);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = fbo.attach_depth_buffer(depth);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     fbo.clear_color_buffers();
     fbo.clear_depth_buffer();
 
     retCode = fbo.valid();
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     std::array<std::string, 6> files{
         "testdata/skybox/front.jpg",
@@ -393,10 +393,10 @@ utils::Pointer<SL_SceneGraph> init_sky_context()
     };
 
     retCode = read_skybox_files(*pGraph, files); // creates volume at texture index 2-7
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = scene_load_cube(*pGraph);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     const SL_VertexShader&&   skyVertShader = sky_vert_shader();
     const SL_FragmentShader&& skyFragShader = sky_frag_shader();
@@ -408,7 +408,7 @@ utils::Pointer<SL_SceneGraph> init_sky_context()
     pUniforms->pCubeMap = &context.texture(2);
 
     size_t volShaderId = context.create_shader(skyVertShader, skyFragShader, uboId);
-    assert(volShaderId == 0);
+    LS_ASSERT(volShaderId == 0);
     (void)volShaderId;
 
     pGraph->update();

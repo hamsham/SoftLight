@@ -423,7 +423,7 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     size_t depthId = context.create_texture();
     SL_Texture& depth = context.texture(depthId);
     retCode = depth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     // FBO 0, compact YCoCg buffer
     {
@@ -431,23 +431,23 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
         size_t fboId = context.create_framebuffer();
         SL_Texture& tex = context.texture(texId);
         retCode = tex.init(SL_ColorDataType::SL_COLOR_RG_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-        assert(retCode == 0);
+        LS_ASSERT(retCode == 0);
 
         SL_Framebuffer& fboYcocg = context.framebuffer(fboId);
         retCode = fboYcocg.reserve_color_buffers(1);
-        assert(retCode == 0);
+        LS_ASSERT(retCode == 0);
 
         retCode = fboYcocg.attach_color_buffer(0, tex);
-        assert(retCode == 0);
+        LS_ASSERT(retCode == 0);
 
         retCode = fboYcocg.attach_depth_buffer(depth);
-        assert(retCode == 0);
+        LS_ASSERT(retCode == 0);
 
         fboYcocg.clear_color_buffers();
         fboYcocg.clear_depth_buffer();
 
         retCode = fboYcocg.valid();
-        assert(retCode == 0);
+        LS_ASSERT(retCode == 0);
     }
 
     // FBO 1, decompressed RGB
@@ -456,34 +456,34 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
         size_t fboId = context.create_framebuffer();
         SL_Texture& tex = context.texture(texId);
         retCode = tex.init(SL_ColorDataType::SL_COLOR_RGB_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-        assert(retCode == 0);
+        LS_ASSERT(retCode == 0);
 
         SL_Framebuffer& fboRgb = context.framebuffer(fboId);
         retCode = fboRgb.reserve_color_buffers(1);
-        assert(retCode == 0);
+        LS_ASSERT(retCode == 0);
 
         retCode = fboRgb.attach_color_buffer(0, tex);
-        assert(retCode == 0);
+        LS_ASSERT(retCode == 0);
 
         retCode = fboRgb.attach_depth_buffer(depth);
-        assert(retCode == 0);
+        LS_ASSERT(retCode == 0);
 
         fboRgb.clear_color_buffers();
         fboRgb.clear_depth_buffer();
 
         retCode = fboRgb.valid();
-        assert(retCode == 0);
+        LS_ASSERT(retCode == 0);
     }
 
     retCode = load_quad_into_scene(*pGraph);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     //retCode = meshLoader.load("testdata/heart/heart.obj");
     retCode = meshLoader.load("testdata/african_head/african_head.obj");
-    assert(retCode != 0);
+    LS_ASSERT(retCode != 0);
 
     retCode = (int)pGraph->import(meshLoader.data());
-    assert(retCode != 0);
+    LS_ASSERT(retCode != 0);
 
     // Always make sure the scene graph is updated before rendering
     pGraph->mCurrentTransforms[1].move(math::vec3{0.f, 30.f, 0.f});
@@ -508,13 +508,13 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     size_t testShaderId1 = context.create_shader(vertShader1,  fragShader1,  uboId);
     size_t testShaderId2 = context.create_shader(vertShader1,  fragShader2,  uboId);
 
-    assert(testShaderId0 == 0);
+    LS_ASSERT(testShaderId0 == 0);
     (void)testShaderId0;
 
-    assert(testShaderId1 == 1);
+    LS_ASSERT(testShaderId1 == 1);
     (void)testShaderId1;
 
-    assert(testShaderId2 == 2);
+    LS_ASSERT(testShaderId2 == 2);
     (void)testShaderId2;
 
     (void)retCode;
@@ -718,10 +718,10 @@ int main()
     }
 
     retCode = sl_img_save_ppm(tex.width(), tex.height(), reinterpret_cast<const SL_ColorRGB8*>(tex.data()), "ycocg_test_image.ppm");
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = sl_img_save_ppm(depth.width(), depth.height(), reinterpret_cast<const SL_ColorRf*>(depth.data()), "ycocg_test_depth.ppm");
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     pRenderBuf->terminate();
     return pWindow->destroy();

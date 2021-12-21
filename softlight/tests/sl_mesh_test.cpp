@@ -149,37 +149,37 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     size_t depthId = context.create_texture();
 
     retCode = context.num_threads(SL_TEST_MAX_THREADS);
-    assert(retCode == (int)std::thread::hardware_concurrency());
+    LS_ASSERT(retCode == (int)SL_TEST_MAX_THREADS);
 
     SL_Texture& tex = context.texture(texId);
     retCode = tex.init(SL_ColorDataType::SL_COLOR_RGB_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     SL_Texture& depth = context.texture(depthId);
     retCode = depth.init(SL_ColorDataType::SL_COLOR_R_FLOAT, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     SL_Framebuffer& fbo = context.framebuffer(fboId);
     retCode = fbo.reserve_color_buffers(1);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = fbo.attach_color_buffer(0, tex);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = fbo.attach_depth_buffer(depth);
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     fbo.clear_color_buffers();
     fbo.clear_depth_buffer();
 
     retCode = fbo.valid();
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = meshLoader.load("testdata/heart/heart.obj");
-    assert(retCode != 0);
+    LS_ASSERT(retCode != 0);
 
     retCode = (int)pGraph->import(meshLoader.data());
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     // Always make sure the scene graph is updated before rendering
     pGraph->mCurrentTransforms[0].scale(math::vec3{1.f});
@@ -196,7 +196,7 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     pUniforms->lightCol = math::vec4{1.f, 0.9f, 0.8f, 1.f};
     size_t testShaderId = context.create_shader(vertShader,  fragShader,  uboId);
 
-    assert(testShaderId == 0);
+    LS_ASSERT(testShaderId == 0);
     (void)testShaderId;
     (void)retCode;
 
@@ -266,7 +266,7 @@ int main()
     ls::utils::Clock<float> timer;
     timer.start();
 
-    constexpr int numFrames = 600;
+    constexpr int numFrames = 2;
     for (int i = 0; i < numFrames; ++i)
     {
         context.clear_framebuffer(0, 0, SL_ColorRGBAd{0.6, 0.6, 0.6, 1.0}, 0.0);
@@ -280,10 +280,10 @@ int main()
         << " seconds." << std::endl;
 
     retCode = sl_img_save_ppm(tex.width(), tex.height(), reinterpret_cast<const SL_ColorRGB8*>(tex.data()), "mesh_test_image.ppm");
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     retCode = sl_img_save_ppm(depth.width(), depth.height(), reinterpret_cast<const SL_ColorRf*>(depth.data()), "mesh_test_depth.ppm");
-    assert(retCode == 0);
+    LS_ASSERT(retCode == 0);
 
     return retCode;
 }
