@@ -79,6 +79,7 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
 
         _mm256_store_ps(o + 0,  v0);
         _mm256_store_ps(o + 8,  v2);
+        _mm256_zeroupper();
 
     #elif defined(LS_X86_SSE)
         (void)numVaryings;
