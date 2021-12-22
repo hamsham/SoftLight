@@ -269,12 +269,14 @@ SL_FragmentShader texture_frag_shader()
         // normalize the texture colors to within (0.f, 1.f)
         if (albedo->channels() == 3)
         {
-            const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT>(*albedo, uv[0], uv[1]);
+            //const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::ORDERED>(*albedo, uv[0], uv[1]);
+            const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::SWIZZLED>(*albedo, uv[0], uv[1]);
             pixel = color_cast<float, uint8_t>(math::vec4_cast<uint8_t>(pixel8, 255));
         }
         else
         {
-            pixel = color_cast<float, uint8_t>(sl_sample_nearest<math::vec4_t<uint8_t>, SL_WrapMode::REPEAT>(*albedo, uv[0], uv[1]));
+            //pixel = color_cast<float, uint8_t>(sl_sample_nearest<math::vec4_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::ORDERED>(*albedo, uv[0], uv[1]));
+            pixel = color_cast<float, uint8_t>(sl_sample_nearest<math::vec4_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::SWIZZLED>(*albedo, uv[0], uv[1]));
         }
 
         #if SL_TEST_BUMP_MAPS
@@ -447,8 +449,6 @@ utils::Pointer<SL_SceneGraph> create_context()
 {
     int retCode = 0;
 
-    SL_SceneFileLoader meshLoader;
-    SL_SceneLoadOpts opts = sl_default_scene_load_opts();
     utils::Pointer<SL_SceneGraph> pGraph{new SL_SceneGraph{}};
     SL_Context& context = pGraph->mContext;
     size_t fboId   = context.create_framebuffer();
@@ -482,7 +482,11 @@ utils::Pointer<SL_SceneGraph> create_context()
     retCode = fbo.valid();
     LS_ASSERT(retCode == 0);
 
+    SL_SceneLoadOpts opts = sl_default_scene_load_opts();
     opts.packNormals = true;
+    opts.swizzleTexels = true;
+
+    SL_SceneFileLoader meshLoader;
     retCode = meshLoader.load("testdata/sibenik/sibenik.obj", opts);
     //retCode = meshLoader.load("testdata/sponza/sponza.obj", opts);
     LS_ASSERT(retCode != 0);
@@ -528,7 +532,7 @@ utils::Pointer<SL_SceneGraph> create_context()
 /*-----------------------------------------------------------------------------
  * SDL Texture Handling
 -----------------------------------------------------------------------------*/
-inline SDL_PixelFormatEnum sl_pixel_fmt_to_sdl(const SL_ColorDataType slFmt) noexcept
+inline Uint32 sl_pixel_fmt_to_sdl(const SL_ColorDataType slFmt) noexcept
 {
     switch (slFmt)
     {

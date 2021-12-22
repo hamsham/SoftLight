@@ -137,9 +137,9 @@ inline LS_INLINE math::vec4 calc_normal(const SL_Texture& tex, const math::vec4&
     const math::vec4&& c = p - math::vec4{0.f, 0.f, stepLen, 0.f};
 
     return (math::normalize((math::vec4)math::vec4_t<unsigned int>{
-        sl_sample_trilinear<SL_ColorRType<unsigned char>, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(tex, a[0], a[1], a[2]).r,
-        sl_sample_trilinear<SL_ColorRType<unsigned char>, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(tex, b[0], b[1], b[2]).r,
-        sl_sample_trilinear<SL_ColorRType<unsigned char>, SL_WrapMode::EDGE, SL_TEXELS_ORDERED>(tex, c[0], c[1], c[2]).r,
+        sl_sample_trilinear<SL_ColorRType<unsigned char>, SL_WrapMode::EDGE, SL_TexelOrder::ORDERED>(tex, a[0], a[1], a[2]).r,
+        sl_sample_trilinear<SL_ColorRType<unsigned char>, SL_WrapMode::EDGE, SL_TexelOrder::ORDERED>(tex, b[0], b[1], b[2]).r,
+        sl_sample_trilinear<SL_ColorRType<unsigned char>, SL_WrapMode::EDGE, SL_TexelOrder::ORDERED>(tex, c[0], c[1], c[2]).r,
         0u
     }) * 2.f) - math::vec4{1.f, 1.f, 1.f, 0.f};
 }
@@ -216,7 +216,7 @@ bool _volume_frag_shader(SL_FragmentParam& fragParam)
         if (intensity >= 17)
         {
             // regular opacity (doesn't take ray steps into account).
-            srcAlpha = alphaTex.raw_texel<float>(intensity);// * ((1.f+(float)i) * step);
+            srcAlpha = alphaTex.texel<float>(intensity);// * ((1.f+(float)i) * step);
             if (srcAlpha > 0.f)
             {
                 const math::vec4&& norm      = calc_normal<numSteps>(volumeTex, rayPos);
@@ -225,7 +225,7 @@ bool _volume_frag_shader(SL_FragmentParam& fragParam)
                 //const math::vec3&& volColor  = math::vec3_cast(norm);
                 //const math::vec3&& volColor  = math::vec3{(float)intensity/256.f};
                 //const math::vec3&& volColor  = colorTex.raw_texel<SL_ColorRGBf>(intensity);
-                const math::vec3&& volColor  = colorTex.raw_texel<SL_ColorRGBf>(intensity) * luminance;
+                const math::vec3&& volColor  = colorTex.texel<SL_ColorRGBf>(intensity) * luminance;
                 const math::vec4&& srcRGBA   = math::vec4_cast(volColor, 1.f);
 
                 // corrected opacity, from:
@@ -415,7 +415,7 @@ int create_opacity_map(SL_SceneGraph& graph)
     {
         for (uint16_t i = begin; i < end; ++i)
         {
-            opacityTex.raw_texel<float>(i, 0, 0) = opacity;
+            opacityTex.texel<float>(i) = opacity;
         }
     };
 
@@ -462,7 +462,7 @@ int create_color_map(SL_SceneGraph& graph)
     {
         for (uint16_t i = begin; i < end; ++i)
         {
-            colorTex.raw_texel<SL_ColorRGBf>(i, 0, 0) = color;
+            colorTex.texel<SL_ColorRGBf>(i) = color;
         }
     };
 

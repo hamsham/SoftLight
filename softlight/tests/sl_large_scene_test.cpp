@@ -445,12 +445,14 @@ SL_FragmentShader texture_frag_shader()
         // normalize the texture colors to within (0.f, 1.f)
         if (albedo->channels() == 3)
         {
-            const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT>(*albedo, uv[0], uv[1]);
+            const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::ORDERED>(*albedo, uv[0], uv[1]);
+            //const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::SWIZZLED>(*albedo, uv[0], uv[1]);
             pixel = color_cast<float, uint8_t>(math::vec4_cast<uint8_t>(pixel8, 255));
         }
         else
         {
-            pixel = color_cast<float, uint8_t>(sl_sample_nearest<math::vec4_t<uint8_t>, SL_WrapMode::REPEAT>(*albedo, uv[0], uv[1]));
+            pixel = color_cast<float, uint8_t>(sl_sample_nearest<math::vec4_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::ORDERED>(*albedo, uv[0], uv[1]));
+            //pixel = color_cast<float, uint8_t>(sl_sample_nearest<math::vec4_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::SWIZZLED>(*albedo, uv[0], uv[1]));
         }
 
         #if SL_TEST_BUMP_MAPS
@@ -538,13 +540,15 @@ SL_FragmentShader texture_frag_shader_pbr()
         // normalize the texture colors to within (0.f, 1.f)
         if (pTexture->channels() == 3)
         {
-            const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT>(*pTexture, uv[0], uv[1]);
+            const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::ORDERED>(*pTexture, uv[0], uv[1]);
+            //const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::SWIZZLED>(*pTexture, uv[0], uv[1]);
             const math::vec4_t<uint8_t>&& pixelF = math::vec4_cast<uint8_t>(pixel8, 255);
             pixel = color_cast<float, uint8_t>(pixelF);
         }
         else
         {
-            const math::vec4_t<uint8_t>&& pixelF = sl_sample_nearest<math::vec4_t<uint8_t>, SL_WrapMode::REPEAT>(*pTexture, uv[0], uv[1]);
+            const math::vec4_t<uint8_t>&& pixelF = sl_sample_nearest<math::vec4_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::ORDERED>(*pTexture, uv[0], uv[1]);
+            //const math::vec4_t<uint8_t>&& pixelF = sl_sample_nearest<math::vec4_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::SWIZZLED>(*pTexture, uv[0], uv[1]);
             pixel = color_cast<float, uint8_t>(pixelF);
         }
 
@@ -743,8 +747,6 @@ utils::Pointer<SL_SceneGraph> create_context()
 {
     int retCode = 0;
 
-    SL_SceneFileLoader meshLoader;
-    SL_SceneLoadOpts opts = sl_default_scene_load_opts();
     utils::Pointer<SL_SceneGraph> pGraph{new SL_SceneGraph{}};
     SL_Context& context = pGraph->mContext;
     size_t fboId   = context.create_framebuffer();
@@ -778,7 +780,11 @@ utils::Pointer<SL_SceneGraph> create_context()
     retCode = fbo.valid();
     LS_ASSERT(retCode == 0);
 
+    SL_SceneLoadOpts opts = sl_default_scene_load_opts();
     opts.packNormals = true;
+    //opts.swizzleTexels = true;
+
+    SL_SceneFileLoader meshLoader;
     retCode = meshLoader.load("testdata/sibenik/sibenik.obj", opts);
     //retCode = meshLoader.load("testdata/sponza/sponza.obj", opts);
     LS_ASSERT(retCode != 0);
@@ -854,6 +860,7 @@ int main()
     float dy = 0.f;
     bool usePbr = false;
     unsigned numThreads = context.num_threads();
+    size_t texIndex = 0;
 
     SL_Transform camTrans;
     camTrans.type(SL_TransformType::SL_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
@@ -970,6 +977,18 @@ int main()
                         shouldQuit = true;
                         break;
 
+                    case SL_KeySymbol::KEY_SYM_PG_UP:
+                        texIndex = (texIndex + 1) % context.textures().size();
+                        break;
+
+                    case SL_KeySymbol::KEY_SYM_PG_DOWN:
+                        texIndex = (texIndex > 0) ? (texIndex-1) : (context.textures().size()-1);
+                        break;
+
+                    case SL_KeySymbol::KEY_SYM_HOME:
+                        texIndex = 0;
+                        break;
+
                     default:
                         break;
                 }
@@ -1035,7 +1054,7 @@ int main()
 
             render_scene(pGraph.get(), pWindow->width(), pWindow->height(), projMatrix, camTrans, usePbr);
 
-            context.blit(*pRenderBuf, 0);
+            context.blit(*pRenderBuf, texIndex);
             pWindow->render(*pRenderBuf);
         }
 

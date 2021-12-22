@@ -316,7 +316,7 @@ void SL_TriRasterizer::flush_scanlines(const SL_FragmentBin* pBin, uint32_t xMin
     const float yf = (float)y;
     uint32_t x = xMin;
 
-    depth_type*       pDepthBuf   = mFbo->get_depth_buffer()->row_pointer<depth_type>((uint16_t)y) + xMin;
+    depth_type*       pDepthBuf   = mFbo->get_depth_buffer()->texel_pointer<depth_type>((uint16_t)xMin, (uint16_t)y);
 
     const math::vec4* pPoints     = pBin->mScreenCoords;
     const math::vec4  depth       {pPoints[0][2], pPoints[1][2], pPoints[2][2], 0.f};
@@ -504,7 +504,7 @@ void SL_TriRasterizer::flush_fragments(
 
             if (LS_LIKELY(haveDepthMask != 0))
             {
-                pDepthBuf->raw_texel<depth_type>(fragParams.coord.x, fragParams.coord.y) = (depth_type)fragParams.coord.depth;
+                pDepthBuf->texel<depth_type>(fragParams.coord.x, fragParams.coord.y) = (depth_type)fragParams.coord.depth;
             }
         }
     }
@@ -566,7 +566,7 @@ void SL_TriRasterizer::render_wireframe(const SL_Texture* depthBuffer) const noe
             const int32_t d0 = math::max(math::abs(xMinMax0[0]-xMinMax1[0]), 1);
             const int32_t d1 = math::max(math::abs(xMinMax0[1]-xMinMax1[1]), 1);
 
-            const depth_type* const pDepth = depthBuffer->row_pointer<depth_type>(y);
+            const depth_type* const pDepth = depthBuffer->texel_pointer<depth_type>(0, (uint16_t)y);
 
             for (int32_t ix = 0, x = xMinMax0[0]; x < xMinMax0[1]; ++ix, ++x)
             {
@@ -705,7 +705,7 @@ void SL_TriRasterizer::render_triangle(const SL_Texture* depthBuffer) const noex
 
             math::vec4&& xf{(float)x};
             math::vec4&& bcX = math::fmadd(bcClipSpace[0], xf, bcY);
-            const depth_type* pDepth = depthBuffer->row_pointer<depth_type>(y) + x;
+            const depth_type* pDepth = depthBuffer->texel_pointer<depth_type>((uint16_t)x, (uint16_t)y);
 
             do
             {
@@ -887,7 +887,7 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
             }
 
             const int32_t     y16    = y << 16;
-            const depth_type* pDepth = depthBuffer->row_pointer<depth_type>((uintptr_t)y) + _mm_cvtsi128_si32(xMin);
+            const depth_type* pDepth = depthBuffer->texel_pointer<depth_type>((uint16_t)_mm_cvtsi128_si32(xMin), (uint16_t)y);
             const __m128      bcY    = _mm_fmadd_ps(bcClipSpace1, yf, bcClipSpace2);
             __m128i           x4     = _mm_add_epi32(_mm_set_epi32(3, 2, 1, 0), xMin);
             const __m128i     xMax4  = xMax;
@@ -1060,7 +1060,7 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
 
             if (LS_UNLIKELY(xMin < xMax))
             {
-                const depth_type*  pDepth = depthBuffer->row_pointer<depth_type>((uintptr_t)y) + xMin;
+                const depth_type* pDepth = depthBuffer->texel_pointer<depth_type>((uint16_t)xMin, (uint16_t)y);
                 const math::vec4&& bcY    = math::fmadd(bcClipSpace[1], math::vec4{yf}, bcClipSpace[2]);
                 math::vec4i&&      x4     = math::vec4i{0, 1, 2, 3} + xMin;
                 const math::vec4i  xMax4  {xMax};

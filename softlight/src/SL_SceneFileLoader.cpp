@@ -139,6 +139,7 @@ SL_SceneLoadOpts sl_default_scene_load_opts() noexcept
     opts.genFlatNormals = false;
     opts.genSmoothNormals = true;
     opts.genTangents = false;
+    opts.swizzleTexels = false;
 
     return opts;
 }
@@ -1029,7 +1030,9 @@ SL_Texture* SL_SceneFileLoader::load_texture_at_path(const std::string& path, SL
     const size_t loadedTexture = graph.mContext.create_texture();
     SL_Texture& t = graph.mContext.texture(loadedTexture);
 
-    if (t.init(imgLoader) != 0)
+    SL_TexelOrder texelOrder = mPreloader.mLoadOpts.swizzleTexels ? SL_TexelOrder::SWIZZLED : SL_TexelOrder::ORDERED;
+    //if (t.init(imgLoader, SL_TexelOrder::ORDERED) != 0)
+    if (t.init(imgLoader, texelOrder) != 0)
     {
         graph.mContext.destroy_texture(loadedTexture);
         return nullptr;

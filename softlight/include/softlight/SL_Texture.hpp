@@ -21,36 +21,6 @@ class SL_ImgFile;
 
 
 
-/*-----------------------------------------------------------------------------
- * Enumerations for texture wrapping/clamping
------------------------------------------------------------------------------*/
-enum SL_TexWrapMode : uint16_t
-{
-    SL_TEXTURE_WRAP_REPEAT,
-    SL_TEXTURE_WRAP_CUTOFF,
-    SL_TEXTURE_WRAP_CLAMP,
-
-    SL_TEXTURE_WRAP_DEFAULT = SL_TEXTURE_WRAP_REPEAT
-};
-
-
-
-enum SL_TexChunkInfo : uint32_t
-{
-    SL_TEXELS_PER_CHUNK = 4,
-    SL_TEXEL_SHIFTS_PER_CHUNK = sl_swizzle_ctz<uint32_t>(SL_TEXELS_PER_CHUNK) // log2(SL_TEXELS_PER_CHUNK)
-};
-
-
-
-enum SL_TexelOrder
-{
-    SL_TEXELS_ORDERED,
-    SL_TEXELS_SWIZZLED
-};
-
-
-
 /**----------------------------------------------------------------------------
  * @brief Generic texture Class
  *
@@ -68,13 +38,13 @@ class alignas(sizeof(uint64_t)) SL_Texture
 
     uint16_t mDepth; // 2 bytes
 
-    SL_ColorDataType mType; // 2 bytes
+    uint8_t mBytesPerTexel; // 1 byte
 
-    uint16_t mBytesPerTexel; // 2 bytes
+    uint8_t mNumChannels; // 1 byte
 
-    uint16_t mNumChannels; // 2 bytes
+    alignas(alignof(uint64_t)) char* mTexels; // 4-8 bytes
 
-    char* mTexels; // 4-8 bytes
+    SL_ColorDataType mType; // 1 byte
 
   public:
     ~SL_Texture() noexcept;
@@ -89,16 +59,16 @@ class alignas(sizeof(uint64_t)) SL_Texture
 
     SL_Texture& operator=(SL_Texture&& t) noexcept;
 
-    template <SL_TexelOrder order = SL_TexelOrder::SL_TEXELS_ORDERED>
+    template <SL_TexelOrder order = SL_TexelOrder::ORDERED>
     ptrdiff_t map_coordinate(uint_fast32_t x, uint_fast32_t y) const noexcept;
 
-    template <SL_TexelOrder order = SL_TexelOrder::SL_TEXELS_ORDERED>
+    template <SL_TexelOrder order = SL_TexelOrder::ORDERED>
     ls::math::vec4_t<ptrdiff_t> map_coordinates(uint_fast32_t x, uint_fast32_t y) const noexcept;
 
-    template <SL_TexelOrder order = SL_TexelOrder::SL_TEXELS_ORDERED>
+    template <SL_TexelOrder order = SL_TexelOrder::ORDERED>
     ptrdiff_t map_coordinate(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept;
 
-    template <SL_TexelOrder order = SL_TexelOrder::SL_TEXELS_ORDERED>
+    template <SL_TexelOrder order = SL_TexelOrder::ORDERED>
     ls::math::vec4_t<ptrdiff_t> map_coordinates(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept;
 
     uint16_t width() const noexcept;
@@ -113,7 +83,7 @@ class alignas(sizeof(uint64_t)) SL_Texture
 
     int init(SL_ColorDataType type, uint16_t w, uint16_t h, uint16_t d = 1) noexcept;
 
-    int init(const SL_ImgFile& imgFile, SL_TexelOrder texelOrder = SL_TexelOrder::SL_TEXELS_ORDERED) noexcept;
+    int init(const SL_ImgFile& imgFile, SL_TexelOrder texelOrder = SL_TexelOrder::ORDERED) noexcept;
 
     void terminate() noexcept;
 
@@ -123,10 +93,10 @@ class alignas(sizeof(uint64_t)) SL_Texture
 
     void* data() noexcept;
 
-    template <SL_TexelOrder order = SL_TexelOrder::SL_TEXELS_ORDERED>
+    template <SL_TexelOrder order = SL_TexelOrder::ORDERED>
     void set_texel(uint16_t x, uint16_t y, uint16_t z, const void* pData) noexcept;
 
-    template <SL_TexelOrder order = SL_TexelOrder::SL_TEXELS_ORDERED>
+    template <SL_TexelOrder order = SL_TexelOrder::ORDERED>
     void set_texels(
             uint16_t x,
             uint16_t y,
@@ -137,77 +107,41 @@ class alignas(sizeof(uint64_t)) SL_Texture
             const void* pData
     ) noexcept;
 
-    template <typename color_type, SL_TexelOrder order = SL_TexelOrder::SL_TEXELS_ORDERED>
+    template <typename color_type>
+    const color_type texel(ptrdiff_t index) const noexcept;
+
+    template <typename color_type>
+    color_type& texel(ptrdiff_t index) noexcept;
+
+    template <typename color_type, SL_TexelOrder order = SL_TexelOrder::ORDERED>
     const color_type texel(uint16_t x, uint16_t y) const noexcept;
 
-    template <typename color_type, SL_TexelOrder order = SL_TexelOrder::SL_TEXELS_ORDERED>
+    template <typename color_type, SL_TexelOrder order = SL_TexelOrder::ORDERED>
     color_type& texel(uint16_t x, uint16_t y) noexcept;
 
-    template <typename color_type, SL_TexelOrder order = SL_TexelOrder::SL_TEXELS_ORDERED>
+    template <typename color_type, SL_TexelOrder order = SL_TexelOrder::ORDERED>
     const color_type texel(uint16_t x, uint16_t y, uint16_t z) const noexcept;
 
-    template <typename color_type, SL_TexelOrder order = SL_TexelOrder::SL_TEXELS_ORDERED>
+    template <typename color_type, SL_TexelOrder order = SL_TexelOrder::ORDERED>
     color_type& texel(uint16_t x, uint16_t y, uint16_t z) noexcept;
 
-    template <typename color_type, SL_TexelOrder order = SL_TexelOrder::SL_TEXELS_ORDERED>
+    template <typename color_type>
+    const color_type* texel_pointer(ptrdiff_t index) const noexcept;
+
+    template <typename color_type>
+    color_type* texel_pointer(ptrdiff_t index) noexcept;
+
+    template <typename color_type, SL_TexelOrder order = SL_TexelOrder::ORDERED>
     const color_type* texel_pointer(uint16_t x, uint16_t y) const noexcept;
 
-    template <typename color_type, SL_TexelOrder order = SL_TexelOrder::SL_TEXELS_ORDERED>
+    template <typename color_type, SL_TexelOrder order = SL_TexelOrder::ORDERED>
     color_type* texel_pointer(uint16_t x, uint16_t y) noexcept;
 
-    template <typename color_type, SL_TexelOrder order = SL_TexelOrder::SL_TEXELS_ORDERED>
+    template <typename color_type, SL_TexelOrder order = SL_TexelOrder::ORDERED>
     const color_type* texel_pointer(uint16_t x, uint16_t y, uint16_t z) const noexcept;
 
-    template <typename color_type, SL_TexelOrder order = SL_TexelOrder::SL_TEXELS_ORDERED>
+    template <typename color_type, SL_TexelOrder order = SL_TexelOrder::ORDERED>
     color_type* texel_pointer(uint16_t x, uint16_t y, uint16_t z) noexcept;
-
-    template <typename color_type>
-    const color_type* row_pointer(uintptr_t y) const noexcept;
-
-    template <typename color_type>
-    color_type* row_pointer(uintptr_t y) noexcept;
-
-    template <typename color_type>
-    const color_type* raw_texel_pointer(uint16_t x, uint16_t y) const noexcept;
-
-    template <typename color_type>
-    color_type* raw_texel_pointer(uint16_t x, uint16_t y) noexcept;
-
-    template <typename color_type>
-    const color_type* raw_texel_pointer(uint16_t x, uint16_t y, uint16_t z) const noexcept;
-
-    template <typename color_type>
-    color_type* raw_texel_pointer(uint16_t x, uint16_t y, uint16_t z) noexcept;
-
-    template <typename color_type, SL_TexelOrder order = SL_TexelOrder::SL_TEXELS_ORDERED>
-    const ls::math::vec4_t<color_type> texel4(uint16_t x, uint16_t y) const noexcept;
-
-    template <typename color_type, SL_TexelOrder order = SL_TexelOrder::SL_TEXELS_ORDERED>
-    const ls::math::vec4_t<color_type> texel4(uint16_t x, uint16_t y, uint16_t z) const noexcept;
-
-    template <typename data_t>
-    ls::math::vec4_t<data_t> raw_texel4(uint16_t x, uint16_t y) const noexcept;
-
-    template <typename data_t>
-    ls::math::vec4_t<data_t> raw_texel4(uint16_t x, uint16_t y, uint16_t z) const noexcept;
-
-    template <typename color_type>
-    const color_type raw_texel(uint16_t x, uint16_t y, uint16_t z) const noexcept;
-
-    template <typename color_type>
-    color_type& raw_texel(uint16_t x, uint16_t y, uint16_t z) noexcept;
-
-    template <typename color_type>
-    const color_type raw_texel(uint16_t x, uint16_t y) const noexcept;
-
-    template <typename color_type>
-    color_type& raw_texel(uint16_t x, uint16_t y) noexcept;
-
-    template <typename color_type>
-    const color_type raw_texel(ptrdiff_t index) const noexcept;
-
-    template <typename color_type>
-    color_type& raw_texel(ptrdiff_t index) noexcept;
 };
 
 
@@ -216,7 +150,7 @@ class alignas(sizeof(uint64_t)) SL_Texture
  * Convert an X/Y coordinate to a Z-ordered coordinate.
 -------------------------------------*/
 template <>
-inline LS_INLINE ptrdiff_t SL_Texture::map_coordinate<SL_TexelOrder::SL_TEXELS_ORDERED>(uint_fast32_t x, uint_fast32_t y) const noexcept
+inline LS_INLINE ptrdiff_t SL_Texture::map_coordinate<SL_TexelOrder::ORDERED>(uint_fast32_t x, uint_fast32_t y) const noexcept
 {
     return (ptrdiff_t)(x + (uint_fast32_t)mWidth * y);
 }
@@ -224,7 +158,7 @@ inline LS_INLINE ptrdiff_t SL_Texture::map_coordinate<SL_TexelOrder::SL_TEXELS_O
 
 
 template <>
-inline LS_INLINE ptrdiff_t SL_Texture::map_coordinate<SL_TexelOrder::SL_TEXELS_SWIZZLED>(uint_fast32_t x, uint_fast32_t y) const noexcept
+inline LS_INLINE ptrdiff_t SL_Texture::map_coordinate<SL_TexelOrder::SWIZZLED>(uint_fast32_t x, uint_fast32_t y) const noexcept
 {
     return (ptrdiff_t)sl_swizzle_2d_index<SL_TEXELS_PER_CHUNK, SL_TEXEL_SHIFTS_PER_CHUNK>(x, y, mWidth);
 }
@@ -246,7 +180,7 @@ inline LS_INLINE ls::math::vec4_t<ptrdiff_t> SL_Texture::map_coordinates(uint_fa
  * Convert an X/Y/Z coordinate to a Z-ordered coordinate.
 -------------------------------------*/
 template <>
-inline LS_INLINE ptrdiff_t SL_Texture::map_coordinate<SL_TexelOrder::SL_TEXELS_ORDERED>(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
+inline LS_INLINE ptrdiff_t SL_Texture::map_coordinate<SL_TexelOrder::ORDERED>(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
 {
     return (ptrdiff_t)(x + mWidth * (y + mHeight * z));
 }
@@ -254,7 +188,7 @@ inline LS_INLINE ptrdiff_t SL_Texture::map_coordinate<SL_TexelOrder::SL_TEXELS_O
 
 
 template <>
-inline LS_INLINE ptrdiff_t SL_Texture::map_coordinate<SL_TexelOrder::SL_TEXELS_SWIZZLED>(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
+inline LS_INLINE ptrdiff_t SL_Texture::map_coordinate<SL_TexelOrder::SWIZZLED>(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
 {
     return (ptrdiff_t)sl_swizzle_3d_index<SL_TEXELS_PER_CHUNK, SL_TEXEL_SHIFTS_PER_CHUNK>(x, y, z, mWidth, mHeight);
 }
@@ -265,7 +199,7 @@ inline LS_INLINE ptrdiff_t SL_Texture::map_coordinate<SL_TexelOrder::SL_TEXELS_S
  * Convert an X/Y/Z coordinate to 4 Z-ordered coordinates.
 -------------------------------------*/
 template <>
-inline LS_INLINE ls::math::vec4_t<ptrdiff_t> SL_Texture::map_coordinates<SL_TexelOrder::SL_TEXELS_ORDERED>(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
+inline LS_INLINE ls::math::vec4_t<ptrdiff_t> SL_Texture::map_coordinates<SL_TexelOrder::ORDERED>(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
 {
     return ls::math::vec4_t<ptrdiff_t>{0, 1, 2, 3} + x + mWidth * (y + mHeight * z);
 }
@@ -273,7 +207,7 @@ inline LS_INLINE ls::math::vec4_t<ptrdiff_t> SL_Texture::map_coordinates<SL_Texe
 
 
 template <>
-inline LS_INLINE ls::math::vec4_t<ptrdiff_t> SL_Texture::map_coordinates<SL_TexelOrder::SL_TEXELS_SWIZZLED>(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
+inline LS_INLINE ls::math::vec4_t<ptrdiff_t> SL_Texture::map_coordinates<SL_TexelOrder::SWIZZLED>(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
 {
     const uint_fast32_t idsPerBlock = SL_TEXELS_PER_CHUNK * SL_TEXELS_PER_CHUNK * ((mDepth > 1) ? LS_ENUM_VAL(SL_TEXELS_PER_CHUNK) : 1);
 
@@ -398,16 +332,24 @@ inline LS_INLINE void* SL_Texture::data() noexcept
 template <SL_TexelOrder order>
 inline void SL_Texture::set_texel(uint16_t x, uint16_t y, uint16_t z, const void* pData) noexcept
 {
-    const ptrdiff_t index = map_coordinate<order>(x, y, z);
-    size_t bpp = mBytesPerTexel;
-    const ptrdiff_t offset = bpp * index;
-
-    char* pOut = mTexels + offset;
-    const char* pIn = reinterpret_cast<const char*>(pData);
-
-    while (bpp--)
+    ptrdiff_t index;
+    if (1 >= z)
     {
-        *pOut++ = *pIn++;
+        index = map_coordinate<order>(x, y);
+    }
+    else
+    {
+        index = map_coordinate<order>(x, y, z);
+    }
+
+    const ptrdiff_t bpp    = mBytesPerTexel;
+    const ptrdiff_t offset = bpp * index;
+    char* const     pOut   = mTexels + offset;
+    const char*     pIn    = reinterpret_cast<const char*>(pData);
+
+    for (ptrdiff_t i = 0; i < bpp; ++i)
+    {
+        pOut[i] = pIn[i];
     }
 }
 
@@ -442,6 +384,28 @@ void SL_Texture::set_texels(
             }
         }
     }
+}
+
+
+
+/*-------------------------------------
+ * Retrieve a raw texel (const)
+-------------------------------------*/
+template <typename color_type>
+inline LS_INLINE const color_type SL_Texture::texel(ptrdiff_t index) const noexcept
+{
+    return reinterpret_cast<const color_type*>(mTexels)[index];
+}
+
+
+
+/*-------------------------------------
+ * Retrieve a raw texel
+-------------------------------------*/
+template <typename color_type>
+inline LS_INLINE color_type& SL_Texture::texel(ptrdiff_t index) noexcept
+{
+    return reinterpret_cast<color_type*>(mTexels)[index];
 }
 
 
@@ -495,6 +459,28 @@ inline LS_INLINE color_type& SL_Texture::texel(uint16_t x, uint16_t y, uint16_t 
 
 
 /*-------------------------------------
+ * Retrieve a raw texel (const)
+-------------------------------------*/
+template <typename color_type>
+inline LS_INLINE const color_type* SL_Texture::texel_pointer(ptrdiff_t index) const noexcept
+{
+    return reinterpret_cast<const color_type*>(mTexels) + index;
+}
+
+
+
+/*-------------------------------------
+ * Retrieve a raw texel
+-------------------------------------*/
+template <typename color_type>
+inline LS_INLINE color_type* SL_Texture::texel_pointer(ptrdiff_t index) noexcept
+{
+    return reinterpret_cast<color_type*>(mTexels) + index;
+}
+
+
+
+/*-------------------------------------
  * Retrieve a swizzled texel (const)
 -------------------------------------*/
 template <typename color_type, SL_TexelOrder order>
@@ -538,289 +524,6 @@ inline LS_INLINE color_type* SL_Texture::texel_pointer(uint16_t x, uint16_t y, u
 {
     const ptrdiff_t index = map_coordinate<order>(x, y, z);
     return reinterpret_cast<color_type*>(mTexels) + index;
-}
-
-
-
-/*-------------------------------------
- * Retrieve a scanline
--------------------------------------*/
-template <typename color_type>
-inline LS_INLINE const color_type* SL_Texture::row_pointer(uintptr_t y) const noexcept
-{
-    return reinterpret_cast<const color_type*>(mTexels) + (uintptr_t)y * (uintptr_t)mWidth;
-}
-
-
-
-/*-------------------------------------
- * Retrieve a scanline
--------------------------------------*/
-template <typename color_type>
-inline LS_INLINE color_type* SL_Texture::row_pointer(uintptr_t y) noexcept
-{
-    return reinterpret_cast<color_type*>(mTexels) + (uintptr_t)y * (uintptr_t)mWidth;
-}
-
-
-
-/*-------------------------------------
- * Retrieve a swizzled texel (const)
--------------------------------------*/
-template <typename color_type>
-inline LS_INLINE const color_type* SL_Texture::raw_texel_pointer(uint16_t x, uint16_t y) const noexcept
-{
-    const ptrdiff_t index = x + mWidth * y;
-    return reinterpret_cast<const color_type*>(mTexels) + index;
-}
-
-
-
-/*-------------------------------------
- * Retrieve a swizzled texel
--------------------------------------*/
-template <typename color_type>
-inline LS_INLINE color_type* SL_Texture::raw_texel_pointer(uint16_t x, uint16_t y) noexcept
-{
-    const ptrdiff_t index = x + mWidth * y;
-    return reinterpret_cast<color_type*>(mTexels) + index;
-}
-
-
-
-/*-------------------------------------
- * Retrieve a swizzled texel (const)
--------------------------------------*/
-template <typename color_type>
-inline LS_INLINE const color_type* SL_Texture::raw_texel_pointer(uint16_t x, uint16_t y, uint16_t z) const noexcept
-{
-    const ptrdiff_t index = x + mWidth * (y + mHeight * z);
-    return reinterpret_cast<const color_type*>(mTexels) + index;
-}
-
-
-
-/*-------------------------------------
- * Retrieve a swizzled texel
--------------------------------------*/
-template <typename color_type>
-inline LS_INLINE color_type* SL_Texture::raw_texel_pointer(uint16_t x, uint16_t y, uint16_t z) noexcept
-{
-    const ptrdiff_t index = x + mWidth * (y + mHeight * z);
-    return reinterpret_cast<color_type*>(mTexels) + index;
-}
-
-
-
-/*-------------------------------------
- * Retrieve 4 swizzled texels (const)
--------------------------------------*/
-template <>
-inline LS_INLINE const ls::math::vec4_t<float> SL_Texture::texel4<float, SL_TexelOrder::SL_TEXELS_ORDERED>(uint16_t x, uint16_t y) const noexcept
-{
-    const ptrdiff_t index = map_coordinate<SL_TexelOrder::SL_TEXELS_ORDERED>(x, y);
-    const float* pTexels = reinterpret_cast<const float*>(mTexels) + index;
-
-    #if defined(LS_ARCH_X86)
-        return ls::math::vec4_t<float>{_mm_loadu_ps(pTexels)};
-    #elif defined(LS_ARM_NEON)
-        return ls::math::vec4_t<float>{vld1q_f32(pTexels)};
-    #else
-        return *reinterpret_cast<const ls::math::vec4_t<float>*>(pTexels);
-    #endif
-}
-
-#if defined(LS_ARCH_X86)
-template <>
-inline const ls::math::vec4_t<float> SL_Texture::texel4<float, SL_TexelOrder::SL_TEXELS_SWIZZLED>(uint16_t x, uint16_t y) const noexcept
-{
-    const ls::math::vec4_t<ptrdiff_t> index = map_coordinates<SL_TexelOrder::SL_TEXELS_SWIZZLED>(x, y);
-    const __m128i indices = _mm_set_epi32(index[3], index[2], index[1], index[0]);
-    const float* pTexels = reinterpret_cast<const float*>(mTexels);
-
-    return ls::math::vec4_t<float>{_mm_i32gather_ps(pTexels, indices, 4)};
-}
-#endif
-
-
-
-template <typename color_type, SL_TexelOrder order>
-inline LS_INLINE const ls::math::vec4_t<color_type> SL_Texture::texel4(uint16_t x, uint16_t y) const noexcept
-{
-    if (order == SL_TexelOrder::SL_TEXELS_SWIZZLED)
-    {
-        const ls::math::vec4_t<ptrdiff_t>&& index = map_coordinates<SL_TexelOrder::SL_TEXELS_SWIZZLED>(x, y);
-        const color_type* pTexels = reinterpret_cast<const color_type*>(mTexels);
-        return ls::math::vec4_t<color_type>{
-            pTexels[index[0]],
-            pTexels[index[1]],
-            pTexels[index[2]],
-            pTexels[index[3]]
-        };
-    }
-    else
-    {
-        const ptrdiff_t index = map_coordinate<SL_TexelOrder::SL_TEXELS_ORDERED>(x, y);
-        const color_type* pTexels = reinterpret_cast<const color_type*>(mTexels) + index;
-        return *reinterpret_cast<const ls::math::vec4_t<color_type>*>(pTexels);
-    }
-}
-
-
-
-/*-------------------------------------
- * Retrieve 4 swizzled texels (const)
--------------------------------------*/
-template <typename color_type, SL_TexelOrder order>
-inline LS_INLINE const ls::math::vec4_t<color_type> SL_Texture::texel4(uint16_t x, uint16_t y, uint16_t z) const noexcept
-{
-    if (order == SL_TexelOrder::SL_TEXELS_SWIZZLED)
-    {
-        const ls::math::vec4_t<ptrdiff_t>&& index = map_coordinates<SL_TexelOrder::SL_TEXELS_SWIZZLED>(x, y, z);
-        const color_type* pTexels = reinterpret_cast<const color_type*>(mTexels);
-        return ls::math::vec4_t<color_type>{
-            pTexels[index[0]],
-            pTexels[index[1]],
-            pTexels[index[2]],
-            pTexels[index[3]]
-        };
-    }
-    else
-    {
-        const ptrdiff_t index = map_coordinate<SL_TexelOrder::SL_TEXELS_ORDERED>(x, y, z);
-        const color_type* pTexels = reinterpret_cast<const color_type*>(mTexels) + index;
-        return *reinterpret_cast<const ls::math::vec4_t<color_type>*>(pTexels);
-    }
-}
-
-
-
-/*-------------------------------------
- * Retrieve 4 raw texels (const)
--------------------------------------*/
-template <typename data_t>
-inline LS_INLINE ls::math::vec4_t<data_t> SL_Texture::raw_texel4(uint16_t x, uint16_t y) const noexcept
-{
-    const ptrdiff_t index = x + mWidth * y;
-    const data_t* pBuffer = reinterpret_cast<data_t*>(mTexels) + index;
-    return ls::math::vec4_t<data_t>{pBuffer[0], pBuffer[1], pBuffer[2], pBuffer[3]};
-}
-
-
-
-template <>
-inline LS_INLINE ls::math::vec4_t<float> SL_Texture::raw_texel4<float>(uint16_t x, uint16_t y) const noexcept
-{
-    const ptrdiff_t index = x + mWidth * y;
-    const float* pBuffer = reinterpret_cast<const float*>(mTexels) + index;
-
-    #if defined(LS_ARCH_X86)
-        return ls::math::vec4_t<float>{_mm_loadu_ps(pBuffer)};
-    #elif defined(LS_ARM_NEON)
-        return ls::math::vec4_t<float>{vld1q_f32(pBuffer)};
-    #else
-        return *reinterpret_cast<const ls::math::vec4_t<float>*>(pBuffer);
-    #endif
-}
-
-
-
-/*-------------------------------------
- * Retrieve 4 raw texels (const)
--------------------------------------*/
-template <typename data_t>
-inline LS_INLINE ls::math::vec4_t<data_t> SL_Texture::raw_texel4(uint16_t x, uint16_t y, uint16_t z) const noexcept
-{
-    const ptrdiff_t index = x + mWidth * (y + mHeight * z);
-    const data_t* pBuffer = reinterpret_cast<data_t*>(mTexels) + index;
-    return ls::math::vec4_t<data_t>{pBuffer[0], pBuffer[1], pBuffer[2], pBuffer[3]};
-}
-
-
-
-template <>
-inline LS_INLINE ls::math::vec4_t<float> SL_Texture::raw_texel4<float>(uint16_t x, uint16_t y, uint16_t z) const noexcept
-{
-    const ptrdiff_t index = x + mWidth * (y + mHeight * z);
-    const float* pBuffer = reinterpret_cast<const float*>(mTexels) + index;
-
-    #if defined(LS_ARCH_X86)
-        return ls::math::vec4_t<float>{_mm_loadu_ps(pBuffer)};
-    #elif defined(LS_ARM_NEON)
-        return ls::math::vec4_t<float>{vld1q_f32(pBuffer)};
-    #else
-        return *reinterpret_cast<const ls::math::vec4_t<float>*>(pBuffer);
-    #endif
-}
-
-
-
-/*-------------------------------------
- * Retrieve a raw texel (const)
--------------------------------------*/
-template <typename color_type>
-inline LS_INLINE const color_type SL_Texture::raw_texel(uint16_t x, uint16_t y, uint16_t z) const noexcept
-{
-    const ptrdiff_t index = x + mWidth * (y + mHeight * z);
-    return reinterpret_cast<const color_type*>(mTexels)[index];
-}
-
-
-
-/*-------------------------------------
- * Retrieve a raw texel
--------------------------------------*/
-template <typename color_type>
-inline LS_INLINE color_type& SL_Texture::raw_texel(uint16_t x, uint16_t y, uint16_t z) noexcept
-{
-    const ptrdiff_t index = x + mWidth * (y + mHeight * z);
-    return reinterpret_cast<color_type*>(mTexels)[index];
-}
-
-
-
-/*-------------------------------------
- * Retrieve a raw texel (const)
--------------------------------------*/
-template <typename color_type>
-inline LS_INLINE const color_type SL_Texture::raw_texel(uint16_t x, uint16_t y) const noexcept
-{
-    const ptrdiff_t index = x + mWidth * y;
-    return reinterpret_cast<const color_type*>(mTexels)[index];
-}
-
-
-
-/*-------------------------------------
- * Retrieve a raw texel
--------------------------------------*/
-template <typename color_type>
-inline LS_INLINE color_type& SL_Texture::raw_texel(uint16_t x, uint16_t y) noexcept
-{
-    const ptrdiff_t index = x + mWidth * y;
-    return reinterpret_cast<color_type*>(mTexels)[index];
-}
-
-
-
-/*-------------------------------------
- * Retrieve a raw texel (const)
--------------------------------------*/
-template <typename color_type>
-inline LS_INLINE const color_type SL_Texture::raw_texel(ptrdiff_t index) const noexcept
-{
-    return reinterpret_cast<const color_type*>(mTexels)[index];
-}
-
-
-
-/*-------------------------------------
- * Retrieve a raw texel
--------------------------------------*/
-template <typename color_type>
-inline LS_INLINE color_type& SL_Texture::raw_texel(ptrdiff_t index) noexcept
-{
-    return reinterpret_cast<color_type*>(mTexels)[index];
 }
 
 

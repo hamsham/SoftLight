@@ -49,7 +49,7 @@ void SL_PointRasterizer::render_point(const uint32_t binId, SL_Framebuffer* cons
     fragParams.coord.depth = fragCoord[2];
     fragParams.pUniforms = pUniforms;
 
-    if (!depthCmp(fragCoord[2], (float)pDepthBuf->raw_texel<depth_type>(fragParams.coord.x, fragParams.coord.y)))
+    if (!depthCmp(fragCoord[2], (float)pDepthBuf->texel<depth_type>(fragParams.coord.x, fragParams.coord.y)))
     {
         return;
     }

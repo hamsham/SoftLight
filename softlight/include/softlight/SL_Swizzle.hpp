@@ -7,6 +7,9 @@
 
 
 
+/*-----------------------------------------------------------------------------
+ * count-trailing zeroes (log-base2)
+-----------------------------------------------------------------------------*/
 template <typename data_t>
 constexpr data_t LS_INLINE sl_swizzle_ctz(data_t n) noexcept
 {
@@ -15,6 +18,28 @@ constexpr data_t LS_INLINE sl_swizzle_ctz(data_t n) noexcept
 
 
 
+/*-----------------------------------------------------------------------------
+ * Enumerations for texture determining swizzle order
+-----------------------------------------------------------------------------*/
+enum SL_TexChunkInfo : uint32_t
+{
+    SL_TEXELS_PER_CHUNK = 4,
+    SL_TEXEL_SHIFTS_PER_CHUNK = sl_swizzle_ctz<uint32_t>(SL_TEXELS_PER_CHUNK) // log2(SL_TEXELS_PER_CHUNK)
+};
+
+
+
+enum class SL_TexelOrder
+{
+    ORDERED,
+    SWIZZLED
+};
+
+
+
+/*-----------------------------------------------------------------------------
+ * Swizzle a 2D lookup
+-----------------------------------------------------------------------------*/
 template <uint_fast32_t texels_per_chunk, uint_fast32_t shifts_per_chunk = sl_swizzle_ctz(texels_per_chunk)>
 inline uint_fast32_t LS_INLINE sl_swizzle_2d_index(uint_fast32_t x, uint_fast32_t y, uint_fast32_t imgWidth) noexcept
 {
@@ -37,6 +62,9 @@ inline uint_fast32_t LS_INLINE sl_swizzle_2d_index(uint_fast32_t x, uint_fast32_
 
 
 
+/*-----------------------------------------------------------------------------
+ * Swizzle a 3D lookup
+-----------------------------------------------------------------------------*/
 template <uint_fast32_t texels_per_chunk, uint_fast32_t shifts_per_chunk = sl_swizzle_ctz(texels_per_chunk)>
 inline uint_fast32_t LS_INLINE sl_swizzle_3d_index(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z, uint_fast32_t imgWidth, uint_fast32_t imgHeight) noexcept
 {

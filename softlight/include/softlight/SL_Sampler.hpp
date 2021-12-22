@@ -11,6 +11,17 @@
 
 
 
+enum class SL_SamplerWrap : uint8_t
+{
+    REPEAT,
+    BORDER,
+    CLAMP,
+
+    DEFAULT = REPEAT
+};
+
+
+
 struct SL_WrapModeClampEdge;
 struct SL_WrapModeClampBorder;
 struct SL_WrapModeRepeat;
@@ -21,26 +32,6 @@ namespace SL_WrapMode
     typedef SL_WrapModeClampEdge   EDGE;
     typedef SL_WrapModeClampBorder BORDER;
     typedef SL_WrapModeRepeat      REPEAT;
-
-    template <typename data_t>
-    struct SL_IsWrapModeEdge : public ls::setup::FalseType<data_t>
-    {
-    };
-
-    template <>
-    struct SL_IsWrapModeEdge<SL_WrapModeClampEdge> : public ls::setup::TrueType<SL_WrapModeClampEdge>
-    {
-    };
-
-    template <typename data_t>
-    struct SL_IsWrapModeRepeat : public ls::setup::FalseType<data_t>
-    {
-    };
-
-    template <>
-    struct SL_IsWrapModeRepeat<SL_WrapModeRepeat> : public ls::setup::TrueType<SL_WrapModeRepeat>
-    {
-    };
 
     template <typename data_t>
     struct SL_IsWrapModeBorder : public ls::setup::FalseType<data_t>
@@ -125,7 +116,7 @@ struct SL_WrapModeRepeat
 
 
 
-template <typename color_type, class WrapMode, SL_TexelOrder order = SL_TEXELS_ORDERED>
+template <typename color_type, class WrapMode, SL_TexelOrder order = SL_TexelOrder::ORDERED>
 inline LS_INLINE color_type sl_sample_nearest(const SL_Texture& tex, float x, float y) noexcept
 {
     if (SL_WrapMode::SL_IsWrapModeBorder<WrapMode>::value && (x < 0.f || x >= 1.f || y < 0.f || y >= 1.f))
@@ -153,7 +144,7 @@ inline LS_INLINE color_type sl_sample_nearest(const SL_Texture& tex, float x, fl
     return reinterpret_cast<const color_type*>(tex.data())[index];
 }
 
-template <typename color_type, class WrapMode, SL_TexelOrder order = SL_TEXELS_ORDERED>
+template <typename color_type, class WrapMode, SL_TexelOrder order = SL_TexelOrder::ORDERED>
 inline LS_INLINE color_type sl_sample_nearest(const SL_Texture& tex, float x, float y, float z) noexcept
 {
     if (SL_WrapMode::SL_IsWrapModeBorder<WrapMode>::value && (x < 0.f || x >= 1.f || y < 0.f || y >= 1.f || z < 0.f || z >= 1.f))
@@ -186,7 +177,7 @@ inline LS_INLINE color_type sl_sample_nearest(const SL_Texture& tex, float x, fl
 
 
 
-template <typename color_type, class WrapMode, SL_TexelOrder order = SL_TEXELS_ORDERED>
+template <typename color_type, class WrapMode, SL_TexelOrder order = SL_TexelOrder::ORDERED>
 inline LS_INLINE color_type sl_sample_bilinear(const SL_Texture& tex, float x, float y) noexcept
 {
     if (SL_WrapMode::SL_IsWrapModeBorder<WrapMode>::value && (x < 0.f || x >= 1.f || y < 0.f || y >= 1.f))
@@ -220,7 +211,7 @@ inline LS_INLINE color_type sl_sample_bilinear(const SL_Texture& tex, float x, f
     return color_cast<typename color_type::value_type, float>(ret);
 }
 
-template <typename color_type, class WrapMode, SL_TexelOrder order = SL_TEXELS_ORDERED>
+template <typename color_type, class WrapMode, SL_TexelOrder order = SL_TexelOrder::ORDERED>
 inline LS_INLINE color_type sl_sample_bilinear(const SL_Texture& tex, float x, float y, float z) noexcept
 {
     if (SL_WrapMode::SL_IsWrapModeBorder<WrapMode>::value && (x < 0.f || x >= 1.f || y < 0.f || y >= 1.f || z < 0.f || z >= 1.f))
@@ -257,7 +248,7 @@ inline LS_INLINE color_type sl_sample_bilinear(const SL_Texture& tex, float x, f
 
 
 
-template <typename color_type, class WrapMode, SL_TexelOrder order = SL_TEXELS_ORDERED>
+template <typename color_type, class WrapMode, SL_TexelOrder order = SL_TexelOrder::ORDERED>
 inline LS_INLINE color_type sl_sample_trilinear(const SL_Texture& tex, float x, float y) noexcept
 {
     if (SL_WrapMode::SL_IsWrapModeBorder<WrapMode>::value && (x < 0.f || x >= 1.f || y < 0.f || y >= 1.f))
@@ -309,7 +300,7 @@ inline LS_INLINE color_type sl_sample_trilinear(const SL_Texture& tex, float x, 
     return color_cast<typename color_type::value_type, float>(ret);
 }
 
-template <typename color_type, class WrapMode, SL_TexelOrder order = SL_TEXELS_ORDERED>
+template <typename color_type, class WrapMode, SL_TexelOrder order = SL_TexelOrder::ORDERED>
 inline LS_INLINE color_type sl_sample_trilinear(const SL_Texture& tex, float x, float y, float z) noexcept
 {
     if (SL_WrapMode::SL_IsWrapModeBorder<WrapMode>::value && (x < 0.f || x >= 1.f || y < 0.f || y >= 1.f || z < 0.f || z >= 1.f))

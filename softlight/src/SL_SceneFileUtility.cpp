@@ -8,6 +8,7 @@
 #include "softlight/SL_BoundingBox.hpp"
 #include "softlight/SL_Geometry.hpp"
 #include "softlight/SL_PackedVertex.hpp"
+#include "softlight/SL_Sampler.hpp"
 #include "softlight/SL_SceneFileLoader.hpp"
 #include "softlight/SL_SceneFileUtility.hpp"
 #include "softlight/SL_Texture.hpp"
@@ -94,23 +95,23 @@ SL_CommonVertType sl_convert_assimp_verts(const aiMesh* const pMesh, const SL_Sc
 /*-------------------------------------
  * Convert Assimp's texture mapping to internally recognized ones
 ------------------------------------*/
-SL_TexWrapMode sl_convert_assimp_tex_wrap(const aiTextureMapMode inWrapMode) noexcept
+SL_SamplerWrap sl_convert_assimp_tex_wrap(const aiTextureMapMode inWrapMode) noexcept
 {
-    SL_TexWrapMode outWrapping = SL_TexWrapMode::SL_TEXTURE_WRAP_DEFAULT;
+    SL_SamplerWrap outWrapping = SL_SamplerWrap::DEFAULT;
 
     switch(inWrapMode)
     {
         case aiTextureMapMode::aiTextureMapMode_Decal:
-            outWrapping = SL_TexWrapMode::SL_TEXTURE_WRAP_CUTOFF;
+            outWrapping = SL_SamplerWrap::BORDER;
             break;
 
         case aiTextureMapMode::aiTextureMapMode_Clamp:
-            outWrapping = SL_TexWrapMode::SL_TEXTURE_WRAP_CLAMP;
+            outWrapping = SL_SamplerWrap::CLAMP;
             break;
 
         case aiTextureMapMode::aiTextureMapMode_Mirror:
         case aiTextureMapMode::aiTextureMapMode_Wrap:
-            outWrapping = SL_TexWrapMode::SL_TEXTURE_WRAP_REPEAT;
+            outWrapping = SL_SamplerWrap::REPEAT;
             break;
 
         default:

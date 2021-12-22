@@ -119,6 +119,11 @@ struct SL_SceneLoadOpts
     // Implies "genSmoothNormals." This will generate tangents and bitangents
     // for normal mapping.
     bool genTangents;
+
+    // Use texel swizzling on loaded textures to increase the chance a
+    // transformed UV mapping is in the CPU cache (will increase CPU cycles
+    // spent calculating UVs while potentially decreasing memory bandwidth).
+    bool swizzleTexels;
 };
 
 
@@ -134,6 +139,7 @@ struct SL_SceneLoadOpts
  *     genFlatNormals:   FALSE
  *     genSmoothNormals: TRUE
  *     genTangents:      FALSE
+ *     swizzleTexels:    FALSE
  *
  * @return A SL_SceneLoadOpts structure, containing standard data-modification
  * options which will affect a scene being loaded.

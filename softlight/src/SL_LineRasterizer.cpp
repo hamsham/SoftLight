@@ -227,7 +227,7 @@ void SL_LineRasterizer::render_line(
         const float      interp  = (currLen*dist);
         const float      z       = math::mix(z0, z1, interp);
 
-        if (!depthCmp(z, (float)depthBuf->raw_texel<depth_type>((uint16_t)xi, (uint16_t)yi)))
+        if (!depthCmp(z, (float)depthBuf->texel<depth_type>((uint16_t)xi, (uint16_t)yi)))
         {
             continue;
         }

@@ -30,7 +30,7 @@
 -----------------------------------------------------------------------------*/
 struct SL_SceneLoadOpts;
 struct SL_VaoGroup;
-enum SL_TexWrapMode : uint16_t;
+enum class SL_SamplerWrap : uint8_t;
 
 
 
@@ -158,7 +158,7 @@ SL_CommonVertType sl_convert_assimp_verts(const aiMesh* const pMesh, const SL_Sc
 /*-------------------------------------
  * Convert Assimp's texture mapping to internally recognized ones
 ------------------------------------*/
-SL_TexWrapMode sl_convert_assimp_tex_wrap(const aiTextureMapMode inWrapMode) noexcept;
+SL_SamplerWrap sl_convert_assimp_tex_wrap(const aiTextureMapMode inWrapMode) noexcept;
 
 
 

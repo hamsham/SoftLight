@@ -29,7 +29,7 @@
 /**----------------------------------------------------------------------------
  * @brief SL_Color Information
 -----------------------------------------------------------------------------*/
-enum SL_ColorDataType : uint16_t
+enum SL_ColorDataType : uint8_t
 {
     SL_COLOR_R_8U,
     SL_COLOR_R_16U,
@@ -248,7 +248,9 @@ color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, S
 {
     return SL_ColorRType<T>
    {
-       (T)(((float)std::numeric_limits<T>::max() / (float)std::numeric_limits<U>::max()) * (float)p.r)
+        ((uint64_t)std::numeric_limits<T>::max() > (uint64_t)std::numeric_limits<U>::max())
+            ? ((T)p.r * (std::numeric_limits<T>::max() / (T)std::numeric_limits<U>::max()))
+            : (T)(p.r / (std::numeric_limits<U>::max() / (U)std::numeric_limits<T>::max()))
    };
 }
 
@@ -345,7 +347,9 @@ template <typename T, typename U>
 inline typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGType<T>>::type
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SL_ColorRGType<U>>::type& p)
 {
-    return (SL_ColorRGType<T>)((SL_ColorRGType<float>)p * ((float)std::numeric_limits<T>::max() / (float)std::numeric_limits<U>::max()));
+    return ((uint64_t)std::numeric_limits<T>::max() > (uint64_t)std::numeric_limits<U>::max())
+        ? ((SL_ColorRGType<T>)p * std::numeric_limits<T>::max())
+        : (SL_ColorRGType<T>)(p / (U)std::numeric_limits<T>::max());
 }
 
 
@@ -438,7 +442,9 @@ template <typename T, typename U>
 inline typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGBType<T>>::type
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SL_ColorRGBType<U>>::type& p)
 {
-    return (SL_ColorRGBType<T>)((SL_ColorRGBType<float>)p * ((float)std::numeric_limits<T>::max() / (float)std::numeric_limits<U>::max()));
+    return ((uint64_t)std::numeric_limits<T>::max() > (uint64_t)std::numeric_limits<U>::max())
+        ? ((SL_ColorRGBType<T>)p * (std::numeric_limits<T>::max() / (T)std::numeric_limits<U>::max()))
+        : (SL_ColorRGBType<T>)(p / (std::numeric_limits<U>::max() / (U)std::numeric_limits<T>::max()));
 }
 
 
@@ -531,7 +537,9 @@ template <typename T, typename U>
 inline typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGBAType<T>>::type
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SL_ColorRGBAType<U>>::type& p)
 {
-    return (SL_ColorRGBAType<T>)((SL_ColorRGBAType<float>)p * ((float)std::numeric_limits<T>::max() / (float)std::numeric_limits<U>::max()));
+    return ((uint64_t)std::numeric_limits<T>::max() > (uint64_t)std::numeric_limits<U>::max())
+        ? ((SL_ColorRGBAType<T>)p * (std::numeric_limits<T>::max() / (T)std::numeric_limits<U>::max()))
+        : (SL_ColorRGBAType<T>)(p / (std::numeric_limits<U>::max() / (U)std::numeric_limits<T>::max()));
 }
 
 

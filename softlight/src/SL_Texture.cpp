@@ -113,10 +113,10 @@ SL_Texture::SL_Texture() noexcept :
     mWidth{0},
     mHeight{0},
     mDepth{0},
-    mType{SL_COLOR_RGB_DEFAULT},
     mBytesPerTexel{0},
     mNumChannels{0},
-    mTexels{nullptr}
+    mTexels{nullptr},
+    mType{SL_COLOR_RGB_DEFAULT}
 {}
 
 
@@ -128,10 +128,10 @@ SL_Texture::SL_Texture(const SL_Texture& r) noexcept :
     mWidth{r.mWidth},
     mHeight{r.mHeight},
     mDepth{r.mDepth},
-    mType{r.mType},
     mBytesPerTexel{r.mBytesPerTexel},
     mNumChannels{r.mNumChannels},
-    mTexels{_sl_copy_texture(r.mWidth, r.mHeight, r.mDepth, r.mBytesPerTexel, r.mTexels)}
+    mTexels{_sl_copy_texture(r.mWidth, r.mHeight, r.mDepth, r.mBytesPerTexel, r.mTexels)},
+    mType{r.mType}
 {}
 
 
@@ -143,18 +143,18 @@ SL_Texture::SL_Texture(SL_Texture&& r) noexcept :
     mWidth{r.mWidth},
     mHeight{r.mHeight},
     mDepth{r.mDepth},
-    mType{r.mType},
     mBytesPerTexel{r.mBytesPerTexel},
     mNumChannels{r.mNumChannels},
-    mTexels{r.mTexels}
+    mTexels{r.mTexels},
+    mType{r.mType}
 {
     r.mWidth = 0;
     r.mHeight = 0;
     r.mDepth = 0;
-    r.mType = SL_COLOR_RGB_DEFAULT;
     r.mBytesPerTexel = 0;
     r.mNumChannels = 0;
     r.mTexels = nullptr;
+    r.mType = SL_COLOR_RGB_DEFAULT;
 }
 
 
@@ -175,10 +175,10 @@ SL_Texture& SL_Texture::operator=(const SL_Texture& r) noexcept
     mWidth = r.mWidth;
     mHeight = r.mHeight;
     mDepth = r.mDepth;
-    mType = r.mType;
     mBytesPerTexel = r.mBytesPerTexel;
     mNumChannels = r.mNumChannels;
     mTexels = _sl_copy_texture(r.mWidth, r.mHeight, r.mDepth, r.mBytesPerTexel, r.mTexels);
+    mType = r.mType;
 
     return *this;
 }
@@ -206,9 +206,6 @@ SL_Texture& SL_Texture::operator=(SL_Texture&& r) noexcept
     mDepth = r.mDepth;
     r.mDepth = 0;
 
-    mType = r.mType;
-    r.mType = SL_COLOR_RGB_DEFAULT;
-
     mNumChannels = r.mNumChannels;
     r.mNumChannels = 0;
 
@@ -217,6 +214,9 @@ SL_Texture& SL_Texture::operator=(SL_Texture&& r) noexcept
 
     mTexels = r.mTexels;
     r.mTexels = nullptr;
+
+    mType = r.mType;
+    r.mType = SL_COLOR_RGB_DEFAULT;
 
     return *this;
 }
@@ -244,10 +244,10 @@ int SL_Texture::init(SL_ColorDataType type, uint16_t w, uint16_t h, uint16_t d) 
     mWidth         = w;
     mHeight        = h;
     mDepth         = d;
-    mType          = type;
     mBytesPerTexel = (uint16_t)bpt;
     mNumChannels   = (uint16_t)sl_elements_per_color(type);
     mTexels        = pData;
+    mType          = type;
 
     return 0;
 }
@@ -284,7 +284,7 @@ int SL_Texture::init(const SL_ImgFile& imgFile, SL_TexelOrder texelOrder) noexce
     {
         const unsigned char* pInTex = reinterpret_cast<const unsigned char*>(imgFile.data());
 
-        if (texelOrder == SL_TexelOrder::SL_TEXELS_SWIZZLED)
+        if (texelOrder == SL_TexelOrder::SWIZZLED)
         {
             const size_t bytesPerColor = mBytesPerTexel;
 
@@ -296,7 +296,7 @@ int SL_Texture::init(const SL_ImgFile& imgFile, SL_TexelOrder texelOrder) noexce
                     {
                         const ptrdiff_t index = x + mWidth * (y + mHeight * z);
                         const ptrdiff_t offset = bytesPerColor * index;
-                        set_texel<SL_TexelOrder::SL_TEXELS_SWIZZLED>(x, y, z, pInTex + offset);
+                        set_texel<SL_TexelOrder::SWIZZLED>(x, y, z, pInTex + offset);
                     }
                 }
             }
@@ -320,7 +320,6 @@ void SL_Texture::terminate() noexcept
     mWidth = 0;
     mHeight = 0;
     mDepth = 0;
-    mType = SL_COLOR_RGB_DEFAULT;
     mBytesPerTexel = 0;
     mNumChannels = 0;
 
@@ -331,4 +330,6 @@ void SL_Texture::terminate() noexcept
     #endif
 
     mTexels = nullptr;
+
+    mType = SL_COLOR_RGB_DEFAULT;
 }

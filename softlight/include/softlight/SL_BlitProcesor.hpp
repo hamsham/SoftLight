@@ -15,9 +15,14 @@
 /*-------------------------------------
  * Recolor to R
 -------------------------------------*/
-template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SL_ColorRType<outColor_type>)>
+template<typename inColor_type, typename outColor_type>
 struct SL_Blit_R_to_R
 {
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRType<outColor_type>)
+    };
+
     inline LS_INLINE void operator()(
         const SL_Texture* pTexture,
         const uint_fast32_t srcX,
@@ -25,16 +30,20 @@ struct SL_Blit_R_to_R
         unsigned char* const pOutBuf,
         uint_fast32_t outIndex) const noexcept
     {
-        const ptrdiff_t                   offset  = outIndex * stride;
         const SL_ColorRType<inColor_type> inColor = pTexture->texel<SL_ColorRType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
 
-        *reinterpret_cast<SL_ColorRType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+        *reinterpret_cast<SL_ColorRType<outColor_type>*>(pOutBuf + outIndex) = color_cast<outColor_type, inColor_type>(inColor);
     }
 };
 
-template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SL_ColorRType<outColor_type>)>
+template<typename inColor_type, typename outColor_type>
 struct SL_Blit_RG_to_R
 {
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRType<outColor_type>)
+    };
+
     inline LS_INLINE void operator()(
         const SL_Texture* pTexture,
         const uint_fast32_t srcX,
@@ -42,16 +51,20 @@ struct SL_Blit_RG_to_R
         unsigned char* const pOutBuf,
         uint_fast32_t outIndex) const noexcept
     {
-        const ptrdiff_t                    offset  = outIndex * stride;
         const SL_ColorRGType<inColor_type> inColor = pTexture->texel<SL_ColorRGType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
 
-        *reinterpret_cast<SL_ColorRType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor)[0];
+        *reinterpret_cast<SL_ColorRType<outColor_type>*>(pOutBuf + outIndex) = color_cast<outColor_type, inColor_type>(inColor)[0];
     }
 };
 
-template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SL_ColorRType<outColor_type>)>
+template<typename inColor_type, typename outColor_type>
 struct SL_Blit_RGB_to_R
 {
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRType<outColor_type>)
+    };
+
     inline LS_INLINE void operator()(
         const SL_Texture* pTexture,
         const uint_fast32_t srcX,
@@ -59,16 +72,20 @@ struct SL_Blit_RGB_to_R
         unsigned char* const pOutBuf,
         uint_fast32_t outIndex) const noexcept
     {
-        const ptrdiff_t                     offset  = outIndex * stride;
         const SL_ColorRGBType<inColor_type> inColor = pTexture->texel<SL_ColorRGBType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
 
-        *reinterpret_cast<SL_ColorRType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor)[0];
+        *reinterpret_cast<SL_ColorRType<outColor_type>*>(pOutBuf + outIndex) = color_cast<outColor_type, inColor_type>(inColor)[0];
     }
 };
 
-template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SL_ColorRType<outColor_type>)>
+template<typename inColor_type, typename outColor_type>
 struct SL_Blit_RGBA_to_R
 {
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRType<outColor_type>)
+    };
+
     inline LS_INLINE void operator()(
         const SL_Texture* pTexture,
         const uint_fast32_t srcX,
@@ -76,10 +93,9 @@ struct SL_Blit_RGBA_to_R
         unsigned char* const pOutBuf,
         uint_fast32_t outIndex) const noexcept
     {
-        const ptrdiff_t                      offset  = outIndex * stride;
         const SL_ColorRGBAType<inColor_type> inColor = pTexture->texel<SL_ColorRGBAType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
 
-        *reinterpret_cast<SL_ColorRType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor)[0];
+        *reinterpret_cast<SL_ColorRType<outColor_type>*>(pOutBuf + outIndex) = color_cast<outColor_type, inColor_type>(inColor)[0];
     }
 };
 
@@ -88,9 +104,14 @@ struct SL_Blit_RGBA_to_R
 /*-------------------------------------
  * Recolor to RG
 -------------------------------------*/
-template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SL_ColorRGType<outColor_type>)>
+template<typename inColor_type, typename outColor_type>
 struct SL_Blit_R_to_RG
 {
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGType<outColor_type>)
+    };
+
     inline LS_INLINE void operator()(
         const SL_Texture* pTexture,
         const uint_fast32_t srcX,
@@ -98,17 +119,21 @@ struct SL_Blit_R_to_RG
         unsigned char* const pOutBuf,
         uint_fast32_t outIndex) const noexcept
     {
-        const ptrdiff_t                    offset   = outIndex * stride;
         const SL_ColorRType<inColor_type>  inColorR = pTexture->texel<SL_ColorRType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
         const SL_ColorRGType<inColor_type> inColor  = SL_ColorRGType<inColor_type>{inColorR[0], (inColor_type)0};
 
-        *reinterpret_cast<SL_ColorRGType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+        *reinterpret_cast<SL_ColorRGType<outColor_type>*>(pOutBuf + outIndex) = color_cast<outColor_type, inColor_type>(inColor);
     }
 };
 
-template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SL_ColorRGType<outColor_type>)>
+template<typename inColor_type, typename outColor_type>
 struct SL_Blit_RG_to_RG
 {
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGType<outColor_type>)
+    };
+
     inline LS_INLINE void operator()(
         const SL_Texture* pTexture,
         const uint_fast32_t srcX,
@@ -116,16 +141,20 @@ struct SL_Blit_RG_to_RG
         unsigned char* const pOutBuf,
         uint_fast32_t outIndex) const noexcept
     {
-        const ptrdiff_t                    offset  = outIndex * stride;
         const SL_ColorRGType<inColor_type> inColor = pTexture->texel<SL_ColorRGType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
 
-        *reinterpret_cast<SL_ColorRGType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+        *reinterpret_cast<SL_ColorRGType<outColor_type>*>(pOutBuf + outIndex) = color_cast<outColor_type, inColor_type>(inColor);
     }
 };
 
-template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SL_ColorRGType<outColor_type>)>
+template<typename inColor_type, typename outColor_type>
 struct SL_Blit_RGB_to_RG
 {
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGType<outColor_type>)
+    };
+
     inline LS_INLINE void operator()(
         const SL_Texture* pTexture,
         const uint_fast32_t srcX,
@@ -133,17 +162,21 @@ struct SL_Blit_RGB_to_RG
         unsigned char* const pOutBuf,
         uint_fast32_t outIndex) const noexcept
     {
-        const ptrdiff_t                     offset     = outIndex * stride;
         const SL_ColorRGBType<inColor_type> inColorRGB = pTexture->texel<SL_ColorRGBType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
         const SL_ColorRGType<inColor_type>  inColor    = ls::math::vec2_cast(inColorRGB);
 
-        *reinterpret_cast<SL_ColorRGType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+        *reinterpret_cast<SL_ColorRGType<outColor_type>*>(pOutBuf + outIndex) = color_cast<outColor_type, inColor_type>(inColor);
     }
 };
 
-template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SL_ColorRGType<outColor_type>)>
+template<typename inColor_type, typename outColor_type>
 struct SL_Blit_RGBA_to_RG
 {
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGType<outColor_type>)
+    };
+
     inline LS_INLINE void operator()(
         const SL_Texture* pTexture,
         const uint_fast32_t srcX,
@@ -151,11 +184,10 @@ struct SL_Blit_RGBA_to_RG
         unsigned char* const pOutBuf,
         uint_fast32_t outIndex) const noexcept
     {
-        const ptrdiff_t                      offset      = outIndex * stride;
         const SL_ColorRGBAType<inColor_type> inColorRGBA = pTexture->texel<SL_ColorRGBAType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
         const SL_ColorRGType<inColor_type>   inColor     = ls::math::vec2_cast(inColorRGBA);
 
-        *reinterpret_cast<SL_ColorRGType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+        *reinterpret_cast<SL_ColorRGType<outColor_type>*>(pOutBuf + outIndex) = color_cast<outColor_type, inColor_type>(inColor);
     }
 };
 
@@ -164,9 +196,14 @@ struct SL_Blit_RGBA_to_RG
 /*-------------------------------------
  * Recolor to RGB
 -------------------------------------*/
-template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SL_ColorRGBType<outColor_type>)>
+template<typename inColor_type, typename outColor_type>
 struct SL_Blit_R_to_RGB
 {
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGBType<outColor_type>)
+    };
+
     inline LS_INLINE void operator()(
         const SL_Texture* pTexture,
         const uint_fast32_t srcX,
@@ -174,17 +211,21 @@ struct SL_Blit_R_to_RGB
         unsigned char* const pOutBuf,
         uint_fast32_t outIndex) const noexcept
     {
-        const ptrdiff_t                     offset   = outIndex * stride;
         const SL_ColorRType<inColor_type>   inColorR = pTexture->texel<SL_ColorRType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
         const SL_ColorRGBType<inColor_type> inColor  = SL_ColorRGBType<inColor_type>{(inColor_type)0, (inColor_type)0, inColorR[0]};
 
-        *reinterpret_cast<SL_ColorRGBType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+        *reinterpret_cast<SL_ColorRGBType<outColor_type>*>(pOutBuf + outIndex) = color_cast<outColor_type, inColor_type>(inColor);
     }
 };
 
-template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SL_ColorRGBType<outColor_type>)>
+template<typename inColor_type, typename outColor_type>
 struct SL_Blit_RG_to_RGB
 {
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGBType<outColor_type>)
+    };
+
     inline LS_INLINE void operator()(
         const SL_Texture* pTexture,
         const uint_fast32_t srcX,
@@ -192,17 +233,21 @@ struct SL_Blit_RG_to_RGB
         unsigned char* const pOutBuf,
         uint_fast32_t outIndex) const noexcept
     {
-        const ptrdiff_t                     offset    = outIndex * stride;
         const SL_ColorRGType<inColor_type>  inColorRG = pTexture->texel<SL_ColorRGType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
         const SL_ColorRGBType<inColor_type> inColor   = ls::math::vec3_cast(inColorRG, (inColor_type)0);
 
-        *reinterpret_cast<SL_ColorRGBType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+        *reinterpret_cast<SL_ColorRGBType<outColor_type>*>(pOutBuf + outIndex) = color_cast<outColor_type, inColor_type>(inColor);
     }
 };
 
-template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SL_ColorRGBType<outColor_type>)>
+template<typename inColor_type, typename outColor_type>
 struct SL_Blit_RGB_to_RGB
 {
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGBType<outColor_type>)
+    };
+
     inline LS_INLINE void operator()(
         const SL_Texture* pTexture,
         const uint_fast32_t srcX,
@@ -210,16 +255,20 @@ struct SL_Blit_RGB_to_RGB
         unsigned char* const pOutBuf,
         uint_fast32_t outIndex) const noexcept
     {
-        const ptrdiff_t                     offset  = outIndex * stride;
         const SL_ColorRGBType<inColor_type> inColor = pTexture->texel<SL_ColorRGBType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
 
-        *reinterpret_cast<SL_ColorRGBType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+        *reinterpret_cast<SL_ColorRGBType<outColor_type>*>(pOutBuf + outIndex) = color_cast<outColor_type, inColor_type>(inColor);
     }
 };
 
-template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SL_ColorRGBType<outColor_type>)>
+template<typename inColor_type, typename outColor_type>
 struct SL_Blit_RGBA_to_RGB
 {
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGBType<outColor_type>)
+    };
+
     inline LS_INLINE void operator()(
         const SL_Texture* pTexture,
         const uint_fast32_t srcX,
@@ -227,11 +276,10 @@ struct SL_Blit_RGBA_to_RGB
         unsigned char* const pOutBuf,
         uint_fast32_t outIndex) const noexcept
     {
-        const ptrdiff_t                      offset      = outIndex * stride;
         const SL_ColorRGBAType<inColor_type> inColorRGBA = pTexture->texel<SL_ColorRGBAType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
         const SL_ColorRGBType<inColor_type>  inColor     = ls::math::vec3_cast(inColorRGBA);
 
-        *reinterpret_cast<SL_ColorRGBType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+        *reinterpret_cast<SL_ColorRGBType<outColor_type>*>(pOutBuf + outIndex) = color_cast<outColor_type, inColor_type>(inColor);
     }
 };
 
@@ -240,9 +288,14 @@ struct SL_Blit_RGBA_to_RGB
 /*-------------------------------------
  * Recolor to RGBA
 -------------------------------------*/
-template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SL_ColorRGBAType<outColor_type>)>
+template<typename inColor_type, typename outColor_type>
 struct SL_Blit_R_to_RGBA
 {
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGBAType<outColor_type>)
+    };
+
     inline LS_INLINE void operator()(
         const SL_Texture* pTexture,
         const uint_fast32_t srcX,
@@ -250,17 +303,21 @@ struct SL_Blit_R_to_RGBA
         unsigned char* const pOutBuf,
         uint_fast32_t outIndex) const noexcept
     {
-        const ptrdiff_t                      offset   = outIndex * stride;
         const SL_ColorRType<inColor_type>    inColorR = pTexture->texel<SL_ColorRType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
         const SL_ColorRGBAType<inColor_type> inColor  = SL_ColorRGBAType<inColor_type>{(inColor_type)0, (inColor_type)0, inColorR[0], (inColor_type)1};
 
-        *reinterpret_cast<SL_ColorRGBAType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+        *reinterpret_cast<SL_ColorRGBAType<outColor_type>*>(pOutBuf + outIndex) = color_cast<outColor_type, inColor_type>(inColor);
     }
 };
 
-template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SL_ColorRGBAType<outColor_type>)>
+template<typename inColor_type, typename outColor_type>
 struct SL_Blit_RG_to_RGBA
 {
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGBAType<outColor_type>)
+    };
+
     inline LS_INLINE void operator()(
         const SL_Texture* pTexture,
         const uint_fast32_t srcX,
@@ -268,17 +325,21 @@ struct SL_Blit_RG_to_RGBA
         unsigned char* const pOutBuf,
         uint_fast32_t outIndex) const noexcept
     {
-        const ptrdiff_t                      offset    = outIndex * stride;
         const SL_ColorRGType<inColor_type>   inColorRG = pTexture->texel<SL_ColorRGType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
         const SL_ColorRGBAType<inColor_type> inColor   = ls::math::vec4_cast((inColor_type)0, inColorRG, (inColor_type)1);
 
-        *reinterpret_cast<SL_ColorRGBAType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+        *reinterpret_cast<SL_ColorRGBAType<outColor_type>*>(pOutBuf + outIndex) = color_cast<outColor_type, inColor_type>(inColor);
     }
 };
 
-template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SL_ColorRGBAType<outColor_type>)>
+template<typename inColor_type, typename outColor_type>
 struct SL_Blit_RGB_to_RGBA
 {
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGBAType<outColor_type>)
+    };
+
     inline LS_INLINE void operator()(
         const SL_Texture* pTexture,
         const uint_fast32_t srcX,
@@ -286,17 +347,21 @@ struct SL_Blit_RGB_to_RGBA
         unsigned char* const pOutBuf,
         uint_fast32_t outIndex) const noexcept
     {
-        const ptrdiff_t                      offset     = outIndex * stride;
         const SL_ColorRGBType<inColor_type>  inColorRGB = pTexture->texel<SL_ColorRGBType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
         const SL_ColorRGBAType<inColor_type> inColor    = ls::math::vec4_cast(inColorRGB, (inColor_type)1);
 
-        *reinterpret_cast<SL_ColorRGBAType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+        *reinterpret_cast<SL_ColorRGBAType<outColor_type>*>(pOutBuf + outIndex) = color_cast<outColor_type, inColor_type>(inColor);
     }
 };
 
-template<typename inColor_type, typename outColor_type, ptrdiff_t stride = sizeof(SL_ColorRGBAType<outColor_type>)>
+template<typename inColor_type, typename outColor_type>
 struct SL_Blit_RGBA_to_RGBA
 {
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGBAType<outColor_type>)
+    };
+
     inline LS_INLINE void operator()(
         const SL_Texture* pTexture,
         const uint_fast32_t srcX,
@@ -304,10 +369,9 @@ struct SL_Blit_RGBA_to_RGBA
         unsigned char* const pOutBuf,
         uint_fast32_t outIndex) const noexcept
     {
-        const ptrdiff_t                      offset = outIndex * stride;
         const SL_ColorRGBAType<inColor_type> inColor = pTexture->texel<SL_ColorRGBAType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
 
-        *reinterpret_cast<SL_ColorRGBAType<outColor_type>*>(pOutBuf + offset) = color_cast<outColor_type, inColor_type>(inColor);
+        *reinterpret_cast<SL_ColorRGBAType<outColor_type>*>(pOutBuf + outIndex) = color_cast<outColor_type, inColor_type>(inColor);
     }
 };
 
@@ -316,8 +380,13 @@ struct SL_Blit_RGBA_to_RGBA
 // I spent enough time on blitting... Here, I'm only optimizing for the most
 // common blit operations, from RGBAf & RGBA8 to RGBA8
 template<>
-struct SL_Blit_RGBA_to_RGBA<uint8_t, uint8_t, sizeof(SL_ColorRGBAType<uint8_t>)>
+struct SL_Blit_RGBA_to_RGBA<uint8_t, uint8_t>
 {
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGBAType<uint8_t>)
+    };
+
     inline LS_INLINE void operator()(
         const SL_Texture* pTexture,
         const uint_fast32_t srcX,
@@ -325,19 +394,23 @@ struct SL_Blit_RGBA_to_RGBA<uint8_t, uint8_t, sizeof(SL_ColorRGBAType<uint8_t>)>
         unsigned char* const pOutBuf,
         uint_fast32_t outIndex) const noexcept
     {
-        const ptrdiff_t offset = outIndex * sizeof(SL_ColorRGBAType<uint8_t>);
         const int32_t   inColor = pTexture->texel<int32_t>((uint16_t)srcX, (uint16_t)srcY);
 
         //_mm_stream_s32(reinterpret_cast<int32_t*>(pOutBuf + offset), inColor);
-        *reinterpret_cast<int32_t*>(pOutBuf + offset) = inColor;
+        *reinterpret_cast<int32_t*>(pOutBuf + outIndex) = inColor;
     }
 };
 
 
 
 template<>
-struct SL_Blit_RGBA_to_RGBA<float, uint8_t, sizeof(SL_ColorRGBAType<uint8_t>)>
+struct SL_Blit_RGBA_to_RGBA<float, uint8_t>
 {
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGBAType<uint8_t>)
+    };
+
     inline LS_INLINE void operator()(
         const SL_Texture* pTexture,
         const uint_fast32_t srcX,
@@ -345,12 +418,11 @@ struct SL_Blit_RGBA_to_RGBA<float, uint8_t, sizeof(SL_ColorRGBAType<uint8_t>)>
         unsigned char* const pOutBuf,
         uint_fast32_t outIndex) const noexcept
     {
-        const ptrdiff_t                 offset = outIndex * sizeof(SL_ColorRGBAType<uint8_t>);
         const SL_ColorRGBAType<float>   inColor = pTexture->texel<SL_ColorRGBAType<float>>((uint16_t)srcX, (uint16_t)srcY);
         const SL_ColorRGBAType<uint8_t> in = color_cast<uint8_t, float>(inColor);
 
         //_mm_stream_si32(reinterpret_cast<int32_t*>(pOutBuf + offset), reinterpret_cast<const int32_t&>(in));
-        *reinterpret_cast<int32_t*>(pOutBuf + offset) = reinterpret_cast<const int32_t&>(in);
+        *reinterpret_cast<int32_t*>(pOutBuf + outIndex) = reinterpret_cast<const int32_t&>(in);
     }
 };
 
@@ -638,20 +710,28 @@ void SL_BlitProcessor::blit_nearest() noexcept
     const sl_fixed_type foutW     = finW / ls::math::fixed_cast<sl_fixed_type>(totalOutW);
     const sl_fixed_type foutH     = finH / ls::math::fixed_cast<sl_fixed_type>(totalOutH);
 
-    for (uint_fast32_t y = y0; y < y1; y += mNumThreads)
+    uint_fast32_t y = y0;
+    do
     {
-        const sl_fixed_type yf   = ls::math::fixed_cast<sl_fixed_type>(y) * foutH;
-        const uint_fast32_t srcY = srcY1 - (srcY0 + ls::math::integer_cast<uint_fast32_t>(yf)) - 1;
+        const sl_fixed_type yf       = ls::math::fixed_cast<sl_fixed_type>(y) * foutH;
+        const uint_fast32_t srcY     = srcY1 - (srcY0 + ls::math::integer_cast<uint_fast32_t>(yf)) - 1;
+        uint_fast32_t       outIndex = (x0 + totalOutW * y) * BlipOp::stride;
 
-        for (uint_fast32_t x = x0; x < x1; ++x)
+        uint_fast32_t x = x0;
+        do
         {
             const sl_fixed_type  xf       = ls::math::fixed_cast<sl_fixed_type>(x) * foutW;
             const uint_fast32_t  srcX     = srcX0 + ls::math::integer_cast<uint_fast32_t>(xf);
-            const uint_fast32_t  outIndex = x + totalOutW * y;
 
             blitOp(mTexture, srcX, srcY, pOutBuf, outIndex);
+            ++x;
+            outIndex += BlipOp::stride;
         }
+        while (LS_UNLIKELY(x < x1));
+
+        y += mNumThreads;
     }
+    while (LS_UNLIKELY(y < y1));
 }
 
 
