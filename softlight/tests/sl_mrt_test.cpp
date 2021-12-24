@@ -45,7 +45,7 @@ namespace utils = ls::utils;
 #endif /* IMAGE_HEIGHT */
 
 #ifndef SL_TEST_MAX_THREADS
-    #define SL_TEST_MAX_THREADS 1//(ls::math::max<unsigned>(std::thread::hardware_concurrency(), 2u) - 1u)
+    #define SL_TEST_MAX_THREADS (ls::math::max<unsigned>(std::thread::hardware_concurrency(), 2u) - 1u)
 #endif /* SL_TEST_MAX_THREADS */
 
 #ifndef SL_BENCHMARK_SCENE
