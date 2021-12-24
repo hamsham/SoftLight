@@ -29,17 +29,15 @@ void SL_PointRasterizer::render_point(const uint32_t binId, SL_Framebuffer* cons
     constexpr DepthCmpFunc  depthCmp    = {};
     const SL_FragmentShader fragShader  = mShader->mFragShader;
     const SL_UniformBuffer* pUniforms   = mShader->mUniforms;
-    const uint32_t          numOutputs  = fragShader.numOutputs;
     const bool              depthMask   = fragShader.depthMask == SL_DEPTH_MASK_ON;
     const auto              pShader     = fragShader.shader;
-    const SL_BlendMode      blendMode   = fragShader.blend;
-    const bool              blend       = blendMode != SL_BLEND_OFF;
+    const SL_FboOutputMask  fboOutMask  = sl_calc_fbo_out_mask(fragShader.numOutputs, (fragShader.blend != SL_BLEND_OFF));
     const math::vec4        screenCoord = mBins[binId].mScreenCoords[0];
     const math::vec4        fragCoord   {screenCoord[0], screenCoord[1], screenCoord[2], 1.f};
     const SL_Texture*       pDepthBuf   = fbo->get_depth_buffer();
     SL_FragmentParam        fragParams;
 
-    if ((uint16_t)fragCoord.v[1] % mNumProcessors != mThreadId)
+    if (LS_LIKELY((uint16_t)fragCoord.v[1] % mNumProcessors != mThreadId))
     {
         return;
     }
@@ -59,37 +57,16 @@ void SL_PointRasterizer::render_point(const uint32_t binId, SL_Framebuffer* cons
         fragParams.pVaryings[i] = mBins[binId].mVaryings[i];
     }
 
-    const uint_fast32_t haveOutputs = pShader(fragParams);
+    const bool haveOutputs = pShader(fragParams);
 
-    if (blend)
+    if (LS_LIKELY(haveOutputs))
     {
-        // branchless select
-        switch (-haveOutputs & numOutputs)
+        mFbo->put_pixel(fboOutMask, fragShader.blend, fragParams);
+
+        if (depthMask)
         {
-            case 4: fbo->put_alpha_pixel(3, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3], blendMode);
-            case 3: fbo->put_alpha_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], blendMode);
-            case 2: fbo->put_alpha_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], blendMode);
-            case 1: fbo->put_alpha_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], blendMode);
-            //case 1: fbo->put_pixel(0, fragParams.coord.x, fragParams.coord.y, math::vec4{1.f, 0.f, 1.f, 1.f});
+            fbo->put_depth_pixel<depth_type>(fragParams.coord.x, fragParams.coord.y, (depth_type)fragParams.coord.depth);
         }
-
-    }
-    else
-    {
-        // branchless select
-        switch (-haveOutputs & numOutputs)
-        {
-            case 4: fbo->put_pixel(3, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3]);
-            case 3: fbo->put_pixel(2, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2]);
-            case 2: fbo->put_pixel(1, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1]);
-            case 1: fbo->put_pixel(0, fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0]);
-            //case 1: fbo->put_pixel(0, fragParams.coord.x, fragParams.coord.y, math::vec4{1.f, 0.f, 1.f, 1.f});
-        }
-    }
-
-    if (haveOutputs && depthMask)
-    {
-        fbo->put_depth_pixel<depth_type>(fragParams.coord.x, fragParams.coord.y, (depth_type)fragParams.coord.depth);
     }
 }
 

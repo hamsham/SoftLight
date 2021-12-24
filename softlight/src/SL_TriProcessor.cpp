@@ -518,7 +518,7 @@ void SL_TriProcessor::push_bin(size_t primIndex, const SL_TransformedVert& a, co
     while (true)
     {
         binId = pLocks->count.fetch_add(1, std::memory_order_acq_rel);
-        if (LS_LIKELY(binId < SL_SHADER_MAX_BINNED_PRIMS))
+        if (LS_UNLIKELY(binId < SL_SHADER_MAX_BINNED_PRIMS))
         {
             break;
         }

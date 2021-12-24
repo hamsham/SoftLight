@@ -498,11 +498,11 @@ void SL_TriRasterizer::flush_fragments(
         interpolate_tri_varyings(bc.v, fragShader.numVaryings, pBin->mVaryings, fragParams.pVaryings);
         const bool haveOutputs = fragShader.shader(fragParams);
 
-        if (LS_LIKELY(haveOutputs != false))
+        if (LS_LIKELY(haveOutputs))
         {
             mFbo->put_pixel(fboOutMask, fragShader.blend, fragParams);
 
-            if (LS_LIKELY(haveDepthMask != 0))
+            if (LS_LIKELY(haveDepthMask))
             {
                 pDepthBuf->texel<depth_type>(fragParams.coord.x, fragParams.coord.y) = (depth_type)fragParams.coord.depth;
             }

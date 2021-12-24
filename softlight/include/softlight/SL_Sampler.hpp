@@ -29,6 +29,8 @@ struct SL_WrapModeRepeat;
 // Pseudo enum class
 namespace SL_WrapMode
 {
+    typedef ls::math::long_medp_t fixed_type;
+
     typedef SL_WrapModeClampEdge   EDGE;
     typedef SL_WrapModeClampBorder BORDER;
     typedef SL_WrapModeRepeat      REPEAT;
@@ -50,9 +52,9 @@ struct SL_WrapModeClampEdge
 {
     constexpr SL_WrapModeClampEdge() = default;
 
-    constexpr LS_INLINE SL_Texture::fixed_type operator()(SL_Texture::fixed_type uvw) const noexcept
+    constexpr LS_INLINE SL_WrapMode::fixed_type operator()(SL_WrapMode::fixed_type uvw) const noexcept
     {
-        return ls::math::clamp<SL_Texture::fixed_type>(uvw, SL_Texture::fixed_type{0u}, ls::math::fixed_cast<SL_Texture::fixed_type>(1u));
+        return ls::math::clamp<SL_WrapMode::fixed_type>(uvw, SL_WrapMode::fixed_type{0u}, ls::math::fixed_cast<SL_WrapMode::fixed_type>(1u));
     }
 
     constexpr LS_INLINE int operator()(int uvw, int maxVal) const noexcept
@@ -72,11 +74,11 @@ struct SL_WrapModeClampBorder
 {
     constexpr SL_WrapModeClampBorder() = default;
 
-    constexpr LS_INLINE SL_Texture::fixed_type operator()(SL_Texture::fixed_type uvw) const noexcept
+    constexpr LS_INLINE SL_WrapMode::fixed_type operator()(SL_WrapMode::fixed_type uvw) const noexcept
     {
-        return (uvw >= ls::math::fixed_cast<SL_Texture::fixed_type>(0u) && uvw < ls::math::fixed_cast<SL_Texture::fixed_type>(1u))
+        return (uvw >= ls::math::fixed_cast<SL_WrapMode::fixed_type>(0u) && uvw < ls::math::fixed_cast<SL_WrapMode::fixed_type>(1u))
             ? uvw
-            : ls::math::fixed_cast<SL_Texture::fixed_type>(-1u);
+            : ls::math::fixed_cast<SL_WrapMode::fixed_type>(-1u);
     }
 
     constexpr LS_INLINE int operator()(int uvw, int maxVal) const noexcept
@@ -98,9 +100,9 @@ struct SL_WrapModeRepeat
 {
     constexpr SL_WrapModeRepeat() = default;
 
-    constexpr LS_INLINE SL_Texture::fixed_type operator()(SL_Texture::fixed_type uvw) const noexcept
+    constexpr LS_INLINE SL_WrapMode::fixed_type operator()(SL_WrapMode::fixed_type uvw) const noexcept
     {
-        return ls::math::clamp<SL_Texture::fixed_type>(uvw, SL_Texture::fixed_type{0u}, ls::math::fixed_cast<SL_Texture::fixed_type>(1u));
+        return ls::math::clamp<SL_WrapMode::fixed_type>(uvw, SL_WrapMode::fixed_type{0u}, ls::math::fixed_cast<SL_WrapMode::fixed_type>(1u));
     }
 
     constexpr LS_INLINE int operator()(int uvw, int maxVal) const noexcept
@@ -133,7 +135,7 @@ inline LS_INLINE color_type sl_sample_nearest(const SL_Texture& tex, float x, fl
         const uint32_t xi = (uint_fast32_t)((float)tex.width()  * wx);
         const uint32_t yi = (uint_fast32_t)((float)tex.height() * wy);
     #else
-        typedef typename SL_Texture::fixed_type fixed_type;
+        typedef typename SL_WrapMode::fixed_type fixed_type;
         const fixed_type    xf = ls::math::fixed_cast<fixed_type, float>(wx);
         const fixed_type    yf = ls::math::fixed_cast<fixed_type, float>(wy);
         const uint_fast32_t xi = ls::math::integer_cast<uint_fast32_t>(ls::math::fixed_cast<fixed_type, uint16_t>(tex.width()) * xf);
@@ -162,7 +164,7 @@ inline LS_INLINE color_type sl_sample_nearest(const SL_Texture& tex, float x, fl
         const uint32_t yi = (uint_fast32_t)((float)tex.height() * wy);
         const uint32_t zi = (uint_fast32_t)ls::math::round((float)tex.depth() * wz);
     #else
-        typedef typename SL_Texture::fixed_type fixed_type;
+        typedef typename SL_WrapMode::fixed_type fixed_type;
         const fixed_type    xf = ls::math::fixed_cast<fixed_type, float>(wx);
         const fixed_type    yf = ls::math::fixed_cast<fixed_type, float>(wy);
         const fixed_type    zf = ls::math::fixed_cast<fixed_type, float>(wz) + ls::math::fixed_cast<fixed_type, float>(0.1f);

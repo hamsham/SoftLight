@@ -6,8 +6,7 @@
 
 #include "lightsky/setup/Arch.h"
 
-#include "lightsky/math/fixed.h"
-#include "lightsky/math/vec_utils.h"
+#include "lightsky/math/vec4.h"
 
 #include "softlight/SL_Color.hpp" // SL_ColorDataType
 #include "softlight/SL_Swizzle.hpp"
@@ -28,9 +27,6 @@ class SL_ImgFile;
 -----------------------------------------------------------------------------*/
 class alignas(sizeof(uint64_t)) SL_Texture
 {
-  public:
-    typedef ls::math::long_medp_t fixed_type;
-
   private:
     uint16_t mWidth; // 2 bytes
 

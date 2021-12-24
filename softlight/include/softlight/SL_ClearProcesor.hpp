@@ -14,8 +14,6 @@
 -----------------------------------------------------------------------------*/
 struct SL_ClearProcessor
 {
-    using sl_fixed_type = ls::math::ulong_lowp_t;
-
     // 32 bits
     uint16_t mThreadId;
     uint16_t mNumThreads;

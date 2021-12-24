@@ -4,6 +4,8 @@
 
 #include <cstdint>
 
+#include "lightsky/math/vec_utils.h" // vector casting
+
 #include "softlight/SL_Color.hpp"
 #include "softlight/SL_Texture.hpp"
 

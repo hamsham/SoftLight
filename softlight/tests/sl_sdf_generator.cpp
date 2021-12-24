@@ -1,4 +1,6 @@
 
+#include "lightsky/math/vec_utils.h" // vector casting
+
 #include "softlight/SL_Texture.hpp"
 
 #include "sl_sdf_generator.hpp"
