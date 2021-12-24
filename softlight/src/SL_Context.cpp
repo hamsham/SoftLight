@@ -539,11 +539,6 @@ std::size_t SL_Context::create_shader(
         return (std::size_t)-1;
     }
 
-    if (!fragShader.numOutputs || fragShader.numOutputs > SL_SHADER_MAX_FRAG_OUTPUTS)
-    {
-        return (std::size_t)-1;
-    }
-
     mShaders.push_back(SL_Shader{vertShader, fragShader, mUniforms[uniformIndex]});
     return mShaders.size() - 1;
 }

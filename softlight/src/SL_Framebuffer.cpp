@@ -1,6 +1,8 @@
 
 #include "lightsky/setup/Compiler.h" // LS_COMPILER_MSC
 
+#include "lightsky/math/vec_utils.h" // vector casting
+
 #include "softlight/SL_Color.hpp"
 
 #include "softlight/SL_Framebuffer.hpp"
@@ -701,10 +703,9 @@ void SL_Framebuffer::put_pixel(SL_FboOutputMask outMask, SL_BlendMode blendMode,
         case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1_2:   this->put_alpha_pixel(2, fragParam.coord.x, fragParam.coord.y, fragParam.pOutputs[2], blendMode);
         case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1:     this->put_alpha_pixel(1, fragParam.coord.x, fragParam.coord.y, fragParam.pOutputs[1], blendMode);
         case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0:       this->put_alpha_pixel(0, fragParam.coord.x, fragParam.coord.y, fragParam.pOutputs[0], blendMode);
-            break;
 
         default:
-            LS_UNREACHABLE();
+            break;
     }
 }
 
