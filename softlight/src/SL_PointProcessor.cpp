@@ -167,8 +167,14 @@ void SL_PointProcessor::push_bin(size_t primIndex, const ls::math::vec4& viewpor
     uint_fast64_t binId;
 
     // Attempt to grab a bin index. Flush the bins if they've filled up.
-    while ((binId = pLocks->count.fetch_add(1, std::memory_order_acq_rel)) >= SL_SHADER_MAX_BINNED_PRIMS)
+    while (true)
     {
+        binId = pLocks->count.fetch_add(1, std::memory_order_acq_rel);
+        if (LS_UNLIKELY(binId < SL_SHADER_MAX_BINNED_PRIMS))
+        {
+            break;
+        }
+
         flush_rasterizer<SL_PointRasterizer>();
     }
 
@@ -214,34 +220,19 @@ void SL_PointProcessor::process_verts(
     params.pVao       = &vao;
     params.pVbo       = &mContext->vbo(vao.get_vertex_buffer());
 
-    #if SL_VERTEX_CACHING_ENABLED
-        size_t begin;
-        size_t end;
-        constexpr size_t step = 1;
+    size_t begin;
+    size_t end;
+    sl_calc_indexed_parition<1, true>(m.elementEnd-m.elementBegin, mNumThreads, mThreadId, begin, end);
 
-        sl_calc_indexed_parition<1>(m.elementEnd-m.elementBegin, mNumThreads, mThreadId, begin, end);
-        begin += m.elementBegin;
-        end += m.elementBegin;
+    begin += m.elementBegin;
+    end += m.elementBegin;
 
-        SL_PTVCache ptvCache{shader, params};
+    SL_PTVCache ptvCache{shader, params};
 
-    #else
-        const size_t begin = m.elementBegin + mThreadId;
-        const size_t end   = m.elementEnd;
-        const size_t step  = mNumThreads;
-    #endif
-
-    for (size_t i = begin; i < end; i += step)
+    for (size_t i = begin; i < end; ++i)
     {
-        #if SL_VERTEX_CACHING_ENABLED
-            const size_t vertId = usingIndices ? pIbo->index(i) : i;
-            ptvCache.query_and_update(vertId, scissorMat, pVert0);
-
-        #else
-            params.vertId    = usingIndices ? pIbo->index(i) : i;
-            params.pVaryings = pVert0.varyings;
-            pVert0.vert      = scissorMat * shader(params);
-        #endif
+        const size_t vertId = usingIndices ? pIbo->index(i) : i;
+        ptvCache.query_and_update(vertId, scissorMat, pVert0);
 
         if (pVert0.vert[3] > 0.f)
         {

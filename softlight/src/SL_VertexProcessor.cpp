@@ -45,7 +45,8 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
         // call to reduce depth-buffer access during rasterization. Sorting
         // primitives multiple times here in the vertex processor will
         // increase latency before invoking the fragment processor.
-        const bool canDepthSort = maxElements < SL_SHADER_MAX_BINNED_PRIMS;
+        bool shouldDepthSort = mMeshes[0].mode != SL_RenderMode::RENDER_MODE_POINTS && mMeshes[0].mode != SL_RenderMode::RENDER_MODE_INDEXED_POINTS;
+        const bool canDepthSort = shouldDepthSort && (maxElements < SL_SHADER_MAX_BINNED_PRIMS);
 
         // Blended fragments get sorted by their primitive index for
         // consistency.
