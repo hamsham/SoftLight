@@ -3,6 +3,12 @@
 #include <memory> // std::move()
 #include <thread>
 
+#include "lightsky/setup/Compiler.h"
+
+#ifdef LS_COMPILER_MINGW
+    #define SDL_MAIN_HANDLED 1
+#endif
+
 #include <SDL2/SDL_main.h>
 #include <SDL2/SDL.h>
 
