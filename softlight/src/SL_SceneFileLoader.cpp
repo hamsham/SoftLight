@@ -1476,11 +1476,11 @@ void SL_SceneFileLoader::import_camera_node(
     camList.emplace_back(SL_Camera());
     SL_Camera& outCam = graph.mCameras.back();
 
-    outCam.set_fov(pInCam->mHorizontalFOV);
-    outCam.set_aspect_ratio(pInCam->mAspect, 1.f);
-    outCam.set_near_plane(pInCam->mClipPlaneNear);
-    outCam.set_far_plane(pInCam->mClipPlaneFar);
-    outCam.set_projection_type(SL_ProjectionType::SL_PROJECTION_LOGARITHMIC_PERSPECTIVE);
+    outCam.fov(pInCam->mHorizontalFOV);
+    outCam.aspect_ratio(pInCam->mAspect, 1.f);
+    outCam.near_plane(pInCam->mClipPlaneNear);
+    outCam.far_plane(pInCam->mClipPlaneFar);
+    outCam.projection_type(SL_ProjectionType::SL_PROJECTION_LOGARITHMIC_PERSPECTIVE);
     outCam.update();
 
     // A Transform object must have been added by the parent function
@@ -1521,10 +1521,10 @@ void SL_SceneFileLoader::import_camera_node(
 
     std::cout
         << "\tLoaded the scene camera " << pInCam->mName.C_Str() << ':'
-        << "\n\t\tField of View: " << LS_RAD2DEG(outCam.get_fov())
-        << "\n\t\tAspect Ratio:  " << outCam.get_aspect_ratio()
-        << "\n\t\tNear Plane:    " << outCam.get_near_plane()
-        << "\n\t\tFar Plane:     " << outCam.get_far_plane()
+        << "\n\t\tField of View: " << LS_RAD2DEG(outCam.fov())
+        << "\n\t\tAspect Ratio:  " << outCam.aspect_ratio()
+        << "\n\t\tNear Plane:    " << outCam.near_plane()
+        << "\n\t\tFar Plane:     " << outCam.far_plane()
         << "\n\t\tPosition:      {" << camPos[0] << ", " << camPos[1] << ", " << camPos[2] << '}'
         << "\n\t\tUp Direction:  {" << camUp[0] << ", " << camUp[1] << ", " << camUp[2] << '}'
         << std::endl;

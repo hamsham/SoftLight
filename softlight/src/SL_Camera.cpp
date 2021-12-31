@@ -389,7 +389,7 @@ SL_Camera& SL_Camera::operator=(SL_Camera&& c)
 /*-------------------------------------
  * Set the current projection mode
 -------------------------------------*/
-void SL_Camera::set_projection_type(const SL_ProjectionType p)
+void SL_Camera::projection_type(const SL_ProjectionType p)
 {
     mIsDirty = true;
     mProjType = p;

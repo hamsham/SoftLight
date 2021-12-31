@@ -260,7 +260,7 @@ class SL_Camera
      * A value from the SL_ProjectionType enumeration which determines what
      * type of frustum to use for the projection matrix.
      */
-    void set_projection_type(const SL_ProjectionType p);
+    void projection_type(const SL_ProjectionType p);
 
     /**
      * @brief Retrieve the current frustum type for the projection matrix.
@@ -268,7 +268,7 @@ class SL_Camera
      * @return A value from the SL_ProjectionType enumeration which determines
      * what type of frustum to use for the projection matrix.
      */
-    SL_ProjectionType get_projection_type() const;
+    SL_ProjectionType projection_type() const;
 
     /**
      * @brief Retrieve the camera's projection matrix for external use.
@@ -276,7 +276,7 @@ class SL_Camera
      * @return A 4x4 projection matrix which is used by *this for
      * projecting geometry data.
      */
-    const ls::math::mat4& get_proj_matrix() const;
+    const ls::math::mat4& proj_matrix() const;
 
     /**
      * @brief Set the field of view for the camera;
@@ -288,7 +288,7 @@ class SL_Camera
      * The desired horizontal angle, in radians, which the field of view
      * should be set to.
      */
-    void set_fov(float viewAngle);
+    void fov(float viewAngle);
 
     /**
      * @brief Retrieve the horizontal field of view of the camera.
@@ -296,7 +296,7 @@ class SL_Camera
      * @return A floating point number, representing the number of radians
      * of the field of view of the camera.
      */
-    float get_fov() const;
+    float fov() const;
 
     /**
      * @brief Set the aspect ration of the internal camera.
@@ -307,7 +307,7 @@ class SL_Camera
      * @param h
      * The height of the projection matrix frustum.
      */
-    void set_aspect_ratio(float w, float h);
+    void aspect_ratio(float w, float h);
 
     /**
      * @brief Set the aspect ration of the internal camera.
@@ -316,7 +316,7 @@ class SL_Camera
      * A 2D vector containing both the width and height of the projection
      * matrix frustum.
      */
-    void set_aspect_ratio(const ls::math::vec2& aspect);
+    void aspect_ratio(const ls::math::vec2& aspect);
 
     /**
      * @brief Get the aspect ratio of the camera's projection matrix.
@@ -324,7 +324,7 @@ class SL_Camera
      * @return A floating-point value, representing the width of the
      * projection matrix frustum, divided by its height.
      */
-    float get_aspect_ratio() const;
+    float aspect_ratio() const;
 
     /**
      * @brief Get the width of the projection matrix frustum.
@@ -332,7 +332,7 @@ class SL_Camera
      * @return A floating-point value, representing the width of the
      * projection matrix frustum.
      */
-    float get_aspect_width() const;
+    float aspect_width() const;
 
     /**
      * @brief Get the height of the projection matrix frustum.
@@ -340,7 +340,7 @@ class SL_Camera
      * @return A floating-point value, representing the height of the
      * projection matrix frustum.
      */
-    float get_aspect_height() const;
+    float aspect_height() const;
 
     /**
      * @brief Set the distance to the camera's near-clipping plane.
@@ -349,7 +349,7 @@ class SL_Camera
      * A floating point value, representing the distance to the camera's
      * near-clipping plane.
      */
-    void set_near_plane(float inZNear);
+    void near_plane(float inZNear);
 
     /**
      * @brief Get the distance to the camera's near-clipping plane.
@@ -357,7 +357,7 @@ class SL_Camera
      * @return A floating point value, representing the distance to the
      * camera's near-clipping plane.
      */
-    float get_near_plane() const;
+    float near_plane() const;
 
     /**
      * @brief Set the distance to the camera's far-clipping plane.
@@ -366,7 +366,7 @@ class SL_Camera
      * A floating point value, representing the distance to the camera's
      * far-clipping plane.
      */
-    void set_far_plane(float inZFar);
+    void far_plane(float inZFar);
 
     /**
      * @brief Get the distance to the camera's far-clipping plane.
@@ -374,7 +374,7 @@ class SL_Camera
      * @return A floating point value, representing the distance to the
      * camera's far-clipping plane.
      */
-    float get_far_plane() const;
+    float far_plane() const;
 
     /**
      * Determine if *this SL_Camera object needs an update.
@@ -383,6 +383,11 @@ class SL_Camera
      * projection updates, FALSE if not.
      */
     bool is_dirty() const noexcept;
+
+    /**
+     * Force the camera to require an update by a scene graph.
+     */
+    void force_dirty() noexcept;
 
     /**
      * @brief Apply all pending updates to the camera's view+projection
@@ -396,7 +401,7 @@ class SL_Camera
 /*-------------------------------------
  * Get the projection matrix
 -------------------------------------*/
-inline const ls::math::mat4& SL_Camera::get_proj_matrix() const
+inline const ls::math::mat4& SL_Camera::proj_matrix() const
 {
     return mProjection;
 }
@@ -406,7 +411,7 @@ inline const ls::math::mat4& SL_Camera::get_proj_matrix() const
 /*-------------------------------------
  * Set the FOV
 -------------------------------------*/
-inline void SL_Camera::set_fov(float viewAngle)
+inline void SL_Camera::fov(float viewAngle)
 {
     mIsDirty = true;
     mFov = viewAngle;
@@ -417,7 +422,7 @@ inline void SL_Camera::set_fov(float viewAngle)
 /*-------------------------------------
  * Get the FOV
 -------------------------------------*/
-inline float SL_Camera::get_fov() const
+inline float SL_Camera::fov() const
 {
     return mFov;
 }
@@ -427,7 +432,7 @@ inline float SL_Camera::get_fov() const
 /*-------------------------------------
  * Set the aspect ratio
 -------------------------------------*/
-inline void SL_Camera::set_aspect_ratio(float w, float h)
+inline void SL_Camera::aspect_ratio(float w, float h)
 {
     mIsDirty = true;
     mAspectW = w;
@@ -439,7 +444,7 @@ inline void SL_Camera::set_aspect_ratio(float w, float h)
 /*-------------------------------------
  * Set the aspect ratio
 -------------------------------------*/
-inline void SL_Camera::set_aspect_ratio(const ls::math::vec2& aspect)
+inline void SL_Camera::aspect_ratio(const ls::math::vec2& aspect)
 {
     mIsDirty = true;
     mAspectW = aspect[0];
@@ -451,7 +456,7 @@ inline void SL_Camera::set_aspect_ratio(const ls::math::vec2& aspect)
 /*-------------------------------------
  * Get the current aspect ratio.
 -------------------------------------*/
-inline float SL_Camera::get_aspect_ratio() const
+inline float SL_Camera::aspect_ratio() const
 {
     return mAspectW / mAspectH;
 }
@@ -461,7 +466,7 @@ inline float SL_Camera::get_aspect_ratio() const
 /*-------------------------------------
  * Get the current aspect width.
 -------------------------------------*/
-inline float SL_Camera::get_aspect_width() const
+inline float SL_Camera::aspect_width() const
 {
     return mAspectW;
 }
@@ -471,7 +476,7 @@ inline float SL_Camera::get_aspect_width() const
 /*-------------------------------------
  * Get the current aspect height.
 -------------------------------------*/
-inline float SL_Camera::get_aspect_height() const
+inline float SL_Camera::aspect_height() const
 {
     return mAspectH;
 }
@@ -481,7 +486,7 @@ inline float SL_Camera::get_aspect_height() const
 /*-------------------------------------
  * Set the near plane distance
 -------------------------------------*/
-inline void SL_Camera::set_near_plane(float inZNear)
+inline void SL_Camera::near_plane(float inZNear)
 {
     mIsDirty = true;
     mZNear = inZNear;
@@ -492,7 +497,7 @@ inline void SL_Camera::set_near_plane(float inZNear)
 /*-------------------------------------
  * Get the near plane distance
 -------------------------------------*/
-inline float SL_Camera::get_near_plane() const
+inline float SL_Camera::near_plane() const
 {
     return mZNear;
 }
@@ -502,7 +507,7 @@ inline float SL_Camera::get_near_plane() const
 /*-------------------------------------
  * Set the far plane distance
 -------------------------------------*/
-inline void SL_Camera::set_far_plane(float inZFar)
+inline void SL_Camera::far_plane(float inZFar)
 {
     mIsDirty = true;
     mZFar = inZFar;
@@ -513,7 +518,7 @@ inline void SL_Camera::set_far_plane(float inZFar)
 /*-------------------------------------
  * Get the distance to the far plane.
 -------------------------------------*/
-inline float SL_Camera::get_far_plane() const
+inline float SL_Camera::far_plane() const
 {
     return mZFar;
 }
@@ -526,6 +531,16 @@ inline float SL_Camera::get_far_plane() const
 inline bool SL_Camera::is_dirty() const noexcept
 {
     return mIsDirty;
+}
+
+
+
+/*-------------------------------------
+ * SL_Camera Update Inquiry
+-------------------------------------*/
+inline void SL_Camera::force_dirty() noexcept
+{
+    mIsDirty = true;
 }
 
 
