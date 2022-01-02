@@ -4,6 +4,7 @@
 
 #include <cstddef> // ptrdiff_t
 
+#include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Pointer.h"
 
 #include "softlight/SL_Geometry.hpp" // SL_Dimension, SL_DataType
@@ -12,7 +13,11 @@
 
 class SL_VertexArray
 {
-    static constexpr uint32_t SL_INVALID_BUFFER_ID = std::numeric_limits<uint32_t>::max();
+    enum
+    {
+        MAX_BINDINGS = 8,
+        INVALID_BUFFER_ID = std::numeric_limits<std::size_t>::max(),
+    };
 
   private:
     struct BindInfo
@@ -27,9 +32,9 @@ class SL_VertexArray
 
     std::size_t mIboId;
 
-    ls::utils::UniqueAlignedArray<BindInfo> mBindings;
+    std::size_t mNumBindings;
 
-    uint64_t mNumBindings;
+    BindInfo mBindings[SL_VertexArray::MAX_BINDINGS];
 
   public:
     ~SL_VertexArray() noexcept;
@@ -67,21 +72,21 @@ class SL_VertexArray
 
     void remove_binding(std::size_t bindId) noexcept;
 
+    std::size_t get_vertex_buffer() const noexcept;
+
     void set_vertex_buffer(std::size_t vboId) noexcept;
 
     void remove_vertex_buffer() noexcept;
 
     bool has_vertex_buffer() const noexcept;
 
-    uint64_t get_vertex_buffer() const noexcept;
+    std::size_t get_index_buffer() const noexcept;
 
     void set_index_buffer(std::size_t iboId) noexcept;
 
     void remove_index_buffer() noexcept;
 
     bool has_index_buffer() const noexcept;
-
-    uint64_t get_index_buffer() const noexcept;
 
     void terminate() noexcept;
 };
@@ -103,6 +108,7 @@ inline std::size_t SL_VertexArray::num_bindings() const noexcept
 --------------------------------------*/
 inline ptrdiff_t SL_VertexArray::offset(std::size_t bindId) const noexcept
 {
+    // LS_DEBUG_ASSERT(bindId < SL_VertexArray::MAX_BINDINGS);
     return mBindings[bindId].offset;
 }
 
@@ -113,6 +119,8 @@ inline ptrdiff_t SL_VertexArray::offset(std::size_t bindId) const noexcept
 --------------------------------------*/
 inline ptrdiff_t SL_VertexArray::offset(std::size_t bindId, std::size_t vertId) const noexcept
 {
+    // LS_DEBUG_ASSERT(bindId < SL_VertexArray::MAX_BINDINGS);
+
     const SL_VertexArray::BindInfo& binding = mBindings[bindId];
     return binding.offset + (binding.stride * vertId);
 }
@@ -124,6 +132,7 @@ inline ptrdiff_t SL_VertexArray::offset(std::size_t bindId, std::size_t vertId) 
 --------------------------------------*/
 inline ptrdiff_t SL_VertexArray::stride(std::size_t bindId) const noexcept
 {
+    // LS_DEBUG_ASSERT(bindId < SL_VertexArray::MAX_BINDINGS);
     return mBindings[bindId].stride;
 }
 
@@ -134,6 +143,7 @@ inline ptrdiff_t SL_VertexArray::stride(std::size_t bindId) const noexcept
 --------------------------------------*/
 inline SL_DataType SL_VertexArray::type(std::size_t bindId) const noexcept
 {
+    // LS_DEBUG_ASSERT(bindId < SL_VertexArray::MAX_BINDINGS);
     return mBindings[bindId].type;
 }
 
@@ -144,7 +154,18 @@ inline SL_DataType SL_VertexArray::type(std::size_t bindId) const noexcept
 --------------------------------------*/
 inline SL_Dimension SL_VertexArray::dimensions(std::size_t bindId) const noexcept
 {
+    // LS_DEBUG_ASSERT(bindId < SL_VertexArray::MAX_BINDINGS);
     return mBindings[bindId].dimens;
+}
+
+
+
+/*--------------------------------------
+ * Retrieve the ID of the VBO attached to *this.
+--------------------------------------*/
+inline std::size_t SL_VertexArray::get_vertex_buffer() const noexcept
+{
+    return mVboId;
 }
 
 
@@ -164,7 +185,7 @@ inline void SL_VertexArray::set_vertex_buffer(size_t vboId) noexcept
 --------------------------------------*/
 inline void SL_VertexArray::remove_vertex_buffer() noexcept
 {
-    mVboId = SL_INVALID_BUFFER_ID;
+    mVboId = SL_VertexArray::INVALID_BUFFER_ID;
 }
 
 
@@ -174,7 +195,17 @@ inline void SL_VertexArray::remove_vertex_buffer() noexcept
 --------------------------------------*/
 inline bool SL_VertexArray::has_vertex_buffer() const noexcept
 {
-    return mVboId != SL_INVALID_BUFFER_ID;
+    return mVboId != SL_VertexArray::INVALID_BUFFER_ID;
+}
+
+
+
+/*--------------------------------------
+ * Retrieve the ID of the VBO attached to *this.
+--------------------------------------*/
+inline std::size_t SL_VertexArray::get_index_buffer() const noexcept
+{
+    return mIboId;
 }
 
 
@@ -194,7 +225,7 @@ inline void SL_VertexArray::set_index_buffer(size_t iboId) noexcept
 --------------------------------------*/
 inline void SL_VertexArray::remove_index_buffer() noexcept
 {
-    mIboId = SL_INVALID_BUFFER_ID;
+    mIboId = SL_VertexArray::INVALID_BUFFER_ID;
 }
 
 
@@ -204,27 +235,7 @@ inline void SL_VertexArray::remove_index_buffer() noexcept
 --------------------------------------*/
 inline bool SL_VertexArray::has_index_buffer() const noexcept
 {
-    return mIboId != SL_INVALID_BUFFER_ID;
-}
-
-
-
-/*--------------------------------------
- * Retrieve the ID of the VBO attached to *this.
---------------------------------------*/
-inline uint64_t SL_VertexArray::get_vertex_buffer() const noexcept
-{
-    return mVboId;
-}
-
-
-
-/*--------------------------------------
- * Retrieve the ID of the VBO attached to *this.
---------------------------------------*/
-inline uint64_t SL_VertexArray::get_index_buffer() const noexcept
-{
-    return mIboId;
+    return mIboId != SL_VertexArray::INVALID_BUFFER_ID;
 }
 
 
