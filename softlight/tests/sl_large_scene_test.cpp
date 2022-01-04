@@ -412,6 +412,7 @@ SL_VertexShader texture_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
+template <unsigned numAlbedoChannels>
 SL_FragmentShader texture_frag_shader()
 {
     SL_FragmentShader shader;
@@ -443,7 +444,7 @@ SL_FragmentShader texture_frag_shader()
         constexpr float shininess = 50.f;
 
         // normalize the texture colors to within (0.f, 1.f)
-        if (albedo->channels() == 3)
+        if (numAlbedoChannels == 3)
         {
             const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::ORDERED>(*albedo, uv[0], uv[1]);
             //const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::SWIZZLED>(*albedo, uv[0], uv[1]);
@@ -513,6 +514,7 @@ SL_FragmentShader texture_frag_shader()
 
 
 
+template <unsigned numAlbedoChannels>
 SL_FragmentShader texture_frag_shader_pbr()
 {
     SL_FragmentShader shader;
@@ -538,7 +540,7 @@ SL_FragmentShader texture_frag_shader_pbr()
         math::vec4           pixel;
 
         // normalize the texture colors to within (0.f, 1.f)
-        if (pTexture->channels() == 3)
+        if (numAlbedoChannels == 3)
         {
             const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::ORDERED>(*pTexture, uv[0], uv[1]);
             //const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::SWIZZLED>(*pTexture, uv[0], uv[1]);
@@ -723,15 +725,30 @@ void render_scene(SL_SceneGraph* pGraph, unsigned w, unsigned h, const math::mat
             #endif
 
             // Use the textureless shader if needed
-            size_t shaderId = (size_t)(material.pTextures[SL_MATERIAL_TEXTURE_AMBIENT] == nullptr);
-
-            pUniforms->light.ambient = material.ambient;
-            pUniforms->light.diffuse = material.diffuse;
+            size_t shaderId;
+            if (material.pTextures[SL_MATERIAL_TEXTURE_AMBIENT])
+            {
+                if (material.pTextures[SL_MATERIAL_TEXTURE_AMBIENT]->channels() == 4)
+                {
+                    shaderId = 2;
+                }
+                else
+                {
+                    shaderId = 1;
+                }
+            }
+            else
+            {
+                shaderId = 0;
+            }
 
             if (usePbr)
             {
-                shaderId += 2;
+                shaderId += 3;
             }
+
+            pUniforms->light.ambient = material.ambient;
+            pUniforms->light.diffuse = material.diffuse;
 
             context.draw(m, shaderId, 0);
         }
@@ -800,9 +817,11 @@ utils::Pointer<SL_SceneGraph> create_context()
     const SL_VertexShader&&   normVertShader    = normal_vert_shader();
     const SL_VertexShader&&   texVertShader     = texture_vert_shader();
     const SL_FragmentShader&& normFragShader    = normal_frag_shader();
-    const SL_FragmentShader&& texFragShader     = texture_frag_shader();
+    const SL_FragmentShader&& texFragShader3    = texture_frag_shader<3>();
+    const SL_FragmentShader&& texFragShader4    = texture_frag_shader<4>();
     const SL_FragmentShader&& normFragShaderPbr = normal_frag_shader_pbr();
-    const SL_FragmentShader&& texFragShaderPbr  = texture_frag_shader_pbr();
+    const SL_FragmentShader&& texFragShaderPbr3 = texture_frag_shader_pbr<3>();
+    const SL_FragmentShader&& texFragShaderPbr4 = texture_frag_shader_pbr<4>();
 
     size_t uboId = context.create_ubo();
     SL_UniformBuffer& ubo = context.ubo(uboId);
@@ -815,19 +834,19 @@ utils::Pointer<SL_SceneGraph> create_context()
     pUniforms->point.linear     = 0.009f;
     pUniforms->point.quadratic  = 0.00018f;
 
-    size_t texShaderId     = context.create_shader(texVertShader,  texFragShader,     uboId);
     size_t normShaderId    = context.create_shader(normVertShader, normFragShader,    uboId);
-    size_t texShaderPbrId  = context.create_shader(texVertShader,  texFragShaderPbr,  uboId);
+    size_t texShader3Id    = context.create_shader(texVertShader,  texFragShader3,    uboId);
+    size_t texShader4Id    = context.create_shader(texVertShader,  texFragShader4,    uboId);
     size_t normShaderPbrId = context.create_shader(normVertShader, normFragShaderPbr, uboId);
+    size_t texShaderPbr3Id = context.create_shader(texVertShader,  texFragShaderPbr3, uboId);
+    size_t texShaderPbr4Id = context.create_shader(texVertShader,  texFragShaderPbr4, uboId);
 
-    LS_ASSERT(texShaderId == 0);
-    LS_ASSERT(normShaderId == 1);
-    LS_ASSERT(texShaderPbrId == 2);
+    LS_ASSERT(normShaderId == 0);
+    LS_ASSERT(texShader3Id == 1);
+    LS_ASSERT(texShader4Id == 2);
     LS_ASSERT(normShaderPbrId == 3);
-    (void)texShaderId;
-    (void)normShaderId;
-    (void)texShaderPbrId;
-    (void)normShaderPbrId;
+    LS_ASSERT(texShaderPbr3Id == 4);
+    LS_ASSERT(texShaderPbr4Id == 5);
     (void)retCode;
 
     return pGraph;
