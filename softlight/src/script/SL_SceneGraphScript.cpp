@@ -17,13 +17,10 @@
 -----------------------------------------------------------------------------*/
 bool _sl_serialize_camera(std::ostream& ostr, const SL_Camera& cam)
 {
+    if (ostr.good())
     {
         uint8_t isDirty = cam.is_dirty() ? 0xFF : 0x00;
         ostr.write((const char*)&isDirty, sizeof(isDirty));
-        if (!ostr.good())
-        {
-            return false;
-        }
     }
 
     if (ostr.good())
@@ -68,10 +65,9 @@ bool _sl_serialize_camera(std::ostream& ostr, const SL_Camera& cam)
 bool _sl_deserialize_camera(std::istream& istr, SL_Camera& cam)
 {
     uint8_t isDirty = 0;
-    istr.read(reinterpret_cast<char*>(&isDirty), sizeof(isDirty));
-    if (!istr.good())
+    if (istr.good())
     {
-        return false;
+        istr.read(reinterpret_cast<char*>(&isDirty), sizeof(isDirty));
     }
 
     uint32_t projType = 0;
@@ -81,39 +77,33 @@ bool _sl_deserialize_camera(std::istream& istr, SL_Camera& cam)
     }
 
     float fov = 0.f;
-    float aspectW = 0.f;
-    float aspectH = 0.f;
-    float zNear = 0.f;
-    float zFar = 0.f;
-
     if (istr.good())
     {
         istr.read(reinterpret_cast<char*>(&fov), sizeof(fov));
     }
 
+    float aspectW = 0.f;
     if (istr.good())
     {
         istr.read(reinterpret_cast<char*>(&aspectW), sizeof(aspectW));
     }
 
+    float aspectH = 0.f;
     if (istr.good())
     {
         istr.read(reinterpret_cast<char*>(&aspectH), sizeof(aspectH));
     }
 
+    float zNear = 0.f;
     if (istr.good())
     {
         istr.read(reinterpret_cast<char*>(&zNear), sizeof(zNear));
     }
 
+    float zFar = 0.f;
     if (istr.good())
     {
         istr.read(reinterpret_cast<char*>(&zFar), sizeof(zFar));
-    }
-
-    if (!istr.good())
-    {
-        return false;
     }
 
     if (isDirty)
@@ -144,7 +134,7 @@ bool _sl_deserialize_camera(std::istream& istr, SL_Camera& cam)
     cam.near_plane(zNear);
     cam.far_plane(zFar);
 
-    return true;
+    return istr.good();
 }
 
 
@@ -163,15 +153,17 @@ LS_SCRIPT_OVERRIDE_VAR_SAVE(LS_SCRIPT_STATIC_API, SL_SceneGraph*)
     size_t numCams = pGraph->mCameras.size();
 
     ostr.write(reinterpret_cast<const char*>(&numCams), sizeof numCams);
-    if (ostr.good())
+    if (!ostr.good())
     {
-        for (const SL_Camera& cam : pGraph->mCameras)
+        return false;
+    }
+
+    for (const SL_Camera& cam : pGraph->mCameras)
+    {
+        if (!_sl_serialize_camera(ostr, cam))
         {
-            if (!_sl_serialize_camera(ostr, cam))
-            {
-                LS_LOG_ERR("Unable to complete camera serialization.");
-                return false;
-            }
+            LS_LOG_ERR("Unable to complete camera serialization.");
+            return false;
         }
     }
 
@@ -189,16 +181,18 @@ LS_SCRIPT_OVERRIDE_VAR_LOAD(LS_SCRIPT_EXPORT_API, SL_SceneGraph*)
 
     size_t numCams = 0;
     istr.read(reinterpret_cast<char*>(&numCams), sizeof numCams);
-    if (istr.good())
+    if (!istr.good())
     {
-        pGraph->mCameras.resize(numCams);
-        for (SL_Camera& cam : pGraph->mCameras)
+        return false;
+    }
+
+    pGraph->mCameras.resize(numCams);
+    for (SL_Camera& cam : pGraph->mCameras)
+    {
+        if (!_sl_deserialize_camera(istr, cam))
         {
-            if (!_sl_deserialize_camera(istr, cam))
-            {
-                LS_LOG_ERR("Unable to complete camera de-serialization.");
-                return false;
-            }
+            LS_LOG_ERR("Unable to complete camera de-serialization.");
+            return false;
         }
     }
 

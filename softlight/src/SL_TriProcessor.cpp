@@ -493,7 +493,7 @@ void SL_TriProcessor::push_bin(size_t primIndex, const SL_TransformedVert& a, co
 {
     SL_BinCounterAtomic<uint32_t>* const pLocks = mBinsUsed;
     SL_FragmentBin* const pFragBins = mFragBins;
-    const uint_fast32_t numVaryings = mShader->get_num_varyings();
+    const uint_fast32_t numVaryings = mShader->pipelineState.num_varyings();
 
     const math::vec4& p0 = a.vert;
     const math::vec4& p1 = b.vert;
@@ -620,15 +620,14 @@ void SL_TriProcessor::clip_and_process_tris(
     const SL_TransformedVert& b,
     const SL_TransformedVert& c) noexcept
 {
-    const SL_VertexShader vertShader    = mShader->mVertShader;
-    const unsigned        numVarys      = (unsigned)vertShader.numVaryings;
-    constexpr unsigned    numTempVerts  = 9; // at most 9 vertices should be generated
-    unsigned              numTotalVerts = 3;
-    math::vec4            tempVerts     [numTempVerts];
-    math::vec4            newVerts      [numTempVerts];
-    math::vec4            tempVarys     [numTempVerts * SL_SHADER_MAX_VARYING_VECTORS];
-    math::vec4            newVarys      [numTempVerts * SL_SHADER_MAX_VARYING_VECTORS];
-    const math::vec4      clipEdges[]  = {
+    const unsigned     numVarys      = (unsigned)mShader->pipelineState.num_varyings();
+    constexpr unsigned numTempVerts  = 9; // at most 9 vertices should be generated
+    unsigned           numTotalVerts = 3;
+    math::vec4         tempVerts     [numTempVerts];
+    math::vec4         newVerts      [numTempVerts];
+    math::vec4         tempVarys     [numTempVerts * SL_SHADER_MAX_VARYING_VECTORS];
+    math::vec4         newVarys      [numTempVerts * SL_SHADER_MAX_VARYING_VECTORS];
+    const math::vec4   clipEdges[]  = {
         { 1.f,  0.f,  0.f, 1.f},
         {-1.f,  0.f,  0.f, 1.f},
         { 0.f,  1.f,  0.f, 1.f},
@@ -778,15 +777,14 @@ void SL_TriProcessor::process_verts(
     SL_TransformedVert     pVert0;
     SL_TransformedVert     pVert1;
     SL_TransformedVert     pVert2;
-    const SL_VertexShader& vertShader   = mShader->mVertShader;
-    const SL_CullMode      cullMode     = vertShader.cullMode;
-    const auto             shader       = vertShader.shader;
+    const auto             vertShader   = mShader->pVertShader;
+    const SL_CullMode      cullMode     = mShader->pipelineState.cull_mode();
     const SL_VertexArray&  vao          = mContext->vao(m.vaoId);
     const SL_IndexBuffer*  pIbo         = vao.has_index_buffer() ? &mContext->ibo(vao.get_index_buffer()) : nullptr;
     const int              usingIndices = (m.mode == RENDER_MODE_INDEXED_TRIANGLES) || (m.mode == RENDER_MODE_INDEXED_TRI_WIRE);
 
     SL_VertexParam params;
-    params.pUniforms  = mShader->mUniforms;
+    params.pUniforms  = mShader->pUniforms;
     params.instanceId = instanceId;
     params.pVao       = &vao;
     params.pVbo       = &mContext->vbo(vao.get_vertex_buffer());
@@ -800,7 +798,7 @@ void SL_TriProcessor::process_verts(
         begin += m.elementBegin;
         end += m.elementBegin;
 
-        SL_PTVCache ptvCache{shader, params};
+        SL_PTVCache ptvCache{vertShader, params};
     #else
         //const size_t begin = m.elementBegin + mThreadId * 3u;
         const size_t begin = m.elementBegin + ((instanceId + mThreadId) % mNumThreads) * 3u;
@@ -820,15 +818,15 @@ void SL_TriProcessor::process_verts(
         #else
             params.vertId    = vertId.v[0];
             params.pVaryings = pVert0.varyings;
-            pVert0.vert      = scissorMat * shader(params);
+            pVert0.vert      = scissorMat * vertShader(params);
 
             params.vertId    = vertId.v[1];
             params.pVaryings = pVert1.varyings;
-            pVert1.vert      = scissorMat * shader(params);
+            pVert1.vert      = scissorMat * vertShader(params);
 
             params.vertId    = vertId.v[2];
             params.pVaryings = pVert2.varyings;
-            pVert2.vert      = scissorMat * shader(params);
+            pVert2.vert      = scissorMat * vertShader(params);
         #endif
 
         if (LS_LIKELY(cullMode != SL_CULL_OFF))

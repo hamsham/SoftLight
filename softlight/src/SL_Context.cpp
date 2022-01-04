@@ -505,12 +505,38 @@ std::size_t SL_Context::create_shader(
         return (std::size_t)-1;
     }
 
-    if (!fragShader.numOutputs)
+    SL_PipelineState pipeline;
+    pipeline.reset();
+    pipeline.cull_mode(vertShader.cullMode);
+    pipeline.depth_test(fragShader.depthTest);
+    pipeline.depth_mask(fragShader.depthMask);
+    pipeline.blend_mode(fragShader.blend);
+
+    switch (fragShader.numVaryings)
     {
-        return (std::size_t)-1;
+        case 0: pipeline.num_varyings(SL_VaryingCount::SL_VARYING_COUNT_0); break;
+        case 1: pipeline.num_varyings(SL_VaryingCount::SL_VARYING_COUNT_1); break;
+        case 2: pipeline.num_varyings(SL_VaryingCount::SL_VARYING_COUNT_2); break;
+        case 3: pipeline.num_varyings(SL_VaryingCount::SL_VARYING_COUNT_3); break;
+        case 4: pipeline.num_varyings(SL_VaryingCount::SL_VARYING_COUNT_4); break;
     }
 
-    mShaders.push_back(SL_Shader{vertShader, fragShader});
+    switch (fragShader.numOutputs)
+    {
+        case 0: pipeline.num_render_targets(SL_RenderTargetCount::SL_RENDER_TARGET_COUNT_0); break;
+        case 1: pipeline.num_render_targets(SL_RenderTargetCount::SL_RENDER_TARGET_COUNT_1); break;
+        case 2: pipeline.num_render_targets(SL_RenderTargetCount::SL_RENDER_TARGET_COUNT_2); break;
+        case 3: pipeline.num_render_targets(SL_RenderTargetCount::SL_RENDER_TARGET_COUNT_3); break;
+        case 4: pipeline.num_render_targets(SL_RenderTargetCount::SL_RENDER_TARGET_COUNT_4); break;
+    }
+
+    SL_Shader shader;
+    shader.pipelineState = pipeline;
+    shader.pVertShader = vertShader.shader;
+    shader.pFragShader = fragShader.shader;
+    shader.pUniforms = nullptr;
+
+    mShaders.push_back(shader);
     return mShaders.size() - 1;
 }
 
@@ -524,6 +550,11 @@ std::size_t SL_Context::create_shader(
     const SL_FragmentShader& fragShader,
     std::size_t uniformIndex)
 {
+    if (uniformIndex >= mUniforms.size())
+    {
+        return (std::size_t)-1;
+    }
+
     if (vertShader.numVaryings < fragShader.numVaryings)
     {
         return (std::size_t)-1;
@@ -539,7 +570,38 @@ std::size_t SL_Context::create_shader(
         return (std::size_t)-1;
     }
 
-    mShaders.push_back(SL_Shader{vertShader, fragShader, mUniforms[uniformIndex]});
+    SL_PipelineState pipeline;
+    pipeline.reset();
+    pipeline.cull_mode(vertShader.cullMode);
+    pipeline.depth_test(fragShader.depthTest);
+    pipeline.depth_mask(fragShader.depthMask);
+    pipeline.blend_mode(fragShader.blend);
+
+    switch (fragShader.numVaryings)
+    {
+        case 0: pipeline.num_varyings(SL_VaryingCount::SL_VARYING_COUNT_0); break;
+        case 1: pipeline.num_varyings(SL_VaryingCount::SL_VARYING_COUNT_1); break;
+        case 2: pipeline.num_varyings(SL_VaryingCount::SL_VARYING_COUNT_2); break;
+        case 3: pipeline.num_varyings(SL_VaryingCount::SL_VARYING_COUNT_3); break;
+        case 4: pipeline.num_varyings(SL_VaryingCount::SL_VARYING_COUNT_4); break;
+    }
+
+    switch (fragShader.numOutputs)
+    {
+        case 0: pipeline.num_render_targets(SL_RenderTargetCount::SL_RENDER_TARGET_COUNT_0); break;
+        case 1: pipeline.num_render_targets(SL_RenderTargetCount::SL_RENDER_TARGET_COUNT_1); break;
+        case 2: pipeline.num_render_targets(SL_RenderTargetCount::SL_RENDER_TARGET_COUNT_2); break;
+        case 3: pipeline.num_render_targets(SL_RenderTargetCount::SL_RENDER_TARGET_COUNT_3); break;
+        case 4: pipeline.num_render_targets(SL_RenderTargetCount::SL_RENDER_TARGET_COUNT_4); break;
+    }
+
+    SL_Shader shader;
+    shader.pipelineState = pipeline;
+    shader.pVertShader = vertShader.shader;
+    shader.pFragShader = fragShader.shader;
+    shader.pUniforms = &mUniforms[uniformIndex];
+
+    mShaders.push_back(shader);
     return mShaders.size() - 1;
 }
 

@@ -37,7 +37,7 @@ struct SL_FragCoord;
 class SL_Framebuffer; // SL_Framebuffer.hpp
 struct SL_PointRasterizer;
 struct SL_LineRasterizer;
-class SL_Shader; // SL_Shader.hpp
+struct SL_Shader; // SL_Shader.hpp
 struct SL_TransformedVert;
 struct SL_TriRasterizer;
 

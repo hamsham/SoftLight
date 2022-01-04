@@ -47,15 +47,15 @@
 #endif /* SL_BENCHMARK_SCENE */
 
 #ifndef DEFAULT_INSTANCES_X
-    #define DEFAULT_INSTANCES_X 5
+    #define DEFAULT_INSTANCES_X 10
 #endif
 
 #ifndef DEFAULT_INSTANCES_Y
-    #define DEFAULT_INSTANCES_Y 5
+    #define DEFAULT_INSTANCES_Y 10
 #endif
 
 #ifndef DEFAULT_INSTANCES_Z
-    #define DEFAULT_INSTANCES_Z 5
+    #define DEFAULT_INSTANCES_Z 10
 #endif
 
 #ifndef DEFAULT_INSTANCES
@@ -572,7 +572,7 @@ int main()
             }
 
             #if SL_BENCHMARK_SCENE
-                if (totalFrames >= 1200)
+                if (totalFrames >= 5000)
                 {
                     shouldQuit = true;
                 }

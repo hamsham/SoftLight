@@ -243,7 +243,6 @@ set(SL_LIB_SOURCES
     src/SL_SceneFileUtility.cpp
     src/SL_SceneGraph.cpp
     src/SL_SceneNode.cpp
-    src/SL_Shader.cpp
     src/SL_ShaderProcessor.cpp
     src/SL_TextMeshLoader.cpp
     src/SL_Texture.cpp

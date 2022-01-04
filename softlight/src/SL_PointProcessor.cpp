@@ -146,7 +146,7 @@ void SL_PointProcessor::push_bin(size_t primIndex, const ls::math::vec4& viewpor
 {
     SL_BinCounterAtomic<uint32_t>* const pLocks = mBinsUsed;
     SL_FragmentBin* const pFragBins = mFragBins;
-    const uint_fast32_t numVaryings = mShader->get_num_varyings();
+    const uint_fast32_t numVaryings = (uint_fast32_t)mShader->pipelineState.num_varyings();
 
     const math::vec4& p0 = a.vert;
 
@@ -208,14 +208,13 @@ void SL_PointProcessor::process_verts(
     }
 
     SL_TransformedVert     pVert0;
-    const SL_VertexShader& vertShader   = mShader->mVertShader;
-    const auto             shader       = vertShader.shader;
+    const auto             vertShader   = mShader->pVertShader;
     const SL_VertexArray&  vao          = mContext->vao(m.vaoId);
     const SL_IndexBuffer*  pIbo         = vao.has_index_buffer() ? &mContext->ibo(vao.get_index_buffer()) : nullptr;
     const bool             usingIndices = m.mode == RENDER_MODE_INDEXED_POINTS;
 
     SL_VertexParam params;
-    params.pUniforms  = mShader->mUniforms;
+    params.pUniforms  = mShader->pUniforms;
     params.instanceId = instanceId;
     params.pVao       = &vao;
     params.pVbo       = &mContext->vbo(vao.get_vertex_buffer());
@@ -227,7 +226,7 @@ void SL_PointProcessor::process_verts(
     begin += m.elementBegin;
     end += m.elementBegin;
 
-    SL_PTVCache ptvCache{shader, params};
+    SL_PTVCache ptvCache{vertShader, params};
 
     for (size_t i = begin; i < end; ++i)
     {

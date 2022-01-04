@@ -23,7 +23,7 @@ class SL_Framebuffer;
 struct SL_FragmentShader;
 class SL_IndexBuffer;
 struct SL_Mesh;
-class SL_Shader;
+struct SL_Shader;
 class SL_Texture;
 class SL_UniformBuffer;
 class SL_VertexArray;

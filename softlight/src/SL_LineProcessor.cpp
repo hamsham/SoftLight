@@ -198,7 +198,7 @@ void SL_LineProcessor::push_bin(size_t primIndex, const math::vec4& viewportDims
 {
     SL_BinCounterAtomic<uint32_t>* const pLocks = mBinsUsed;
     SL_FragmentBin* const pFragBins = mFragBins;
-    const uint_fast32_t numVaryings = mShader->get_num_varyings();
+    const uint_fast32_t numVaryings = (uint_fast32_t)mShader->pipelineState.num_varyings();
 
     const math::vec4& p0 = a.vert;
     const math::vec4& p1 = b.vert;
@@ -261,14 +261,13 @@ void SL_LineProcessor::process_verts(
 
     SL_TransformedVert     pVert0;
     SL_TransformedVert     pVert1;
-    const SL_VertexShader& vertShader   = mShader->mVertShader;
-    const auto             shader       = vertShader.shader;
+    const auto             vertShader   = mShader->pVertShader;
     const SL_VertexArray&  vao          = mContext->vao(m.vaoId);
     const SL_IndexBuffer*  pIbo         = vao.has_index_buffer() ? &mContext->ibo(vao.get_index_buffer()) : nullptr;
     const bool             usingIndices = m.mode == RENDER_MODE_INDEXED_LINES;
 
     SL_VertexParam params;
-    params.pUniforms  = mShader->mUniforms;
+    params.pUniforms  = mShader->pUniforms;
     params.instanceId = instanceId;
     params.pVao       = &vao;
     params.pVbo       = &mContext->vbo(vao.get_vertex_buffer());
@@ -282,7 +281,7 @@ void SL_LineProcessor::process_verts(
         begin += m.elementBegin;
         end += m.elementBegin;
 
-        SL_PTVCache ptvCache{shader, params};
+        SL_PTVCache ptvCache{vertShader, params};
 
     #else
         const size_t begin = m.elementBegin + mThreadId * 2u;
@@ -305,11 +304,11 @@ void SL_LineProcessor::process_verts(
         #else
             params.vertId    = usingIndices ? pIbo->index(index0) : index0;
             params.pVaryings = pVert0.varyings;
-            pVert0.vert = scissorMat * shader(params);
+            pVert0.vert = scissorMat * vertShader(params);
 
             params.vertId = usingIndices ? pIbo->index(index1) : index1;
             params.pVaryings = pVert1.varyings;
-            pVert1.vert = scissorMat * shader(params);
+            pVert1.vert = scissorMat * vertShader(params);
         #endif
 
         if (pVert0.vert[3] >= 0.f && pVert1.vert[3] >= 0.f)

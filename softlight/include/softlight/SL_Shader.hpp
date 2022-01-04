@@ -25,13 +25,10 @@ namespace math
 } // end ls namespace
 
 
-class SL_Context;
-class SL_Shader;
+
 class SL_UniformBuffer;
 class SL_VertexArray;
 class SL_VertexBuffer;
-
-enum SL_RenderMode : uint32_t; // SL_Geometry.hpp
 
 
 
@@ -105,134 +102,17 @@ struct SL_FragmentShader
 /*-----------------------------------------------------------------------------
  *
 -----------------------------------------------------------------------------*/
-class SL_Shader
+struct SL_Shader
 {
-    friend class SL_Context;
-    friend class SL_VertexProcessor;
+    SL_PipelineState pipelineState;
 
-    friend class SL_PointProcessor;
-    friend class SL_LineProcessor;
-    friend class SL_TriProcessor;
+    ls::math::vec4_t<float> (*pVertShader)(SL_VertexParam& vertParams);
 
-    friend struct SL_PointRasterizer;
-    friend struct SL_LineRasterizer;
-    friend struct SL_TriRasterizer;
-
-  private:
-    SL_VertexShader mVertShader;
-
-    SL_FragmentShader mFragShader;
+    bool (*pFragShader)(SL_FragmentParam& perFragParams);
 
     // Shared pointers are only changed in the move and copy operators
-    SL_UniformBuffer* mUniforms;
-
-
-    SL_Shader(
-        const SL_VertexShader& vertShader,
-        const SL_FragmentShader& fragShader
-    ) noexcept;
-
-    SL_Shader(
-        const SL_VertexShader& vertShader,
-        const SL_FragmentShader& fragShader,
-        SL_UniformBuffer& uniforms
-    ) noexcept;
-
-  public:
-    ~SL_Shader() noexcept;
-
-    SL_Shader(const SL_Shader& s) noexcept;
-
-    SL_Shader(SL_Shader&& s) noexcept;
-
-    SL_Shader& operator=(const SL_Shader& s) noexcept;
-
-    SL_Shader& operator=(SL_Shader&& s) noexcept;
-
-    uint8_t get_num_varyings() const noexcept;
-
-    uint8_t get_num_fragment_outputs() const noexcept;
-
-    const SL_UniformBuffer* uniforms() const noexcept;
-
-    SL_UniformBuffer* uniforms() noexcept;
-
-    void uniforms(SL_UniformBuffer* pUniforms) noexcept;
-
-    const SL_VertexShader& vertex_shader() const noexcept;
-
-    const SL_FragmentShader& fragment_shader() const noexcept;
+    SL_UniformBuffer* pUniforms;
 };
-
-
-
-/*--------------------------------------
- *
---------------------------------------*/
-inline uint8_t SL_Shader::get_num_varyings() const noexcept
-{
-    return mVertShader.numVaryings;
-}
-
-
-
-/*--------------------------------------
- *
---------------------------------------*/
-inline uint8_t SL_Shader::get_num_fragment_outputs() const noexcept
-{
-    return mFragShader.numOutputs;
-}
-
-
-
-/*--------------------------------------
- *
---------------------------------------*/
-inline const SL_UniformBuffer* SL_Shader::uniforms() const noexcept
-{
-    return mUniforms;
-}
-
-
-
-/*--------------------------------------
- *
---------------------------------------*/
-inline SL_UniformBuffer* SL_Shader::uniforms() noexcept
-{
-    return mUniforms;
-}
-
-
-
-/*--------------------------------------
- *
---------------------------------------*/
-inline void SL_Shader::uniforms(SL_UniformBuffer* pUniforms) noexcept
-{
-    mUniforms = pUniforms;
-}
-
-
-
-/*--------------------------------------
- *
---------------------------------------*/
-inline const SL_VertexShader& SL_Shader::vertex_shader() const noexcept
-{
-    return mVertShader;
-}
-
-
-
-/*--------------------------------------
- *
---------------------------------------*/
-inline const SL_FragmentShader& SL_Shader::fragment_shader() const noexcept
-{
-    return mFragShader;
-}
 
 
 

@@ -18,6 +18,82 @@ namespace utils = ls::utils;
 
 
 /*-----------------------------------------------------------------------------
+ * Anonymous helper functions
+-----------------------------------------------------------------------------*/
+namespace
+{
+
+
+
+/*-------------------------------------
+ * Exponential CPU-yielding to reduce spinlock overhead
+-------------------------------------*/
+template <typename IntegralType>
+inline LS_INLINE IntegralType _sl_cpu_yield_exponential(IntegralType yieldCount) noexcept
+{
+    static_assert(ls::setup::IsIntegral<IntegralType>::value, "Need an integer type to count exponential yielding.");
+
+    constexpr IntegralType maxIters = 2;
+
+    // For once, I'm incredibly surprised by Clang. A simple switch statement
+    // would blow up in the generated assembly. Coercing Clang to generate
+    // simpler assembly required a bit more explicit code than I expected.
+
+    // The combination of x < 1, x == 1, and x > 1 allow clang to compile
+    // these branches into an optimal jump table using a single comparison and
+    // 3 jump instructions
+    if (yieldCount > 1)
+    {
+        goto yield3;
+    }
+    else if (yieldCount == 1)
+    {
+        goto yield2;
+    }
+    else if (yieldCount < 1)
+    {
+        goto yield1;
+    }
+
+    yield3:
+    ls::setup::cpu_yield();
+    ls::setup::cpu_yield();
+    ls::setup::cpu_yield();
+    ls::setup::cpu_yield();
+
+    yield2:
+    ls::setup::cpu_yield();
+    ls::setup::cpu_yield();
+
+    yield1:
+    ls::setup::cpu_yield();
+
+    return ls::math::min<IntegralType>(yieldCount+1, maxIters);
+}
+
+
+
+/*-------------------------------------
+ * Exponential CPU-yielding to reduce spinlock overhead
+-------------------------------------*/
+template <typename WaitCondition>
+inline LS_INLINE void _sl_cpu_yield_loop(const WaitCondition& cond) noexcept
+{
+    uint_fast32_t yieldCount = 0;
+
+    while (cond())
+    {
+        yieldCount = _sl_cpu_yield_exponential<uint_fast32_t>(yieldCount);
+    }
+}
+
+
+
+} // end anonymous namespace
+
+
+
+/*-----------------------------------------------------------------------------
  * SL_VertexProcessor Class
 -----------------------------------------------------------------------------*/
 /*-------------------------------------
@@ -31,16 +107,12 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
     const int_fast64_t    syncPoint1   = -numThreads - 1;
     const int_fast64_t    tileId       = mFragProcessors->count.fetch_add(1ll, std::memory_order_acq_rel);
     const SL_FragmentBin* pBins        = mFragBins;
-    constexpr unsigned    maxIters     = 8;
-    unsigned              currentIters = 1;
-    uint_fast64_t         maxElements;
+    const uint_fast64_t   maxElements  = math::min<uint_fast64_t>(mBinsUsed->count.load(std::memory_order_consume), SL_SHADER_MAX_BINNED_PRIMS);
     int_fast64_t          syncPoint2;
 
     // Sort the bins based on their depth.
     if (LS_UNLIKELY(tileId == numThreads-1u))
     {
-        maxElements = math::min<uint64_t>(mBinsUsed->count.load(std::memory_order_consume), SL_SHADER_MAX_BINNED_PRIMS);
-
         // Try to perform depth sorting once, and only once, per opaque draw
         // call to reduce depth-buffer access during rasterization. Sorting
         // primitives multiple times here in the vertex processor will
@@ -50,16 +122,16 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
 
         // Blended fragments get sorted by their primitive index for
         // consistency.
-        if (LS_UNLIKELY(mShader->fragment_shader().blend != SL_BLEND_OFF))
+        if (LS_UNLIKELY(mShader->pipelineState.blend_mode() != SL_BLEND_OFF))
         {
-            utils::sort_radix<SL_BinCounter<uint32_t>>(mBinIds, mTempBinIds, maxElements, [&](const SL_BinCounter<uint32_t>& val) noexcept->unsigned long long
+            utils::sort_radix<SL_BinCounter<uint32_t>>(mBinIds, mTempBinIds, (uint64_t)maxElements, [&](const SL_BinCounter<uint32_t>& val) noexcept->unsigned long long
             {
                 return (unsigned long long)pBins[val.count].primIndex;
             });
         }
         else if (canDepthSort)
         {
-            utils::sort_radix<SL_BinCounter<uint32_t>>(mBinIds, mTempBinIds, maxElements, [&](const SL_BinCounter<uint32_t>& val) noexcept->unsigned long long
+            utils::sort_radix<SL_BinCounter<uint32_t>>(mBinIds, mTempBinIds, (uint64_t)maxElements, [&](const SL_BinCounter<uint32_t>& val) noexcept->unsigned long long
             {
                 // flip sign, otherwise the sorting goes from back-to-front
                 // due to the sortable nature of floats.
@@ -72,27 +144,9 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
     }
     else
     {
-        while (mFragProcessors->count.load(std::memory_order_consume) > 0)
-        {
-            switch (currentIters)
-            {
-                case 8:
-                    ls::setup::cpu_yield();
-                    ls::setup::cpu_yield();
-                    ls::setup::cpu_yield();
-                    ls::setup::cpu_yield();
-                case 4:
-                    ls::setup::cpu_yield();
-                    ls::setup::cpu_yield();
-                case 2:
-                    ls::setup::cpu_yield();
-                default:
-                    ls::setup::cpu_yield();
-                    currentIters = ls::math::min(currentIters+currentIters, maxIters);
-            }
-        }
-
-        maxElements = math::min<uint64_t>(mBinsUsed->count.load(std::memory_order_consume), SL_SHADER_MAX_BINNED_PRIMS);
+        _sl_cpu_yield_loop([&]()->bool {
+            return mFragProcessors->count.load(std::memory_order_consume) > 0;
+        });
     }
 
     static_assert(ls::setup::IsBaseOf<SL_FragmentProcessor, RasterizerType>::value, "Template parameter 'RasterizerType' must derive from SL_FragmentProcessor.");
@@ -103,7 +157,7 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
     rasterizer.mThreadId = (uint16_t)mThreadId;
     rasterizer.mMode = mRenderMode;
     rasterizer.mNumProcessors = (uint32_t)mNumThreads;
-    rasterizer.mNumBins = (uint32_t)maxElements;
+    rasterizer.mNumBins = maxElements;
     rasterizer.mShader = mShader;
     rasterizer.mFbo = mFbo;
     rasterizer.mViewState = &viewState;
@@ -120,30 +174,13 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
     {
         mBinsUsed->count.store(0, std::memory_order_release);
         mFragProcessors->count.store(0, std::memory_order_release);
-        return;
     }
-
-    do
+    else
     {
-        // wait until all fragments are rendered across the other threads
-        switch (currentIters)
-        {
-            case 8:
-                ls::setup::cpu_yield();
-                ls::setup::cpu_yield();
-                ls::setup::cpu_yield();
-                ls::setup::cpu_yield();
-            case 4:
-                ls::setup::cpu_yield();
-                ls::setup::cpu_yield();
-            case 2:
-                ls::setup::cpu_yield();
-            default:
-                ls::setup::cpu_yield();
-                currentIters = ls::math::min(currentIters+currentIters, maxIters);
-        }
+        _sl_cpu_yield_loop([&]()->bool {
+            return mFragProcessors->count.load(std::memory_order_consume) < 0;
+        });
     }
-    while (mFragProcessors->count.load(std::memory_order_consume) < 0);
 }
 
 
@@ -157,8 +194,7 @@ void SL_VertexProcessor::cleanup() noexcept
     static_assert(ls::setup::IsBaseOf<SL_FragmentProcessor, RasterizerType>::value, "Template parameter 'RasterizerType' must derive from SL_FragmentProcessor.");
     std::atomic<uint_fast64_t>& busyProcessors = mBusyProcessors->count;
     std::atomic<int_fast64_t>& fragProcessors = mFragProcessors->count;
-    constexpr unsigned maxIters = 8;
-    unsigned currentIters = 1;
+    uint_fast32_t currentIters = 0;
 
     busyProcessors.fetch_sub(1, std::memory_order_acq_rel);
     while (busyProcessors.load(std::memory_order_consume))
@@ -169,22 +205,7 @@ void SL_VertexProcessor::cleanup() noexcept
         }
         else
         {
-            switch (currentIters)
-            {
-                case 8:
-                    ls::setup::cpu_yield();
-                    ls::setup::cpu_yield();
-                    ls::setup::cpu_yield();
-                    ls::setup::cpu_yield();
-                case 4:
-                    ls::setup::cpu_yield();
-                    ls::setup::cpu_yield();
-                case 2:
-                    ls::setup::cpu_yield();
-                default:
-                    ls::setup::cpu_yield();
-                    currentIters = ls::math::min(currentIters+currentIters, maxIters);
-            }
+            currentIters = _sl_cpu_yield_exponential<uint_fast32_t>(currentIters);
         }
     }
 

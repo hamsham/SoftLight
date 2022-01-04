@@ -28,11 +28,13 @@ void SL_PointRasterizer::render_point(SL_Framebuffer* const fbo) noexcept
 {
     constexpr DepthCmpFunc  depthCmp    {};
     const SL_Texture*       pDepthBuf   = fbo->get_depth_buffer();
-    const SL_FragmentShader fragShader  = mShader->mFragShader;
-    const SL_UniformBuffer* pUniforms   = mShader->mUniforms;
-    const bool              depthMask   = fragShader.depthMask == SL_DEPTH_MASK_ON;
-    const auto              pShader     = fragShader.shader;
-    const SL_FboOutputMask  fboOutMask  = sl_calc_fbo_out_mask(fragShader.numOutputs, (fragShader.blend != SL_BLEND_OFF));
+    const SL_PipelineState  pipeline    = mShader->pipelineState;
+    const SL_BlendMode      blendMode   = pipeline.blend_mode();
+    const SL_FboOutputMask  fboOutMask  = sl_calc_fbo_out_mask((unsigned)pipeline.num_render_targets(), (blendMode != SL_BLEND_OFF));
+    const uint32_t          numVaryings = (unsigned)pipeline.num_varyings();
+    const bool              depthMask   = pipeline.depth_mask() == SL_DEPTH_MASK_ON;
+    const auto              shader      = mShader->pFragShader;
+    const SL_UniformBuffer* pUniforms   = mShader->pUniforms;
     SL_FragmentParam        fragParams;
 
     fragParams.pUniforms = pUniforms;
@@ -55,15 +57,15 @@ void SL_PointRasterizer::render_point(SL_Framebuffer* const fbo) noexcept
             continue;
         }
 
-        for (unsigned i = fragShader.numVaryings; i--;)
+        for (unsigned i = numVaryings; i--;)
         {
             fragParams.pVaryings[i] = bin.mVaryings[i];
         }
 
-        const bool haveOutputs = pShader(fragParams);
+        const bool haveOutputs = shader(fragParams);
         if (LS_LIKELY(haveOutputs))
         {
-            mFbo->put_pixel(fboOutMask, fragShader.blend, fragParams);
+            mFbo->put_pixel(fboOutMask, blendMode, fragParams);
 
             if (depthMask)
             {
@@ -144,7 +146,7 @@ template void SL_PointRasterizer::dispatch_bins<SL_DepthFuncOFF>() noexcept;
 -------------------------------------*/
 void SL_PointRasterizer::execute() noexcept
 {
-    const SL_DepthTest depthTestType = mShader->fragment_shader().depthTest;
+    const SL_DepthTest depthTestType = mShader->pipelineState.depth_test();
 
     switch (depthTestType)
     {

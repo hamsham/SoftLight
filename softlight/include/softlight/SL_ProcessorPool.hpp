@@ -34,7 +34,7 @@ struct SL_FragCoord;
 struct SL_FragmentBin;
 class SL_Framebuffer;
 struct SL_Mesh;
-class SL_Shader;
+struct SL_Shader;
 struct SL_ShaderProcessor;
 class SL_Texture;
 

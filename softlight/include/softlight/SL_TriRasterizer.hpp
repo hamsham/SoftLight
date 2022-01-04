@@ -24,7 +24,7 @@ union SL_BinCounter;
 struct SL_FragCoord; // SL_ShaderProcessor.hpp
 struct SL_FragmentBin; // SL_ShaderProcessor.hpp
 class SL_Framebuffer;
-class SL_Shader;
+struct SL_Shader;
 class SL_Texture;
 
 struct SL_DepthFuncLT;
@@ -56,7 +56,7 @@ struct SL_TriRasterizer final : public SL_FragmentProcessor
     #endif
 
     template <typename depth_type>
-    void flush_fragments(const SL_FragmentBin* pBin, uint32_t numQueuedFrags, const SL_FragCoord* outCoords) const noexcept;
+    void flush_fragments(const SL_FragmentBin* pBin, uint_fast32_t numQueuedFrags, SL_FragCoord* outCoords) const noexcept;
 
     template <class DepthCmpFunc, typename depth_type>
     void render_wireframe(const SL_Texture* depthBuffer) const noexcept;
@@ -138,9 +138,9 @@ extern template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncOFF, do
 
 
 
-extern template void SL_TriRasterizer::flush_fragments<ls::math::half>(const SL_FragmentBin*, uint32_t, const SL_FragCoord*) const noexcept;
-extern template void SL_TriRasterizer::flush_fragments<float>(const SL_FragmentBin*, uint32_t, const SL_FragCoord*) const noexcept;
-extern template void SL_TriRasterizer::flush_fragments<double>(const SL_FragmentBin*, uint32_t, const SL_FragCoord*) const noexcept;
+extern template void SL_TriRasterizer::flush_fragments<ls::math::half>(const SL_FragmentBin*, uint_fast32_t, SL_FragCoord*) const noexcept;
+extern template void SL_TriRasterizer::flush_fragments<float>(const SL_FragmentBin*, uint_fast32_t, SL_FragCoord*) const noexcept;
+extern template void SL_TriRasterizer::flush_fragments<double>(const SL_FragmentBin*, uint_fast32_t, SL_FragCoord*) const noexcept;
 
 
 

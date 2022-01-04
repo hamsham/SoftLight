@@ -24,7 +24,7 @@ union SL_BinCounter;
 struct SL_FragCoord; // SL_ShaderProcessor.hpp
 struct SL_FragmentBin; // SL_ShaderProcessor.hpp
 class SL_Framebuffer;
-class SL_Shader;
+struct SL_Shader;
 class SL_Texture;
 
 struct SL_DepthFuncLT;

@@ -173,12 +173,13 @@ void SL_LineRasterizer::render_line(
     constexpr fixed_type ZERO = fixed_type{0};
 
     constexpr DepthCmpFunc  depthCmp    = {};
-    const SL_FragmentShader fragShader  = mShader->mFragShader;
-    const SL_FboOutputMask  fboOutMask  = sl_calc_fbo_out_mask(fragShader.numOutputs, (fragShader.blend != SL_BLEND_OFF));
-    const uint32_t          numVaryings = fragShader.numVaryings;
-    const bool              depthMask   = fragShader.depthMask == SL_DEPTH_MASK_ON;
-    const auto              shader      = fragShader.shader;
-    const SL_UniformBuffer* pUniforms   = mShader->mUniforms;
+    const SL_PipelineState  pipeline    = mShader->pipelineState;
+    const SL_BlendMode      blendMode   = pipeline.blend_mode();
+    const SL_FboOutputMask  fboOutMask  = sl_calc_fbo_out_mask((unsigned)pipeline.num_render_targets(), (blendMode != SL_BLEND_OFF));
+    const uint32_t          numVaryings = (unsigned)pipeline.num_varyings();
+    const bool              depthMask   = pipeline.depth_mask() == SL_DEPTH_MASK_ON;
+    const auto              shader      = mShader->pFragShader;
+    const SL_UniformBuffer* pUniforms   = mShader->pUniforms;
 
     const math::vec4  screenCoord0  = mBins[binId].mScreenCoords[0];
     const math::vec4  screenCoord1  = mBins[binId].mScreenCoords[1];
@@ -239,7 +240,7 @@ void SL_LineRasterizer::render_line(
 
         if (LS_LIKELY(haveOutputs))
         {
-            mFbo->put_pixel(fboOutMask, fragShader.blend, fragParams);
+            mFbo->put_pixel(fboOutMask, blendMode, fragParams);
 
             if (depthMask)
             {
@@ -334,7 +335,7 @@ template void SL_LineRasterizer::dispatch_bins<SL_DepthFuncOFF>() noexcept;
 -------------------------------------*/
 void SL_LineRasterizer::execute() noexcept
 {
-    const SL_DepthTest depthTestType = mShader->fragment_shader().depthTest;
+    const SL_DepthTest depthTestType = mShader->pipelineState.depth_test();
 
     switch (depthTestType)
     {
