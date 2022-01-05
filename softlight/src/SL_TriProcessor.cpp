@@ -673,17 +673,17 @@ void SL_TriProcessor::clip_and_process_tris(
         unsigned   j           = numTotalVerts-1;
         math::vec4 p0          = newVerts[numTotalVerts-1];
         float      t0          = math::dot(p0, edge);
-        int        visible0    = t0 >= 0.f;
+        int        visible0    = !math::sign_mask(t0);
 
         for (unsigned k = 0; k < numTotalVerts; ++k)
         {
             const math::vec4& p1 = newVerts[k];
             const float t1       = math::dot(p1, edge);
-            const int   visible1 = t1 >= 0.f;
+            const int   visible1 = !math::sign_mask(t1);
 
             if (visible0 ^ visible1)
             {
-                const float t = t0 / (t0-t1);//math::clamp(t0 / (t0-t1), 0.f, 1.f);
+                const float t = t0 * math::rcp(t0-t1);//math::clamp(t0 / (t0-t1), 0.f, 1.f);
                 tempVerts[numNewVerts] = math::mix(p0, p1, t);
                 _interpolate_varyings(newVarys, tempVarys+(numNewVerts*SL_SHADER_MAX_VARYING_VECTORS), j, k, t);
 
