@@ -42,7 +42,6 @@ jobs:
             shell: msys2 {0}
 
     steps:
-    - shell: ${{matrix.shell}}
     - uses: actions/checkout@v2
       with:
         submodules: recursive
@@ -58,6 +57,7 @@ jobs:
           clang
           mingw-w64-x86_64-freeimage
           ninja
+    - shell: ${{matrix.shell}}
 
     - name: Install Linux dependencies
       if: matrix.os == 'ubuntu-latest'
