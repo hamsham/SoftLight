@@ -57,7 +57,6 @@ jobs:
           clang
           mingw-w64-x86_64-freeimage
           ninja
-    - shell: ${{matrix.shell}}
 
     - name: Install Linux dependencies
       if: matrix.os == 'ubuntu-latest'
