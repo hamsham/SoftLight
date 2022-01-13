@@ -46,7 +46,7 @@ jobs:
           - os: windows-latest
             generator: "Ninja"
             shell: msys2 {0}
-            dependencies: base-devel cmake ninja git subversion mingw-w64-x86_64-toolchain mingw-w64-x86_64-clang mingw-w64-x86_64-freeimage
+            dependencies: base-devel git subversion mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-toolchain mingw-w64-x86_64-freeimage
 
     steps:
     - uses: actions/checkout@v2
@@ -72,6 +72,10 @@ jobs:
     - name: Install Windows dependencies
       if: matrix.os == 'windows-latest' && matrix.generator != 'Ninja'
       run: choco install ${{matrix.dependencies}}
+
+    - name: Configure Msys2 PATH
+      if: matrix.os == 'windows-latest' && matrix.generator == 'Ninja'
+      run: echo "D:/a/_temp/msys64/mingw64/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: Configure CMake
       run: |
