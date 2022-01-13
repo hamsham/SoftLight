@@ -98,8 +98,6 @@ if (UNIX AND NOT MINGW AND NOT PREFER_COCOA)
         endif()
     endif()
 
-else()
-  add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 endif()
 
 
