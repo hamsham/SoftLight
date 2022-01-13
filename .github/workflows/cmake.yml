@@ -33,6 +33,18 @@ jobs:
           
           - os: windows-latest
             GENERATOR: "Visual Studio 16 2019"
+          
+          - os: windows-latest
+            uses: msys2/setup-msys2@v2
+            msystem: MINGW64
+            update: true
+            install: >-
+                base-devel
+                git
+                cmake
+                ninja
+            GENERATOR: "Ninja"
+            shell: msys2 {0}
 
     steps:
     - uses: actions/checkout@v2
