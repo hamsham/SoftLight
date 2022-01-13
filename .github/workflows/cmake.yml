@@ -27,31 +27,56 @@ jobs:
         include:
           - os: ubuntu-latest
             generator: "Ninja"
+            dependencies: ninja-build x11-utils libx11-dev libx11-xcb-dev libxext-dev libxcb1-dev libxcb-image0-dev libxcb-shm0-dev subversion libassimp-dev libfreeimage-dev libfreetype6-dev libglm-dev libenet-dev
           
           - os: macos-latest
             generator: "Ninja"
+            dependencies: ninja assimp freeimage libxkbcommon subversion freetype enet glm
           
           - os: windows-latest
             generator: "Visual Studio 16 2019"
+            dependencies: tortoisesvn
+          
+          - os: windows-latest
+            generator: "Ninja"
+            dependencies: base-devel git clang mingw-w64-x86_64-freeimage
 
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout
+      uses: actions/checkout@v2
       with:
         submodules: recursive
 
     - name: Install Linux dependencies
       if: matrix.os == 'ubuntu-latest'
-      run: sudo apt-get install ninja-build x11-utils libx11-dev libx11-xcb-dev libxext-dev libxcb1-dev libxcb-image0-dev libxcb-shm0-dev subversion libassimp-dev libfreeimage-dev libfreetype6-dev libglm-dev libenet-dev
+      run: sudo apt-get install ${{matrix.dependencies}}
 
     - name: Install MacOS dependencies
       if: matrix.os == 'macos-latest'
-      run: brew install ninja assimp freeimage libxkbcommon subversion freetype enet glm
+      run: brew install ${{matrix.dependencies}}
 
     - name: Install Windows dependencies
-      if: matrix.os == 'windows-latest'
-      run: choco install tortoisesvn
+      if: matrix.os == 'windows-latest' && matrix.generator != 'Ninja'
+      run: choco install ${{matrix.dependencies}}
+
+    - name: Update MinGW
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        release: true
+        install: ${{matrix.dependencies}}
+      if: matrix.os == 'windows-latest' && matrix.generator == 'Ninja'
+
+    - name: Configure CMake (MinGW)
+      if: matrix.os == 'windows-latest' && matrix.generator == 'Ninja'
+      shell: msys2 {0}
+      run: |
+        set MSYSTEM=MINGW64
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -G"${{matrix.generator}}"
 
     - name: Configure CMake
+      if: matrix.os != 'windows-latest' && matrix.generator != 'Ninja'
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -G"${{matrix.generator}}"
 
     - name: Build
