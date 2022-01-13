@@ -2,7 +2,12 @@
 # -------------------------------------
 # Project Setup
 # -------------------------------------
-project(softlight VERSION 0.1.0 LANGUAGES CXX OBJC OBJCXX)
+project(softlight VERSION 0.1.0 LANGUAGES CXX)
+
+if (APPLE AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16.0")
+    enable_language(OBJC)
+    enable_language(OBJCXX)
+endif()
 
 
 
@@ -103,7 +108,6 @@ if (UNIX AND NOT MINGW AND NOT PREFER_COCOA)
     endif()
 
 else()
-  add_definitions(-DWIN32_LEAN_AND_MEAN)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 endif()
 
