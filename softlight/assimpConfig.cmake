@@ -72,6 +72,8 @@ if (BUILD_ASSIMP OR NOT ASSIMP_INCLUDE_DIR OR NOT ASSIMP_LIBRARIES)
             ${ASSIMP_BUILD_FLAGS}
         INSTALL_DIR
             ${EXTERNAL_PROJECT_PREFIX}
+        STEP_TARGETS
+            lib
     )
 
     # Add the imported library target

@@ -66,6 +66,8 @@ if (BUILD_FREETYPE OR NOT FREETYPE_INCLUDE_DIRS OR NOT FREETYPE_LIBRARIES)
             ${FREETYPE_BUILD_FLAGS}
         INSTALL_DIR
             ${EXTERNAL_PROJECT_PREFIX}
+        STEP_TARGETS
+            lib
     )
 
     # Add the imported library target

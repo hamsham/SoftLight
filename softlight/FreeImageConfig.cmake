@@ -67,6 +67,8 @@ if (BUILD_FREEIMAGE OR FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NO
                 ${CMAKE_COMMAND} -E copy_if_different ${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Dist/${FREEIMAGE_DIST_DIR}/${FREEIMAGE_LIB} ${EXTERNAL_PROJECT_PREFIX}/lib &&
                 ${CMAKE_COMMAND} -E copy_if_different ${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Dist/${FREEIMAGE_DIST_DIR}/${FREEIMAGE_DLL} ${EXTERNAL_PROJECT_PREFIX}/bin &&
                 ${CMAKE_COMMAND} -E copy_if_different ${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Dist/${FREEIMAGE_DIST_DIR}/FreeImage.h      ${EXTERNAL_PROJECT_PREFIX}/include
+            STEP_TARGETS
+                lib
         )
     else()
         ExternalProject_Add(
@@ -86,6 +88,8 @@ if (BUILD_FREEIMAGE OR FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NO
             INSTALL_COMMAND
                 ${CMAKE_COMMAND} -E copy_if_different ${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Dist/${FREEIMAGE_LIB} ${EXTERNAL_PROJECT_PREFIX}/lib &&
                 ${CMAKE_COMMAND} -E copy_if_different ${EXTERNAL_PROJECT_PREFIX}/src/FreeImage/Dist/FreeImage.h      ${EXTERNAL_PROJECT_PREFIX}/include
+            STEP_TARGETS
+                lib
         )
     endif()
 
