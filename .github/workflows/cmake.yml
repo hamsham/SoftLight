@@ -32,7 +32,7 @@ jobs:
             GENERATOR: "Ninja"
           
           - os: windows-latest
-            GENERATOR: "Visual Studio 16 2019"
+            GENERATOR: "Ninja"
 
     steps:
     - uses: actions/checkout@v2
