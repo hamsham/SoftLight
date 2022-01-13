@@ -71,6 +71,11 @@ if (BUILD_FREEIMAGE OR FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NO
                 lib
         )
     else()
+        find_program(FREEIMAGE_MAKE_PROGRAM NAMES make gmake nmake)
+        if (NOT FREEIMAGE_MAKE_PROGRAM)
+            message(FATAL_ERROR "Unable to find a suitable make program for compiling FreeImage.")
+        endif()
+
         ExternalProject_Add(
             FreeImage
             PREFIX
@@ -82,7 +87,7 @@ if (BUILD_FREEIMAGE OR FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NO
             CONFIGURE_COMMAND
                 ""
             BUILD_COMMAND
-                ${CMAKE_MAKE_PROGRAM}
+                ${FREEIMAGE_MAKE_PROGRAM} -j
             BUILD_IN_SOURCE
                 1
             INSTALL_COMMAND
