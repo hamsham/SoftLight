@@ -35,22 +35,25 @@ jobs:
             GENERATOR: "Visual Studio 16 2019"
           
           - os: windows-latest
-            uses: msys2/setup-msys2@v2
-            msystem: MINGW64
-            update: true
-            install: >-
-                base-devel
-                git
-                cmake
-                clang
-                freeimage
             GENERATOR: "Ninja"
-            shell: msys2 {0}
 
     steps:
     - uses: actions/checkout@v2
       with:
         submodules: recursive
+    - if: matrix.os == 'windows-latest' && matrix.GENERATOR == 'Ninja'
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: >-
+            base-devel
+            git
+            cmake
+            clang
+            freeimage
+            ninja
+        shell: msys2 {0}
 
     - name: Install Linux dependencies
       if: matrix.os == 'ubuntu-latest'
@@ -62,7 +65,7 @@ jobs:
 
     - name: Install Windows dependencies
       if: matrix.os == 'windows-latest'
-      run: choco install tortoisesvn ninja
+      run: choco install tortoisesvn
 
     - name: Configure CMake
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -G"${{matrix.GENERATOR}}"
