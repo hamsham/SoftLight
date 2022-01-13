@@ -21,31 +21,45 @@ jobs:
     # cross-platform coverage.
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     runs-on: ${{matrix.os}}
+    defaults:
+      run:
+        shell: ${{matrix.shell}}
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             generator: "Ninja"
+            shell: bash
             dependencies: ninja-build x11-utils libx11-dev libx11-xcb-dev libxext-dev libxcb1-dev libxcb-image0-dev libxcb-shm0-dev subversion libassimp-dev libfreeimage-dev libfreetype6-dev libglm-dev libenet-dev
           
           - os: macos-latest
             generator: "Ninja"
+            shell: bash
             dependencies: ninja assimp freeimage libxkbcommon subversion freetype enet glm
           
           - os: windows-latest
             generator: "Visual Studio 16 2019"
+            shell: pwsh
             dependencies: tortoisesvn
           
           - os: windows-latest
             generator: "Ninja"
-            dependencies: base-devel git clang mingw-w64-x86_64-freeimage
+            shell: msys2 {0}
+            dependencies: base-devel git subversion clang mingw-w64-x86_64-freeimage
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
+    - uses: actions/checkout@v2
       with:
         submodules: recursive
+        
+    - uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        release: true
+        install: ${{matrix.dependencies}}
+      if: matrix.os == 'windows-latest' && matrix.generator == 'Ninja'
 
     - name: Install Linux dependencies
       if: matrix.os == 'ubuntu-latest'
@@ -59,24 +73,7 @@ jobs:
       if: matrix.os == 'windows-latest' && matrix.generator != 'Ninja'
       run: choco install ${{matrix.dependencies}}
 
-    - name: Update MinGW
-      uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW64
-        update: true
-        release: true
-        install: ${{matrix.dependencies}}
-      if: matrix.os == 'windows-latest' && matrix.generator == 'Ninja'
-
-    - name: Configure CMake (MinGW)
-      if: matrix.os == 'windows-latest' && matrix.generator == 'Ninja'
-      shell: msys2 {0}
-      run: |
-        set MSYSTEM=MINGW64
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -G"${{matrix.generator}}"
-
     - name: Configure CMake
-      if: matrix.os != 'windows-latest' && matrix.generator != 'Ninja'
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -G"${{matrix.generator}}"
 
     - name: Build
