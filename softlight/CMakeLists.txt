@@ -14,15 +14,6 @@ endif()
 # -------------------------------------
 # Compiler Setup
 # -------------------------------------
-# MinGW doesn't always play nice with the Windows SDK
-if (MINGW)
-	set(CMAKE_SYSTEM_NAME Windows)
-	
-	# These defines were made in Windows 2000
-	add_definitions(-D WINVER=0x0602)
-	add_definitions(-D_WIN32_WINNT=0x0602)
-endif()
-
 include(buildUtil.cmake)
 
 
