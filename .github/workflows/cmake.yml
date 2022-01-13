@@ -51,7 +51,7 @@ jobs:
             git
             cmake
             clang
-            freeimage
+            mingw-w64-x86_64-freeimage
             ninja
         shell: msys2 {0}
 
