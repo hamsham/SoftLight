@@ -392,6 +392,16 @@ add_library(SoftLight ALIAS ${PROJECT_NAME})
 
 
 # -------------------------------------
+# Precompiled Headers
+# -------------------------------------
+if (${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16.0")
+    target_precompile_headers(${PROJECT_NAME} REUSE_FROM lsmath)
+    target_precompile_headers(${PROJECT_NAME} REUSE_FROM lsutils)
+endif()
+
+
+
+# -------------------------------------
 # Library Tests
 # -------------------------------------
 option(SL_BUILD_TESTS "Build tests for the Soft Render library." ON)

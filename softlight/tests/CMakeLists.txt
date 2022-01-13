@@ -171,6 +171,13 @@ function(sl_add_test target sources)
     add_executable(${target} ${sources} ${ARGN})
     target_link_libraries(${target} softlight LightSky::Math LightSky::Game LightSky::Utils LightSky::Setup ${SL_EXTERNAL_LIBS})
 	ls_configure_target(${target})
+
+	# Precompiled Headers
+	if (${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16.0")
+		target_precompile_headers(${target} REUSE_FROM softlight)
+		target_precompile_headers(${target} REUSE_FROM lsmath)
+		target_precompile_headers(${target} REUSE_FROM lsutils)
+	endif()
 endfunction(sl_add_test)
 
 sl_add_test(sl_animation_test          sl_animation_test.cpp)
