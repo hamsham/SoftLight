@@ -186,22 +186,19 @@ set(SL_LIB_HEADERS
 )
 
 if (WIN32)
-    set(SL_LIB_HEADERS
-        ${SL_LIB_HEADERS}
+    set(SL_PLATFORM_HEADERS
         include/softlight/SL_KeySymWin32.hpp
         include/softlight/SL_RenderWindowWin32.hpp
         include/softlight/SL_WindowBufferWin32.hpp)
 
 elseif (PREFER_COCOA)
-    set(SL_LIB_HEADERS
-        ${SL_LIB_HEADERS}
+    set(SL_PLATFORM_HEADERS
         include/softlight/SL_KeySymCocoa.hpp
         include/softlight/SL_RenderWindowCocoa.hpp
         include/softlight/SL_WindowBufferCocoa.hpp)
 
 else()
-    set(SL_LIB_HEADERS
-        ${SL_LIB_HEADERS}
+    set(SL_PLATFORM_HEADERS
         include/softlight/SL_KeySymXlib.hpp
         include/softlight/SL_RenderWindowXCB.hpp
         include/softlight/SL_WindowBufferXCB.hpp
@@ -262,8 +259,7 @@ set(SL_LIB_SOURCES
 
 if(WIN32)
     message("-- Win32 window backend enabled.")
-    set(SL_LIB_SOURCES
-        ${SL_LIB_SOURCES}
+    set(SL_PLATFORM_SOURCES
         src/SL_KeySymWin32.cpp
         src/SL_RenderWindowWin32.cpp
         src/SL_WindowBufferWin32.cpp)
@@ -272,8 +268,7 @@ elseif (PREFER_COCOA)
     message("-- Cocoa window backend enabled.")
     add_definitions(-DSL_PREFER_COCOA)
 
-    set(SL_LIB_SOURCES
-        ${SL_LIB_SOURCES}
+    set(SL_PLATFORM_SOURCES
         src/SL_KeySymCocoa.mm
         src/SL_RenderWindowCocoa.mm
         src/SL_WindowBufferCocoa.mm)
@@ -297,8 +292,7 @@ elseif(UNIX)
         message("-- X11 Shared memory extensions disabled.")
     endif()
 
-    set(SL_LIB_SOURCES
-        ${SL_LIB_SOURCES}
+    set(SL_PLATFORM_SOURCES
         src/SL_KeySymXlib.cpp
         src/SL_RenderWindowXCB.cpp
         src/SL_RenderWindowXlib.cpp
@@ -323,7 +317,7 @@ else()
     set(SL_LIB_TYPE STATIC)
 endif()
 
-add_library(${PROJECT_NAME} ${SL_LIB_TYPE} ${SL_LIB_SOURCES} ${SL_LIB_HEADERS})
+add_library(${PROJECT_NAME} ${SL_LIB_TYPE} ${SL_LIB_SOURCES} ${SL_PLATFORM_SOURCES} ${SL_LIB_HEADERS} ${SL_PLATFORM_HEADERS})
 
 ls_configure_target(${PROJECT_NAME})
 
