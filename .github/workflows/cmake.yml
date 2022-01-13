@@ -46,12 +46,12 @@ jobs:
       with:
         msystem: MINGW64
         update: true
-        pacboy: >-
-            base-devel
-            git
-            cmake
-            clang
-            freeimage
+        install: >-
+          base-devel
+          git
+          cmake
+          clang
+          mingw-w64-x86_64-freeimage
 
     - name: Install Linux dependencies
       if: matrix.os == 'ubuntu-latest'
