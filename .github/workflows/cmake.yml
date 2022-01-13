@@ -44,7 +44,7 @@ jobs:
 #            dependencies: tortoisesvn
           
           - os: windows-latest
-            generator: "Unix Makefiles"
+            generator: "MSYS Makefiles"
             shell: msys2 {0}
             dependencies: base-devel git subversion cmake ninja mingw-w64-x86_64-toolchain mingw-w64-x86_64-freeimage
 
