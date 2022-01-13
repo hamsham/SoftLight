@@ -26,22 +26,26 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            GENERATOR: "Ninja"
+            generator: "Ninja"
+            shell: sh
           
           - os: macos-latest
-            GENERATOR: "Ninja"
+            generator: "Ninja"
+            shell: sh
           
           - os: windows-latest
-            GENERATOR: "Visual Studio 16 2019"
+            generator: "Visual Studio 16 2019"
+            shell: powershell
           
           - os: windows-latest
-            GENERATOR: "Ninja"
+            generator: "Ninja"
+            shell: msys2 {0}
 
     steps:
     - uses: actions/checkout@v2
       with:
         submodules: recursive
-    - if: matrix.os == 'windows-latest' && matrix.GENERATOR == 'Ninja'
+    - if: matrix.os == 'windows-latest' && matrix.generator == 'Ninja'
       uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW64
@@ -52,6 +56,7 @@ jobs:
           cmake
           clang
           mingw-w64-x86_64-freeimage
+          ninja
 
     - name: Install Linux dependencies
       if: matrix.os == 'ubuntu-latest'
@@ -66,8 +71,10 @@ jobs:
       run: choco install tortoisesvn ninja
 
     - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -G"${{matrix.GENERATOR}}"
+      shell: "${{matrix.shell}}"
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -G"${{matrix.generator}}"
 
     - name: Build
+      shell: "${{matrix.shell}}"
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
       
