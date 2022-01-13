@@ -46,7 +46,7 @@ jobs:
           - os: windows-latest
             generator: "Ninja"
             shell: msys2 {0}
-            dependencies: base-devel cmake ninja git subversion clang mingw-w64-x86_64-freeimage
+            dependencies: base-devel cmake ninja git subversion mingw-w64-x86_64-clang mingw-w64-x86_64-freeimage
 
     steps:
     - uses: actions/checkout@v2
