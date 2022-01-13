@@ -26,10 +26,10 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            GENERATOR: "Unix Makefiles"
+            GENERATOR: "Ninja"
           
           - os: macos-latest
-            GENERATOR: "Unix Makefiles"
+            GENERATOR: "Ninja"
           
           - os: windows-latest
             GENERATOR: "Visual Studio 16 2019"
@@ -41,15 +41,15 @@ jobs:
 
     - name: Install Linux dependencies
       if: matrix.os == 'ubuntu-latest'
-      run: sudo apt-get install x11-utils libx11-dev libx11-xcb-dev libxext-dev libxcb1-dev libxcb-image0-dev libxcb-shm0-dev subversion libassimp-dev libfreeimage-dev libfreetype6-dev libglm-dev libenet-dev
+      run: sudo apt-get install ninja-build x11-utils libx11-dev libx11-xcb-dev libxext-dev libxcb1-dev libxcb-image0-dev libxcb-shm0-dev subversion libassimp-dev libfreeimage-dev libfreetype6-dev libglm-dev libenet-dev
 
     - name: Install MacOS dependencies
       if: matrix.os == 'macos-latest'
-      run: brew install assimp freeimage libxkbcommon subversion freetype enet glm
+      run: brew install ninja assimp freeimage libxkbcommon subversion freetype enet glm
 
     - name: Install Windows dependencies
       if: matrix.os == 'windows-latest'
-      run: choco install tortoisesvn
+      run: choco install ninja tortoisesvn
 
     - name: Configure CMake
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -G"${{matrix.GENERATOR}}"
