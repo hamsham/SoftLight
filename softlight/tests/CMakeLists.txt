@@ -175,8 +175,12 @@ function(sl_add_test target sources)
 	# Precompiled Headers
 	if (${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16.0")
 		target_precompile_headers(${target} REUSE_FROM softlight)
-		target_precompile_headers(${target} REUSE_FROM lsmath)
-		target_precompile_headers(${target} REUSE_FROM lsutils)
+
+		# Workaround for mixing C++ & Objective-C on OS X
+		if (NOT APPLE)
+			target_precompile_headers(${target} REUSE_FROM lsmath)
+			target_precompile_headers(${target} REUSE_FROM lsutils)
+		endif()
 	endif()
 endfunction(sl_add_test)
 

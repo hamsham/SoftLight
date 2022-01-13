@@ -393,8 +393,13 @@ add_library(SoftLight ALIAS ${PROJECT_NAME})
 # Precompiled Headers
 # -------------------------------------
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16.0")
-    target_precompile_headers(${PROJECT_NAME} REUSE_FROM lsmath)
-    target_precompile_headers(${PROJECT_NAME} REUSE_FROM lsutils)
+    # Workaround for mixing C++ & Objective-C on OS X
+    if (NOT APPLE)
+        target_precompile_headers(${PROJECT_NAME} REUSE_FROM lsmath)
+        target_precompile_headers(${PROJECT_NAME} REUSE_FROM lsutils)
+    else()
+        target_precompile_headers(${PROJECT_NAME} PRIVATE ${SL_LIB_HEADERS})
+    endif()
 endif()
 
 
