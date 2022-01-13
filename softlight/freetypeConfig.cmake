@@ -39,7 +39,8 @@ if (BUILD_FREETYPE OR NOT FREETYPE_INCLUDE_DIRS OR NOT FREETYPE_LIBRARIES)
         -DCMAKE_DISABLE_FIND_PACKAGE_BZip2:BOOL=TRUE
         -DCMAKE_DISABLE_FIND_PACKAGE_PNG:BOOL=TRUE
         -DCMAKE_DISABLE_FIND_PACKAGE_HarfBuzz:BOOL=TRUE
-        -DCMAKE_DISABLE_FIND_PACKAGE_BrotliDec:BOOL=TRUE)
+        -DCMAKE_DISABLE_FIND_PACKAGE_BrotliDec:BOOL=TRUE
+    )
     mark_as_advanced(FREETYPE_BUILD_FLAGS)
 
     # Build FreeType
@@ -49,14 +50,16 @@ if (BUILD_FREETYPE OR NOT FREETYPE_INCLUDE_DIRS OR NOT FREETYPE_LIBRARIES)
             ${EXTERNAL_PROJECT_PREFIX}
         GIT_REPOSITORY
             "https://github.com/freetype/freetype2.git"
+        GIT_TAG
+            "${FREETYPE_BRANCH}"
         GIT_SHALLOW
             TRUE
         GIT_PROGRESS
             TRUE
-        GIT_TAG
-            "${FREETYPE_BRANCH}"
         UPDATE_COMMAND
-            ${GIT_EXECUTABLE} fetch
+            ${GIT_EXECUTABLE} pull origin ${FREETYPE_BRANCH}
+        CMAKE_GENERATOR
+            "${CMAKE_GENERATOR}"
         CMAKE_COMMAND
             ${CMAKE_COMMAND}
         CMAKE_CACHE_ARGS

@@ -45,7 +45,8 @@ if (BUILD_ASSIMP OR NOT ASSIMP_INCLUDE_DIR OR NOT ASSIMP_LIBRARIES)
         -DASSIMP_BUILD_SAMPLES:BOOL=OFF
         -DASSIMP_BUILD_ASSIMP_TOOLS:BOOL=OFF
         -DASSIMP_BUILD_NO_EXPORT:BOOL=OFF
-        -DASSIMP_INSTALL_PDB:BOOL=FALSE)
+        -DASSIMP_INSTALL_PDB:BOOL=FALSE
+    )
     mark_as_advanced(ASSIMP_BUILD_FLAGS)
 
     # Build Assimp
@@ -57,20 +58,20 @@ if (BUILD_ASSIMP OR NOT ASSIMP_INCLUDE_DIR OR NOT ASSIMP_LIBRARIES)
             "https://github.com/assimp/assimp.git"
         GIT_TAG
             "${ASSIMP_BRANCH}"
+        GIT_SHALLOW
+            TRUE
+        GIT_PROGRESS
+            TRUE
         UPDATE_COMMAND
             ${GIT_EXECUTABLE} pull origin ${ASSIMP_BRANCH}
+        CMAKE_GENERATOR
+            "${CMAKE_GENERATOR}"
         CMAKE_COMMAND
             ${CMAKE_COMMAND}
-        CMAKE_ARGS
-            ${ASSIMP_BUILD_FLAGS}
         CMAKE_CACHE_ARGS
             ${ASSIMP_BUILD_FLAGS}
-        BUILD_COMMAND
-            ${CMAKE_COMMAND} -E chdir ${EXTERNAL_PROJECT_PREFIX}/src/Assimp-build ${CMAKE_COMMAND} --build . --config ${CMAKE_CFG_INTDIR}
         INSTALL_DIR
             ${EXTERNAL_PROJECT_PREFIX}
-        INSTALL_COMMAND
-            ${CMAKE_COMMAND} -E chdir ${EXTERNAL_PROJECT_PREFIX}/src/Assimp-build ${CMAKE_COMMAND} --build . --config ${CMAKE_CFG_INTDIR} --target install
     )
 
     # Add the imported library target
