@@ -42,6 +42,7 @@ jobs:
             shell: msys2 {0}
 
     steps:
+    - shell: ${{matrix.shell}}
     - uses: actions/checkout@v2
       with:
         submodules: recursive
@@ -71,10 +72,8 @@ jobs:
       run: choco install tortoisesvn ninja
 
     - name: Configure CMake
-      shell: ${{matrix.shell}}
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -G"${{matrix.generator}}"
 
     - name: Build
-      shell: ${{matrix.shell}}
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
       
