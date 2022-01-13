@@ -27,15 +27,15 @@ jobs:
         include:
           - os: ubuntu-latest
             generator: "Ninja"
-            shell: sh
+            shell: bash
           
           - os: macos-latest
             generator: "Ninja"
-            shell: sh
+            shell: bash
           
           - os: windows-latest
             generator: "Visual Studio 16 2019"
-            shell: powershell
+            shell: pwsh
           
           - os: windows-latest
             generator: "Ninja"
@@ -71,10 +71,10 @@ jobs:
       run: choco install tortoisesvn ninja
 
     - name: Configure CMake
-      shell: "${{matrix.shell}}"
+      shell: ${{matrix.shell}}
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -G"${{matrix.generator}}"
 
     - name: Build
-      shell: "${{matrix.shell}}"
+      shell: ${{matrix.shell}}
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
       
