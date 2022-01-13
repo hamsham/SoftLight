@@ -43,6 +43,7 @@ jobs:
                 git
                 cmake
                 clang
+                freeimage
             GENERATOR: "Ninja"
             shell: msys2 {0}
 
