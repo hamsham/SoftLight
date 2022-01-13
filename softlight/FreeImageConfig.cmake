@@ -100,6 +100,7 @@ if (BUILD_FREEIMAGE OR FREEIMAGE_INCLUDE_PATH STREQUAL FREEIMAGE_INCLUDE_PATH-NO
     endif()
 
     add_dependencies(freeimage FreeImage)
+    ExternalProject_Add_Step(FreeImage lib BYPRODUCTS ${EXTERNAL_PROJECT_PREFIX}/lib/${FREEIMAGE_LIB})
 
     set(FREEIMAGE_INCLUDE_PATH CACHE PATH ${EXTERNAL_PROJECT_PREFIX}/include "The directory where FreeImage.h resides")
 
