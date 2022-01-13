@@ -2,7 +2,7 @@
 # -------------------------------------
 # Project Setup
 # -------------------------------------
-project(softlight VERSION 0.1.0 LANGUAGES CXX)
+project(softlight VERSION 0.1.0 LANGUAGES CXX OBJC OBJCXX)
 
 
 
