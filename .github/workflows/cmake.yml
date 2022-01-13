@@ -46,14 +46,12 @@ jobs:
       with:
         msystem: MINGW64
         update: true
-        install: >-
+        pacboy: >-
             base-devel
             git
             cmake
             clang
-            mingw-w64-x86_64-freeimage
-            ninja
-        shell: msys2 {0}
+            freeimage
 
     - name: Install Linux dependencies
       if: matrix.os == 'ubuntu-latest'
@@ -65,7 +63,7 @@ jobs:
 
     - name: Install Windows dependencies
       if: matrix.os == 'windows-latest'
-      run: choco install tortoisesvn
+      run: choco install tortoisesvn ninja
 
     - name: Configure CMake
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -G"${{matrix.GENERATOR}}"
