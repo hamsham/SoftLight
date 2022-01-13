@@ -60,8 +60,6 @@ jobs:
         release: true
         install: ${{matrix.dependencies}}
       if: matrix.os == 'windows-latest' && matrix.generator == 'Ninja'
-      env:
-        CC: clang
 
     - name: Install Linux dependencies
       if: matrix.os == 'ubuntu-latest'
@@ -76,9 +74,10 @@ jobs:
       run: choco install ${{matrix.dependencies}}
 
     - name: Configure CMake
-      env:
-        CC: clang
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -G"${{matrix.generator}}"
+      run: |
+        ninja --version
+        cmake --version
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -G"${{matrix.generator}}"
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --parallel
