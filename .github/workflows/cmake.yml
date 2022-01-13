@@ -44,7 +44,7 @@ jobs:
 #            dependencies: tortoisesvn
           
           - os: windows-latest
-            generator: "Ninja"
+            generator: "Unix Makefiles"
             shell: msys2 {0}
             dependencies: base-devel git subversion cmake ninja mingw-w64-x86_64-toolchain mingw-w64-x86_64-freeimage
 
@@ -60,7 +60,7 @@ jobs:
         release: true
         install: ${{matrix.dependencies}}
         path-type: strict
-      if: matrix.os == 'windows-latest' && matrix.generator == 'Ninja'
+      if: matrix.os == 'windows-latest' && matrix.shell != 'pwsh'
 
     - name: Install Linux dependencies
       if: matrix.os == 'ubuntu-latest'
@@ -71,7 +71,7 @@ jobs:
       run: brew install ${{matrix.dependencies}}
 
     - name: Install Windows dependencies
-      if: matrix.os == 'windows-latest' && matrix.generator != 'Ninja'
+      if: matrix.os == 'windows-latest' &&  && matrix.shell == 'pwsh'
       run: choco install ${{matrix.dependencies}}
 
     - name: Configure CMake
