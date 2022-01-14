@@ -2,11 +2,16 @@
 // Thanks again Visual Studio
 #ifndef WIN32_LEAN_AND_MEAN
     #define WIN32_LEAN_AND_MEAN
-#endif
+#endif /* WIN32_LEAN_AND_MEAN */
 
 #ifndef NOMINMAX
     #define NOMINMAX
 #endif /* NOMINMAX */
+
+#ifndef WINVER
+    // Need access to WM_POINTERENTER and WM_POINTERLEAVE events
+    #define WINVER 0x0602
+#endif /* WINVER */
 
 #include <windows.h>
 #include <windowsx.h>
