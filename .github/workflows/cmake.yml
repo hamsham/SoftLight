@@ -28,20 +28,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
-#          - os: ubuntu-latest
-#            generator: "Ninja"
-#            shell: bash
-#            dependencies: ninja-build x11-utils libx11-dev libx11-xcb-dev libxext-dev libxcb1-dev libxcb-image0-dev libxcb-shm0-dev subversion libassimp-dev libfreeimage-dev libfreetype6-dev libglm-dev libenet-dev
-#          
-#          - os: macos-latest
-#            generator: "Ninja"
-#            shell: bash
-#            dependencies: ninja assimp freeimage libxkbcommon subversion freetype enet glm
-#          
-#          - os: windows-latest
-#            generator: "Visual Studio 16 2019"
-#            shell: pwsh
-#            dependencies: tortoisesvn
+          - os: ubuntu-latest
+            generator: "Ninja"
+            shell: bash
+            dependencies: ninja-build x11-utils libx11-dev libx11-xcb-dev libxext-dev libxcb1-dev libxcb-image0-dev libxcb-shm0-dev subversion libassimp-dev libfreeimage-dev libfreetype6-dev libglm-dev libenet-dev
+
+          - os: macos-latest
+            generator: "Ninja"
+            shell: bash
+            dependencies: ninja assimp freeimage libxkbcommon subversion freetype enet glm
+
+          - os: windows-latest
+            generator: "Visual Studio 16 2019"
+            shell: pwsh
+            dependencies: tortoisesvn
           
           - os: windows-latest
             generator: "Ninja"
