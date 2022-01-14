@@ -8,11 +8,6 @@
     #define NOMINMAX
 #endif /* NOMINMAX */
 
-#ifndef WINVER
-    // Need access to WM_POINTERENTER and WM_POINTERLEAVE events
-    #define WINVER 0x0602
-#endif /* WINVER */
-
 #include <windows.h>
 #include <windowsx.h>
 #include <winuser.h>

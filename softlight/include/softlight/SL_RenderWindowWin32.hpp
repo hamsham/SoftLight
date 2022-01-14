@@ -11,11 +11,6 @@
     #define WIN32_LEAN_AND_MEAN
 #endif /* WIN32_LEAN_AND_MEAN */
 
-#ifndef WINVER
-    // Need access to WM_POINTERENTER and WM_POINTERLEAVE events
-    #define WINVER 0x0602
-#endif /* WINVER */
-
 #include <windows.h>
 
 #include "softlight/SL_RenderWindow.hpp"
