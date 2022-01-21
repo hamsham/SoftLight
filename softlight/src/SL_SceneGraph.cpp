@@ -77,6 +77,7 @@ SL_SceneGraph::~SL_SceneGraph() noexcept
  * Constructor
 -------------------------------------*/
 SL_SceneGraph::SL_SceneGraph() noexcept :
+    mNodeParentIds(),
     mCameras(),
     mMeshes(),
     mMeshBounds(),
@@ -122,6 +123,7 @@ SL_SceneGraph::SL_SceneGraph(SL_SceneGraph&& s) noexcept
 -------------------------------------*/
 SL_SceneGraph& SL_SceneGraph::operator=(const SL_SceneGraph& s) noexcept
 {
+    mNodeParentIds = s.mNodeParentIds;
     mCameras = s.mCameras;
     mMeshes = s.mMeshes;
     mMeshBounds = s.mMeshBounds;
@@ -167,6 +169,7 @@ SL_SceneGraph& SL_SceneGraph::operator=(const SL_SceneGraph& s) noexcept
 -------------------------------------*/
 SL_SceneGraph& SL_SceneGraph::operator=(SL_SceneGraph&& s) noexcept
 {
+    mNodeParentIds = std::move(s.mNodeParentIds);
     mCameras = std::move(s.mCameras);
     mMeshes = std::move(s.mMeshes);
     mMeshBounds = std::move(s.mMeshBounds);
@@ -195,6 +198,7 @@ SL_SceneGraph& SL_SceneGraph::operator=(SL_SceneGraph&& s) noexcept
 -------------------------------------*/
 void SL_SceneGraph::terminate() noexcept
 {
+    mNodeParentIds.clear();
     mCameras.clear();
     mMeshes.clear();
     mMeshBounds.clear();
@@ -223,7 +227,7 @@ void SL_SceneGraph::update_node_transform(const size_t transformId) noexcept
 {
     SL_Transform& t = mCurrentTransforms[transformId];
 
-    const size_t parentId = t.mParentId;
+    const size_t parentId = mNodeParentIds[transformId];
     const bool doesParentExist = parentId != SCENE_NODE_ROOT_ID;
 
     if (doesParentExist)
@@ -263,6 +267,7 @@ void SL_SceneGraph::update() noexcept
     // If the child node is less than the parent node's ID, we have ourselves
     // a good-old-fashioned bug.
     const size_t numNodes = mCurrentTransforms.size();
+    std::size_t* const pParentIds = mNodeParentIds.data();
     SL_Transform* const pTransforms = mCurrentTransforms.data();
 
     for (size_t i = 0; i < numNodes; ++i)
@@ -274,7 +279,7 @@ void SL_SceneGraph::update() noexcept
 
             for (size_t j = i+1; j < numNodes; ++j)
             {
-                if (pTransforms[j].mParentId < i)
+                if (pParentIds[j] < i)
                 {
                     i = j-1;
                     break;
@@ -380,11 +385,17 @@ void SL_SceneGraph::delete_node_animation_data(const size_t nodeId, const size_t
 -------------------------------------*/
 void SL_SceneGraph::clear_node_data() noexcept
 {
+    mNodeParentIds.clear();
     mCameras.clear();
+    mMeshes.clear();
+    mMeshBounds.clear();
+    mMaterials.clear();
     mNodes.clear();
     mBaseTransforms.clear();
     mCurrentTransforms.clear();
     mModelMatrices.clear();
+    mInvBoneTransforms.clear();
+    mBoneOffsets.clear();
     mNodeNames.clear();
     mAnimations.clear();
     mNodeAnims.clear();
@@ -412,7 +423,7 @@ size_t SL_SceneGraph::delete_node(const size_t nodeIndex) noexcept
     // Remove all child nodes and their data
     for (size_t i = mNodes.size(); i-- > nodeIndex;)
     {
-        if (mCurrentTransforms[i].mParentId == nodeIndex)
+        if (mNodeParentIds[i] == nodeIndex)
         {
             numDeleted += delete_node(i);
         }
@@ -445,6 +456,7 @@ size_t SL_SceneGraph::delete_node(const size_t nodeIndex) noexcept
     }
 
     // Delete the actual node
+    mNodeParentIds.erase(mNodeParentIds.begin() + nodeIndex);
     mNodes.erase(mNodes.begin() + nodeIndex);
     mCurrentTransforms.erase(mCurrentTransforms.begin() + nodeIndex);
     mBaseTransforms.erase(mBaseTransforms.begin() + nodeIndex);
@@ -463,8 +475,7 @@ size_t SL_SceneGraph::delete_node(const size_t nodeIndex) noexcept
         const SL_SceneNodeType nextType      = nextNode.type;
         size_t&                nextDataId    = nextNode.dataId;
         size_t&                nextAnimId    = nextNode.animListId;
-        SL_Transform&          nextTransform = mCurrentTransforms[i];
-        const size_t           nextParentId  = nextTransform.mParentId;
+        const size_t           nextParentId  = mNodeParentIds[i];
 
         // Placing assertion here because nodeIds must never equate to the
         // root node ID. They must always have tangible data to point at.
@@ -475,7 +486,7 @@ size_t SL_SceneGraph::delete_node(const size_t nodeIndex) noexcept
         if (nextParentId > nodeIndex && nextParentId != SL_SceneNodeProp::SCENE_NODE_ROOT_ID)
         {
             // decrement the next node's parent ID if necessary
-            nextTransform.mParentId = nextParentId - 1;
+            mNodeParentIds[i] = nextParentId - 1;
         }
 
         // the node dataId member can be equal to the root node ID. This is
@@ -504,7 +515,7 @@ size_t SL_SceneGraph::delete_node(const size_t nodeIndex) noexcept
 -------------------------------------*/
 bool SL_SceneGraph::reparent_node(const size_t nodeIndex, const size_t newParentId) noexcept
 {
-    if (newParentId == mCurrentTransforms[nodeIndex].mParentId)
+    if (newParentId == mNodeParentIds[nodeIndex])
     {
         // easy win
         return true;
@@ -542,6 +553,7 @@ bool SL_SceneGraph::reparent_node(const size_t nodeIndex, const size_t newParent
     {
         amountToMove = nodeIndex - newNodeIndex;
 
+        rotate_right(mNodeParentIds.data()     + effectStart, numAffected, displacement);
         rotate_right(mNodes.data()             + effectStart, numAffected, displacement);
         rotate_right(mBaseTransforms.data()    + effectStart, numAffected, displacement);
         rotate_right(mCurrentTransforms.data() + effectStart, numAffected, displacement);
@@ -552,6 +564,7 @@ bool SL_SceneGraph::reparent_node(const size_t nodeIndex, const size_t newParent
     {
         amountToMove = newNodeIndex - nodeIndex;
 
+        rotate_left(mNodeParentIds.data()     + effectStart, numAffected, displacement);
         rotate_left(mNodes.data()             + effectStart, numAffected, displacement);
         rotate_left(mBaseTransforms.data()    + effectStart, numAffected, displacement);
         rotate_left(mCurrentTransforms.data() + effectStart, numAffected, displacement);
@@ -561,7 +574,7 @@ bool SL_SceneGraph::reparent_node(const size_t nodeIndex, const size_t newParent
 
     for (size_t i = effectStart; i < effectEnd; ++i)
     {
-        size_t& rParentId = mCurrentTransforms[i].mParentId;
+        size_t& rParentId = mNodeParentIds[i];
         size_t  pId  = rParentId;
         size_t  nId  = mNodes[i].nodeId;
 
@@ -661,6 +674,9 @@ bool SL_SceneGraph::copy_node(const size_t nodeIndex) noexcept
     const size_t numChildren    = num_total_children(nodeIndex);
     const size_t displacement   = 1 + numChildren;
 
+    const SL_AlignedVector<std::size_t>::iterator&& parentIter = mNodeParentIds.begin() + nodeIndex;
+    mNodeParentIds.insert(parentIter+displacement, parentIter, parentIter+displacement);
+
     const SL_AlignedVector<SL_SceneNode>::iterator&& nodeIter = mNodes.begin() + nodeIndex;
     mNodes.insert(nodeIter+displacement, nodeIter, nodeIter+displacement);
 
@@ -702,13 +718,13 @@ bool SL_SceneGraph::copy_node(const size_t nodeIndex) noexcept
         // ensure all parent indices have been adjusted
         if (i > 0)
         {
-            mCurrentTransforms[dupe].mParentId += displacement;
+            mNodeParentIds[dupe] += displacement;
         }
 
         // we're copying nodes, not animations
         mNodes[dupe].animListId = SL_SceneNodeProp::SCENE_NODE_ROOT_ID;
 
-        LS_LOG_MSG("Copying node parent from ", mCurrentTransforms[orig].mParentId, " to ", mCurrentTransforms[dupe].mParentId);
+        LS_LOG_MSG("Copying node parent from ", mNodeParentIds[orig], " to ", mNodeParentIds[dupe]);
 
         // Enumerate how much node data is getting moved too
         switch (mNodes[orig].type)
@@ -847,7 +863,7 @@ size_t SL_SceneGraph::num_total_children(const size_t nodeIndex) const noexcept
 
     for (size_t cId = nodeIndex + 1; cId < mCurrentTransforms.size(); ++cId)
     {
-        const size_t pId = mCurrentTransforms[cId].mParentId;
+        const size_t pId = mNodeParentIds[cId];
 
         if (pId < nodeIndex || pId == SL_SceneNodeProp::SCENE_NODE_ROOT_ID)
         {
@@ -878,7 +894,7 @@ size_t SL_SceneGraph::num_immediate_children(const size_t nodeIndex) const noexc
 
     for (size_t cId = startIndex; cId < mCurrentTransforms.size(); ++cId)
     {
-        const size_t pId = mCurrentTransforms[cId].mParentId;
+        const size_t pId = mNodeParentIds[cId];
 
         if (pId == SL_SceneNodeProp::SCENE_NODE_ROOT_ID || pId < stopIndex)
         {
@@ -912,7 +928,7 @@ bool SL_SceneGraph::node_is_child(const size_t nodeIndex, const size_t parentId)
         return true;
     }
 
-    const size_t pId = mCurrentTransforms[nodeIndex].mParentId;
+    const size_t pId = mNodeParentIds[nodeIndex];
 
     // check for ancestry
     if (pId < parentId)
@@ -933,7 +949,7 @@ bool SL_SceneGraph::node_is_child(const size_t nodeIndex, const size_t parentId)
             return true;
         }
 
-        iter = mCurrentTransforms[iter].mParentId;
+        iter = mNodeParentIds[iter];
     }
 
     return false;
@@ -952,6 +968,13 @@ size_t SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
     SL_Context&       inContext  = inGraph.mContext;
 
     SL_AlignedVector<SL_Mesh>& inMeshes = inGraph.mMeshes;
+
+    for (size_t& parentId : inGraph.mNodeParentIds)
+    {
+        parentId += parentId == SCENE_NODE_ROOT_ID ? 0 : baseNodeId;
+    }
+    std::move(inGraph.mNodeParentIds.begin(), inGraph.mNodeParentIds.end(), std::back_inserter(mNodeParentIds));
+    inGraph.mNodeParentIds.clear();
 
     for (SL_SceneNode& n : inGraph.mNodes)
     {
@@ -985,11 +1008,11 @@ size_t SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
         inMesh.materialId += (uint32_t)baseMatId;
     }
 
-    std::move(inMeshes.begin(), inMeshes.end(), std::back_inserter(mMeshes));
-    inMeshes.clear();
-
     std::move(inGraph.mCameras.begin(), inGraph.mCameras.end(), std::back_inserter(mCameras));
     inGraph.mCameras.clear();
+
+    std::move(inMeshes.begin(), inMeshes.end(), std::back_inserter(mMeshes));
+    inMeshes.clear();
 
     std::move(inGraph.mMeshBounds.begin(), inGraph.mMeshBounds.end(), std::back_inserter(mMeshBounds));
     inGraph.mMeshBounds.clear();
@@ -1000,10 +1023,6 @@ size_t SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
     std::move(inGraph.mBaseTransforms.begin(), inGraph.mBaseTransforms.end(), std::back_inserter(mBaseTransforms));
     inGraph.mBaseTransforms.clear();
 
-    for (SL_Transform& t : inGraph.mCurrentTransforms)
-    {
-        t.mParentId += t.mParentId == SCENE_NODE_ROOT_ID ? 0 : baseNodeId;
-    }
     std::move(inGraph.mCurrentTransforms.begin(), inGraph.mCurrentTransforms.end(), std::back_inserter(mCurrentTransforms));
     inGraph.mCurrentTransforms.clear();
 

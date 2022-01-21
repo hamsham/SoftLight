@@ -49,15 +49,14 @@ void print_scene_info(const utils::Pointer<SL_SceneGraph>& pGraph) noexcept
     for (const SL_SceneNode& n : pGraph->mNodes)
     {
         const size_t nodeId = n.nodeId;
-        const SL_Transform& transform = pGraph->mCurrentTransforms[nodeId];
-        const size_t parentId = transform.mParentId;
+        const size_t parentId = pGraph->mNodeParentIds[nodeId];
         size_t numTabs = 0;
 
         // Get the number of spaces which must be printed to represent the
         // scene hierarchy
         for (size_t p = parentId; p != SCENE_NODE_ROOT_ID; ++numTabs)
         {
-            p = pGraph->mCurrentTransforms[p].mParentId;
+            p = pGraph->mNodeParentIds[p];
         }
 
         std::ios initialFmt{nullptr};

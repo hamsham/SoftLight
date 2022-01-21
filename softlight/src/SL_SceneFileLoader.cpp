@@ -478,6 +478,7 @@ bool SL_SceneFilePreload::allocate_cpu_data(const aiScene* const pScene) noexcep
     // Reserve data here. There's no telling whether all nodes can be imported
     // or not while Assimp's bones and lights remain unsupported.
     const unsigned numSceneNodes = sl_count_assimp_nodes(pScene->mRootNode);
+    mSceneData.mNodeParentIds.reserve(numSceneNodes);
     mSceneData.mMeshBounds.resize(pScene->mNumMeshes);
     mSceneData.mNodes.reserve(numSceneNodes);
     mSceneData.mBaseTransforms.reserve(numSceneNodes);
@@ -1081,6 +1082,9 @@ bool SL_SceneFileLoader::import_mesh_data(const aiScene* const pScene, const SL_
         mesh.materialId = (uint32_t)pMesh->mMaterialIndex;
         mesh.vaoId      = meshGroupId;
 
+        box.min_point(math::vec4{std::numeric_limits<float>::max()});
+        box.max_point(math::vec4{-std::numeric_limits<float>::max()});
+
         // get the offset to the current mesh so it can be sent to a VBO
         const size_t meshOffset = meshGroup.vboOffset + meshGroup.meshOffset;
         sl_upload_mesh_vertices(
@@ -1321,11 +1325,12 @@ void SL_SceneFileLoader::read_node_hierarchy(
     // use the size of the node list as an index which should be returned to
     // the parent node's child indices.
     SL_SceneGraph&                  sceneData      = mPreloader.mSceneData;
+    SL_AlignedVector<std::size_t>&  parentIds      = sceneData.mNodeParentIds;
     SL_AlignedVector<SL_SceneNode>& nodeList       = sceneData.mNodes;
-    SL_AlignedVector<std::string>&  nodeNames      = sceneData.mNodeNames;
     SL_AlignedVector<math::mat4>&   baseTransforms = sceneData.mBaseTransforms;
     SL_AlignedVector<SL_Transform>& currTransforms = sceneData.mCurrentTransforms;
     SL_AlignedVector<math::mat4>&   modelMatrices  = sceneData.mModelMatrices;
+    SL_AlignedVector<std::string>&  nodeNames      = sceneData.mNodeNames;
 
     //LS_LOG_MSG("\tImporting Scene Node ", nodeList.size(), ": ", pInNode->mName.C_Str());
 
@@ -1393,13 +1398,13 @@ void SL_SceneFileLoader::read_node_hierarchy(
 
     // Remaining transformation information
     {
-        SL_Transform& nodeTransform = currTransforms.back();
-        nodeTransform.mParentId = parentId;
+        parentIds.push_back(parentId);
 
         // Only apply parented transforms here. Applying non-parented
         // transforms will cause root objects to swap X & Z axes.
         if (parentId != SCENE_NODE_ROOT_ID)
         {
+            SL_Transform& nodeTransform = currTransforms.back();
             nodeTransform.apply_pre_transform(currTransforms[parentId].transform());
         }
 
@@ -1407,6 +1412,7 @@ void SL_SceneFileLoader::read_node_hierarchy(
     }
 
     // CYA
+    LS_ASSERT(nodeList.size() == parentIds.size());
     LS_ASSERT(nodeList.size() == nodeNames.size());
     LS_ASSERT(nodeList.size() == baseTransforms.size());
     LS_ASSERT(nodeList.size() == currTransforms.size());

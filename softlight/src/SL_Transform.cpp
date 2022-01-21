@@ -1,8 +1,7 @@
 
 #include <utility> // std::move()
-#include <softlight/SL_SceneNode.hpp>
 
-#include "lightsky/setup/Setup.h"
+#include "lightsky/setup/Macros.h" // LS_ENUM_VAL
 
 #include "lightsky/utils/Assertions.h"
 
@@ -78,7 +77,6 @@ SL_Transform::~SL_Transform() noexcept
  * Constructor
 -------------------------------------*/
 SL_Transform::SL_Transform(const SL_TransformType transformType) noexcept :
-    mParentId{SCENE_NODE_ROOT_ID},
     mFlags{0},
     mType{transformType},
     mPosition{0.f},
@@ -104,7 +102,6 @@ SL_Transform::SL_Transform(const math::mat4& modelMat, const SL_TransformType tr
  * Copy Constructor
 -------------------------------------*/
 SL_Transform::SL_Transform(const SL_Transform& t) noexcept :
-    mParentId{t.mParentId},
     mFlags{t.mFlags},
     mType{t.mType},
     mPosition{t.mPosition},
@@ -119,7 +116,6 @@ SL_Transform::SL_Transform(const SL_Transform& t) noexcept :
  * Move Constructor
 -------------------------------------*/
 SL_Transform::SL_Transform(SL_Transform&& t) noexcept :
-    mParentId{t.mParentId},
     mFlags{t.mFlags},
     mType{t.mType},
     mPosition{std::move(t.mPosition)},
@@ -139,7 +135,6 @@ SL_Transform::SL_Transform(SL_Transform&& t) noexcept :
 -------------------------------------*/
 SL_Transform& SL_Transform::operator=(const SL_Transform& t) noexcept
 {
-    mParentId = t.mParentId;
     mFlags = t.mFlags;
     mType = t.mType;
     mPosition = t.mPosition;
@@ -158,9 +153,6 @@ SL_Transform& SL_Transform::operator=(const SL_Transform& t) noexcept
 SL_Transform& SL_Transform::operator=(SL_Transform&& t) noexcept
 {
     /*
-    mParentId = t.mParentId;
-    //t.mParentId = 0;
-
     mFlags = t.mFlags;
     //t.mFlags = 0;
 
@@ -172,7 +164,6 @@ SL_Transform& SL_Transform::operator=(SL_Transform&& t) noexcept
     mOrientation = std::move(t.mOrientation);
     mModelMat = std::move(t.mModelMat);
     */
-    mParentId = t.mParentId;
     mFlags = t.mFlags;
     mType = t.mType;
     mPosition = t.mPosition;

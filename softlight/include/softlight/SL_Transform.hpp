@@ -60,12 +60,6 @@ class alignas(sizeof(ls::math::vec4)*4) SL_Transform
 {
     friend class slscript::SL_SceneGraphScript<LS_SCRIPT_HASH_FUNC("SL_SceneGraph"), SL_SceneGraph*>;
 
-  public:
-    /**
-     * Array index of a parent transformation in a Scene Graph.
-     */
-    alignas(alignof(uint64_t)) size_t mParentId;
-
   private:
     /**
      * @brief Meta-information container.
@@ -513,6 +507,8 @@ class alignas(sizeof(ls::math::vec4)*4) SL_Transform
      */
     void look_at(const ls::math::vec3& target);
 };
+
+static_assert(sizeof(SL_Transform) == sizeof(ls::math::vec4)*8, "SL_Transform is not correctly aligned to vec4 boundaries.");
 
 
 

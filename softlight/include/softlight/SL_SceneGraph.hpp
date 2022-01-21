@@ -55,6 +55,12 @@ class SL_SceneGraph
 
   public: // member objects
     /**
+     * This vector contains the IDs of all parent nodes. It maps 1:1 with all
+     * nodes in mNodes and their transformations.
+     */
+    SL_AlignedVector<std::size_t> mNodeParentIds;
+
+    /**
      * Referenced by camera-type scene nodes using their
      * "SL_SceneNode::dataId" member.
      *
