@@ -45,6 +45,8 @@ class SL_PTVCache
 
     SL_PTVCache& operator=(SL_PTVCache&&) noexcept;
 
+    bool have_key(size_t key) const noexcept;
+
     SL_TransformedVert* query_and_update(size_t key, const ls::math::mat4& scissorMat) noexcept;
 
     void query_and_update(size_t key, const ls::math::mat4& scissorMat, SL_TransformedVert& out) noexcept;
@@ -60,6 +62,17 @@ class SL_PTVCache
 inline LS_INLINE SL_PTVCache::SL_PTVCache(ls::math::vec4_t<float> (*pShader)(SL_VertexParam&), SL_VertexParam& inParam) noexcept
 {
     reset(pShader, inParam);
+}
+
+
+
+/*-------------------------------------
+ * Determine if an element is in the cache
+-------------------------------------*/
+inline LS_INLINE bool SL_PTVCache::have_key(size_t key) const noexcept
+{
+    const size_t i = key & (PTV_CACHE_SIZE-1);
+    return mIndices[i] == key;
 }
 
 

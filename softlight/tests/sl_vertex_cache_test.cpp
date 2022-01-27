@@ -1,15 +1,19 @@
 
 #include <iostream>
-#include <iomanip>
 #include <memory> // std::move()
+#include <thread>
 
 #include "lightsky/utils/Pointer.h"
 
 #include "softlight/SL_Animation.hpp"
 #include "softlight/SL_Context.hpp"
+#include "softlight/SL_IndexBuffer.hpp"
+#include "softlight/SL_Mesh.hpp"
 #include "softlight/SL_SceneFileLoader.hpp"
 #include "softlight/SL_SceneGraph.hpp"
 #include "softlight/SL_Transform.hpp"
+#include "softlight/SL_VertexArray.hpp"
+#include "softlight/SL_VertexCache.hpp"
 
 
 
@@ -39,92 +43,135 @@ utils::Pointer<SL_SceneGraph> load_scene(const std::string& fileName)
 
 
 
-/*-----------------------------------------------------------------------------
- * print scene graph
------------------------------------------------------------------------------*/
-void print_scene_info(const utils::Pointer<SL_SceneGraph>& pGraph) noexcept
+/*--------------------------------------
+ * Load a grouping of vertex element IDs (mostly copied from the tri processor
+--------------------------------------*/
+inline LS_INLINE ls::math::vec4_t<size_t> get_next_vertex3(const SL_IndexBuffer* LS_RESTRICT_PTR pIbo, size_t vId) noexcept
 {
-    std::cout << "-------------------------------------------------------------------------------" << std::endl;
+    union
+    {
+        ls::math::vec4_t<unsigned char> asBytes;
+        ls::math::vec4_t<unsigned short> asShorts;
+        ls::math::vec4_t<unsigned int> asInts;
+    } ids;
+
+    ids = *reinterpret_cast<const decltype(ids)*>(pIbo->element(vId));
+
+    switch (pIbo->type())
+    {
+        case VERTEX_DATA_BYTE:
+            return (ls::math::vec4_t<size_t>)ids.asBytes;
+
+        case VERTEX_DATA_SHORT:
+            return (ls::math::vec4_t<size_t>)ids.asShorts;
+
+        case VERTEX_DATA_INT:
+            return (ls::math::vec4_t<size_t>)ids.asInts;
+
+        default:
+            LS_UNREACHABLE();
+    }
+
+    return ls::math::vec4_t<size_t>{0, 0, 0, 0};
+}
+
+
+
+/*-----------------------------------------------------------------------------
+ * Query PTV cache Info
+-----------------------------------------------------------------------------*/
+void query_cache_info(std::vector<size_t>& numHits, std::vector<size_t>& numIndices, const utils::Pointer<SL_SceneGraph>& pGraph) noexcept
+{
+    const ls::math::mat4 identity{1.f};
+    const SL_Context& context = pGraph->mContext;
+    const auto vertShader = [](SL_VertexParam&)->ls::math::vec4
+    {
+        return ls::math::vec4{};
+    };
+    SL_VertexParam params;
+    SL_TransformedVert pVert;
 
     for (const SL_SceneNode& n : pGraph->mNodes)
     {
-        const size_t nodeId = n.nodeId;
-        const size_t parentId = pGraph->mNodeParentIds[nodeId];
-        size_t numTabs = 0;
-
-        // Get the number of spaces which must be printed to represent the
-        // scene hierarchy
-        for (size_t p = parentId; p != SCENE_NODE_ROOT_ID; ++numTabs)
+        if (n.type != NODE_TYPE_MESH)
         {
-            p = pGraph->mNodeParentIds[p];
+            continue;
         }
 
-        std::ios initialFmt{nullptr};
-        initialFmt.copyfmt(std::cout);
+        const size_t numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
+        const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
 
-        std::cout << std::left << std::setw(20) << nodeId << ' ' << std::left << std::setw(20) << parentId;
-        std::cout.copyfmt(initialFmt);
-        std::cout << ": ";
-
-        switch (n.type)
+        for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
         {
-            case NODE_TYPE_EMPTY:
-                std::cout << "Empty  ";
-                break;
+            const size_t           nodeMeshId  = meshIds[meshId];
+            const SL_Mesh&         m           = pGraph->mMeshes[nodeMeshId];
+            const SL_VertexArray& vao          = context.vao(m.vaoId);
+            const SL_IndexBuffer* pIbo         = vao.has_index_buffer() ? &context.ibo(vao.get_index_buffer()) : nullptr;
+            const int             usingIndices = (m.mode == RENDER_MODE_INDEXED_TRIANGLES) || (m.mode == RENDER_MODE_INDEXED_TRI_WIRE);
 
-            case NODE_TYPE_MESH:
-                std::cout << "Mesh   ";
-                break;
+            SL_PTVCache ptvCache{vertShader, params};
+            const size_t numThreads = std::thread::hardware_concurrency();
+            size_t begin;
+            size_t end;
+            constexpr size_t step = 3;
 
-            case NODE_TYPE_CAMERA:
-                std::cout << "Camera ";
-                break;
+            sl_calc_indexed_parition<3, true>(m.elementEnd-m.elementBegin, numThreads, 0, begin, end);
+            begin += m.elementBegin;
+            end += m.elementBegin;
 
-            case NODE_TYPE_BONE:
-                std::cout << "Bone   ";
-                break;
-        }
+            size_t totalIndices = 0;
+            size_t hitCount = 0;
 
-        for (size_t i = 0; i < numTabs; ++i)
-        {
-            std::cout << '-';
-        }
-
-        std::cout << ' ' << pGraph->mNodeNames[nodeId] << std::endl;
-    }
-
-    std::cout << std::endl;
-
-    // Animations need love too
-    for (size_t animId = 0; animId < pGraph->mAnimations.size(); ++animId)
-    {
-        const SL_Animation& anim = pGraph->mAnimations[animId];
-
-        std::cout
-            << "Animation "       << animId
-            << "\n\tId:         " << anim.id()
-            << "\n\tName:       " << anim.name()
-            << "\n\tDuration:   " << (anim.duration()/anim.ticks_per_sec()) << " seconds."
-            << "\n\tMonotonic:  " << anim.have_monotonic_transforms()
-            << "\n\tTransforms: ";
-
-        for (size_t i = 0; i < anim.size(); ++i)
-        {
-            const size_t transformId = anim.transforms()[i];
-
-            if (i < anim.size()-1)
+            for (size_t i = begin; i < end; i += step)
             {
-                std::cout << transformId << ", ";
+                const ls::math::vec4_t<size_t>&& vertId = usingIndices ? get_next_vertex3(pIbo, i) : ls::math::vec4_t<size_t>{i+0, i+1, i+2, i+3};
+
+                if (ptvCache.have_key(vertId[0]))
+                {
+                    ++hitCount;
+                }
+                ptvCache.query_and_update(vertId[0], identity, pVert);
+
+                if (ptvCache.have_key(vertId[1]))
+                {
+                    ++hitCount;
+                }
+                ptvCache.query_and_update(vertId[1], identity, pVert);
+
+                if (ptvCache.have_key(vertId[2]))
+                {
+                    ++hitCount;
+                }
+                ptvCache.query_and_update(vertId[2], identity, pVert);
+
+                totalIndices += step;
             }
-            else
-            {
-                std::cout << transformId << std::endl;
-            }
+
+            numHits.push_back(hitCount);
+            numIndices.push_back(totalIndices ? totalIndices : 1);
         }
     }
-
-    std::cout << "-------------------------------------------------------------------------------" << std::endl;
 }
+
+
+
+/*-----------------------------------------------------------------------------
+ * Print PTV cache Info
+-----------------------------------------------------------------------------*/
+void print_cache_info(std::vector<size_t>& numHits, std::vector<size_t>& numIndices, const char* sceneName) noexcept
+{
+    std::cout << "-------------------------------------------------------------------------------" << std::endl;
+    std::cout << sceneName << " Cache Statistics: " << std::endl;
+    for (size_t i = 0; i < numHits.size(); ++i)
+    {
+        std::cout
+            << "\n\tTotal Indices: " << numIndices[i]
+            << "\n\tHits (total):  " << numHits[i]
+            << "\n\tHits (%):      " << (100.0 * ((double)numHits[i] / (double)numIndices[i]))
+            << std::endl;
+    }
+}
+
 
 
 /*-----------------------------------------------------------------------------
@@ -133,22 +180,39 @@ void print_scene_info(const utils::Pointer<SL_SceneGraph>& pGraph) noexcept
 int main()
 {
     std::string sceneFile;
-    utils::Pointer<SL_SceneGraph> pGraph0, pGraph1;
+    utils::Pointer<SL_SceneGraph> pGraph;
 
-    sceneFile = "testdata/bob/Bob.md5mesh";
-    pGraph0 = std::move(load_scene(sceneFile));
-    print_scene_info(pGraph0);
+    bool testSibenik = true;
+    bool testBob = true;
+    bool testRover = true;
 
-    sceneFile = "testdata/rover/testmesh.dae";
-    pGraph1 = std::move(load_scene(sceneFile));
-    pGraph0->import(*pGraph1);
-    print_scene_info(pGraph0);
+    std::vector<size_t> numHits0;
+    std::vector<size_t> numIndices0;
+    if (testSibenik)
+    {
+        pGraph = std::move(load_scene("testdata/sibenik/sibenik.obj"));
+        query_cache_info(numHits0, numIndices0, pGraph);
+    }
 
-    pGraph0->reparent_node(36, 1);
-    print_scene_info(pGraph0);
+    std::vector<size_t> numHits1;
+    std::vector<size_t> numIndices1;
+    if (testBob)
+    {
+        pGraph = std::move(load_scene("testdata/bob/Bob.md5mesh"));
+        query_cache_info(numHits1, numIndices1, pGraph);
+    }
 
-    pGraph0->reparent_node(2, SCENE_NODE_ROOT_ID);
-    print_scene_info(pGraph0);
+    std::vector<size_t> numHits2;
+    std::vector<size_t> numIndices2;
+    if (testRover)
+    {
+        pGraph = std::move(load_scene("testdata/rover/testmesh.dae"));
+        query_cache_info(numHits2, numIndices2, pGraph);
+    }
+
+    print_cache_info(numHits0, numIndices0, "Sibenik");
+    print_cache_info(numHits1, numIndices1, "Bob");
+    print_cache_info(numHits2, numIndices2, "Mars Rover");
 
     return 0;
 }
