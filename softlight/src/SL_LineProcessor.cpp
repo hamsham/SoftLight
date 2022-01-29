@@ -281,7 +281,12 @@ void SL_LineProcessor::process_verts(
         begin += m.elementBegin;
         end += m.elementBegin;
 
-        SL_PTVCache ptvCache{vertShader, params};
+        SL_PTVCache ptvCache{};
+        const auto&& vertTransform = [&](size_t key, SL_TransformedVert& tv)->void {
+            params.vertId = key;
+            params.pVaryings = tv.varyings;
+            tv.vert = scissorMat * vertShader(params);
+        };
 
     #else
         const size_t begin = m.elementBegin + mThreadId * 2u;
@@ -298,8 +303,8 @@ void SL_LineProcessor::process_verts(
             const size_t vertId0 = usingIndices ? pIbo->index(index0) : index0;
             const size_t vertId1 = usingIndices ? pIbo->index(index1) : index1;
 
-            ptvCache.query_and_update(vertId0, scissorMat, pVert0);
-            ptvCache.query_and_update(vertId1, scissorMat, pVert1);
+            sl_cache_query_or_update(ptvCache, vertId0, pVert0, vertTransform);
+            sl_cache_query_or_update(ptvCache, vertId1, pVert1, vertTransform);
 
         #else
             params.vertId    = usingIndices ? pIbo->index(index0) : index0;

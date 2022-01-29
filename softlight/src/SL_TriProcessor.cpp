@@ -798,7 +798,13 @@ void SL_TriProcessor::process_verts(
         begin += m.elementBegin;
         end += m.elementBegin;
 
-        SL_PTVCache ptvCache{vertShader, params};
+        SL_PTVCache ptvCache{};
+        const auto&& vertTransform = [&](size_t key, SL_TransformedVert& tv)->void {
+            params.vertId = key;
+            params.pVaryings = tv.varyings;
+            tv.vert = scissorMat * vertShader(params);
+        };
+
     #else
         //const size_t begin = m.elementBegin + mThreadId * 3u;
         const size_t begin = m.elementBegin + ((instanceId + mThreadId) % mNumThreads) * 3u;
@@ -811,9 +817,9 @@ void SL_TriProcessor::process_verts(
         const math::vec4_t<size_t>&& vertId = usingIndices ? get_next_vertex3(pIbo, i) : math::vec4_t<size_t>{i+0, i+1, i+2, i+3};
 
         #if SL_VERTEX_CACHING_ENABLED
-            ptvCache.query_and_update(vertId[0], scissorMat, pVert0);
-            ptvCache.query_and_update(vertId[1], scissorMat, pVert1);
-            ptvCache.query_and_update(vertId[2], scissorMat, pVert2);
+            sl_cache_query_or_update(ptvCache, vertId[0], pVert0, vertTransform);
+            sl_cache_query_or_update(ptvCache, vertId[1], pVert1, vertTransform);
+            sl_cache_query_or_update(ptvCache, vertId[2], pVert2, vertTransform);
 
         #else
             params.vertId    = vertId.v[0];

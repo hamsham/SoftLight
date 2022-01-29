@@ -11,6 +11,7 @@
 #include "softlight/SL_Mesh.hpp"
 #include "softlight/SL_SceneFileLoader.hpp"
 #include "softlight/SL_SceneGraph.hpp"
+#include "softlight/SL_Shader.hpp"
 #include "softlight/SL_Transform.hpp"
 #include "softlight/SL_VertexArray.hpp"
 #include "softlight/SL_VertexCache.hpp"
@@ -18,6 +19,17 @@
 
 
 namespace utils = ls::utils;
+
+
+
+struct CacheTestData
+{
+    bool enabled;
+    std::string sceneName;
+    std::string sceneFile;
+    std::vector<size_t> numHits;
+    std::vector<size_t> numIndices;
+};
 
 
 
@@ -80,15 +92,13 @@ inline LS_INLINE ls::math::vec4_t<size_t> get_next_vertex3(const SL_IndexBuffer*
 /*-----------------------------------------------------------------------------
  * Query PTV cache Info
 -----------------------------------------------------------------------------*/
-void query_cache_info(std::vector<size_t>& numHits, std::vector<size_t>& numIndices, const utils::Pointer<SL_SceneGraph>& pGraph) noexcept
+void query_cache_info(CacheTestData& testData, const utils::Pointer<SL_SceneGraph>& pGraph) noexcept
 {
-    const ls::math::mat4 identity{1.f};
     const SL_Context& context = pGraph->mContext;
-    const auto vertShader = [](SL_VertexParam&)->ls::math::vec4
-    {
-        return ls::math::vec4{};
+    const auto&& vertTransform = [&](size_t key, SL_TransformedVert& tv)->void {
+        tv.vert = ls::math::vec4{(float)key};
     };
-    SL_VertexParam params;
+
     SL_TransformedVert pVert;
 
     for (const SL_SceneNode& n : pGraph->mNodes)
@@ -109,7 +119,7 @@ void query_cache_info(std::vector<size_t>& numHits, std::vector<size_t>& numIndi
             const SL_IndexBuffer* pIbo         = vao.has_index_buffer() ? &context.ibo(vao.get_index_buffer()) : nullptr;
             const int             usingIndices = (m.mode == RENDER_MODE_INDEXED_TRIANGLES) || (m.mode == RENDER_MODE_INDEXED_TRI_WIRE);
 
-            SL_PTVCache ptvCache{vertShader, params};
+            SL_PTVCache ptvCache{};
             const size_t numThreads = std::thread::hardware_concurrency();
             size_t begin;
             size_t end;
@@ -126,29 +136,29 @@ void query_cache_info(std::vector<size_t>& numHits, std::vector<size_t>& numIndi
             {
                 const ls::math::vec4_t<size_t>&& vertId = usingIndices ? get_next_vertex3(pIbo, i) : ls::math::vec4_t<size_t>{i+0, i+1, i+2, i+3};
 
-                if (ptvCache.have_key(vertId[0]))
+                if (ptvCache.query(vertId[0]))
                 {
                     ++hitCount;
                 }
-                ptvCache.query_and_update(vertId[0], identity, pVert);
+                sl_cache_query_or_update(ptvCache, vertId[0], pVert, vertTransform);
 
-                if (ptvCache.have_key(vertId[1]))
+                if (ptvCache.query(vertId[1]))
                 {
                     ++hitCount;
                 }
-                ptvCache.query_and_update(vertId[1], identity, pVert);
+                sl_cache_query_or_update(ptvCache, vertId[1], pVert, vertTransform);
 
-                if (ptvCache.have_key(vertId[2]))
+                if (ptvCache.query(vertId[2]))
                 {
                     ++hitCount;
                 }
-                ptvCache.query_and_update(vertId[2], identity, pVert);
+                sl_cache_query_or_update(ptvCache, vertId[2], pVert, vertTransform);
 
                 totalIndices += step;
             }
 
-            numHits.push_back(hitCount);
-            numIndices.push_back(totalIndices ? totalIndices : 1);
+            testData.numHits.push_back(hitCount);
+            testData.numIndices.push_back(totalIndices);
         }
     }
 }
@@ -158,18 +168,39 @@ void query_cache_info(std::vector<size_t>& numHits, std::vector<size_t>& numIndi
 /*-----------------------------------------------------------------------------
  * Print PTV cache Info
 -----------------------------------------------------------------------------*/
-void print_cache_info(std::vector<size_t>& numHits, std::vector<size_t>& numIndices, const char* sceneName) noexcept
+void print_cache_info(const CacheTestData& testData, bool summarize) noexcept
 {
     std::cout << "-------------------------------------------------------------------------------" << std::endl;
-    std::cout << sceneName << " Cache Statistics: " << std::endl;
-    for (size_t i = 0; i < numHits.size(); ++i)
+    std::cout << testData.sceneName << " Cache Statistics: " << std::endl;
+    double totalPercent = 0.0;
+    size_t totalHits = 0;
+    size_t totalIndices = 0;
+    size_t numMeshes = testData.numHits.size();
+
+    for (size_t i = 0; i < numMeshes; ++i)
     {
-        std::cout
-            << "\n\tTotal Indices: " << numIndices[i]
-            << "\n\tHits (total):  " << numHits[i]
-            << "\n\tHits (%):      " << (100.0 * ((double)numHits[i] / (double)numIndices[i]))
-            << std::endl;
+        double percentHit = testData.numIndices[i] ? ((double)testData.numHits[i] / (double)testData.numIndices[i]) : 0;
+        totalPercent += percentHit;
+        totalHits += testData.numHits[i];
+        totalIndices += testData.numIndices[i];
+
+        if (!summarize)
+        {
+            std::cout
+                << "\tSubMesh " << i << ':'
+                << "\n\t\tIndices:   " << testData.numIndices[i]
+                << "\n\t\tHit Count: " << testData.numHits[i]
+                << "\n\t\tHit Rate:  " << 100.0 * percentHit
+                << std::endl;
+        }
     }
+
+    std::cout
+        << "\tSummary"
+        << "\n\t\tTotal Indices:    " << totalIndices
+        << "\n\t\tTotal Hit Count:  " << totalHits
+        << "\n\t\tAverage Hit Rate: " << 100.0 * (totalPercent / (double)numMeshes)
+        << std::endl;
 }
 
 
@@ -182,37 +213,64 @@ int main()
     std::string sceneFile;
     utils::Pointer<SL_SceneGraph> pGraph;
 
-    bool testSibenik = true;
-    bool testBob = true;
-    bool testRover = true;
+    std::vector<CacheTestData> testList{
+        {
+            true,
+            "Sibenik Cathedral",
+            "testdata/sibenik/sibenik.obj",
+            {}, {}
+        },
+        {
+            true,
+            "Bob",
+            "testdata/bob/Bob.md5mesh",
+            {}, {}
+        },
+        {
+            true,
+            "Mars Rover",
+            "testdata/rover/testmesh.dae",
+            {}, {}
+        },
+        {
+            true,
+            "Zelda Heart",
+            "testdata/heart/heart.obj",
+            {}, {}
+        },
+        {
+            true,
+            "Someone's Head",
+            "testdata/african_head/african_head.obj",
+            {}, {}
+        },
+        {
+            true,
+            "Houdini Castle",
+            "testdata/towerG.obj",
+            {}, {}
+        },
+    };
 
-    std::vector<size_t> numHits0;
-    std::vector<size_t> numIndices0;
-    if (testSibenik)
+    for (CacheTestData& testData : testList)
     {
-        pGraph = std::move(load_scene("testdata/sibenik/sibenik.obj"));
-        query_cache_info(numHits0, numIndices0, pGraph);
+        testData.numHits.clear();
+        testData.numIndices.clear();
+
+        if (testData.enabled)
+        {
+            pGraph = std::move(load_scene(testData.sceneFile));
+            query_cache_info(testData, pGraph);
+        }
     }
 
-    std::vector<size_t> numHits1;
-    std::vector<size_t> numIndices1;
-    if (testBob)
+    for (CacheTestData& testData : testList)
     {
-        pGraph = std::move(load_scene("testdata/bob/Bob.md5mesh"));
-        query_cache_info(numHits1, numIndices1, pGraph);
+        if (testData.enabled)
+        {
+            print_cache_info(testData, true);
+        }
     }
-
-    std::vector<size_t> numHits2;
-    std::vector<size_t> numIndices2;
-    if (testRover)
-    {
-        pGraph = std::move(load_scene("testdata/rover/testmesh.dae"));
-        query_cache_info(numHits2, numIndices2, pGraph);
-    }
-
-    print_cache_info(numHits0, numIndices0, "Sibenik");
-    print_cache_info(numHits1, numIndices1, "Bob");
-    print_cache_info(numHits2, numIndices2, "Mars Rover");
 
     return 0;
 }

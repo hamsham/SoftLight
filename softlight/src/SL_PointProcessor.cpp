@@ -226,12 +226,17 @@ void SL_PointProcessor::process_verts(
     begin += m.elementBegin;
     end += m.elementBegin;
 
-    SL_PTVCache ptvCache{vertShader, params};
+    SL_PTVCache ptvCache{};
+    const auto&& vertTransform = [&](size_t key, SL_TransformedVert& tv)->void {
+        params.vertId = key;
+        params.pVaryings = tv.varyings;
+        tv.vert = scissorMat * vertShader(params);
+    };
 
     for (size_t i = begin; i < end; ++i)
     {
         const size_t vertId = usingIndices ? pIbo->index(i) : i;
-        ptvCache.query_and_update(vertId, scissorMat, pVert0);
+        sl_cache_query_or_update(ptvCache, vertId, pVert0, vertTransform);
 
         if (pVert0.vert[3] > 0.f)
         {
