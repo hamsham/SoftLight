@@ -359,7 +359,8 @@ int scene_load_sphere(SL_SceneGraph& graph, unsigned numStacks, unsigned numSect
 
     size_t dataId = graph.mMeshes.size() - 1;
     size_t nodeId = graph.mNodes.size();
-    graph.mNodes.push_back(SL_SceneNode{SL_SceneNodeType::NODE_TYPE_MESH, nodeId, dataId, SCENE_NODE_ROOT_ID});
+    graph.mNodes.push_back(SL_SceneNode{SL_SceneNodeType::NODE_TYPE_MESH, nodeId, dataId});
+    graph.mNodeParentIds.push_back(SCENE_NODE_ROOT_ID);
     graph.mBaseTransforms.emplace_back(math::mat4{1.f});
     graph.mCurrentTransforms.emplace_back(SL_Transform{math::mat4{1.f}, SL_TRANSFORM_TYPE_MODEL});
     graph.mModelMatrices.emplace_back(math::mat4{1.f});

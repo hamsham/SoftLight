@@ -329,7 +329,7 @@ template <SL_TexelOrder order>
 inline void SL_Texture::set_texel(uint16_t x, uint16_t y, uint16_t z, const void* pData) noexcept
 {
     ptrdiff_t index;
-    if (1 >= z)
+    if (1 >= mDepth)
     {
         index = map_coordinate<order>(x, y);
     }

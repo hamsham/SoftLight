@@ -373,7 +373,6 @@ int load_quad_into_scene(SL_SceneGraph& graph)
     graph.mNodes.emplace_back(SL_SceneNode{});
     SL_SceneNode& node = graph.mNodes.back();
     node.type = SL_SceneNodeType::NODE_TYPE_MESH;
-    node.animListId = SCENE_NODE_ROOT_ID;
     node.dataId = 0;
     node.nodeId = 0;
 
@@ -386,6 +385,7 @@ int load_quad_into_scene(SL_SceneGraph& graph)
     SL_Material& mat = graph.mMaterials.back();
     mat.pTextures[0] = &tex;
 
+    graph.mNodeParentIds.emplace_back(SCENE_NODE_ROOT_ID);
     graph.mBaseTransforms.emplace_back(math::mat4{1.f});
     graph.mCurrentTransforms.emplace_back(SL_Transform{});
     graph.mCurrentTransforms.back().extract_transforms(graph.mBaseTransforms.back());

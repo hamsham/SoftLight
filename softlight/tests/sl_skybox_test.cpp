@@ -140,13 +140,14 @@ int read_skybox_files(SL_SceneGraph& graph, const std::array<std::string, 6>& cu
     size_t w = 0;
     size_t h = 0;
     size_t bpp = 0;
-    int iter = 1;
 
     const size_t texId = graph.mContext.create_texture();
     SL_Texture& tex = graph.mContext.texture(texId);
 
-    for (const std::string& cubeFace : cubeFiles)
+    for (size_t i = 0; i < 6; ++i)
     {
+        const std::string& cubeFace = cubeFiles[i];
+
         if (loader.load(cubeFace.c_str()) != SL_ImgFile::FILE_LOAD_SUCCESS)
         {
             std::cerr << "Unable to load the cube map face \"" << cubeFace.c_str() << "\"." << std::endl;
@@ -154,7 +155,7 @@ int read_skybox_files(SL_SceneGraph& graph, const std::array<std::string, 6>& cu
             return -1;
         }
 
-        if (iter == 1)
+        if (!i)
         {
             w = loader.width();
             h = loader.height();
@@ -167,14 +168,13 @@ int read_skybox_files(SL_SceneGraph& graph, const std::array<std::string, 6>& cu
             || loader.height() != h
             || loader.bpp() != bpp)
             {
-                std::cerr << "Image " << iter-1 << " contains incorrect image dimensions." << std::endl;
+                std::cerr << "Image " << i << " contains incorrect image dimensions." << std::endl;
                 graph.mContext.destroy_texture(texId);
                 return -2;
             }
         }
 
-        tex.set_texels(0, 0, (uint16_t)(iter-1), (uint16_t)w, (uint16_t)h, 1, loader.data());
-        ++iter;
+        tex.set_texels(0, 0, (uint16_t)i, (uint16_t)w, (uint16_t)h, 1, loader.data());
     }
 
     SL_ImgFile outImg;
@@ -182,7 +182,7 @@ int read_skybox_files(SL_SceneGraph& graph, const std::array<std::string, 6>& cu
     outImg.save("skybox.png", SL_ImgFileType::IMG_FILE_PNG);
 
     //sl_img_save_ppm((uint16_t)w, (uint16_t)h*6, (const SL_ColorRGB8*)tex.data(), "skybox.ppm");
-    std::cout << "Successfully saved the image skybox.ppm" << std::endl;
+    std::cout << "Successfully saved the image skybox.png" << std::endl;
 
     return 0;
 }
