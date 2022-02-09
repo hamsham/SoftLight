@@ -1,4 +1,2 @@
-//
-// Created by hammy on 2022-02-02.
-//
 
+#include "softlight/SL_SpatialHierarchy.hpp"

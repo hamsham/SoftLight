@@ -160,6 +160,7 @@ set(SL_LIB_HEADERS
     include/softlight/SL_Shader.hpp
     include/softlight/SL_ShaderUtil.hpp
     include/softlight/SL_ShaderProcessor.hpp
+    include/softlight/SL_SpatialHierarchy.hpp
     include/softlight/SL_Swizzle.hpp
     include/softlight/SL_TextMeshLoader.hpp
     include/softlight/SL_Texture.hpp
@@ -234,6 +235,7 @@ set(SL_LIB_SOURCES
     src/SL_SceneGraph.cpp
     src/SL_SceneNode.cpp
     src/SL_ShaderProcessor.cpp
+    src/SL_SpatialHierarchy.cpp
     src/SL_TextMeshLoader.cpp
     src/SL_Texture.cpp
     src/SL_Transform.cpp
