@@ -325,7 +325,7 @@ class SL_Animation
      * An unsigned integer, containing the index of the AnimationChannel in
      * the input node's std::vector<AnimationChannel> to use for animation.
      */
-    void add_channel(const SL_SceneNode& node, const size_t nodeTrackId) noexcept;
+    void add_channel(const size_t sceneChannelId, const size_t nodeTrackId, const size_t nodeId) noexcept;
 
     /**
      * Remove a single Animation channel from *this.

@@ -239,11 +239,8 @@ class SL_SceneGraph
      *
      * @param nodeId
      * The array index of a node being deleted.
-     *
-     * @param animId
-     * The array index of the animation being deleted.
      */
-    void delete_node_animation_data(const size_t nodeId, const size_t animId) noexcept;
+    void delete_node_animation_data(const size_t nodeId) noexcept;
 
   public: // member functions
     /**
@@ -444,6 +441,19 @@ class SL_SceneGraph
      * succeeded, SCENE_NODE_ROOT_ID if not.
      */
     size_t import(SL_SceneGraph& inGraph) noexcept;
+
+
+
+#if 0
+    size_t insert_mesh(const SL_Mesh& m, const SL_BoundingBox& meshBounds) noexcept;
+
+    size_t insert_mesh_node(
+        size_t parentId,
+        const char* name,
+        const size_t numSubMeshes,
+        const size_t* subMeshIds,
+        const SL_Transform& transform) noexcept;
+#endif
 };
 
 

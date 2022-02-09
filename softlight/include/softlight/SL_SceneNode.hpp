@@ -77,13 +77,6 @@ struct alignas(sizeof(size_t)) SL_SceneNode final
      * Bone nodes can use this to access the "mBones" member of a scene graph.
      */
     size_t dataId;
-
-    /**
-     * This member represents an index into the parent SceneGraph's "nodeAnims"
-     * member. Use this to retrieve a single animation track related to the
-     * current node.
-     */
-    size_t animListId;
 };
 
 

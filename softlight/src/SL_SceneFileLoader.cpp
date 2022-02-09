@@ -1551,6 +1551,8 @@ bool SL_SceneFileLoader::import_animations(const aiScene* const pScene) noexcept
 
     SL_AlignedVector<SL_AlignedVector<SL_AnimationChannel>>& allChannels = graph.mNodeAnims;
 
+    std::unordered_map<size_t, size_t> nodesToAnimChannels;
+
     for (unsigned i = 0; i < totalAnimations; ++i)
     {
         const aiAnimation* const pInAnim = pAnimations[i];
@@ -1570,9 +1572,9 @@ bool SL_SceneFileLoader::import_animations(const aiScene* const pScene) noexcept
         {
             SL_AnimationChannel track;
             const aiNodeAnim* const pInTrack = pInAnim->mChannels[c];
-            const unsigned nodeId = import_animation_track(pInTrack, track, anim.duration());
+            const size_t nodeId = import_animation_track(pInTrack, track, anim.duration());
 
-            if (nodeId == UINT_MAX)
+            if (nodeId == SCENE_NODE_ROOT_ID)
             {
                 // failing to load an Animation track is not an error.
                 ret = false;
@@ -1580,22 +1582,19 @@ bool SL_SceneFileLoader::import_animations(const aiScene* const pScene) noexcept
             }
 
             // Grab the scene node which contains the data ID to map with a
-            // transformation and animation channel
-            SL_SceneNode& node = graph.mNodes[nodeId];
-
-            // If a list of animation tracks doesn't exist for the current node
-            // then be sure to add it.
-            if (node.animListId == SCENE_NODE_ROOT_ID)
+            // transformation and animation channel. If a list of animation
+            // tracks doesn't exist for the current node then be sure to add it
+            if (!nodesToAnimChannels.count(nodeId))
             {
-                node.animListId = allChannels.size();
+                nodesToAnimChannels[nodeId] = allChannels.size();
                 allChannels.emplace_back(SL_AlignedVector<SL_AnimationChannel>{});
             }
 
-            SL_AlignedVector<SL_AnimationChannel>& nodeChannels = allChannels[node.animListId];
+            SL_AlignedVector<SL_AnimationChannel>& nodeChannels = allChannels[nodesToAnimChannels[nodeId]];
             nodeChannels.emplace_back(std::move(track));
 
             // Add the node's imported track to the current animation
-            anim.add_channel(node, nodeChannels.size() - 1);
+            anim.add_channel(nodesToAnimChannels[nodeId], nodeChannels.size() - 1, nodeId);
         }
 
         std::cout
@@ -1623,7 +1622,7 @@ bool SL_SceneFileLoader::import_animations(const aiScene* const pScene) noexcept
 /*-------------------------------------
  * Import a single Animation track
 -------------------------------------*/
-unsigned SL_SceneFileLoader::import_animation_track(
+size_t SL_SceneFileLoader::import_animation_track(
     const aiNodeAnim* const pInAnim,
     SL_AnimationChannel& outAnim,
     const SL_AnimPrecision animDuration
@@ -1633,7 +1632,7 @@ unsigned SL_SceneFileLoader::import_animation_track(
     const unsigned rotFrames                    = pInAnim->mNumRotationKeys;
     const SL_AlignedVector<std::string>& nodeNames = mPreloader.mSceneData.mNodeNames;
     const char* const pInName                   = pInAnim->mNodeName.C_Str();
-    unsigned nodeId                             = 0;
+    size_t nodeId                               = 0;
 
     // Locate the node associated with the current animation track.
     for (; nodeId < nodeNames.size(); ++nodeId)
@@ -1648,13 +1647,13 @@ unsigned SL_SceneFileLoader::import_animation_track(
     {
         std::cerr << "\tError: Unable to locate the animation track for a scene node: " << pInAnim << std::endl;
         outAnim.clear();
-        return UINT_MAX;
+        return SCENE_NODE_ROOT_ID;
     }
 
     if (!outAnim.size(posFrames, sclFrames, rotFrames))
     {
         std::cout << "Unable to import the Animation \"" << pInAnim->mNodeName.C_Str() << "\"." << std::endl;
-        return UINT_MAX;
+        return SCENE_NODE_ROOT_ID;
     }
 
     SL_AnimationKeyListVec3& outPosFrames = outAnim.mPosFrames;

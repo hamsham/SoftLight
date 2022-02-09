@@ -331,10 +331,10 @@ void SL_SceneGraph::delete_camera_node_data(const size_t nodeDataId) noexcept
 /*-------------------------------------
  * SL_Animation Deletion
 -------------------------------------*/
-void SL_SceneGraph::delete_node_animation_data(const size_t nodeId, const size_t animId) noexcept
+void SL_SceneGraph::delete_node_animation_data(const size_t nodeId) noexcept
 {
     // Remove all animation channels associated with the current node.
-    for (size_t i = mAnimations.size(); i-- > 0;)
+    for (size_t i = mAnimations.size(); i--;)
     {
 
         // Animations contain transformation IDs which may need to be
@@ -343,26 +343,14 @@ void SL_SceneGraph::delete_node_animation_data(const size_t nodeId, const size_t
         SL_Animation& currentAnim = mAnimations[i];
 
         // friendly class member manipulation
-        std::vector<size_t>& currentAnimIds  = currentAnim.mChannelIds;
         std::vector<size_t>& currentTransIds = currentAnim.mTransformIds;
 
         // Reduce the animation ID of all animations in *this.
-        for (size_t j = currentAnimIds.size(); j-- > 0;)
+        for (size_t j = currentTransIds.size(); j--;)
         {
             if (currentTransIds[j] == nodeId)
             {
                 currentAnim.erase(j);
-                continue;
-            }
-
-            if (currentTransIds[j] > nodeId)
-            {
-                --currentTransIds[j];
-            }
-
-            if (animId != SL_SceneNodeProp::SCENE_NODE_ROOT_ID && currentAnimIds[j] > animId)
-            {
-                --currentAnimIds[j];
             }
         }
 
@@ -371,12 +359,6 @@ void SL_SceneGraph::delete_node_animation_data(const size_t nodeId, const size_t
         {
             mAnimations.erase(mAnimations.begin() + i);
         }
-    }
-
-    // SL_Animation Channels
-    if (animId != SL_SceneNodeProp::SCENE_NODE_ROOT_ID)
-    {
-        mNodeAnims.erase(mNodeAnims.begin() + animId);
     }
 }
 
@@ -432,7 +414,6 @@ size_t SL_SceneGraph::delete_node(const size_t nodeIndex) noexcept
     const SL_SceneNode&    n      = mNodes[nodeIndex];
     const SL_SceneNodeType typeId = n.type;
     const size_t           dataId = n.dataId;
-    const size_t           animId = n.animListId;
 
     LS_DEBUG_ASSERT(nodeIndex == n.nodeId);
 
@@ -464,7 +445,7 @@ size_t SL_SceneGraph::delete_node(const size_t nodeIndex) noexcept
     mNodeNames.erase(mNodeNames.begin() + nodeIndex);
 
     // early exit in case there are no animations tied to the current node.
-    delete_node_animation_data(nodeIndex, animId);
+    delete_node_animation_data(nodeIndex);
 
     // Decrement all node ID and data ID indices that are greater than those in
     // the current node. Also deal with the last bit of transformation data in
@@ -474,7 +455,6 @@ size_t SL_SceneGraph::delete_node(const size_t nodeIndex) noexcept
         SL_SceneNode&          nextNode      = mNodes[i];
         const SL_SceneNodeType nextType      = nextNode.type;
         size_t&                nextDataId    = nextNode.dataId;
-        size_t&                nextAnimId    = nextNode.animListId;
         const size_t           nextParentId  = mNodeParentIds[i];
 
         // Placing assertion here because nodeIds must never equate to the
@@ -497,13 +477,6 @@ size_t SL_SceneGraph::delete_node(const size_t nodeIndex) noexcept
             )
         {
             --nextDataId;
-        }
-
-        // decrement the animation ID from all nodes with a value greater than
-        // the current node's
-        if (nextAnimId > animId && nextAnimId != SL_SceneNodeProp::SCENE_NODE_ROOT_ID)
-        {
-            --nextAnimId;
         }
     }
 
@@ -720,9 +693,6 @@ bool SL_SceneGraph::copy_node(const size_t nodeIndex) noexcept
         {
             mNodeParentIds[dupe] += displacement;
         }
-
-        // we're copying nodes, not animations
-        mNodes[dupe].animListId = SL_SceneNodeProp::SCENE_NODE_ROOT_ID;
 
         LS_LOG_MSG("Copying node parent from ", mNodeParentIds[orig], " to ", mNodeParentIds[dupe]);
 
@@ -996,8 +966,6 @@ size_t SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
 
             n.dataId += mNumNodeMeshes.size();
         }
-
-        n.animListId += mNodeAnims.size();
     }
     std::move(inGraph.mNodes.begin(), inGraph.mNodes.end(), std::back_inserter(mNodes));
     inGraph.mNodes.clear();
@@ -1067,3 +1035,61 @@ size_t SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
 
     return baseNodeId;
 }
+
+
+
+/*-------------------------------------
+ *
+-------------------------------------*/
+#if 0
+size_t SL_SceneGraph::insert_mesh(const SL_Mesh& m, const SL_BoundingBox& meshBounds) noexcept
+{
+    LS_DEBUG_ASSERT(mMeshes.size() == mMeshBounds.size());
+
+    mMeshes.push_back(m);
+    mMeshBounds.push_back(meshBounds);
+
+    return mMeshes.size()-1;
+}
+
+
+
+/*-------------------------------------
+ *
+-------------------------------------*/
+size_t SL_SceneGraph::insert_mesh_node(
+    size_t parentId,
+    const char* name,
+    const size_t numSubMeshes,
+    const size_t* subMeshIds,
+    const SL_Transform& transform) noexcept
+{
+    LS_ASSERT(parentId == SCENE_NODE_ROOT_ID || parentId < mNodes.size());
+    LS_ASSERT(name != nullptr && name[0] != '\0');
+    LS_ASSERT(numSubMeshes != 0);
+
+    mNodeMeshes.emplace_back(new(std::nothrow) size_t[numSubMeshes]);
+    LS_ASSERT(mNodeMeshes.back().get() != nullptr);
+
+    size_t* const pSubMeshIds = mNodeMeshes.back().get();
+    for (size_t i = 0; i < numSubMeshes; ++i)
+    {
+        pSubMeshIds[i] = subMeshIds[i];
+    }
+
+    mNumNodeMeshes.push_back(numSubMeshes);
+
+    SL_SceneNode node;
+    node.nodeId = mNodes.size();
+    node.dataId = mNodeMeshes.size();
+    node.type = SL_SceneNodeType::NODE_TYPE_MESH;
+
+    mNodes.push_back(node);
+    mNodeNames.emplace_back(name);
+    mBaseTransforms.push_back(transform.transform());
+    mCurrentTransforms.push_back(transform);
+    mModelMatrices.push_back(transform.transform());
+
+    return mNodes.size()-1;
+}
+#endif

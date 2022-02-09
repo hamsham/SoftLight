@@ -262,11 +262,11 @@ size_t SL_Animation::size() const noexcept
 /*-------------------------------------
  * Add a node's animation track to *this
 -------------------------------------*/
-void SL_Animation::add_channel(const SL_SceneNode& node, const size_t nodeTrackId) noexcept
+void SL_Animation::add_channel(const size_t sceneChannelId, const size_t nodeTrackId, const size_t nodeId) noexcept
 {
-    mChannelIds.push_back(node.animListId);
+    mChannelIds.push_back(sceneChannelId);
     mTrackIds.push_back(nodeTrackId);
-    mTransformIds.push_back(node.nodeId);
+    mTransformIds.push_back(nodeId);
 }
 
 

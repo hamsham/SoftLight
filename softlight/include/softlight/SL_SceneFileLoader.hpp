@@ -382,7 +382,7 @@ class SL_SceneFileLoader
      * @return The ID of a node who's track was successfully imported,
      * UINT_MAX if not.
      */
-    unsigned import_animation_track(
+    size_t import_animation_track(
         const aiNodeAnim* const pInAnim,
         SL_AnimationChannel& outAnim,
         const SL_AnimPrecision animDuration
