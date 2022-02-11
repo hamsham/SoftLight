@@ -3,6 +3,7 @@
 #define SL_SPATIALHIERARCHY_HPP
 
 #include <algorithm>
+#include <iterator> // std::back_inserter()
 #include <utility> // std::move(), std::forward()
 #include <vector>
 
