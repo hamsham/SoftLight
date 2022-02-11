@@ -88,4 +88,4 @@ void sl_reset(SL_SceneNode& n) noexcept;
 
 
 
-#endif    /* SL_SCENE_NODE_HPP */
+#endif /* SL_SCENE_NODE_HPP */
