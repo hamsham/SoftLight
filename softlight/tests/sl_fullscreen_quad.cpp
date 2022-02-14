@@ -370,39 +370,24 @@ int load_quad_into_scene(SL_SceneGraph& graph)
     ibo.init(6, SL_DataType::VERTEX_DATA_INT, indices);
     vao.set_index_buffer(0);
 
-    graph.mNodes.emplace_back(SL_SceneNode{});
-    SL_SceneNode& node = graph.mNodes.back();
-    node.type = SL_SceneNodeType::NODE_TYPE_MESH;
-    node.dataId = 0;
-    node.nodeId = 0;
-
-    graph.mMeshBounds.emplace_back(SL_BoundingBox());
-    graph.mMeshBounds.back().compare_and_update(math::vec3{-1.f, -1.f, 0.f});
-    graph.mMeshBounds.back().compare_and_update(math::vec3{1.f, 1.f, 0.f});
-
     SL_Texture& tex = context.texture(1);
     graph.mMaterials.emplace_back(SL_Material{});
     SL_Material& mat = graph.mMaterials.back();
     mat.pTextures[0] = &tex;
 
-    graph.mNodeParentIds.emplace_back(SCENE_NODE_ROOT_ID);
-    graph.mBaseTransforms.emplace_back(math::mat4{1.f});
-    graph.mCurrentTransforms.emplace_back(SL_Transform{});
-    graph.mCurrentTransforms.back().extract_transforms(graph.mBaseTransforms.back());
-    graph.mModelMatrices.emplace_back(math::mat4{1.f});
-
-    graph.mMeshes.emplace_back(SL_Mesh());
-    SL_Mesh& mesh     = graph.mMeshes.back();
+    SL_Mesh mesh;
     mesh.vaoId        = vaoId;
     mesh.elementBegin = 0;
     mesh.elementEnd   = 6;
     mesh.mode         = SL_RenderMode::RENDER_MODE_INDEXED_TRIANGLES;
     mesh.materialId   = 0;
 
-    graph.mNodeNames.emplace_back("FS_Quad");
-    graph.mNumNodeMeshes.emplace_back(1);
-    graph.mNodeMeshes.emplace_back(utils::Pointer<size_t[]>{new size_t[1]});
-    graph.mNodeMeshes.back()[0] = 0;
+    SL_BoundingBox box;
+    box.min_point(math::vec3{-1.f, -1.f, 0.f});
+    box.max_point(math::vec3{1.f, 1.f, 0.f});
+
+    size_t subMeshId = graph.insert_mesh(mesh, box);
+    graph.insert_mesh_node(SCENE_NODE_ROOT_ID, "FS_Quad", 1, &subMeshId, SL_Transform{});
 
     return 0;
 }

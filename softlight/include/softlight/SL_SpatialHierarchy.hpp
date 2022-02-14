@@ -94,7 +94,7 @@ class SL_SpatialHierarchy
 
     size_type parent(size_type nodeIndex) const;
 
-    bool reparent(size_type nodeIndex, size_type parentIndex);
+    bool reparent(size_type nodeIndex, size_type newParentId);
 
     bool duplicate(size_type nodeIndex);
 
@@ -351,148 +351,124 @@ typename SL_SpatialHierarchy<T, ValueAllocator, IndexAllocator>::size_type SL_Sp
 
 
 template <typename T, typename ValueAllocator, typename IndexAllocator>
-bool SL_SpatialHierarchy<T, ValueAllocator, IndexAllocator>::reparent(size_type nodeIndex, size_type parentIndex)
+bool SL_SpatialHierarchy<T, ValueAllocator, IndexAllocator>::reparent(size_type nodeIndex, size_type newParentId)
 {
     // data validation & early exits
-    if (nodeIndex == ROOT_NODE_INDEX || nodeIndex >= mParents.size() || mParents[nodeIndex] == parentIndex)
+    if (nodeIndex == ROOT_NODE_INDEX || nodeIndex >= mParents.size() || mParents[nodeIndex] == newParentId)
     {
         return false;
     }
 
-    if (parentIndex >= mParents.size() && parentIndex != ROOT_NODE_INDEX)
+    if (newParentId >= mParents.size() && newParentId != ROOT_NODE_INDEX)
     {
         return false;
     }
 
     // Cannot make a node a parent of its ancestor. It's possible, but then
     // what would the new ancestor of the node then be?
-    if (parentIndex != ROOT_NODE_INDEX)
+    if (newParentId != ROOT_NODE_INDEX)
     {
-        if (is_descendant(parentIndex, nodeIndex))
+        if (is_descendant(newParentId, nodeIndex))
         {
             return false;
         }
     }
 
-    const size_type numChildren     = total_children(nodeIndex);
-    const size_type numNewSiblings  = total_children(parentIndex);
-    const size_type displacement    = 1 + numChildren;
-    const size_type newParentOffset = 1 + parentIndex + numNewSiblings;
+    const size_t numChildren    = total_children(nodeIndex);
+    const size_t displacement   = 1 + numChildren;
+    const size_t numNewSiblings = total_children(newParentId);
+    const size_t newNodeIndex   = 1 + newParentId + numNewSiblings;
 
     // Keep track of the range of elements which need to be updated.
-    size_type effectStart, effectEnd, numAffected;
+    const size_t effectStart = nodeIndex < newParentId ? nodeIndex : newNodeIndex;
+    const size_t effectEnd   = nodeIndex < newParentId ? newNodeIndex : (nodeIndex+displacement);
+    const size_t numAffected = effectEnd - effectStart;
 
-    if (parentIndex == ROOT_NODE_INDEX)
+    // Determine if we're moving "up", closer to the root, or "down" away from
+    // the root
+    const bool movingUp = newParentId < nodeIndex && (newParentId != ROOT_NODE_INDEX);
+    size_t amountToMove;
+
+    if (movingUp)
     {
-        effectStart = nodeIndex;
-        effectEnd = mParents.size();
-    }
-    else if (nodeIndex < parentIndex)
-    {
-        // node is moving down in the hierarchy
-        effectStart = nodeIndex;
-        effectEnd = newParentOffset;
+        amountToMove = nodeIndex - newNodeIndex;
     }
     else
     {
-        // node is moving up in the hierarchy, consider the nodes of all
-        // current siblings/children
-        if (parentIndex+numNewSiblings > nodeIndex+numChildren)
+        amountToMove = newNodeIndex - nodeIndex;
+    }
+
+    for (size_t i = effectStart; i < effectEnd; ++i)
+    {
+        size_t& rParentId = mParents[i];
+        size_t  pId  = rParentId;
+        size_t  nId  = i;
+
+        // Update the requested node's index
+        if (nId == nodeIndex)
         {
-            effectStart = 1 + parentIndex;
-            effectEnd = newParentOffset;
+            if (newParentId != ROOT_NODE_INDEX)
+            {
+                pId = newParentId - (nodeIndex < newParentId ? displacement : 0);
+            }
+            else
+            {
+                pId = newParentId;
+            }
         }
         else
         {
-            effectStart = newParentOffset;
-            effectEnd = 1 + nodeIndex + numChildren;
-
-            // sibling nodes aren't considered with the current implementation
-            // we need to do this manually
-            size_type currentParent = mParents[nodeIndex];
-            for (size_type i = nodeIndex; i < mParents.size(); ++i)
+            // Determine if there's a node which even needs its parent ID updated.
+            if (pId == ROOT_NODE_INDEX || pId < effectStart)
             {
-                if (mParents[i] < currentParent)
+                continue;
+            }
+
+            if (movingUp)
+            {
+                if (nId < nodeIndex)
                 {
-                    break;
+                    pId += displacement;
                 }
-
-                if (mParents[i] == currentParent)
+                else
                 {
-                    mParents[i] += displacement;
+                    pId -= amountToMove;
+                }
+            }
+            else
+            {
+                if (i > nodeIndex+numChildren)
+                {
+                    pId -= displacement;
+                }
+                else
+                {
+                    pId += amountToMove-displacement;
                 }
             }
         }
+
+        rParentId = pId;
     }
 
-    numAffected = effectEnd - effectStart;
-
-    size_type numRotations, newParentIndex, newNodeIndex;
-    if ((parentIndex < nodeIndex) && (parentIndex != ROOT_NODE_INDEX))
+    if (nodeIndex > newParentId)
     {
-        numRotations = displacement;
-        newNodeIndex = newParentOffset;
-        newParentIndex = parentIndex;
-    }
-    else
-    {
-        numRotations = numAffected - displacement; // "size - numRotations" for left-rotate
-        newNodeIndex = newParentOffset - displacement;
-        newParentIndex = parentIndex - (parentIndex != ROOT_NODE_INDEX ? displacement : 0);
-    }
-
-    for (size_type i = effectStart; i < effectEnd; ++i)
-    {
-        // handle all the easy cases first
-        if (mParents[i] == ROOT_NODE_INDEX)
+        for (size_t i = effectEnd; i < mParents.size(); ++i)
         {
-            continue;
-        }
-
-        if (mParents[i] < effectStart)
-        {
-            continue;
-        }
-
-        if (parentIndex == ROOT_NODE_INDEX)
-        {
-            if (i >= nodeIndex && i < nodeIndex+displacement)
-            {
-                mParents[i] = newNodeIndex + (mParents[i]-nodeIndex);
-            }
-            else if (mParents[i] > nodeIndex)
-            {
-                mParents[i] -= displacement;
-            }
-        }
-        else if (parentIndex < nodeIndex)
-        {
-            if (i >= nodeIndex && i < nodeIndex+displacement)
-            {
-                mParents[i] -= displacement-numChildren;
-            }
-            else //if (mParents[i] >= nodeIndex)
+            if (mParents[i] < nodeIndex)
             {
                 mParents[i] += displacement;
             }
-        }
-        else
-        {
-            if (i >= nodeIndex && i < nodeIndex+displacement)
+            else if (mParents[i] <= newParentId || mParents[i] == ROOT_NODE_INDEX)
             {
-                mParents[i] += numRotations;
-            }
-            else if (mParents[i] >= nodeIndex)
-            {
-                mParents[i] -= displacement;
+                break;
             }
         }
     }
 
-    mParents[nodeIndex] = newParentIndex;
-
-    _rotate_right(mParents.begin() + effectStart, numAffected, numRotations);
-    _rotate_right(mNodes.begin() + effectStart, numAffected, numRotations);
+    const size_t numRotations = movingUp ? displacement : (numAffected-displacement);
+    _rotate_right(mParents.data() + effectStart, numAffected, numRotations);
+    _rotate_right(mNodes.data()   + effectStart, numAffected, numRotations);
 
     return true;
 }
@@ -523,7 +499,7 @@ bool SL_SpatialHierarchy<T, ValueAllocator, IndexAllocator>::duplicate(size_type
     mParents[insertedOffset] = ROOT_NODE_INDEX;
     for (size_type i = insertedOffset+1; i < mNodes.size(); ++i)
     {
-        mParents[i] = (mParents[i]-nodeIndex) + insertedOffset + 1;
+        mParents[i] = (mParents[i]-nodeIndex) + insertedOffset;
     }
 
     return reparent(insertedOffset, mParents[nodeIndex]);

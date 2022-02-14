@@ -442,18 +442,49 @@ class SL_SceneGraph
      */
     size_t import(SL_SceneGraph& inGraph) noexcept;
 
-
-
-#if 0
+    /**
+     * @brief Place mesh data into the scene graph.
+     *
+     * @param m
+     * The mesh to be inserted. This mesh will not have any association with a
+     * mesh node unless explicitly specified.
+     *
+     * @param meshBounds
+     * The bounding box to use for the mesh.
+     *
+     * @return The index within the scene graph which can be used by a mesh
+     * node.
+     */
     size_t insert_mesh(const SL_Mesh& m, const SL_BoundingBox& meshBounds) noexcept;
 
+    /**
+     * @brief Insert a mesh node and have it use currently existing mesh data.
+     *
+     * @param parentId
+     * The parent ID of *this node.
+     *
+     * @param name
+     * A name to provide this node. This should be unique.
+     *
+     * @param numSubMeshes
+     * The number of SL_Mesh objects used by the inserted node.
+     *
+     * @param subMeshIds
+     * The index of all sub-mesh (a.k.a. SL_Mesh) ids currently within the
+     * scene graph to be used by the inserted node.
+     *
+     * @param transform
+     * An initial transformation which will be concatenated with the parent
+     * node's transformation.
+     *
+     * @return The index within the scene graph of the new mesh node.
+     */
     size_t insert_mesh_node(
         size_t parentId,
         const char* name,
-        const size_t numSubMeshes,
+        size_t numSubMeshes,
         const size_t* subMeshIds,
         const SL_Transform& transform) noexcept;
-#endif
 };
 
 

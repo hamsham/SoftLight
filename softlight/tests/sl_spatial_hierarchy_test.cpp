@@ -68,33 +68,43 @@ int main()
     std::cout << sceneGraph << '\n' << std::endl;
     */
 
+    std::cout << "Reparent " << sceneGraph[1] << " -> " << sceneGraph[2] << ':' << std::endl;
     sceneGraph.reparent(1, 2);
     std::cout << sceneGraph << '\n' << std::endl;
 
+    std::cout << "Reparent " << sceneGraph[3] << " -> ROOT:" << std::endl;
     sceneGraph.reparent(3, SceneGraphType::ROOT_NODE_INDEX);
     std::cout << sceneGraph << '\n' << std::endl;
 
+    std::cout << "Reparent " << sceneGraph[4] << " -> " << sceneGraph[2] << ':' << std::endl;
     sceneGraph.reparent(4, 2);
     std::cout << sceneGraph << '\n' << std::endl;
 
+    std::cout << "Reparent " << sceneGraph[3] << " -> " << sceneGraph[5] << ':' << std::endl;
     sceneGraph.reparent(3, 5);
     std::cout << sceneGraph << '\n' << std::endl;
 
+    std::cout << "Reparent " << sceneGraph[1] << " -> " << sceneGraph[3] << ':' << std::endl;
     sceneGraph.reparent(1, 3);
     std::cout << sceneGraph << '\n' << std::endl;
 
+    std::cout << "Reparent " << sceneGraph[6] << " -> " << sceneGraph[2] << ':' << std::endl;
     sceneGraph.reparent(6, 2);
     std::cout << sceneGraph << '\n' << std::endl;
 
+    std::cout << "Duplicate " << sceneGraph[2] << ':' << std::endl;
     sceneGraph.duplicate(2);
     std::cout << sceneGraph << '\n' << std::endl;
 
+    std::cout << "Reparent " << sceneGraph[2] << " -> " << sceneGraph[0] << ':' << std::endl;
     sceneGraph.reparent(2, 0);
     std::cout << sceneGraph << '\n' << std::endl;
 
+    std::cout << "Reparent " << sceneGraph[0] << " -> " << sceneGraph[9] << ':' << std::endl;
     sceneGraph.reparent(0, 9);
     std::cout << sceneGraph << '\n' << std::endl;
 
+    std::cout << "Reparent " << sceneGraph[6] << " -> ROOT:" << std::endl;
     sceneGraph.reparent(6, SceneGraphType::ROOT_NODE_INDEX);
     std::cout << sceneGraph << '\n' << std::endl;
 

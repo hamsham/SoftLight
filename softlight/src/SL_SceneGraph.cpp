@@ -49,12 +49,6 @@ void rotate_right(RandomIter nums, size_t size, size_t numRotations)
     *nums = prev;
 }
 
-template <class RandomIter>
-void rotate_left(RandomIter nums, size_t size, size_t numRotations)
-{
-    rotate_right(nums, size, size-numRotations);
-}
-
 
 
 } // end anonymous namespace
@@ -488,24 +482,26 @@ size_t SL_SceneGraph::delete_node(const size_t nodeIndex) noexcept
 -------------------------------------*/
 bool SL_SceneGraph::reparent_node(const size_t nodeIndex, const size_t newParentId) noexcept
 {
-    if (newParentId == mNodeParentIds[nodeIndex])
-    {
-        // easy win
-        return true;
-    }
-
-    if (nodeIndex == SL_SceneNodeProp::SCENE_NODE_ROOT_ID)
+    // data validation & early exits
+    if (nodeIndex == SL_SceneNodeProp::SCENE_NODE_ROOT_ID || nodeIndex >= mNodeParentIds.size() || mNodeParentIds[nodeIndex] == newParentId)
     {
         return false;
     }
 
-    if (node_is_child(newParentId, nodeIndex))
+    if (newParentId >= mNodeParentIds.size() && newParentId != SL_SceneNodeProp::SCENE_NODE_ROOT_ID)
     {
-        LS_LOG_MSG("Cannot make a node ", nodeIndex, " a parent of its ancestor ", newParentId, '.');
         return false;
     }
 
-    LS_DEBUG_ASSERT(nodeIndex < mNodes.size());
+    // Cannot make a node a parent of its ancestor. It's possible, but then
+    // what would the new ancestor of the node then be?
+    if (newParentId != SL_SceneNodeProp::SCENE_NODE_ROOT_ID)
+    {
+        if (node_is_child(newParentId, nodeIndex))
+        {
+            return false;
+        }
+    }
 
     const size_t numChildren    = num_total_children(nodeIndex);
     const size_t displacement   = 1 + numChildren;
@@ -514,35 +510,21 @@ bool SL_SceneGraph::reparent_node(const size_t nodeIndex, const size_t newParent
 
     // Keep track of the range of elements which need to be updated.
     const size_t effectStart = nodeIndex < newParentId ? nodeIndex : newNodeIndex;
-    const size_t effectEnd   = nodeIndex < newParentId ? newNodeIndex : (nodeIndex+displacement);
+    size_t       effectEnd   = nodeIndex < newParentId ? newNodeIndex : (nodeIndex+displacement);
     const size_t numAffected = effectEnd - effectStart;
 
     // Determine if we're moving "up", closer to the root, or "down" away from
     // the root
-    const bool movingUp = newParentId < nodeIndex && (newParentId != SCENE_NODE_ROOT_ID);
+    const bool movingUp = newParentId < nodeIndex && (newParentId != SL_SceneNodeProp::SCENE_NODE_ROOT_ID);
     size_t amountToMove;
 
     if (movingUp)
     {
         amountToMove = nodeIndex - newNodeIndex;
-
-        rotate_right(mNodeParentIds.data()     + effectStart, numAffected, displacement);
-        rotate_right(mNodes.data()             + effectStart, numAffected, displacement);
-        rotate_right(mBaseTransforms.data()    + effectStart, numAffected, displacement);
-        rotate_right(mCurrentTransforms.data() + effectStart, numAffected, displacement);
-        rotate_right(mModelMatrices.data()     + effectStart, numAffected, displacement);
-        rotate_right(mNodeNames.data()         + effectStart, numAffected, displacement);
     }
     else
     {
         amountToMove = newNodeIndex - nodeIndex;
-
-        rotate_left(mNodeParentIds.data()     + effectStart, numAffected, displacement);
-        rotate_left(mNodes.data()             + effectStart, numAffected, displacement);
-        rotate_left(mBaseTransforms.data()    + effectStart, numAffected, displacement);
-        rotate_left(mCurrentTransforms.data() + effectStart, numAffected, displacement);
-        rotate_left(mModelMatrices.data()     + effectStart, numAffected, displacement);
-        rotate_left(mNodeNames.data()         + effectStart, numAffected, displacement);
     }
 
     for (size_t i = effectStart; i < effectEnd; ++i)
@@ -551,14 +533,19 @@ bool SL_SceneGraph::reparent_node(const size_t nodeIndex, const size_t newParent
         size_t  pId  = rParentId;
         size_t  nId  = mNodes[i].nodeId;
 
-        mNodes[i].nodeId  = i;
         mCurrentTransforms[i].set_dirty();
 
         // Update the requested node's index
         if (nId == nodeIndex)
         {
-            pId = newParentId;
-
+            if (newParentId != SL_SceneNodeProp::SCENE_NODE_ROOT_ID)
+            {
+                pId = newParentId - (nodeIndex < newParentId ? displacement : 0);
+            }
+            else
+            {
+                pId = newParentId;
+            }
         }
         else
         {
@@ -581,7 +568,7 @@ bool SL_SceneGraph::reparent_node(const size_t nodeIndex, const size_t newParent
             }
             else
             {
-                if (i <= amountToMove-numChildren)
+                if (i > nodeIndex+numChildren)
                 {
                     pId -= displacement;
                 }
@@ -593,6 +580,37 @@ bool SL_SceneGraph::reparent_node(const size_t nodeIndex, const size_t newParent
         }
 
         rParentId = pId;
+    }
+
+    if (nodeIndex > newParentId)
+    {
+        while (effectEnd < mNodeParentIds.size())
+        {
+            size_t i = effectEnd++;
+
+            if (mNodeParentIds[i] < nodeIndex)
+            {
+                mNodeParentIds[i] += displacement;
+            }
+            else if (mNodeParentIds[i] <= newParentId || mNodeParentIds[i] == SL_SceneNodeProp::SCENE_NODE_ROOT_ID)
+            {
+                break;
+            }
+        }
+    }
+
+    const size_t numRotations = movingUp ? displacement : (numAffected-displacement);
+    rotate_right(mNodeParentIds.data()     + effectStart, numAffected, numRotations);
+    rotate_right(mNodes.data()             + effectStart, numAffected, numRotations);
+    rotate_right(mBaseTransforms.data()    + effectStart, numAffected, numRotations);
+    rotate_right(mCurrentTransforms.data() + effectStart, numAffected, numRotations);
+    rotate_right(mModelMatrices.data()     + effectStart, numAffected, numRotations);
+    rotate_right(mNodeNames.data()         + effectStart, numAffected, numRotations);
+
+    // realign node IDs with their current index
+    for (size_t i = effectStart; i < effectEnd; ++i)
+    {
+        mNodes[i].nodeId = i;
     }
 
     // Animations need love too
@@ -624,8 +642,6 @@ bool SL_SceneGraph::reparent_node(const size_t nodeIndex, const size_t newParent
             }
         }
     }
-
-    //LS_LOG_MSG("\tDone.");
 
     LS_DEBUG_ASSERT(newNodeIndex <= mNodes.size());
 
@@ -1041,7 +1057,6 @@ size_t SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
 /*-------------------------------------
  *
 -------------------------------------*/
-#if 0
 size_t SL_SceneGraph::insert_mesh(const SL_Mesh& m, const SL_BoundingBox& meshBounds) noexcept
 {
     LS_DEBUG_ASSERT(mMeshes.size() == mMeshBounds.size());
@@ -1060,7 +1075,7 @@ size_t SL_SceneGraph::insert_mesh(const SL_Mesh& m, const SL_BoundingBox& meshBo
 size_t SL_SceneGraph::insert_mesh_node(
     size_t parentId,
     const char* name,
-    const size_t numSubMeshes,
+    size_t numSubMeshes,
     const size_t* subMeshIds,
     const SL_Transform& transform) noexcept
 {
@@ -1084,12 +1099,17 @@ size_t SL_SceneGraph::insert_mesh_node(
     node.dataId = mNodeMeshes.size();
     node.type = SL_SceneNodeType::NODE_TYPE_MESH;
 
+    mNodeParentIds.push_back(parentId);
     mNodes.push_back(node);
     mNodeNames.emplace_back(name);
     mBaseTransforms.push_back(transform.transform());
     mCurrentTransforms.push_back(transform);
     mModelMatrices.push_back(transform.transform());
 
+    if (parentId != SCENE_NODE_ROOT_ID && mNodes.size() > 1)
+    {
+        reparent_node(mNodes.size()-1, parentId);
+    }
+
     return mNodes.size()-1;
 }
-#endif
