@@ -536,21 +536,16 @@ unsigned SL_TextMeshLoader::allocate_cpu_data(const std::string& str, const SL_C
     }
 
     {
-        sceneData.mNodes.push_back(SL_SceneNode{SL_SceneNodeType::NODE_TYPE_MESH, 0});
-        sceneData.mNodeParentIds.push_back(SCENE_NODE_ROOT_ID);
-        sceneData.mBaseTransforms.emplace_back(math::mat4{1.f});
-        sceneData.mCurrentTransforms.emplace_back(SL_Transform{math::mat4{1.f}, SL_TRANSFORM_TYPE_MODEL});
-        sceneData.mModelMatrices.emplace_back(math::mat4{1.f});
-        sceneData.mNodeNames.emplace_back(std::string{"textMesh-"} + std::to_string(utils::hash_fnv1(str.c_str())));
+        SL_Transform transform = SL_Transform{math::mat4{1.f}, SL_TRANSFORM_TYPE_MODEL};
+        const std::string&& meshName = std::string{"textMesh-"} + std::to_string(utils::hash_fnv1(str.c_str()));
+        ls::utils::Pointer<size_t[]> meshIds{new size_t[numSubmeshes]};
 
-        sceneData.mNodeMeshes.emplace_back(new size_t[numSubmeshes]);
-        ls::utils::Pointer<size_t[]>& meshIds = sceneData.mNodeMeshes[0];
         for (unsigned sm = 0; sm < numSubmeshes; ++sm)
         {
             meshIds[sm] = sm;
         }
 
-        sceneData.mNumNodeMeshes.push_back(numSubmeshes);
+        sceneData.insert_mesh_node(SCENE_NODE_ROOT_ID, meshName.c_str(), numSubmeshes, meshIds.get(), transform);
     }
 
     numBytes += (unsigned)(sizeof(SL_Mesh) * meshes.size());

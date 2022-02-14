@@ -1075,7 +1075,7 @@ size_t SL_SceneGraph::insert_mesh_node(
     mNumNodeMeshes.push_back(numSubMeshes);
 
     SL_SceneNode node;
-    node.dataId = mNodeMeshes.size();
+    node.dataId = mNodeMeshes.size() - 1;
     node.type = SL_SceneNodeType::NODE_TYPE_MESH;
 
     mNodeParentIds.push_back(parentId);
