@@ -169,7 +169,7 @@ class SL_TextMeshLoader
 
     bool gen_text_geometry(const std::string& str, const SL_Atlas& atlas) noexcept;
 
-    unsigned allocate_cpu_data(const std::string& str, const SL_CommonVertType vertexTypes, const bool loadBounds) noexcept;
+    unsigned allocate_cpu_data(const std::string& str, const SL_CommonVertType vertexTypes) noexcept;
 
     int allocate_gpu_data(const SL_Atlas& atlas) noexcept;
 
@@ -258,14 +258,10 @@ class SL_TextMeshLoader
      * A constant reference to an atlas object which contains glyph size and text
      * bitmaps which will be represented by the resulting VBO+IBO objects.
      *
-     * @param loadBounds
-     * Load the bounding boxes of all glyphs into memory. This only loads
-     * bounding boxes on the CPU, not as vertex data on the GPU.
-     *
      * @return An unsigned integral type, containing the number of indices which
      * were used to generate the vertex data in the "vbo" parameter.
      */
-    unsigned load(const std::string& str, const SL_Atlas& atlas, const SL_TextLoadOpts& opts = sl_default_text_load_opts(),  const bool loadBounds = false) noexcept;
+    unsigned load(const std::string& str, const SL_Atlas& atlas, const SL_TextLoadOpts& opts = sl_default_text_load_opts()) noexcept;
 
     /**
      * Clear all CPU and GPU data from *this. Reset all internal members to

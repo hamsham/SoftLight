@@ -190,12 +190,11 @@ unsigned SL_TextMeshLoader::calc_text_geometry_pos(
     set_text_vertex_data(pVert, posData[3]);
 
     SL_AlignedVector<SL_BoundingBox>& boundsBuffer = sceneData.mMeshBounds;
-    if (!boundsBuffer.empty())
-    {
-        SL_BoundingBox& bb = boundsBuffer[charIndex];
-        bb.min_point(math::vec4{xOffset, yOffset - glyphSize[1], 0.f, 1.f});
-        bb.max_point(math::vec4{xOffset + glyphSize[0], yOffset, 0.f, 1.f});
-    }
+    LS_DEBUG_ASSERT(!boundsBuffer.empty());
+
+    SL_BoundingBox& bb = boundsBuffer[charIndex];
+    bb.min_point(math::vec4{xOffset, yOffset - glyphSize[1], 0.f, 1.f});
+    bb.max_point(math::vec4{xOffset + glyphSize[0], yOffset, 0.f, 1.f});
 
     //return byte-stride to the next vertex attrib
     static const unsigned vertOffset = sl_vertex_byte_size(SL_CommonVertType::POSITION_VERTEX);
@@ -490,11 +489,7 @@ bool SL_TextMeshLoader::gen_text_geometry(const std::string& str, const SL_Atlas
 /*-------------------------------------
  * CPU Memory Initialization
 -------------------------------------*/
-unsigned SL_TextMeshLoader::allocate_cpu_data(
-    const std::string& str,
-    const SL_CommonVertType vertexTypes,
-    const bool loadBounds
-) noexcept
+unsigned SL_TextMeshLoader::allocate_cpu_data(const std::string& str, const SL_CommonVertType vertexTypes) noexcept
 {
     unsigned numSubmeshes = get_num_drawable_chars(str);
 
@@ -560,11 +555,8 @@ unsigned SL_TextMeshLoader::allocate_cpu_data(
 
     numBytes += (unsigned)(sizeof(SL_Mesh) * meshes.size());
 
-    if (loadBounds)
-    {
-        SL_AlignedVector<SL_BoundingBox>& boundsBuffer = sceneData.mMeshBounds;
-        boundsBuffer.resize(numSubmeshes);
-    }
+    SL_AlignedVector<SL_BoundingBox>& boundsBuffer = sceneData.mMeshBounds;
+    boundsBuffer.resize(numSubmeshes);
 
     return numBytes;
 }
@@ -636,8 +628,7 @@ int SL_TextMeshLoader::allocate_gpu_data(const SL_Atlas& atlas) noexcept
 unsigned SL_TextMeshLoader::load(
     const std::string& str,
     const SL_Atlas& atlas,
-    const SL_TextLoadOpts& opts,
-    const bool loadBounds
+    const SL_TextLoadOpts& opts
 ) noexcept
 {
     LS_LOG_MSG("Attempting to load text geometry.");
@@ -684,13 +675,8 @@ unsigned SL_TextMeshLoader::load(
         vertexTypes = (SL_CommonVertType)((unsigned)vertexTypes | SL_CommonVertType::INDEX_VERTEX);
     }
 
-    if (loadBounds)
-    {
-        vertexTypes = (SL_CommonVertType)((unsigned)vertexTypes | SL_CommonVertType::POSITION_VERTEX);
-    }
-
     LS_LOG_MSG("\tAllocating RAM for text mesh data.");
-    const unsigned numBytes = allocate_cpu_data(str, vertexTypes, loadBounds);
+    const unsigned numBytes = allocate_cpu_data(str, vertexTypes);
 
     if (!numBytes)
     {

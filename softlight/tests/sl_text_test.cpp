@@ -334,7 +334,7 @@ utils::Pointer<SL_SceneGraph> create_context()
     SL_TextLoadOpts opts = sl_default_text_load_opts();
     opts.packUvs = true;
 
-    retCode = textMeshLoader.load(buffer, atlas, opts, true);
+    retCode = textMeshLoader.load(buffer, atlas, opts);
     if (retCode != 0)
     {
         std::cerr << "Failed to load the test text mesh." << std::endl;
