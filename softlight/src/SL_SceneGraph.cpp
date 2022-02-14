@@ -409,8 +409,6 @@ size_t SL_SceneGraph::delete_node(const size_t nodeIndex) noexcept
     const SL_SceneNodeType typeId = n.type;
     const size_t           dataId = n.dataId;
 
-    LS_DEBUG_ASSERT(nodeIndex == n.nodeId);
-
     // Delete any specific data associated with the node.
     switch (typeId)
     {
@@ -450,12 +448,6 @@ size_t SL_SceneGraph::delete_node(const size_t nodeIndex) noexcept
         const SL_SceneNodeType nextType      = nextNode.type;
         size_t&                nextDataId    = nextNode.dataId;
         const size_t           nextParentId  = mNodeParentIds[i];
-
-        // Placing assertion here because nodeIds must never equate to the
-        // root node ID. They must always have tangible data to point at.
-        LS_DEBUG_ASSERT(nextNode.nodeId != SL_SceneNodeProp::SCENE_NODE_ROOT_ID);
-
-        mNodes[i].nodeId = i;
 
         if (nextParentId > nodeIndex && nextParentId != SL_SceneNodeProp::SCENE_NODE_ROOT_ID)
         {
@@ -531,7 +523,7 @@ bool SL_SceneGraph::reparent_node(const size_t nodeIndex, const size_t newParent
     {
         size_t& rParentId = mNodeParentIds[i];
         size_t  pId  = rParentId;
-        size_t  nId  = mNodes[i].nodeId;
+        size_t  nId  = i;
 
         mCurrentTransforms[i].set_dirty();
 
@@ -606,12 +598,6 @@ bool SL_SceneGraph::reparent_node(const size_t nodeIndex, const size_t newParent
     rotate_right(mCurrentTransforms.data() + effectStart, numAffected, numRotations);
     rotate_right(mModelMatrices.data()     + effectStart, numAffected, numRotations);
     rotate_right(mNodeNames.data()         + effectStart, numAffected, numRotations);
-
-    // realign node IDs with their current index
-    for (size_t i = effectStart; i < effectEnd; ++i)
-    {
-        mNodes[i].nodeId = i;
-    }
 
     // Animations need love too
     for (SL_Animation& anim : mAnimations)
@@ -694,10 +680,6 @@ bool SL_SceneGraph::copy_node(const size_t nodeIndex) noexcept
 
     // node IDs must match their index within the node array
     const size_t numTotalNodes = mNodes.size();
-    for (size_t i = 0; i < numTotalNodes; ++i)
-    {
-        mNodes[i].nodeId = i;
-    }
 
     for (size_t i = 0; i < displacement; ++i)
     {
@@ -964,8 +946,6 @@ size_t SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
 
     for (SL_SceneNode& n : inGraph.mNodes)
     {
-        n.nodeId += baseNodeId;
-
         if (n.type == NODE_TYPE_CAMERA)
         {
             n.dataId += mCameras.size();
@@ -1095,7 +1075,6 @@ size_t SL_SceneGraph::insert_mesh_node(
     mNumNodeMeshes.push_back(numSubMeshes);
 
     SL_SceneNode node;
-    node.nodeId = mNodes.size();
     node.dataId = mNodeMeshes.size();
     node.type = SL_SceneNodeType::NODE_TYPE_MESH;
 

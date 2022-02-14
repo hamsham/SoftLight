@@ -1339,7 +1339,7 @@ void SL_SceneFileLoader::read_node_hierarchy(
 
     // initialize
     sl_reset(currentNode);
-    currentNode.nodeId = nodeList.size() - 1;
+    size_t currentNodeId = nodeList.size() - 1;
 
     // import the node name
     const std::string nodeName{pInNode->mName.C_Str()};
@@ -1423,7 +1423,7 @@ void SL_SceneFileLoader::read_node_hierarchy(
     {
         const aiNode* const pChildNode = pInNode->mChildren[childId];
 
-        read_node_hierarchy(pScene, pChildNode, currentNode.nodeId, invGlobalTransform);
+        read_node_hierarchy(pScene, pChildNode, currentNodeId, invGlobalTransform);
     }
 }
 

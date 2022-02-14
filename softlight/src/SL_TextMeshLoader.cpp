@@ -541,7 +541,7 @@ unsigned SL_TextMeshLoader::allocate_cpu_data(
     }
 
     {
-        sceneData.mNodes.push_back(SL_SceneNode{SL_SceneNodeType::NODE_TYPE_MESH, 0, 0});
+        sceneData.mNodes.push_back(SL_SceneNode{SL_SceneNodeType::NODE_TYPE_MESH, 0});
         sceneData.mNodeParentIds.push_back(SCENE_NODE_ROOT_ID);
         sceneData.mBaseTransforms.emplace_back(math::mat4{1.f});
         sceneData.mCurrentTransforms.emplace_back(SL_Transform{math::mat4{1.f}, SL_TRANSFORM_TYPE_MODEL});

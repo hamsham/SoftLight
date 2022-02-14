@@ -329,7 +329,7 @@ void SL_Animation::animate(SL_SceneGraph& graph, const SL_AnimPrecision percentD
     {
         const size_t animChannelId       = mChannelIds[i];   // maps to SL_SceneGraph.mNodeAnims[node.animId]
         const size_t nodeTrackId         = mTrackIds[i];     // maps to SL_SceneGraph.mNodeAnims[node.animId][nodeTrackId]
-        const size_t transformId         = mTransformIds[i]; // maps to SL_SceneGraph.mCurrentTransforms[node.nodeId]
+        const size_t transformId         = mTransformIds[i]; // maps to SL_SceneGraph.mCurrentTransforms[i]
         const SL_AnimationChannel& track = pNodeAnims[animChannelId][nodeTrackId];
         SL_Transform& nodeTransform      = pTransforms[transformId];
 
@@ -376,7 +376,7 @@ void SL_Animation::animate(SL_SceneGraph& graph, const SL_AnimPrecision percentD
     {
         const size_t animChannelId       = mChannelIds[i];   // maps to SL_SceneGraph.mNodeAnims[node.animId]
         const size_t nodeTrackId         = mTrackIds[i];     // maps to SL_SceneGraph.mNodeAnims[node.animId][nodeTrackId]
-        const size_t transformId         = baseTransformId + (mTransformIds[i] - rootIndex); // maps to SL_SceneGraph.mCurrentTransforms[node.nodeId]
+        const size_t transformId         = baseTransformId + (mTransformIds[i] - rootIndex); // maps to SL_SceneGraph.mCurrentTransforms[i]
         const SL_AnimationChannel& track = pNodeAnims[animChannelId][nodeTrackId];
         SL_Transform& nodeTransform      = pTransforms[transformId];
 
@@ -420,7 +420,7 @@ void SL_Animation::init(SL_SceneGraph& graph, const bool atStart) const noexcept
     {
         const size_t animChannelId       = mChannelIds[i]; // SL_SceneGraph.mNodeAnims[node.animId]
         const size_t nodeTrackId         = mTrackIds[i]; // SL_SceneGraph.mNodeAnims[node.animId][nodeTrackId]
-        const size_t transformId         = mTransformIds[i]; // SL_SceneGraph.currentTransforms[node.nodeId]
+        const size_t transformId         = mTransformIds[i]; // SL_SceneGraph.currentTransforms[i]
         const SL_AnimationChannel& track = pNodeAnims[animChannelId][nodeTrackId];
         SL_Transform& nodeTransform      = pTransforms[transformId];
 

@@ -520,7 +520,7 @@ void mesh_test_render(SL_SceneGraph* pGraph, const math::mat4& projMatrix, const
 
     for (size_t i = 1; i < pGraph->mNodes.size(); ++i)
     {
-        SL_SceneNode& n = pGraph->mNodes[i];
+        const SL_SceneNode& n = pGraph->mNodes[i];
 
         // Only mesh nodes should be sent for rendering.
         if (n.type != NODE_TYPE_MESH)
@@ -528,7 +528,7 @@ void mesh_test_render(SL_SceneGraph* pGraph, const math::mat4& projMatrix, const
             continue;
         }
 
-        const math::mat4& modelMat = pGraph->mModelMatrices[n.nodeId];
+        const math::mat4& modelMat = pGraph->mModelMatrices[i];
         const size_t numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
         const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
 

@@ -686,14 +686,15 @@ void render_scene(SL_SceneGraph* pGraph, unsigned w, unsigned h, const math::mat
 
     sl_extract_frustum_planes(p, planes);
 
-    for (SL_SceneNode& n : pGraph->mNodes)
+    for (size_t nodeId = 0; nodeId < pGraph->mNodes.size(); ++nodeId)
     {
+        const SL_SceneNode& n = pGraph->mNodes[nodeId];
         if (n.type != NODE_TYPE_MESH)
         {
             continue;
         }
 
-        const math::mat4&  modelMat      = pGraph->mModelMatrices[n.nodeId];
+        const math::mat4&  modelMat      = pGraph->mModelMatrices[nodeId];
         const math::mat4&& mv            = camTrans.transform() * modelMat;
         const size_t       numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
 

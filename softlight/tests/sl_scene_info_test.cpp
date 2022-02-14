@@ -46,9 +46,9 @@ void print_scene_info(const utils::Pointer<SL_SceneGraph>& pGraph) noexcept
 {
     std::cout << "-------------------------------------------------------------------------------" << std::endl;
 
-    for (const SL_SceneNode& n : pGraph->mNodes)
+    for (size_t nodeId = 0; nodeId < pGraph->mNodes.size(); ++nodeId)
     {
-        const size_t nodeId = n.nodeId;
+        const SL_SceneNode& n = pGraph->mNodes[nodeId];
         const size_t parentId = pGraph->mNodeParentIds[nodeId];
         size_t numTabs = 0;
 

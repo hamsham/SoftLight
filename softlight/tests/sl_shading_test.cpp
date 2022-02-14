@@ -358,8 +358,7 @@ int scene_load_sphere(SL_SceneGraph& graph, unsigned numStacks, unsigned numSect
     graph.mMeshBounds.push_back(box);
 
     size_t dataId = graph.mMeshes.size() - 1;
-    size_t nodeId = graph.mNodes.size();
-    graph.mNodes.push_back(SL_SceneNode{SL_SceneNodeType::NODE_TYPE_MESH, nodeId, dataId});
+    graph.mNodes.push_back(SL_SceneNode{SL_SceneNodeType::NODE_TYPE_MESH, dataId});
     graph.mNodeParentIds.push_back(SCENE_NODE_ROOT_ID);
     graph.mBaseTransforms.emplace_back(math::mat4{1.f});
     graph.mCurrentTransforms.emplace_back(SL_Transform{math::mat4{1.f}, SL_TRANSFORM_TYPE_MODEL});
@@ -421,14 +420,15 @@ void render_scene(SL_SceneGraph* pGraph, const math::mat4& vpMatrix, size_t maxI
     SL_Context& context = pGraph->mContext;
     InstanceUniforms* pUniforms = context.ubo(0).as<InstanceUniforms>();
 
-    for (SL_SceneNode& n : pGraph->mNodes)
+    for (size_t nodeId = 0; nodeId < pGraph->mNodes.size(); ++nodeId)
     {
+        const SL_SceneNode& n = pGraph->mNodes[nodeId];
         if (n.type != NODE_TYPE_MESH)
         {
             continue;
         }
 
-        const math::mat4& modelMat = pGraph->mModelMatrices[n.nodeId];
+        const math::mat4& modelMat = pGraph->mModelMatrices[nodeId];
         const size_t numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
         const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
 

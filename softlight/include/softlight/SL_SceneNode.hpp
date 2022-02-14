@@ -46,24 +46,6 @@ struct alignas(sizeof(size_t)) SL_SceneNode final
     SL_SceneNodeType type;
 
     /**
-     * @brief nodeId contains the index of a node's name, and transform within
-     * a SceneGraph.
-     * 
-     * It is important that the nodeId is always equal to a node's index within
-     * its parent scene graph. Animations and transformation updates rely on
-     * this correlation for updates.
-     * 
-     * This member has a 1:1 relationship with the following members of a scene
-     * graph:
-     *      - bounds
-     *      - baseTransforms
-     *      - currentTransforms
-     *      - modelMatrices
-     *      - nodeNames
-     */
-    size_t nodeId;
-
-    /**
      * @brief The dataId parameter contains the indexed location of data for a
      * SceneNode in a SceneGraph.
      * 

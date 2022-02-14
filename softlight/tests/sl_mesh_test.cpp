@@ -213,15 +213,17 @@ void mesh_test_render(SL_SceneGraph* pGraph, const math::mat4& vpMatrix)
     SL_Context&       context   = pGraph->mContext;
     MeshTestUniforms* pUniforms = context.ubo(0).as<MeshTestUniforms>();
 
-    for (SL_SceneNode& n : pGraph->mNodes)
+    for (size_t nodeId = 0; nodeId < pGraph->mNodes.size(); ++nodeId)
     {
+        const SL_SceneNode& n = pGraph->mNodes[nodeId];
+
         // Only mesh nodes should be sent for rendering.
         if (n.type != NODE_TYPE_MESH)
         {
             continue;
         }
 
-        const math::mat4& modelMat = pGraph->mModelMatrices[n.nodeId];
+        const math::mat4& modelMat = pGraph->mModelMatrices[nodeId];
         const size_t numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
         const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
 

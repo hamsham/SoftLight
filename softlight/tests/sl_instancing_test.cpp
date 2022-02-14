@@ -43,7 +43,7 @@
 #endif /* SL_TEST_MAX_THREADS */
 
 #ifndef SL_BENCHMARK_SCENE
-    #define SL_BENCHMARK_SCENE 1
+    #define SL_BENCHMARK_SCENE 0
 #endif /* SL_BENCHMARK_SCENE */
 
 #ifndef DEFAULT_INSTANCES_X
@@ -233,14 +233,16 @@ void render_scene(SL_SceneGraph* pGraph, const math::mat4& vpMatrix, bool useIns
     SL_Context& context = pGraph->mContext;
     AnimUniforms* pUniforms = context.ubo(0).as<AnimUniforms>();
 
-    for (SL_SceneNode& n : pGraph->mNodes)
+    for (size_t nodeId = 0; nodeId < pGraph->mNodes.size(); ++nodeId)
     {
+        const SL_SceneNode& n = pGraph->mNodes[nodeId];
+
         if (n.type != NODE_TYPE_MESH)
         {
             continue;
         }
 
-        const math::mat4& modelMat = pGraph->mModelMatrices[n.nodeId];
+        const math::mat4& modelMat = pGraph->mModelMatrices[nodeId];
         const size_t numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
         const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
 
