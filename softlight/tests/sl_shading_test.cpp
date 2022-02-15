@@ -341,31 +341,26 @@ int scene_load_sphere(SL_SceneGraph& graph, unsigned numStacks, unsigned numSect
     vao.set_binding(0, 0, stride, SL_Dimension::VERTEX_DIMENSION_3, SL_DataType::VERTEX_DATA_FLOAT);
     vao.set_binding(1, sizeof(math::vec3), stride, SL_Dimension::VERTEX_DIMENSION_2, SL_DataType::VERTEX_DATA_SHORT);
 
-    graph.mMeshes.emplace_back(SL_Mesh());
-    SL_Mesh& mesh = graph.mMeshes.back();
-    mesh.vaoId = vaoId;
-    mesh.elementBegin = 0;
-    mesh.elementEnd = numIndices; // - 3;
-    mesh.mode = SL_RenderMode::RENDER_MODE_INDEXED_TRIANGLES;
-    mesh.materialId = 0;
+    {
+        SL_Mesh mesh;
+        mesh.vaoId = vaoId;
+        mesh.elementBegin = 0;
+        mesh.elementEnd = numIndices;
+        mesh.mode = SL_RenderMode::RENDER_MODE_INDEXED_TRIANGLES;
+        mesh.materialId = 0;
 
-    ls::utils::Pointer<size_t[]> meshId{new(std::nothrow) size_t[1]};
-    meshId[0] = graph.mNodeMeshes.size();
+        SL_BoundingBox box;
+        box.min_point(math::vec3{-radius});
+        box.max_point(math::vec3{radius});
 
-    SL_BoundingBox box;
-    box.min_point(math::vec3{-radius});
-    box.max_point(math::vec3{radius});
-    graph.mMeshBounds.push_back(box);
+        graph.insert_mesh(mesh, box);
+    }
 
-    size_t dataId = graph.mMeshes.size() - 1;
-    graph.mNodes.push_back(SL_SceneNode{SL_SceneNodeType::NODE_TYPE_MESH, dataId});
-    graph.mNodeParentIds.push_back(SCENE_NODE_ROOT_ID);
-    graph.mBaseTransforms.emplace_back(math::mat4{1.f});
-    graph.mCurrentTransforms.emplace_back(SL_Transform{math::mat4{1.f}, SL_TRANSFORM_TYPE_MODEL});
-    graph.mModelMatrices.emplace_back(math::mat4{1.f});
-    graph.mNodeNames.emplace_back("sphere");
-    graph.mNodeMeshes.emplace_back(std::move(meshId));
-    graph.mNumNodeMeshes.emplace_back(1);
+    {
+        constexpr size_t meshId = 0;
+        const SL_Transform&& transform{math::mat4{1.f}, SL_TRANSFORM_TYPE_MODEL};
+        graph.insert_mesh_node(SCENE_NODE_ROOT_ID, "sphere", 1, &meshId, transform);
+    }
 
     return 0;
 }

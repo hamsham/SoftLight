@@ -377,13 +377,26 @@ int scene_load_cube(SL_SceneGraph& graph, const math::vec3 spacing = math::vec3{
 
     LS_ASSERT(numVboBytes == (numVerts*stride));
 
-    graph.mMeshes.emplace_back(SL_Mesh());
-    SL_Mesh& mesh = graph.mMeshes.back();
-    mesh.vaoId = vaoId;
-    mesh.elementBegin = 0;
-    mesh.elementEnd = numVerts;
-    mesh.mode = SL_RenderMode::RENDER_MODE_TRIANGLES;
-    mesh.materialId = (uint32_t)-1;
+    {
+        SL_Mesh mesh;
+        mesh.vaoId = vaoId;
+        mesh.elementBegin = 0;
+        mesh.elementEnd = 36;
+        mesh.mode = SL_RenderMode::RENDER_MODE_TRIANGLES;
+        mesh.materialId = 0;
+
+        SL_BoundingBox box;
+        box.min_point(math::vec3{-spacing});
+        box.max_point(math::vec3{spacing});
+
+        graph.insert_mesh(mesh, box);
+    }
+
+    {
+        constexpr size_t meshId = 0;
+        const SL_Transform&& transform{math::mat4{1.f}, SL_TRANSFORM_TYPE_MODEL};
+        graph.insert_mesh_node(SCENE_NODE_ROOT_ID, "ct_volume", 1, &meshId, transform);
+    }
 
     return 0;
 }
