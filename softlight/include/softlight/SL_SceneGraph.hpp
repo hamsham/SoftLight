@@ -84,10 +84,8 @@ class SL_SceneGraph
     SL_AlignedVector<SL_BoundingBox> mMeshBounds;
 
     /**
-     * Referenced by all mesh node types using the following relationship:
+     * Shared by all mesh objects using the following relationship:
      *      "SceneGraph::mMeshes[SL_SceneNode::dataId]->materialId"
-     *
-     * This member is shared by all mesh objects.
      */
     SL_AlignedVector<SL_Material> mMaterials;
 
@@ -443,6 +441,26 @@ class SL_SceneGraph
     size_t import(SL_SceneGraph& inGraph) noexcept;
 
     /**
+     * @brief Insert an empty node object.
+     *
+     * @param parentId
+     * The parent ID of *this node.
+     *
+     * @param name
+     * A name to provide this node. This should be unique.
+     *
+     * @param transform
+     * An initial transformation which will be concatenated with the parent
+     * node's transformation.
+     *
+     * @return The index within the scene graph of the new mesh node.
+     */
+    size_t insert_empty_node(
+        size_t parentId,
+        const char* name,
+        const SL_Transform& transform) noexcept;
+
+    /**
      * @brief Place mesh data into the scene graph.
      *
      * @param m
@@ -484,6 +502,60 @@ class SL_SceneGraph
         const char* name,
         size_t numSubMeshes,
         const size_t* subMeshIds,
+        const SL_Transform& transform) noexcept;
+
+    /**
+     * @brief Insert a bone node, with transformation data, into the scene
+     * graph
+     *
+     * @param parentId
+     * The parent ID of *this node.
+     *
+     * @param name
+     * A name to provide this node. This should be unique.
+     *
+     * @param inverseTransform
+     * The root inverse transform of this bone's skeleton
+     *
+     * @param boneOffset
+     * An offset matrix relative to the current bone's transformation.
+     *
+     * @param transform
+     * An initial transformation which will be concatenated with the parent
+     * node's transformation.
+     *
+     * @return The index within the scene graph of the new mesh node.
+     */
+    size_t insert_bone_node(
+        size_t parentId,
+        const char* name,
+        const ls::math::mat4_t<float>& inverseTransform,
+        const ls::math::mat4_t<float>& boneOffset,
+        const SL_Transform& transform) noexcept;
+
+    /**
+     * @brief Insert a bone node, with transformation data, into the scene
+     * graph
+     *
+     * @param parentId
+     * The parent ID of *this node.
+     *
+     * @param name
+     * A name to provide this node. This should be unique.
+     *
+     * @param cam
+     * The current node's projection data.
+     *
+     * @param transform
+     * An initial transformation which will be concatenated with the parent
+     * node's transformation.
+     *
+     * @return The index within the scene graph of the new mesh node.
+     */
+    size_t insert_camera_node(
+        size_t parentId,
+        const char* name,
+        const SL_Camera& cam,
         const SL_Transform& transform) noexcept;
 };
 

@@ -234,9 +234,6 @@ void SL_SceneGraph::update_node_transform(const size_t transformId) noexcept
         t.apply_transform();
     }
 
-    // TODO:
-    // Bone nodes should be implemented as a tree in a separate array to allow
-    // animations to be re-used among nodes.
     if (mNodes[transformId].type == NODE_TYPE_BONE)
     {
         // bones should be part of a skeleton, not tied to meshes or cameras
@@ -250,6 +247,8 @@ void SL_SceneGraph::update_node_transform(const size_t transformId) noexcept
         mModelMatrices[transformId] = t.transform();
     }
 }
+
+
 
 /*-------------------------------------
  * Scene Updating
@@ -296,6 +295,8 @@ void SL_SceneGraph::update() noexcept
     }
 }
 
+
+
 /*-------------------------------------
  * Mesh Node Deletion
 -------------------------------------*/
@@ -304,6 +305,8 @@ void SL_SceneGraph::delete_mesh_node_data(const size_t nodeDataId) noexcept
     mNodeMeshes.erase(mNodeMeshes.begin() + nodeDataId);
     mNumNodeMeshes.erase(mNumNodeMeshes.begin() + nodeDataId);
 }
+
+
 
 /*-------------------------------------
  * Bone Node Deletion
@@ -314,6 +317,8 @@ void SL_SceneGraph::delete_bone_node_data(const size_t nodeDataId) noexcept
     mBoneOffsets.erase(mBoneOffsets.begin() + nodeDataId);
 }
 
+
+
 /*-------------------------------------
  * Camera Deletion
 -------------------------------------*/
@@ -321,6 +326,8 @@ void SL_SceneGraph::delete_camera_node_data(const size_t nodeDataId) noexcept
 {
     mCameras.erase(mCameras.begin() + nodeDataId);
 }
+
+
 
 /*-------------------------------------
  * SL_Animation Deletion
@@ -356,6 +363,8 @@ void SL_SceneGraph::delete_node_animation_data(const size_t nodeId) noexcept
     }
 }
 
+
+
 /*-------------------------------------
  * Delete all nodes
 -------------------------------------*/
@@ -378,6 +387,8 @@ void SL_SceneGraph::clear_node_data() noexcept
     mNodeMeshes.clear();
     mNumNodeMeshes.clear();
 }
+
+
 
 /*-------------------------------------
  * Node Deletion
@@ -468,6 +479,8 @@ size_t SL_SceneGraph::delete_node(const size_t nodeIndex) noexcept
 
     return numDeleted;
 }
+
+
 
 /*-------------------------------------
  * Node Parenting
@@ -634,6 +647,8 @@ bool SL_SceneGraph::reparent_node(const size_t nodeIndex, const size_t newParent
     return true;
 }
 
+
+
 /*-------------------------------------
  * Node Duplication
 -------------------------------------*/
@@ -799,6 +814,7 @@ bool SL_SceneGraph::copy_node(const size_t nodeIndex) noexcept
 }
 
 
+
 /*-------------------------------------
  * Node Searching
 -------------------------------------*/
@@ -816,6 +832,8 @@ size_t SL_SceneGraph::find_node_id(const std::string& nameQuery) const noexcept
 
     return nodeId;
 }
+
+
 
 /*-------------------------------------
  * Node Child Counting (total)
@@ -845,6 +863,8 @@ size_t SL_SceneGraph::num_total_children(const size_t nodeIndex) const noexcept
 
     return numChildren;
 }
+
+
 
 /*-------------------------------------
  * Node Child Counting (immediate)
@@ -878,6 +898,8 @@ size_t SL_SceneGraph::num_immediate_children(const size_t nodeIndex) const noexc
 
     return numChildren;
 }
+
+
 
 /*-------------------------------------
  * Check if a node is a child of another node
@@ -1035,48 +1057,19 @@ size_t SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
 
 
 /*-------------------------------------
- *
+ * insert a mesh node
 -------------------------------------*/
-size_t SL_SceneGraph::insert_mesh(const SL_Mesh& m, const SL_BoundingBox& meshBounds) noexcept
-{
-    LS_DEBUG_ASSERT(mMeshes.size() == mMeshBounds.size());
-
-    mMeshes.push_back(m);
-    mMeshBounds.push_back(meshBounds);
-
-    return mMeshes.size()-1;
-}
-
-
-
-/*-------------------------------------
- *
--------------------------------------*/
-size_t SL_SceneGraph::insert_mesh_node(
+size_t SL_SceneGraph::insert_empty_node(
     size_t parentId,
     const char* name,
-    size_t numSubMeshes,
-    const size_t* subMeshIds,
     const SL_Transform& transform) noexcept
 {
     LS_ASSERT(parentId == SCENE_NODE_ROOT_ID || parentId < mNodes.size());
     LS_ASSERT(name != nullptr && name[0] != '\0');
-    LS_ASSERT(numSubMeshes != 0);
-
-    mNodeMeshes.emplace_back(new(std::nothrow) size_t[numSubMeshes]);
-    LS_ASSERT(mNodeMeshes.back().get() != nullptr);
-
-    size_t* const pSubMeshIds = mNodeMeshes.back().get();
-    for (size_t i = 0; i < numSubMeshes; ++i)
-    {
-        pSubMeshIds[i] = subMeshIds[i];
-    }
-
-    mNumNodeMeshes.push_back(numSubMeshes);
 
     SL_SceneNode node;
-    node.dataId = mNodeMeshes.size() - 1;
-    node.type = SL_SceneNodeType::NODE_TYPE_MESH;
+    node.dataId = ~(size_t)0;
+    node.type = SL_SceneNodeType::NODE_TYPE_EMPTY;
 
     mNodeParentIds.push_back(parentId);
     mNodes.push_back(node);
@@ -1089,6 +1082,99 @@ size_t SL_SceneGraph::insert_mesh_node(
     {
         reparent_node(mNodes.size()-1, parentId);
     }
+
+    return mNodes.size()-1;
+}
+
+
+
+/*-------------------------------------
+ * insert the mesh data for mesh nodes
+-------------------------------------*/
+size_t SL_SceneGraph::insert_mesh(const SL_Mesh& m, const SL_BoundingBox& meshBounds) noexcept
+{
+    LS_DEBUG_ASSERT(mMeshes.size() == mMeshBounds.size());
+    //LS_DEBUG_ASSERT(m.materialId <= mMeshBounds.size() || m.materialId == ~(uint32_t)0);
+
+    mMeshes.push_back(m);
+    mMeshBounds.push_back(meshBounds);
+
+    return mMeshes.size()-1;
+}
+
+
+
+/*-------------------------------------
+ * Insert a Mesh node which references previous data
+-------------------------------------*/
+size_t SL_SceneGraph::insert_mesh_node(
+    size_t parentId,
+    const char* name,
+    size_t numSubMeshes,
+    const size_t* subMeshIds,
+    const SL_Transform& transform) noexcept
+{
+    LS_ASSERT(numSubMeshes != 0);
+
+    size_t nodeId = insert_empty_node(parentId, name, transform);
+    SL_SceneNode& node = mNodes[nodeId];
+    node.type = SL_SceneNodeType::NODE_TYPE_MESH;
+    node.dataId = mNodeMeshes.size();
+
+    mNodeMeshes.emplace_back(new(std::nothrow) size_t[numSubMeshes]);
+    LS_ASSERT(mNodeMeshes.back().get() != nullptr);
+
+    size_t* const pSubMeshIds = mNodeMeshes.back().get();
+    for (size_t i = 0; i < numSubMeshes; ++i)
+    {
+        pSubMeshIds[i] = subMeshIds[i];
+    }
+
+    mNumNodeMeshes.push_back(numSubMeshes);
+
+    return mNodes.size()-1;
+}
+
+
+
+/*-------------------------------------
+ * Insert a bone node
+-------------------------------------*/
+size_t SL_SceneGraph::insert_bone_node(
+    size_t parentId,
+    const char* name,
+    const ls::math::mat4& inverseTransform,
+    const ls::math::mat4& boneOffset,
+    const SL_Transform& transform) noexcept
+{
+    size_t nodeId = insert_empty_node(parentId, name, transform);
+    SL_SceneNode& node = mNodes[nodeId];
+    node.type = SL_SceneNodeType::NODE_TYPE_BONE;
+    node.dataId = mInvBoneTransforms.size();
+
+    mInvBoneTransforms.push_back(inverseTransform);
+    mBoneOffsets.push_back(boneOffset);
+
+    return mNodes.size()-1;
+}
+
+
+
+/*-------------------------------------
+ * Insert a camera node
+-------------------------------------*/
+size_t SL_SceneGraph::insert_camera_node(
+    size_t parentId,
+    const char* name,
+    const SL_Camera& cam,
+    const SL_Transform& transform) noexcept
+{
+    size_t nodeId = insert_empty_node(parentId, name, transform);
+    SL_SceneNode& node = mNodes[nodeId];
+    node.type = SL_SceneNodeType::NODE_TYPE_CAMERA;
+    node.dataId = mCameras.size();
+
+    mCameras.push_back(cam);
 
     return mNodes.size()-1;
 }
