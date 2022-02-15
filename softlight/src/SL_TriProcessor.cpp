@@ -858,11 +858,11 @@ void SL_TriProcessor::process_verts(
         {
             sl_perspective_divide3(pVert0.vert, pVert1.vert, pVert2.vert);
             sl_world_to_screen_coords_divided3(pVert0.vert, pVert1.vert, pVert2.vert, viewportDims);
-            push_bin(i, pVert0, pVert1, pVert2);
+            push_bin(i*instanceId+i, pVert0, pVert1, pVert2);
         }
         else if (visStatus == SL_TRIANGLE_PARTIALLY_VISIBLE)
         {
-            clip_and_process_tris(i, viewportDims, pVert0, pVert1, pVert2);
+            clip_and_process_tris(i*instanceId+i, viewportDims, pVert0, pVert1, pVert2);
         }
         else
         {
