@@ -1486,7 +1486,7 @@ void SL_SceneFileLoader::import_camera_node(
     outCam.aspect_ratio(pInCam->mAspect, 1.f);
     outCam.near_plane(pInCam->mClipPlaneNear);
     outCam.far_plane(pInCam->mClipPlaneFar);
-    outCam.projection_type(SL_ProjectionType::SL_PROJECTION_LOGARITHMIC_PERSPECTIVE);
+    outCam.projection_type(SL_ProjectionType::SL_PROJECTION_PERSPECTIVE);
     outCam.update();
 
     // A Transform object must have been added by the parent function
