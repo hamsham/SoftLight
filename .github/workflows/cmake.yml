@@ -44,7 +44,7 @@ jobs:
 
           - os: windows-latest
             name: msvc
-            generator: "Visual Studio 16 2019"
+            generator: "Visual Studio 17 2022"
             shell: pwsh
             dependencies: tortoisesvn
             cmakeopts: -DLIGHTSKY_ENABLE_PCH=ON
