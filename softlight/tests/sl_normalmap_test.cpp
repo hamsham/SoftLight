@@ -14,6 +14,7 @@
 #include "softlight/SL_Color.hpp"
 #include "softlight/SL_Context.hpp"
 #include "softlight/SL_Framebuffer.hpp"
+#include "softlight/SL_ImgFile.hpp"
 #include "softlight/SL_IndexBuffer.hpp"
 #include "softlight/SL_KeySym.hpp"
 #include "softlight/SL_Material.hpp"
@@ -112,15 +113,15 @@ inline LS_INLINE math::vec4 bumped_normal(const SL_Texture* bumpMap, const math:
     math::vec4_t<uint8_t>&& nw8 = math::vec4_cast<uint8_t>(sl_sample_bilinear<SL_ColorRGB8, SL_WrapMode::REPEAT>(*bumpMap, uv[0]+stepX, uv[1]+stepY), 255);
 
     // gather luminance
-    float&& c = ycocg_cast(color_cast<float, uint8_t>(c8)).y;
-    float&& n = ycocg_cast(color_cast<float, uint8_t>(n8)).y;
-    float&& e = ycocg_cast(color_cast<float, uint8_t>(e8)).y;
-    float&& s = ycocg_cast(color_cast<float, uint8_t>(s8)).y;
-    float&& w = ycocg_cast(color_cast<float, uint8_t>(w8)).y;
-    float&& ne = ycocg_cast(color_cast<float, uint8_t>(ne8)).y;
-    float&& se = ycocg_cast(color_cast<float, uint8_t>(se8)).y;
-    float&& sw = ycocg_cast(color_cast<float, uint8_t>(sw8)).y;
-    float&& nw = ycocg_cast(color_cast<float, uint8_t>(nw8)).y;
+    float&& c = math::length(color_cast<float, uint8_t>(c8));
+    float&& n = math::length(color_cast<float, uint8_t>(n8));
+    float&& e = math::length(color_cast<float, uint8_t>(e8));
+    float&& s = math::length(color_cast<float, uint8_t>(s8));
+    float&& w = math::length(color_cast<float, uint8_t>(w8));
+    float&& ne = math::length(color_cast<float, uint8_t>(ne8));
+    float&& se = math::length(color_cast<float, uint8_t>(se8));
+    float&& sw = math::length(color_cast<float, uint8_t>(sw8));
+    float&& nw = math::length(color_cast<float, uint8_t>(nw8));
 
     // sobel filter
     const float dX = (ne + 2.f * e + se) - (nw + 2.f * w + sw);
@@ -128,7 +129,7 @@ inline LS_INLINE math::vec4 bumped_normal(const SL_Texture* bumpMap, const math:
 
     // use the current pixel's luminance to determine influence of surrounding
     // pixels
-    const float dZ = c;
+    const float dZ = c * 2.f - 1.f;
 
     return math::normalize(math::vec4{dZ, dY, dX, 0.f}) * 0.5f + 0.5f;
 }
@@ -245,6 +246,43 @@ int load_quad_into_scene(SL_SceneGraph& graph)
 
 
 
+/*-------------------------------------
+ * Read a texture file
+-------------------------------------*/
+int read_input_texture(SL_SceneGraph& graph, const std::string& texFile)
+{
+    SL_ImgFile loader;
+    size_t w = 0;
+    size_t h = 0;
+
+    const size_t texId = graph.mContext.create_texture();
+    SL_Texture& tex = graph.mContext.texture(texId);
+
+    if (loader.load(texFile.c_str()) != SL_ImgFile::FILE_LOAD_SUCCESS)
+    {
+        std::cerr << "Unable to load the cube map face \"" << texFile.c_str() << "\"." << std::endl;
+        graph.mContext.destroy_texture(texId);
+        return -1;
+    }
+
+    w = loader.width();
+    h = loader.height();
+    tex.init(SL_ColorDataType::SL_COLOR_RGB_8U, (uint16_t)w, (uint16_t)h, 1);
+
+    tex.set_texels(0, 0, 0, (uint16_t)w, (uint16_t)h, 1, loader.data());
+
+    SL_ImgFile outImg;
+    outImg.load_memory_stream(tex.data(), tex.type(), tex.width(), tex.height()*tex.depth());
+    outImg.save("normal_map.png", SL_ImgFileType::IMG_FILE_PNG);
+
+    //sl_img_save_ppm((uint16_t)w, (uint16_t)h*6, (const SL_ColorRGB8*)tex.data(), "skybox.ppm");
+    std::cout << "Successfully saved the image normal_map.png" << std::endl;
+
+    return 0;
+}
+
+
+
 /*-----------------------------------------------------------------------------
  * Create the context for a demo scene
 -----------------------------------------------------------------------------*/
@@ -299,15 +337,13 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     retCode = load_quad_into_scene(*pGraph);
     LS_ASSERT(retCode == 0);
 
-    retCode = meshLoader.load("testdata/african_head/african_head.obj");
-    LS_ASSERT(retCode != 0);
+    retCode = read_input_texture(*pGraph, "testdata/earth.png");
+    LS_ASSERT(retCode == 0);
 
     retCode = (int)pGraph->import(meshLoader.data());
     LS_ASSERT(retCode == 1);
 
     // Always make sure the scene graph is updated before rendering
-    pGraph->mCurrentTransforms[1].move(math::vec3{0.f, 30.f, 0.f});
-    pGraph->mCurrentTransforms[1].scale(math::vec3{5.f});
     pGraph->update();
 
     const SL_VertexShader&&   vertShader = mrt_vert_shader();
