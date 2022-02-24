@@ -71,23 +71,23 @@ SL_SceneGraph::~SL_SceneGraph() noexcept
  * Constructor
 -------------------------------------*/
 SL_SceneGraph::SL_SceneGraph() noexcept :
+    mContext(),
     mNodeParentIds(),
-    mCameras(),
-    mMeshes(),
-    mMeshBounds(),
-    mMaterials(),
     mNodes(),
+    mNodeNames(),
     mBaseTransforms(),
     mCurrentTransforms(),
     mModelMatrices(),
+    mNumNodeMeshes(),
+    mNodeMeshes(),
+    mMeshes(),
+    mMaterials(),
+    mMeshBounds(),
     mInvBoneTransforms(),
     mBoneOffsets(),
-    mNodeNames(),
+    mCameras(),
     mAnimations(),
-    mNodeAnims(),
-    mNodeMeshes(),
-    mNumNodeMeshes(),
-    mContext()
+    mNodeAnims()
 {}
 
 
@@ -117,20 +117,14 @@ SL_SceneGraph::SL_SceneGraph(SL_SceneGraph&& s) noexcept
 -------------------------------------*/
 SL_SceneGraph& SL_SceneGraph::operator=(const SL_SceneGraph& s) noexcept
 {
+    mContext = s.mContext;
     mNodeParentIds = s.mNodeParentIds;
-    mCameras = s.mCameras;
-    mMeshes = s.mMeshes;
-    mMeshBounds = s.mMeshBounds;
-    mMaterials = s.mMaterials;
     mNodes = s.mNodes;
+    mNodeNames = s.mNodeNames;
     mBaseTransforms = s.mBaseTransforms;
     mCurrentTransforms = s.mCurrentTransforms;
     mModelMatrices = s.mModelMatrices;
-    mInvBoneTransforms = s.mInvBoneTransforms;
-    mBoneOffsets = s.mBoneOffsets;
-    mNodeNames = s.mNodeNames;
-    mAnimations = s.mAnimations;
-    mNodeAnims = s.mNodeAnims;
+    mNumNodeMeshes = s.mNumNodeMeshes;
 
     LS_DEBUG_ASSERT(s.mNumNodeMeshes.size() == s.mNodeMeshes.size());
     mNumNodeMeshes = s.mNumNodeMeshes;
@@ -143,15 +137,20 @@ SL_SceneGraph& SL_SceneGraph::operator=(const SL_SceneGraph& s) noexcept
         const size_t inMeshCount = s.mNumNodeMeshes[i];
 
         LS_DEBUG_ASSERT(inMeshCount > 0);
+        mNodeMeshes.emplace_back(new size_t[inMeshCount]);
 
-        ls::utils::Pointer<size_t[]> outMeshes{new size_t[inMeshCount]};
+        ls::utils::Pointer<size_t[]>& outMeshes = mNodeMeshes.back();
         ls::utils::fast_copy(outMeshes.get(), inMeshes.get(), inMeshCount);
-
-        mNodeMeshes.push_back(std::move(outMeshes));
     }
 
-    mNumNodeMeshes = s.mNumNodeMeshes;
-    mContext = s.mContext;
+    mMeshes = s.mMeshes;
+    mMaterials = s.mMaterials;
+    mMeshBounds = s.mMeshBounds;
+    mInvBoneTransforms = s.mInvBoneTransforms;
+    mBoneOffsets = s.mBoneOffsets;
+    mCameras = s.mCameras;
+    mAnimations = s.mAnimations;
+    mNodeAnims = s.mNodeAnims;
 
     return *this;
 }
@@ -163,24 +162,23 @@ SL_SceneGraph& SL_SceneGraph::operator=(const SL_SceneGraph& s) noexcept
 -------------------------------------*/
 SL_SceneGraph& SL_SceneGraph::operator=(SL_SceneGraph&& s) noexcept
 {
+    mContext = std::move(s.mContext);
     mNodeParentIds = std::move(s.mNodeParentIds);
-    mCameras = std::move(s.mCameras);
-    mMeshes = std::move(s.mMeshes);
-    mMeshBounds = std::move(s.mMeshBounds);
-    mMaterials = std::move(s.mMaterials);
     mNodes = std::move(s.mNodes);
+    mNodeNames = std::move(s.mNodeNames);
     mBaseTransforms = std::move(s.mBaseTransforms);
     mCurrentTransforms = std::move(s.mCurrentTransforms);
     mModelMatrices = std::move(s.mModelMatrices);
+    mNumNodeMeshes = std::move(s.mNumNodeMeshes);
+    mNodeMeshes = std::move(s.mNodeMeshes);
+    mMeshes = std::move(s.mMeshes);
+    mMaterials = std::move(s.mMaterials);
+    mMeshBounds = std::move(s.mMeshBounds);
     mInvBoneTransforms = std::move(s.mInvBoneTransforms);
     mBoneOffsets = std::move(s.mBoneOffsets);
-    mNodeNames = std::move(s.mNodeNames);
+    mCameras = std::move(s.mCameras);
     mAnimations = std::move(s.mAnimations);
     mNodeAnims = std::move(s.mNodeAnims);
-    mNodeMeshes = std::move(s.mNodeMeshes);
-    mNumNodeMeshes = std::move(s.mNumNodeMeshes);
-
-    mContext = std::move(s.mContext);
 
     return *this;
 }
@@ -192,24 +190,23 @@ SL_SceneGraph& SL_SceneGraph::operator=(SL_SceneGraph&& s) noexcept
 -------------------------------------*/
 void SL_SceneGraph::terminate() noexcept
 {
+    mContext.terminate();
     mNodeParentIds.clear();
-    mCameras.clear();
-    mMeshes.clear();
-    mMeshBounds.clear();
-    mMaterials.clear();
     mNodes.clear();
+    mNodeNames.clear();
     mBaseTransforms.clear();
     mCurrentTransforms.clear();
     mModelMatrices.clear();
+    mNumNodeMeshes.clear();
+    mNodeMeshes.clear();
+    mMeshes.clear();
+    mMaterials.clear();
+    mMeshBounds.clear();
     mInvBoneTransforms.clear();
     mBoneOffsets.clear();
-    mNodeNames.clear();
+    mCameras.clear();
     mAnimations.clear();
     mNodeAnims.clear();
-    mNodeMeshes.clear();
-    mNumNodeMeshes.clear();
-
-    mContext.terminate();
 }
 
 
@@ -302,8 +299,26 @@ void SL_SceneGraph::update() noexcept
 -------------------------------------*/
 void SL_SceneGraph::delete_mesh_node_data(const size_t nodeDataId) noexcept
 {
-    mNodeMeshes.erase(mNodeMeshes.begin() + nodeDataId);
-    mNumNodeMeshes.erase(mNumNodeMeshes.begin() + nodeDataId);
+    LS_DEBUG_ASSERT(mNumNodeMeshes.size() == mNodeMeshes.size());
+
+    if (mNumNodeMeshes.size() > 1)
+    {
+        size_t lastDataIndex = mNumNodeMeshes.size()-1;
+        mNumNodeMeshes[nodeDataId] = mNumNodeMeshes.back();
+        mNodeMeshes[nodeDataId] = std::move(mNodeMeshes.back());
+
+        for (SL_SceneNode& node : mNodes)
+        {
+            if (node.type == SL_SceneNodeType::NODE_TYPE_MESH && node.dataId == lastDataIndex)
+            {
+                node.dataId = nodeDataId;
+                break;
+            }
+        }
+    }
+
+    mNumNodeMeshes.pop_back();
+    mNodeMeshes.pop_back();
 }
 
 
@@ -313,8 +328,26 @@ void SL_SceneGraph::delete_mesh_node_data(const size_t nodeDataId) noexcept
 -------------------------------------*/
 void SL_SceneGraph::delete_bone_node_data(const size_t nodeDataId) noexcept
 {
-    mInvBoneTransforms.erase(mInvBoneTransforms.begin() + nodeDataId);
-    mBoneOffsets.erase(mBoneOffsets.begin() + nodeDataId);
+    LS_DEBUG_ASSERT(mInvBoneTransforms.size() == mBoneOffsets.size());
+
+    if (mInvBoneTransforms.size() > 1)
+    {
+        size_t lastDataIndex = mInvBoneTransforms.size()-1;
+        mInvBoneTransforms[nodeDataId] = mInvBoneTransforms.back();
+        mBoneOffsets[nodeDataId] = mBoneOffsets.back();
+
+        for (SL_SceneNode& node : mNodes)
+        {
+            if (node.type == SL_SceneNodeType::NODE_TYPE_BONE && node.dataId == lastDataIndex)
+            {
+                node.dataId = nodeDataId;
+                break;
+            }
+        }
+    }
+
+    mInvBoneTransforms.pop_back();
+    mBoneOffsets.pop_back();
 }
 
 
@@ -324,7 +357,22 @@ void SL_SceneGraph::delete_bone_node_data(const size_t nodeDataId) noexcept
 -------------------------------------*/
 void SL_SceneGraph::delete_camera_node_data(const size_t nodeDataId) noexcept
 {
-    mCameras.erase(mCameras.begin() + nodeDataId);
+    if (mCameras.size() > 1)
+    {
+        size_t lastDataIndex = mCameras.size()-1;
+        mCameras[nodeDataId] = mCameras.back();
+
+        for (SL_SceneNode& node : mNodes)
+        {
+            if (node.type == SL_SceneNodeType::NODE_TYPE_CAMERA && node.dataId == lastDataIndex)
+            {
+                node.dataId = nodeDataId;
+                break;
+            }
+        }
+    }
+
+    mCameras.pop_back();
 }
 
 
@@ -332,9 +380,14 @@ void SL_SceneGraph::delete_camera_node_data(const size_t nodeDataId) noexcept
 /*-------------------------------------
  * SL_Animation Deletion
 -------------------------------------*/
-void SL_SceneGraph::delete_node_animation_data(const size_t nodeId) noexcept
+void SL_SceneGraph::delete_node_animation_data(const size_t nodeId, bool includeChildren) noexcept
 {
     // Remove all animation channels associated with the current node.
+    const size_t numChildren = includeChildren ? num_total_children(nodeId) : 0;
+    const size_t firstNode = nodeId;
+    const size_t lastNode = nodeId + numChildren;
+    const size_t totalNodes = 1 + numChildren;
+
     for (size_t i = mAnimations.size(); i--;)
     {
 
@@ -349,9 +402,13 @@ void SL_SceneGraph::delete_node_animation_data(const size_t nodeId) noexcept
         // Reduce the animation ID of all animations in *this.
         for (size_t j = currentTransIds.size(); j--;)
         {
-            if (currentTransIds[j] == nodeId)
+            if (currentTransIds[j] >= firstNode && currentTransIds[j] <= lastNode)
             {
                 currentAnim.erase(j);
+            }
+            else if (currentTransIds[j] > lastNode)
+            {
+                currentTransIds[j] -= totalNodes;
             }
         }
 
@@ -371,21 +428,22 @@ void SL_SceneGraph::delete_node_animation_data(const size_t nodeId) noexcept
 void SL_SceneGraph::clear_node_data() noexcept
 {
     mNodeParentIds.clear();
-    mCameras.clear();
-    mMeshes.clear();
-    mMeshBounds.clear();
-    mMaterials.clear();
     mNodes.clear();
+    mNodeNames.clear();
     mBaseTransforms.clear();
     mCurrentTransforms.clear();
     mModelMatrices.clear();
+
+    mNumNodeMeshes.clear();
+    mNodeMeshes.clear();
+
     mInvBoneTransforms.clear();
     mBoneOffsets.clear();
-    mNodeNames.clear();
+
+    mCameras.clear();
+
     mAnimations.clear();
     mNodeAnims.clear();
-    mNodeMeshes.clear();
-    mNumNodeMeshes.clear();
 }
 
 
@@ -395,7 +453,7 @@ void SL_SceneGraph::clear_node_data() noexcept
 -------------------------------------*/
 size_t SL_SceneGraph::delete_node(const size_t nodeIndex) noexcept
 {
-    size_t numDeleted = 1;
+    size_t numDeleted;
 
     if (nodeIndex == SL_SceneNodeProp::SCENE_NODE_ROOT_ID)
     {
@@ -407,73 +465,56 @@ size_t SL_SceneGraph::delete_node(const size_t nodeIndex) noexcept
     // No mercy for client code
     LS_DEBUG_ASSERT(nodeIndex < mNodes.size());
 
-    // Remove all child nodes and their data
-    for (size_t i = mNodes.size(); i-- > nodeIndex;)
+    size_t numChildren = num_total_children(nodeIndex);
+    size_t lastNode = nodeIndex+numChildren;
+    numDeleted = 1 + numChildren;
+
+    // find all child nodes and gather their types
+    // FIXME: O(n^2)
+    for (size_t i = nodeIndex; i < mNodes.size(); ++i)
     {
-        if (mNodeParentIds[i] == nodeIndex)
+        if (i <= nodeIndex+numChildren)
         {
-            numDeleted += delete_node(i);
+            switch (mNodes[i].type)
+            {
+                case SL_SceneNodeType::NODE_TYPE_CAMERA:
+                    delete_camera_node_data(i);
+                    break;
+
+                case SL_SceneNodeType::NODE_TYPE_MESH:
+                    delete_mesh_node_data(i);
+                    break;
+
+                case SL_SceneNodeType::NODE_TYPE_BONE:
+                    delete_bone_node_data(i);
+                    break;
+
+                case SL_SceneNodeType::NODE_TYPE_EMPTY:
+                    break;
+            }
         }
     }
 
-    const SL_SceneNode&    n      = mNodes[nodeIndex];
-    const SL_SceneNodeType typeId = n.type;
-    const size_t           dataId = n.dataId;
-
-    // Delete any specific data associated with the node.
-    switch (typeId)
-    {
-        case NODE_TYPE_CAMERA:
-            delete_camera_node_data(dataId);
-            break;
-
-        case NODE_TYPE_MESH:
-            delete_mesh_node_data(dataId);
-            break;
-
-        case NODE_TYPE_BONE:
-            delete_bone_node_data(dataId);
-            break;
-
-        case NODE_TYPE_EMPTY:
-            break;
-    }
-
     // Delete the actual node
-    mNodeParentIds.erase(mNodeParentIds.begin() + nodeIndex);
-    mNodes.erase(mNodes.begin() + nodeIndex);
-    mCurrentTransforms.erase(mCurrentTransforms.begin() + nodeIndex);
-    mBaseTransforms.erase(mBaseTransforms.begin() + nodeIndex);
-    mModelMatrices.erase(mModelMatrices.begin() + nodeIndex);
-    mNodeNames.erase(mNodeNames.begin() + nodeIndex);
+    mNodeParentIds.erase(mNodeParentIds.begin()+nodeIndex,         mNodeParentIds.begin()+nodeIndex+numChildren+1);
+    mNodes.erase(mNodes.begin()+nodeIndex,                         mNodes.begin()+nodeIndex+numChildren+1);
+    mNodeNames.erase(mNodeNames.begin()+nodeIndex,                 mNodeNames.begin()+nodeIndex+numChildren+1);
+    mBaseTransforms.erase(mBaseTransforms.begin()+nodeIndex,       mBaseTransforms.begin()+nodeIndex+numChildren+1);
+    mCurrentTransforms.erase(mCurrentTransforms.begin()+nodeIndex, mCurrentTransforms.begin()+nodeIndex+numChildren+1);
+    mModelMatrices.erase(mModelMatrices.begin()+nodeIndex,         mModelMatrices.begin()+nodeIndex+numChildren+1);
 
     // early exit in case there are no animations tied to the current node.
-    delete_node_animation_data(nodeIndex);
+    delete_node_animation_data(nodeIndex, true);
 
     // Decrement all node ID and data ID indices that are greater than those in
     // the current node. Also deal with the last bit of transformation data in
     // case a recursive deletion is in required.
     for (size_t i = mNodes.size(); i --> nodeIndex;)
     {
-        SL_SceneNode&          nextNode      = mNodes[i];
-        const SL_SceneNodeType nextType      = nextNode.type;
-        size_t&                nextDataId    = nextNode.dataId;
-        const size_t           nextParentId  = mNodeParentIds[i];
-
-        if (nextParentId > nodeIndex && nextParentId != SL_SceneNodeProp::SCENE_NODE_ROOT_ID)
+        if (mNodeParentIds[i] > lastNode && mNodeParentIds[i] != SL_SceneNodeProp::SCENE_NODE_ROOT_ID)
         {
             // decrement the next node's parent ID if necessary
-            mNodeParentIds[i] = nextParentId - 1;
-        }
-
-        // the node dataId member can be equal to the root node ID. This is
-        // because empty nodes may not have have data to use.
-        if (nextType == typeId
-            && nextDataId > dataId
-            && nextDataId != SL_SceneNodeProp::SCENE_NODE_ROOT_ID
-            )
-        {
-            --nextDataId;
+            mNodeParentIds[i] -=  numDeleted;
         }
     }
 
@@ -607,10 +648,10 @@ bool SL_SceneGraph::reparent_node(const size_t nodeIndex, const size_t newParent
     const size_t numRotations = movingUp ? displacement : (numAffected-displacement);
     rotate_right(mNodeParentIds.data()     + effectStart, numAffected, numRotations);
     rotate_right(mNodes.data()             + effectStart, numAffected, numRotations);
+    rotate_right(mNodeNames.data()         + effectStart, numAffected, numRotations);
     rotate_right(mBaseTransforms.data()    + effectStart, numAffected, numRotations);
     rotate_right(mCurrentTransforms.data() + effectStart, numAffected, numRotations);
     rotate_right(mModelMatrices.data()     + effectStart, numAffected, numRotations);
-    rotate_right(mNodeNames.data()         + effectStart, numAffected, numRotations);
 
     // Animations need love too
     for (SL_Animation& anim : mAnimations)
@@ -670,6 +711,9 @@ bool SL_SceneGraph::copy_node(const size_t nodeIndex) noexcept
     const SL_AlignedVector<SL_SceneNode>::iterator&& nodeIter = mNodes.begin() + nodeIndex;
     mNodes.insert(nodeIter+displacement, nodeIter, nodeIter+displacement);
 
+    const SL_AlignedVector<std::string>::iterator&& nameIter = mNodeNames.begin() + nodeIndex;
+    mNodeNames.insert(nameIter+displacement, nameIter, nameIter+displacement);
+
     const SL_AlignedVector<ls::math::mat4>::iterator&& baseTransIter = mBaseTransforms.begin() + nodeIndex;
     mBaseTransforms.insert(baseTransIter+displacement, baseTransIter, baseTransIter+displacement);
 
@@ -678,9 +722,6 @@ bool SL_SceneGraph::copy_node(const size_t nodeIndex) noexcept
 
     const SL_AlignedVector<ls::math::mat4>::iterator&& modelMatIter = mModelMatrices.begin() + nodeIndex;
     mModelMatrices.insert(modelMatIter+displacement, modelMatIter, modelMatIter+displacement);
-
-    const SL_AlignedVector<std::string>::iterator&& nameIter = mNodeNames.begin() + nodeIndex;
-    mNodeNames.insert(nameIter+displacement, nameIter, nameIter+displacement);
 
     // easy part is done. now move onto the node data...
     // how many data elements of each node type are we moving
@@ -728,15 +769,16 @@ bool SL_SceneGraph::copy_node(const size_t nodeIndex) noexcept
                 break;
 
             case NODE_TYPE_EMPTY:
-                // empty nodes only contain
-                // have the compiler warn us if we missed an enum...
+                // empty nodes have already been adjusted.
                 break;
+
+            // For the default case, let the compiler warn us if we missed an enum...
         }
     }
 
     if (numBoneNodes)
     {
-        LS_LOG_MSG("Copying ", numBoneNodes, " bones.");
+        //LS_LOG_MSG("Copying ", numBoneNodes, " bones.");
         const size_t lastBone = boneOffset+numBoneNodes;
         mInvBoneTransforms.insert(mInvBoneTransforms.begin()+lastBone, mInvBoneTransforms.begin()+boneOffset, mInvBoneTransforms.begin()+lastBone);
         mBoneOffsets.insert(mBoneOffsets.begin()+lastBone, mBoneOffsets.begin()+boneOffset, mBoneOffsets.begin()+lastBone);
@@ -745,14 +787,14 @@ bool SL_SceneGraph::copy_node(const size_t nodeIndex) noexcept
     // no node-specific data held within the cameras
     if (numCameraNodes)
     {
-        LS_LOG_MSG("Copying ", numCameraNodes, " cameras.");
+        //LS_LOG_MSG("Copying ", numCameraNodes, " cameras.");
         const size_t lastCam = camOffset+numCameraNodes;
         mCameras.insert(mCameras.begin()+lastCam, mCameras.begin()+camOffset, mCameras.begin()+lastCam);
     }
 
     if (numMeshNodes)
     {
-        LS_LOG_MSG("Copying ", numMeshNodes, " meshes.");
+        //LS_LOG_MSG("Copying ", numMeshNodes, " meshes.");
         const size_t lastMesh = meshOffset+numMeshNodes;
         mNodeMeshes.reserve(mNodeMeshes.size()+numMeshNodes);
         mNumNodeMeshes.insert(mNumNodeMeshes.begin()+lastMesh, mNumNodeMeshes.begin()+meshOffset, mNumNodeMeshes.begin()+lastMesh);
@@ -802,7 +844,7 @@ bool SL_SceneGraph::copy_node(const size_t nodeIndex) noexcept
     {
         for (size_t& animId : anim.mTransformIds)
         {
-            if (animId > nodeIndex)
+            if (animId > nodeIndex+numChildren)
             {
                 animId += displacement;
             }
@@ -994,17 +1036,8 @@ size_t SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
         inMesh.materialId += (uint32_t)baseMatId;
     }
 
-    std::move(inGraph.mCameras.begin(), inGraph.mCameras.end(), std::back_inserter(mCameras));
-    inGraph.mCameras.clear();
-
-    std::move(inMeshes.begin(), inMeshes.end(), std::back_inserter(mMeshes));
-    inMeshes.clear();
-
-    std::move(inGraph.mMeshBounds.begin(), inGraph.mMeshBounds.end(), std::back_inserter(mMeshBounds));
-    inGraph.mMeshBounds.clear();
-
-    std::move(inGraph.mMaterials.begin(), inGraph.mMaterials.end(), std::back_inserter(mMaterials));
-    inGraph.mMaterials.clear();
+    std::move(inGraph.mNodeNames.begin(), inGraph.mNodeNames.end(), std::back_inserter(mNodeNames));
+    inGraph.mNodeNames.clear();
 
     std::move(inGraph.mBaseTransforms.begin(), inGraph.mBaseTransforms.end(), std::back_inserter(mBaseTransforms));
     inGraph.mBaseTransforms.clear();
@@ -1015,14 +1048,29 @@ size_t SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
     std::move(inGraph.mModelMatrices.begin(), inGraph.mModelMatrices.end(), std::back_inserter(mModelMatrices));
     inGraph.mModelMatrices.clear();
 
+    std::move(inMeshes.begin(), inMeshes.end(), std::back_inserter(mMeshes));
+    inMeshes.clear();
+
+    std::move(inGraph.mMaterials.begin(), inGraph.mMaterials.end(), std::back_inserter(mMaterials));
+    inGraph.mMaterials.clear();
+
+    std::move(inGraph.mMeshBounds.begin(), inGraph.mMeshBounds.end(), std::back_inserter(mMeshBounds));
+    inGraph.mMeshBounds.clear();
+
+    std::move(inGraph.mNumNodeMeshes.begin(), inGraph.mNumNodeMeshes.end(), std::back_inserter(mNumNodeMeshes));
+    inGraph.mNumNodeMeshes.clear();
+
+    std::move(inGraph.mNodeMeshes.begin(), inGraph.mNodeMeshes.end(), std::back_inserter(mNodeMeshes));
+    inGraph.mNodeMeshes.clear();
+
     std::move(inGraph.mInvBoneTransforms.begin(), inGraph.mInvBoneTransforms.end(), std::back_inserter(mInvBoneTransforms));
     inGraph.mInvBoneTransforms.clear();
 
     std::move(inGraph.mBoneOffsets.begin(), inGraph.mBoneOffsets.end(), std::back_inserter(mBoneOffsets));
     inGraph.mBoneOffsets.clear();
 
-    std::move(inGraph.mNodeNames.begin(), inGraph.mNodeNames.end(), std::back_inserter(mNodeNames));
-    inGraph.mNodeNames.clear();
+    std::move(inGraph.mCameras.begin(), inGraph.mCameras.end(), std::back_inserter(mCameras));
+    inGraph.mCameras.clear();
 
     for (SL_Animation& a : inGraph.mAnimations)
     {
@@ -1042,12 +1090,6 @@ size_t SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
 
     std::move(inGraph.mNodeAnims.begin(), inGraph.mNodeAnims.end(), std::back_inserter(mNodeAnims));
     inGraph.mNodeAnims.clear();
-
-    std::move(inGraph.mNodeMeshes.begin(), inGraph.mNodeMeshes.end(), std::back_inserter(mNodeMeshes));
-    inGraph.mNodeMeshes.clear();
-
-    std::move(inGraph.mNumNodeMeshes.begin(), inGraph.mNumNodeMeshes.end(), std::back_inserter(mNumNodeMeshes));
-    inGraph.mNumNodeMeshes.clear();
 
     mContext.import(std::move(inContext));
 

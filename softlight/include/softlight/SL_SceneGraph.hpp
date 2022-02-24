@@ -9,6 +9,7 @@
 #include "lightsky/script/Script.h"
 
 #include "softlight/SL_Context.hpp"
+#include "softlight/SL_SpatialHierarchy.hpp"
 #include "softlight/SL_SceneNode.hpp"
 #include "softlight/SL_Setup.hpp"
 
@@ -45,6 +46,168 @@ namespace slscript
 
 
 
+struct SL_SceneNodeCommonData
+{
+    /**
+     * Referenced by all scene node types using their
+     * "SL_SceneNode::nodeId" member. Base Transformations are not expected to
+     * maintain a reference to their parent transform.
+     *
+     * This member is unique to all nodes.
+     */
+    SL_AlignedVector<ls::math::mat4_t<float>> mBaseTransforms;
+
+    /**
+     * Referenced by all scene node types using their
+     * "SL_SceneNode::nodeId" member. The current transformation for a scene
+     * node is expected to keep track of its parent transformation.
+     *
+     * This member is unique to all nodes.
+     */
+    SL_AlignedVector<SL_Transform> mCurrentTransforms;
+
+    /**
+     * Referenced by all scene node types using their
+     * "SL_SceneNode::nodeId" member.
+     *
+     * This member is unique to all nodes.
+     */
+    SL_AlignedVector<ls::math::mat4_t<float>> mModelMatrices;
+
+    /**
+     * Referenced by all scene node types using their
+     * "SL_SceneNode::nodeId" member.
+     *
+     * This member is unique to all nodes.
+     */
+    SL_AlignedVector<std::string> mNodeNames;
+};
+
+
+
+struct SL_SceneGraphMeshData
+{
+    /**
+     * Referenced by mesh-type scene nodes using their
+     * "SL_SceneNode::dataId" member.
+     *
+     * No two nodes should be able to reference the same mesh count index.
+     * Doing so will cause a crash when deleting nodes.
+     *
+     * This member is unique to all mesh nodes.
+     */
+    SL_AlignedVector<size_t> mNumNodeMeshes;
+
+    /**
+     * Referenced by mesh-type scene nodes using their
+     * "SL_SceneNode::dataId" member.
+     *
+     * Some mesh nodes may use more than one mesh. This member, along with the
+     * "mNumNodeMeshes" member, will allow several mesh objects or their
+     * bounding boxes to be indexed by a single node.
+     *
+     * This member is unique to all mesh nodes.
+     */
+    SL_AlignedVector<ls::utils::Pointer<size_t[]>> mNodeMeshes;
+
+    /**
+     * Array to contain all meshes indexed by mNodeMeshes. These mesh objects
+     * can be re-used by multiple meshes.
+     */
+    SL_AlignedVector<SL_Mesh> mMeshes;
+
+    /**
+     * Shared by all mesh objects using the following relationship:
+     *      "this->mMeshes[SL_SceneNode::dataId]->materialId"
+     */
+    SL_AlignedVector<SL_Material> mMaterials;
+
+    /**
+     * Bounding boxes for meshes indexed by mNodeMeshes.
+     *
+     * This member is unique to all mesh objects in mMeshes.
+     */
+    SL_AlignedVector<SL_BoundingBox> mMeshBounds;
+};
+
+
+
+struct SL_SceneNodeCameraData
+{
+    /**
+     * Referenced by camera-type scene nodes using their "SL_SceneNode::dataId"
+     * member.
+     *
+     * No two nodes should be able to reference a single camera. Doing so
+     * will cause a crash when deleting nodes.
+     *
+     * This member is unique to all camera nodes.
+     */
+    SL_AlignedVector<SL_Camera> mCameras;
+};
+
+
+
+struct SL_SceneNodeBoneData
+{
+    /**
+     * @brief Referenced by all bone nodes using the "SL_SceneNode::dataId"
+     * member. This contains inverse transform matrices.
+     *
+     * This member is unique to all bone nodes.
+     */
+    SL_AlignedVector<ls::math::mat4_t<float>> mInvBoneTransforms;
+
+    /**
+     * @brief Referenced by all bone nodes using the "SL_SceneNode::dataId"
+     * member. This contains offset matrix data.
+     *
+     * This member is unique to all bone nodes.
+     */
+    SL_AlignedVector<ls::math::mat4_t<float>> mBoneOffsets;
+};
+
+
+
+struct SL_SceneNodeAnimData
+{
+    /**
+     * Contains all animations available in the current scene graph.
+     *
+     * Animations reference only the nodes they modify and are not shared among
+     * nodes directly within the scene graph.
+     */
+    SL_AlignedVector<SL_Animation> mAnimations;
+
+    /**
+     * Referenced by all scene node types using their
+     * "SL_SceneNode::animTrackId" member.
+     */
+    SL_AlignedVector<SL_AlignedVector<SL_AnimationChannel>> mNodeAnims;
+};
+
+/*
+    mContext(),
+    mNodeParentIds(),
+    mNodes(),
+    mNodeNames(),
+    mBaseTransforms(),
+    mCurrentTransforms(),
+    mModelMatrices(),
+    mNumNodeMeshes(),
+    mNodeMeshes(),
+    mMeshes(),
+    mMaterials(),
+    mMeshBounds(),
+    mInvBoneTransforms(),
+    mBoneOffsets(),
+    mCameras(),
+    mAnimations(),
+    mNodeAnims()
+*/
+
+
+
 /**----------------------------------------------------------------------------
  * @brief the SceneGraph object contains all of the data necessary to either
  * instantiate or render SceneNodes in an OpenGL context.
@@ -55,39 +218,16 @@ class SL_SceneGraph
 
   public: // member objects
     /**
+     * @brief Graphical context & resources required for rendering all data in
+     * *this.
+     */
+    SL_Context mContext;
+
+    /**
      * This vector contains the IDs of all parent nodes. It maps 1:1 with all
      * nodes in mNodes and their transformations.
      */
     SL_AlignedVector<std::size_t> mNodeParentIds;
-
-    /**
-     * Referenced by camera-type scene nodes using their
-     * "SL_SceneNode::dataId" member.
-     *
-     * No two nodes should be able to reference a single camera. Doing so
-     * will cause a crash when deleting nodes.
-     *
-     * This member is unique to all camera nodes.
-     */
-    SL_AlignedVector<SL_Camera> mCameras;
-
-    /**
-     * Array to contain all meshes referenced by mesh node draw commands.
-     */
-    SL_AlignedVector<SL_Mesh> mMeshes;
-
-    /**
-     * Bounding boxes for meshes.
-     *
-     * This member is unique to all mesh objects.
-     */
-    SL_AlignedVector<SL_BoundingBox> mMeshBounds;
-
-    /**
-     * Shared by all mesh objects using the following relationship:
-     *      "SceneGraph::mMeshes[SL_SceneNode::dataId]->materialId"
-     */
-    SL_AlignedVector<SL_Material> mMaterials;
 
     /**
      * Contains all empty, camera, mesh, and bode nodes in a scene graph.
@@ -101,6 +241,14 @@ class SL_SceneGraph
      * their parent nodes.
      */
     SL_AlignedVector<SL_SceneNode> mNodes;
+
+    /**
+     * Referenced by all scene node types using their
+     * "SL_SceneNode::nodeId" member.
+     *
+     * This member is unique to all nodes.
+     */
+    SL_AlignedVector<std::string> mNodeNames;
 
     /**
      * Referenced by all scene node types using their
@@ -129,6 +277,47 @@ class SL_SceneGraph
     SL_AlignedVector<ls::math::mat4_t<float>> mModelMatrices;
 
     /**
+     * Referenced by mesh-type scene nodes using their
+     * "SL_SceneNode::dataId" member.
+     *
+     * No two nodes should be able to reference the same mesh count index.
+     * Doing so will cause a crash when deleting nodes.
+     *
+     * This member is unique to all mesh nodes.
+     */
+    SL_AlignedVector<size_t> mNumNodeMeshes;
+
+    /**
+     * Referenced by mesh-type scene nodes using their
+     * "SL_SceneNode::dataId" member.
+     *
+     * Some scene nodes may use more than one mesh. This member, along with the
+     * "mNodeMeshCounts" member, will allow several mesh indices to be
+     * referenced by a single node.
+     *
+     * This member is unique to all mesh nodes.
+     */
+    SL_AlignedVector<ls::utils::Pointer<size_t[]>> mNodeMeshes;
+
+    /**
+     * Array to contain all meshes referenced by mesh node draw commands.
+     */
+    SL_AlignedVector<SL_Mesh> mMeshes;
+
+    /**
+     * Shared by all mesh objects using the following relationship:
+     *      "SceneGraph::mMeshes[SL_SceneNode::dataId]->materialId"
+     */
+    SL_AlignedVector<SL_Material> mMaterials;
+
+    /**
+     * Bounding boxes for meshes.
+     *
+     * This member is unique to all mesh objects.
+     */
+    SL_AlignedVector<SL_BoundingBox> mMeshBounds;
+
+    /**
      * @brief Referenced by all bone nodes using the "SL_SceneNode::dataId"
      * member. This contains inverse transform matrices.
      *
@@ -145,12 +334,15 @@ class SL_SceneGraph
     SL_AlignedVector<ls::math::mat4_t<float>> mBoneOffsets;
 
     /**
-     * Referenced by all scene node types using their
-     * "SL_SceneNode::nodeId" member.
+     * Referenced by camera-type scene nodes using their
+     * "SL_SceneNode::dataId" member.
      *
-     * This member is unique to all nodes.
+     * No two nodes should be able to reference a single camera. Doing so
+     * will cause a crash when deleting nodes.
+     *
+     * This member is unique to all camera nodes.
      */
-    SL_AlignedVector<std::string> mNodeNames;
+    SL_AlignedVector<SL_Camera> mCameras;
 
     /**
      * Contains all animations available in the current scene graph.
@@ -165,35 +357,6 @@ class SL_SceneGraph
      * "SL_SceneNode::animTrackId" member.
      */
     SL_AlignedVector<SL_AlignedVector<SL_AnimationChannel>> mNodeAnims;
-
-    /**
-     * Referenced by mesh-type scene nodes using their
-     * "SL_SceneNode::dataId" member.
-     *
-     * Some scene nodes may use more than one mesh. This member, along with the
-     * "mNodeMeshCounts" member, will allow several mesh indices to be
-     * referenced by a single node.
-     *
-     * This member is unique to all mesh nodes.
-     */
-    SL_AlignedVector<ls::utils::Pointer<size_t[]>> mNodeMeshes;
-
-    /**
-     * Referenced by mesh-type scene nodes using their
-     * "SL_SceneNode::dataId" member.
-     *
-     * No two nodes should be able to reference the same mesh count index.
-     * Doing so will cause a crash when deleting nodes.
-     *
-     * This member is unique to all mesh nodes.
-     */
-    SL_AlignedVector<size_t> mNumNodeMeshes;
-
-    /**
-     * @brief Graphical context & resources required for rendering all data in
-     * *this.
-     */
-    SL_Context mContext;
 
   private: // member functions
     /**
@@ -237,8 +400,11 @@ class SL_SceneGraph
      *
      * @param nodeId
      * The array index of a node being deleted.
+     *
+     * @param includeChildren
+     * Determine if child animations should also be deleted
      */
-    void delete_node_animation_data(const size_t nodeId) noexcept;
+    void delete_node_animation_data(const size_t nodeId, bool includeChildren = false) noexcept;
 
   public: // member functions
     /**
