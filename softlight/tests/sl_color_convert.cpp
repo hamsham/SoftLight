@@ -4,6 +4,8 @@
 
 #include "lightsky/math/half.h"
 #include "softlight/SL_Color.hpp"
+#include "softlight/SL_ColorHSX.hpp"
+#include "softlight/SL_ColorYCoCg.hpp"
 
 
 

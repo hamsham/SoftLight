@@ -12,7 +12,7 @@
 #include "lightsky/utils/Tuple.h"
 
 #include "softlight/SL_BoundingBox.hpp"
-#include "softlight/SL_Color.hpp"
+#include "softlight/SL_ColorYCoCg.hpp"
 #include "softlight/SL_Context.hpp"
 #include "softlight/SL_Framebuffer.hpp"
 #include "softlight/SL_ImgFilePPM.hpp"

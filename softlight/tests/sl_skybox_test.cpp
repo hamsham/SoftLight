@@ -14,6 +14,7 @@
 
 #include "softlight/SL_BoundingBox.hpp"
 #include "softlight/SL_Camera.hpp"
+#include "softlight/SL_ColorHSX.hpp"
 #include "softlight/SL_Context.hpp"
 #include "softlight/SL_ImgFile.hpp"
 #include "softlight/SL_ImgFilePPM.hpp"
@@ -100,6 +101,101 @@ SL_VertexShader sky_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
+const int indexMatrix4x4[64] = {
+    0,  32, 8,  40, 2,  34, 10, 42,
+    48, 16, 56, 24, 50, 18, 58, 26,
+    12, 44, 4,  36, 14, 46, 6,  38,
+    60, 28, 52, 20, 62, 30, 54, 22,
+    3,  35, 11, 43, 1,  33, 9,  41,
+    51, 19, 59, 27, 49, 17, 57, 25,
+    15, 47, 7,  39, 13, 45, 5,  37,
+    63, 31, 55, 23, 61, 29, 53, 21
+};
+
+float indexValue(unsigned xPos, unsigned yPos)
+{
+    unsigned x = (xPos % 8u);
+    unsigned y = (yPos % 8u);
+    return (float)indexMatrix4x4[(x + y * 8u)] / 64.f;
+}
+
+float hueDistance(float h1, float h2)
+{
+    float diff = math::abs((h1 - h2));
+    return math::min(math::abs((1.f - diff)), diff);
+}
+
+void closestColors(float hue, SL_ColorTypeHSL<float>& outA, SL_ColorTypeHSL<float>& outB)
+{
+    math::vec3 closest = math::vec3(-2.f, 0.f, 0.f);
+    math::vec3 secondClosest = math::vec3(-2.f, 0.f, 0.f);
+    math::vec3 temp;
+
+    constexpr unsigned paletteSize = 16;
+    constexpr unsigned palette[paletteSize] = {
+        0,   16,  32,  48,
+        64,  80,  96,  112,
+        128, 144, 160, 176,
+        192, 224, 240, 255
+    };
+
+    for (unsigned i = 0; i < paletteSize; ++i)
+    {
+        temp = math::vec3{0.5f} * math::vec3{(float)palette[i] / 255.f} - math::vec3{0.5f};
+        float tempDistance = hueDistance(temp[0], hue);
+        if (tempDistance < hueDistance(closest[0], hue))
+        {
+            secondClosest = closest;
+            closest = temp;
+        }
+        else
+        {
+            if (tempDistance < hueDistance(secondClosest[0], hue))
+            {
+                secondClosest = temp;
+            }
+        }
+    }
+
+    outA.h = closest[0];
+    outA.s = closest[1];
+    outA.l = closest[2];
+
+    outB.h = secondClosest[0];
+    outB.s = secondClosest[1];
+    outB.l = secondClosest[2];
+}
+
+float lightnessStep(float l)
+{
+    /* Quantize the lightness to one of `lightnessSteps` values */
+    constexpr float lightnessSteps = 4.f;
+    return math::floor((0.5f + l * lightnessSteps)) / lightnessSteps;
+}
+
+math::vec3 dither(unsigned xPos, unsigned yPos, const math::vec3& color)
+{
+    SL_ColorTypeHSL<float>&& hsl = hsl_cast<float>(color);
+
+    SL_ColorTypeHSL<float> cs[2];
+    closestColors(hsl.h, cs[0], cs[1]);
+    const SL_ColorTypeHSL<float>& c1 = cs[0];
+    const SL_ColorTypeHSL<float>& c2 = cs[1];
+    float d = indexValue(xPos, yPos);
+    float hueDiff = hueDistance(hsl.h, c1.h) / hueDistance(c2.h, c1.h);
+
+    float l1 = lightnessStep(math::max((hsl.l - 0.125f), 0.f));
+    float l2 = lightnessStep(math::min((hsl.l + 0.124f), 1.f));
+    float lightnessDiff = (hsl.l - l1) / (l2 - l1);
+
+    SL_ColorTypeHSL<float> resultColor = (hueDiff < d) ? c1 : c2;
+    resultColor.l = (lightnessDiff < d) ? l1 : l2;
+
+    return rgb_cast<float>(resultColor);
+}
+
+
+
 bool _sky_frag_shader(SL_FragmentParam& fragParam)
 {
     const SkyUniforms* pUniforms = fragParam.pUniforms->as<SkyUniforms>();
@@ -107,9 +203,11 @@ bool _sky_frag_shader(SL_FragmentParam& fragParam)
     const SL_Texture*  cubeTex   = pUniforms->pCubeMap;
 
     const math::vec3_t<uint8_t>&& albedo8 = sl_sample_bilinear<math::vec3_t<uint8_t>, SL_WrapMode::EDGE>(*cubeTex, uv[0], uv[1], uv[2]);
+    const math::vec3&& albedof = color_cast<float, uint8_t>(albedo8);
 
     // output composition
-    fragParam.pOutputs[0] = color_cast<float, uint8_t>(math::vec4_cast<uint8_t>(albedo8, 255));
+    const math::vec3&& ditheredColor = dither(fragParam.coord.x, fragParam.coord.y, albedof);
+    fragParam.pOutputs[0] = math::vec4_cast(ditheredColor, 1.f) * math::vec4_cast(albedof, 1.f);
 
     return true;
 }
@@ -123,7 +221,7 @@ SL_FragmentShader sky_frag_shader()
     shader.numOutputs = 1;
     shader.blend = SL_BLEND_OFF;
     shader.depthMask = SL_DEPTH_MASK_OFF;
-    shader.depthTest = SL_DEPTH_TEST_GREATER_EQUAL;
+    shader.depthTest = SL_DEPTH_TEST_OFF;
     shader.shader = _sky_frag_shader;
 
     return shader;
@@ -373,11 +471,11 @@ utils::Pointer<SL_SceneGraph> init_sky_context()
     context.num_threads(SL_TEST_MAX_THREADS);
 
     SL_Texture& tex = context.texture(texId);
-    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_8U, 320, 240, 1);
     LS_ASSERT(retCode == 0);
 
     SL_Texture& depth = context.texture(depthId);
-    retCode = depth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = depth.init(SL_ColorDataType::SL_COLOR_R_16U, 320, 240, 1);
     LS_ASSERT(retCode == 0);
 
     SL_Framebuffer& fbo = context.framebuffer(fboId);
