@@ -188,10 +188,14 @@ struct alignas(sizeof(T)) SL_ColorRType
     inline T& operator[] (index_t n) noexcept { return (&r)[n]; }
 
     constexpr SL_ColorRType operator+(const SL_ColorRType<T>& n) const noexcept { return SL_ColorRType{r + n.r}; }
+    constexpr SL_ColorRType operator-(const SL_ColorRType<T>& n) const noexcept { return SL_ColorRType{r - n.r}; }
     constexpr SL_ColorRType operator*(const SL_ColorRType<T>& n) const noexcept { return SL_ColorRType{r * n.r}; }
+    constexpr SL_ColorRType operator/(const SL_ColorRType<T>& n) const noexcept { return SL_ColorRType{r / n.r}; }
 
     constexpr SL_ColorRType operator+(const T n) const noexcept { return SL_ColorRType{r + n}; }
+    constexpr SL_ColorRType operator-(const T n) const noexcept { return SL_ColorRType{r - n}; }
     constexpr SL_ColorRType operator*(const T n) const noexcept { return SL_ColorRType{r * n}; }
+    constexpr SL_ColorRType operator/(const T n) const noexcept { return SL_ColorRType{r / n}; }
 };
 
 
