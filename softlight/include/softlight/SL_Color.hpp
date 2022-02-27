@@ -79,35 +79,9 @@ unsigned sl_elements_per_color(SL_ColorDataType p);
 
 
 
-/*-------------------------------------
- * Helper Structure to Convert 8-bit colors to float
--------------------------------------*/
-union SL_ColorU8ToF
-{
-    uint32_t i;
-    float f;
-
-    static constexpr float byte_to_float(const uint8_t c) noexcept
-    {
-        return SL_ColorU8ToF{0x3F800000u + c * 0x00008080u + ((c+1u) >> 1u)}.f - 1.f;
-    }
-};
-
-
-
-/**
- * @brief Enumeration to describe the color model being used by a SL_ColorType<>
- * object.
- */
-enum class SL_ColorModelType
-{
-    SL_COLOR_MODEL_RGB,
-    SL_COLOR_MODEL_HSV,
-    SL_COLOR_MODEL_HSL
-};
-
-
-
+/*-----------------------------------------------------------------------------
+ * Internal limits of color type ranges
+-----------------------------------------------------------------------------*/
 /**
  * @brief Template specialization which allows for internal color calculations
  * to determine the maximum and minimum possible number ranges for certain

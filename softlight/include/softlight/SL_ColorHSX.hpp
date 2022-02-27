@@ -29,6 +29,26 @@ typedef SL_ColorTypeHSV<double> SL_ColorTypeHSVd;
 
 
 /**
+ * @brief Generic HSVA Color Structure
+ */
+template <typename color_t>
+struct alignas(sizeof(color_t)) SL_ColorTypeHSVA
+{
+    static_assert(ls::setup::IsFloat<color_t>::value, "HSV can only be represented by floating-point numbers.");
+
+    color_t h; // should be between 0-360
+    color_t s; // 0-1
+    color_t v; // 0-1
+    color_t a; // 0-1
+};
+
+typedef SL_ColorTypeHSVA<ls::math::half> SL_ColorTypeHSVAh;
+typedef SL_ColorTypeHSVA<float> SL_ColorTypeHSVAf;
+typedef SL_ColorTypeHSVA<double> SL_ColorTypeHSVAd;
+
+
+
+/**
  * @brief Generic HSL Color Structure
  */
 template <typename color_t>
@@ -47,6 +67,26 @@ typedef SL_ColorTypeHSL<double> SL_ColorTypeHSLd;
 
 
 
+/**
+ * @brief Generic HSLA Color Structure
+ */
+template <typename color_t>
+struct alignas(sizeof(color_t)) SL_ColorTypeHSLA
+{
+    static_assert(ls::setup::IsFloat<color_t>::value, "HSL can only be represented by floating-point numbers.");
+
+    color_t h; // should be between 0-360
+    color_t s; // 0-1
+    color_t l; // 0-1
+    color_t a; // 0-1
+};
+
+typedef SL_ColorTypeHSLA<ls::math::half> SL_ColorTypeHSLAh;
+typedef SL_ColorTypeHSLA<float> SL_ColorTypeHSLAf;
+typedef SL_ColorTypeHSLA<double> SL_ColorTypeHSLAd;
+
+
+
 /*-----------------------------------------------------------------------------
  * Color Casting Operations
 -----------------------------------------------------------------------------*/
@@ -54,7 +94,7 @@ typedef SL_ColorTypeHSL<double> SL_ColorTypeHSLd;
  * Cast from HSV to RGB
 --------------------------------------*/
 template <typename color_t>
-SL_ColorRGBType <color_t> rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<color_t>::value, SL_ColorTypeHSV<color_t>>::type& inC) noexcept
+SL_ColorRGBType<color_t> rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<color_t>::value, SL_ColorTypeHSV<color_t>>::type& inC) noexcept
 {
     const color_t c = inC.v * inC.s;
     const color_t x = c * (color_t{1.f} - ls::math::abs(ls::math::fmod(inC.h / color_t{60.f}, color_t{2.f}) - color_t{1.f}));
@@ -107,7 +147,7 @@ SL_ColorRGBType <color_t> rgb_cast(const typename ls::setup::EnableIf<ls::setup:
 
     constexpr color_t COLOR_MAX_VAL = SL_ColorLimits<color_t>::max();
 
-    return SL_ColorRGBType < color_t > {
+    return SL_ColorRGBType <color_t> {
         static_cast<color_t>(tempR * COLOR_MAX_VAL),
         static_cast<color_t>(tempG * COLOR_MAX_VAL),
         static_cast<color_t>(tempB * COLOR_MAX_VAL)
@@ -117,10 +157,23 @@ SL_ColorRGBType <color_t> rgb_cast(const typename ls::setup::EnableIf<ls::setup:
 
 
 /*--------------------------------------
+ * Cast from HSVA to RGBA
+--------------------------------------*/
+template <typename color_t>
+inline SL_ColorRGBAType<color_t> rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<color_t>::value, SL_ColorTypeHSVA<color_t>>::type& inC) noexcept
+{
+    SL_ColorTypeHSV<color_t> hsv{inC.h, inC.s, inC.l};
+    const SL_ColorRGBType<color_t>&& outRGB = rgb_cast<color_t>(hsv);
+    return ls::math::vec4_cast<color_t>(outRGB, inC.a);
+}
+
+
+
+/*--------------------------------------
  * Cast from HSL to RGB
 --------------------------------------*/
 template <typename color_t>
-SL_ColorRGBType <color_t> rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<color_t>::value, SL_ColorTypeHSL<color_t>>::type& inC) noexcept
+SL_ColorRGBType<color_t> rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<color_t>::value, SL_ColorTypeHSL<color_t>>::type& inC) noexcept
 {
     const color_t c = inC.s * (color_t{1.f} - ls::math::abs(color_t{2.f} * inC.l - color_t{1.f}));
     const color_t x = c * (color_t{1.f} - ls::math::abs(ls::math::fmod(inC.h / color_t{60.f}, color_t{2.f}) - color_t{1.f}));
@@ -173,11 +226,24 @@ SL_ColorRGBType <color_t> rgb_cast(const typename ls::setup::EnableIf<ls::setup:
 
     constexpr color_t COLOR_MAX_VAL = SL_ColorLimits<color_t>::max();
 
-    return SL_ColorRGBType < color_t > {
+    return SL_ColorRGBType<color_t>{
         static_cast<color_t>(tempR * COLOR_MAX_VAL),
         static_cast<color_t>(tempG * COLOR_MAX_VAL),
         static_cast<color_t>(tempB * COLOR_MAX_VAL)
     };
+}
+
+
+
+/*--------------------------------------
+ * Cast from HSLA to RGBA
+--------------------------------------*/
+template <typename color_t>
+inline SL_ColorRGBAType<color_t> rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<color_t>::value, SL_ColorTypeHSLA<color_t>>::type& inC) noexcept
+{
+    SL_ColorTypeHSL<color_t> hsl{inC.h, inC.s, inC.l};
+    const SL_ColorRGBType<color_t>&& outRGB = rgb_cast<color_t>(hsl);
+    return ls::math::vec4_cast<color_t>(outRGB, inC.a);
 }
 
 
@@ -224,10 +290,29 @@ SL_ColorTypeHSV<color_t> hsv_cast(const typename ls::setup::EnableIf<ls::setup::
 
     // This part of the conversion requires a data type with more than 2 bytes.
     // Some values may be valid, others may be truncated/undefined.
-    hue = (hue < color_t{0.f}) ? (hue + color_t{360.f}) : hue;
+    if (hue < color_t{360.f})
+    {
+        hue = color_t{360.f} - ls::math::fmod(ls::math::abs(hue), color_t{360.f});
+    }
+    else
+    {
+        hue = ls::math::fmod(hue, color_t{360.f});
+    }
 
     // result
     return SL_ColorTypeHSV<color_t>{hue, delta / maxVal, maxVal};
+}
+
+
+
+/*--------------------------------------
+ * Cast from RGBA to HSVA
+--------------------------------------*/
+template <typename color_t>
+inline SL_ColorTypeHSVA<color_t> hsv_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<color_t>::value, SL_ColorRGBAType<color_t>>::type& c) noexcept
+{
+    const SL_ColorTypeHSV<color_t>&& hsv = hsv_cast<color_t>(ls::math::vec3_cast<color_t>(c));
+    return SL_ColorTypeHSVA<color_t>{hsv.h, hsv.s, hsv.v, c[3]};
 }
 
 
@@ -245,6 +330,25 @@ inline SL_ColorTypeHSV<color_t> hsv_cast(const SL_ColorTypeHSL<color_t>& c) noex
         c.h,
         (color_t{2} * s) / (l + s),
         (l + s) / color_t{2}
+    };
+}
+
+
+
+/*--------------------------------------
+ * HSLA To HSVA
+--------------------------------------*/
+template <typename color_t>
+inline SL_ColorTypeHSVA<color_t> hsv_cast(const SL_ColorTypeHSLA<color_t>& c) noexcept
+{
+    color_t l = color_t{2} * c.l;
+    color_t s = c.s * ((l <= color_t{1}) ? l : color_t{2} - l);
+
+    return SL_ColorTypeHSVA<color_t>{
+        c.h,
+        (color_t{2} * s) / (l + s),
+        (l + s) / color_t{2},
+        c.a
     };
 }
 
@@ -304,6 +408,18 @@ SL_ColorTypeHSL<color_t> hsl_cast(const typename ls::setup::EnableIf<ls::setup::
 
 
 
+/*--------------------------------------
+ * Cast from RGBA to HSLA
+--------------------------------------*/
+template <typename color_t>
+inline SL_ColorTypeHSLA<color_t> hsl_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<color_t>::value, SL_ColorRGBAType<color_t>>::type& c) noexcept
+{
+    const SL_ColorTypeHSL<color_t>&& hsl = hsl_cast<color_t>(ls::math::vec3_cast<color_t>(c));
+    return SL_ColorTypeHSLA<color_t>{hsl.h, hsl.s, hsl.v, c[3]};
+}
+
+
+
 /*-------------------------------------
  * HSV to HSL
 -------------------------------------*/
@@ -317,6 +433,25 @@ inline SL_ColorTypeHSL<color_t> hsl_cast(const SL_ColorTypeHSV<color_t>& c) noex
         c.h,
         s / ((l <= color_t{1}) ? l : color_t{2} - l),
         l / color_t{2}
+    };
+}
+
+
+
+/*-------------------------------------
+ * HSVA to HSLA
+-------------------------------------*/
+template <typename color_t>
+inline SL_ColorTypeHSLA<color_t> hsl_cast(const SL_ColorTypeHSVA<color_t>& c) noexcept
+{
+    color_t s = c.s * c.v;
+    color_t l = (color_t{2} - c.s) * c.v;
+
+    return SL_ColorTypeHSLA<color_t>{
+        c.h,
+        s / ((l <= color_t{1}) ? l : color_t{2} - l),
+        l / color_t{2},
+        c.a
     };
 }
 
