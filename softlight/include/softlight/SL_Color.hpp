@@ -19,7 +19,6 @@
 #include <cstdint> // fixed-width types
 #include <limits> // c++ limits
 
-#include "lightsky/math/scalar_utils.h"
 #include "lightsky/math/vec2.h"
 #include "lightsky/math/vec3.h"
 #include "lightsky/math/vec4.h"
