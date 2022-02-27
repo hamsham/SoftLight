@@ -24,6 +24,7 @@
 
 #include "softlight/SL_BoundingBox.hpp"
 #include "softlight/SL_Camera.hpp"
+#include "softlight/SL_ColorCompressed.hpp"
 #include "softlight/SL_Config.hpp"
 #include "softlight/SL_Context.hpp"
 #include "softlight/SL_IndexBuffer.hpp"
@@ -56,6 +57,10 @@
 #ifndef SL_BENCHMARK_SCENE
     #define SL_BENCHMARK_SCENE 0
 #endif /* SL_BENCHMARK_SCENE */
+
+#ifndef SL_COMPRESSED_RGB565
+    #define SL_COMPRESSED_RGB565 1
+#endif /* SL_COMPRESSED_RGB565 */
 
 namespace math = ls::math;
 namespace utils = ls::utils;
@@ -466,7 +471,11 @@ utils::Pointer<SL_SceneGraph> create_context()
     LS_ASSERT(retCode == (int)SL_TEST_MAX_THREADS);
 
     SL_Texture& tex = context.texture(texId);
-    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    #if SL_COMPRESSED_RGB565
+        retCode = tex.init(SL_ColorDataType::SL_COLOR_RGB_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    #else
+        retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    #endif
     LS_ASSERT(retCode == 0);
 
     SL_Texture& depth = context.texture(depthId);
@@ -543,7 +552,12 @@ inline Uint32 sl_pixel_fmt_to_sdl(const SL_ColorDataType slFmt) noexcept
 {
     switch (slFmt)
     {
-        case SL_COLOR_RGB_8U: return SDL_PIXELFORMAT_BGR888;
+        #if SL_COMPRESSED_RGB565
+            case SL_COLOR_RGB_8U: return SDL_PIXELFORMAT_RGB565;
+        #else
+            case SL_COLOR_RGB_8U: return SDL_PIXELFORMAT_BGR888;
+        #endif
+
         case SL_COLOR_RGBA_8U: return SDL_PIXELFORMAT_ARGB8888;
 
         default:
@@ -590,18 +604,19 @@ int select_sdl_render_driver() noexcept
 
 inline void update_sdl_backbuffer(SL_Texture& tex, SDL_Texture* pBackbuffer) noexcept
 {
-    #if 0
+    #if SL_COMPRESSED_RGB565
         void* pTexData = nullptr;
         int pitch = 0;
 
         SDL_LockTexture(pBackbuffer, nullptr, &pTexData, &pitch);
+        LS_ASSERT(pTexData != nullptr);
 
-        if (!pTexData || pitch != sl_get_texture_pitch(tex))
+        for (size_t i = 0; i < (size_t)tex.width()*(size_t)tex.height(); ++i)
         {
-            LS_ASSERT(false);
+            const SL_ColorRGB8& inRGB = reinterpret_cast<SL_ColorRGB8*>(tex.data())[i];
+            const SL_ColorRGB565&& in565 = rgb565_cast<uint8_t>(inRGB);
+            reinterpret_cast<uint16_t*>(pTexData)[i] = *reinterpret_cast<const uint16_t*>(&in565);
         }
-
-        utils::fast_memcpy(pTexData, tex.data(), (uint_fast64_t)pitch*(uint_fast64_t)tex.height());
         SDL_UnlockTexture(pBackbuffer);
 
     #else
