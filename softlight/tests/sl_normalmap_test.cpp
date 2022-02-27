@@ -239,7 +239,7 @@ int load_quad_into_scene(SL_SceneGraph& graph, unsigned texIdForMaterial)
         mesh.elementBegin = 0;
         mesh.elementEnd = 6;
         mesh.mode = SL_RenderMode::RENDER_MODE_INDEXED_TRIANGLES;
-        mesh.materialId = graph.mMaterials.size()-1;
+        mesh.materialId = (uint32_t)graph.mMaterials.size()-1;
 
         SL_BoundingBox box;
         box.min_point(math::vec3{-1.f, -1.f, 0.f});
