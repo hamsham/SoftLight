@@ -71,7 +71,7 @@ typedef SL_ColorYCoCgAf SL_ColorYCoCgA;
 
 
 /*-----------------------------------------------------------------------------
- * Internal limits of color HSV ranges
+ * Internal limits of color YCoCg ranges
 -----------------------------------------------------------------------------*/
 /**
  * @brief Template specialization which allows for internal color calculations
@@ -103,7 +103,7 @@ struct SL_ColorLimits<color_t, SL_ColorTypeYCoCg>
     * data types.
     *
     * @return For integral types, the return value is equivalent to
-    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
+    * std::numeric_limits<color_t>::max(). Floating-point types will return 1.0.
     */
     static constexpr SL_ColorTypeYCoCg<color_t> max() noexcept
     {
@@ -139,14 +139,14 @@ struct SL_ColorLimits<ls::math::half, SL_ColorTypeYCoCg>
     * data types.
     *
     * @return For integral types, the return value is equivalent to
-    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
+    * std::numeric_limits<color_t>::max(). Floating-point types will return 1.0.
     */
     static constexpr SL_ColorTypeYCoCg<ls::math::half> max() noexcept
     {
         return SL_ColorTypeYCoCg<ls::math::half>{
-            ls::math::half{0x7B, 0xFFu},
-            ls::math::half{0x7B, 0xFFu},
-            ls::math::half{0x7B, 0xFFu}
+            ls::math::half{0x3Cu, 0x00u},
+            ls::math::half{0x3Cu, 0x00u},
+            ls::math::half{0x3Cu, 0x00u}
         };
     }
 };
@@ -154,7 +154,7 @@ struct SL_ColorLimits<ls::math::half, SL_ColorTypeYCoCg>
 
 
 /*-----------------------------------------------------------------------------
- * Internal limits of color HSVA ranges
+ * Internal limits of color YCoCgA ranges
 -----------------------------------------------------------------------------*/
 /**
  * @brief Template specialization which allows for internal color calculations
@@ -189,7 +189,7 @@ struct SL_ColorLimits<color_t, SL_ColorTypeYCoCgA>
     * data types.
     *
     * @return For integral types, the return value is equivalent to
-    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
+    * std::numeric_limits<color_t>::max(). Floating-point types will return 1.0.
     */
     static constexpr SL_ColorTypeYCoCgA<color_t> max() noexcept
     {
@@ -229,15 +229,15 @@ struct SL_ColorLimits<ls::math::half, SL_ColorTypeYCoCgA>
     * data types.
     *
     * @return For integral types, the return value is equivalent to
-    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
+    * std::numeric_limits<color_t>::max(). Floating-point types will return 1.0.
     */
     static constexpr SL_ColorTypeYCoCgA<ls::math::half> max() noexcept
     {
         return SL_ColorTypeYCoCgA<ls::math::half>{
-            ls::math::half{0x7B, 0xFFu},
-            ls::math::half{0x7B, 0xFFu},
-            ls::math::half{0x7B, 0xFFu},
-            ls::math::half{0x7B, 0xFFu}
+            ls::math::half{0x3Cu, 0x00u},
+            ls::math::half{0x3Cu, 0x00u},
+            ls::math::half{0x3Cu, 0x00u},
+            ls::math::half{0x3Cu, 0x00u}
         };
     }
 };

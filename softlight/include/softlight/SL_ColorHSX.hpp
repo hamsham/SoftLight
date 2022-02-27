@@ -119,9 +119,6 @@ struct SL_ColorLimits<color_t, SL_ColorTypeHSV>
     /**
     * @brief Determine the minimum possible value for a color object's internal
     * data types.
-    *
-    * @return For integral types, the return value is equivalent to
-    * std::numeric_limits<color_t>::min(). Floating-point types will return 0.0.
     */
     static constexpr SL_ColorTypeHSV<color_t> min() noexcept
     {
@@ -133,9 +130,6 @@ struct SL_ColorLimits<color_t, SL_ColorTypeHSV>
     /**
     * @brief Determine the maximum possible value for a color object's internal
     * data types.
-    *
-    * @return For integral types, the return value is equivalent to
-    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
     */
     static constexpr SL_ColorTypeHSV<color_t> max() noexcept
     {
@@ -153,9 +147,6 @@ struct SL_ColorLimits<ls::math::half, SL_ColorTypeHSV>
     /**
     * @brief Determine the minimum possible value for a color object's internal
     * data types.
-    *
-    * @return For integral types, the return value is equivalent to
-    * std::numeric_limits<color_t>::min(). Floating-point types will return 0.0.
     */
     static constexpr SL_ColorTypeHSV<ls::math::half> min() noexcept
     {
@@ -169,16 +160,13 @@ struct SL_ColorLimits<ls::math::half, SL_ColorTypeHSV>
     /**
     * @brief Determine the maximum possible value for a color object's internal
     * data types.
-    *
-    * @return For integral types, the return value is equivalent to
-    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
     */
     static constexpr SL_ColorTypeHSV<ls::math::half> max() noexcept
     {
         return SL_ColorTypeHSV<ls::math::half>{
-            ls::math::half{0x5D, 0xA0u},
-            ls::math::half{0x7B, 0xFFu},
-            ls::math::half{0x7B, 0xFFu}
+            ls::math::half{0x5Du, 0xA0u},
+            ls::math::half{0x3Cu, 0x00u},
+            ls::math::half{0x3Cu, 0x00u}
         };
     }
 };
@@ -202,9 +190,6 @@ struct SL_ColorLimits<color_t, SL_ColorTypeHSVA>
     /**
     * @brief Determine the minimum possible value for a color object's internal
     * data types.
-    *
-    * @return For integral types, the return value is equivalent to
-    * std::numeric_limits<color_t>::min(). Floating-point types will return 0.0.
     */
     static constexpr SL_ColorTypeHSVA<color_t> min() noexcept
     {
@@ -219,9 +204,6 @@ struct SL_ColorLimits<color_t, SL_ColorTypeHSVA>
     /**
     * @brief Determine the maximum possible value for a color object's internal
     * data types.
-    *
-    * @return For integral types, the return value is equivalent to
-    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
     */
     static constexpr SL_ColorTypeHSVA<color_t> max() noexcept
     {
@@ -242,9 +224,6 @@ struct SL_ColorLimits<ls::math::half, SL_ColorTypeHSVA>
     /**
     * @brief Determine the minimum possible value for a color object's internal
     * data types.
-    *
-    * @return For integral types, the return value is equivalent to
-    * std::numeric_limits<color_t>::min(). Floating-point types will return 0.0.
     */
     static constexpr SL_ColorTypeHSVA<ls::math::half> min() noexcept
     {
@@ -259,17 +238,14 @@ struct SL_ColorLimits<ls::math::half, SL_ColorTypeHSVA>
     /**
     * @brief Determine the maximum possible value for a color object's internal
     * data types.
-    *
-    * @return For integral types, the return value is equivalent to
-    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
     */
     static constexpr SL_ColorTypeHSVA<ls::math::half> max() noexcept
     {
         return SL_ColorTypeHSVA<ls::math::half>{
-            ls::math::half{0x5D, 0xA0u},
-            ls::math::half{0x7B, 0xFFu},
-            ls::math::half{0x7B, 0xFFu},
-            ls::math::half{0x7B, 0xFFu}
+            ls::math::half{0x5Du, 0xA0u},
+            ls::math::half{0x3Cu, 0x00u},
+            ls::math::half{0x3Cu, 0x00u},
+            ls::math::half{0x3Cu, 0x00u}
         };
     }
 };
@@ -350,9 +326,9 @@ struct SL_ColorLimits<ls::math::half, SL_ColorTypeHSL>
     static constexpr SL_ColorTypeHSL<ls::math::half> max() noexcept
     {
         return SL_ColorTypeHSL<ls::math::half>{
-            ls::math::half{0x5D, 0xA0u},
-            ls::math::half{0x7B, 0xFFu},
-            ls::math::half{0x7B, 0xFFu}
+            ls::math::half{0x5Du, 0xA0u},
+            ls::math::half{0x3Cu, 0x00u},
+            ls::math::half{0x3Cu, 0x00u}
         };
     }
 };
@@ -440,10 +416,10 @@ struct SL_ColorLimits<ls::math::half, SL_ColorTypeHSLA>
     static constexpr SL_ColorTypeHSLA<ls::math::half> max() noexcept
     {
         return SL_ColorTypeHSLA<ls::math::half>{
-            ls::math::half{0x5D, 0xA0u},
-            ls::math::half{0x7B, 0xFFu},
-            ls::math::half{0x7B, 0xFFu},
-            ls::math::half{0x7B, 0xFFu}
+            ls::math::half{0x5Du, 0xA0u},
+            ls::math::half{0x3Cu, 0x00u},
+            ls::math::half{0x3Cu, 0x00u},
+            ls::math::half{0x3Cu, 0x00u}
         };
     }
 };

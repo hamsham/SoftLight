@@ -541,7 +541,7 @@ struct SL_ColorLimits
     * data types.
     *
     * @return For integral types, the return value is equivalent to
-    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
+    * std::numeric_limits<color_t>::max(). Floating-point types will return 1.0.
     */
     static constexpr SLColorType<color_t> max() noexcept
     {
@@ -573,11 +573,11 @@ struct SL_ColorLimits<ls::math::half, SLColorType>
     * data types.
     *
     * @return For integral types, the return value is equivalent to
-    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
+    * std::numeric_limits<color_t>::max(). Floating-point types will return 1.0.
     */
     static constexpr SLColorType<ls::math::half> max() noexcept
     {
-        return SLColorType<ls::math::half>{ls::math::half{0x7B, 0xFFu}};
+        return SLColorType<ls::math::half>{ls::math::half{0x3Cu, 0x00u}};
     }
 };
 

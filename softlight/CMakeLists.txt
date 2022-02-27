@@ -127,6 +127,7 @@ set(SL_LIB_HEADERS
     include/softlight/SL_Camera.hpp
     include/softlight/SL_ClearProcesor.hpp
     include/softlight/SL_Color.hpp
+    include/softlight/SL_ColorCompressed.hpp
     include/softlight/SL_ColorHSX.hpp
     include/softlight/SL_ColorYCoCg.hpp
     include/softlight/SL_Config.hpp
