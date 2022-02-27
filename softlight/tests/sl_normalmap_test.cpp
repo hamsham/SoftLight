@@ -102,26 +102,26 @@ inline LS_INLINE math::vec4 bumped_normal(const SL_Texture* bumpMap, const math:
     const float stepY = 1.f / (float)bumpMap->height();
 
     // sample corners around the current pixel
-    math::vec4_t<uint8_t>&& c8  = math::vec4_cast<uint8_t>(sl_sample_bilinear<SL_ColorRGB8, SL_WrapMode::REPEAT>(*bumpMap, uv[0],       uv[1]),       255);
-    math::vec4_t<uint8_t>&& n8  = math::vec4_cast<uint8_t>(sl_sample_bilinear<SL_ColorRGB8, SL_WrapMode::REPEAT>(*bumpMap, uv[0],       uv[1]+stepY), 255);
-    math::vec4_t<uint8_t>&& e8  = math::vec4_cast<uint8_t>(sl_sample_bilinear<SL_ColorRGB8, SL_WrapMode::REPEAT>(*bumpMap, uv[0]-stepX, uv[1]),       255);
-    math::vec4_t<uint8_t>&& s8  = math::vec4_cast<uint8_t>(sl_sample_bilinear<SL_ColorRGB8, SL_WrapMode::REPEAT>(*bumpMap, uv[0],       uv[1]-stepY), 255);;
-    math::vec4_t<uint8_t>&& w8  = math::vec4_cast<uint8_t>(sl_sample_bilinear<SL_ColorRGB8, SL_WrapMode::REPEAT>(*bumpMap, uv[0]+stepX, uv[1]),       255);
-    math::vec4_t<uint8_t>&& ne8 = math::vec4_cast<uint8_t>(sl_sample_bilinear<SL_ColorRGB8, SL_WrapMode::REPEAT>(*bumpMap, uv[0]-stepX, uv[1]+stepY), 255);
-    math::vec4_t<uint8_t>&& se8 = math::vec4_cast<uint8_t>(sl_sample_bilinear<SL_ColorRGB8, SL_WrapMode::REPEAT>(*bumpMap, uv[0]-stepX, uv[1]-stepY), 255);
-    math::vec4_t<uint8_t>&& sw8 = math::vec4_cast<uint8_t>(sl_sample_bilinear<SL_ColorRGB8, SL_WrapMode::REPEAT>(*bumpMap, uv[0]+stepX, uv[1]-stepY), 255);;
-    math::vec4_t<uint8_t>&& nw8 = math::vec4_cast<uint8_t>(sl_sample_bilinear<SL_ColorRGB8, SL_WrapMode::REPEAT>(*bumpMap, uv[0]+stepX, uv[1]+stepY), 255);
+    math::vec4_t<uint8_t>&& c8  = math::vec4_cast<uint8_t>(sl_sample_bilinear<SL_ColorRGB8, SL_WrapMode::EDGE>(*bumpMap, uv[0],       uv[1]),       255);
+    math::vec4_t<uint8_t>&& n8  = math::vec4_cast<uint8_t>(sl_sample_bilinear<SL_ColorRGB8, SL_WrapMode::EDGE>(*bumpMap, uv[0],       uv[1]+stepY), 255);
+    math::vec4_t<uint8_t>&& e8  = math::vec4_cast<uint8_t>(sl_sample_bilinear<SL_ColorRGB8, SL_WrapMode::EDGE>(*bumpMap, uv[0]-stepX, uv[1]),       255);
+    math::vec4_t<uint8_t>&& s8  = math::vec4_cast<uint8_t>(sl_sample_bilinear<SL_ColorRGB8, SL_WrapMode::EDGE>(*bumpMap, uv[0],       uv[1]-stepY), 255);;
+    math::vec4_t<uint8_t>&& w8  = math::vec4_cast<uint8_t>(sl_sample_bilinear<SL_ColorRGB8, SL_WrapMode::EDGE>(*bumpMap, uv[0]+stepX, uv[1]),       255);
+    math::vec4_t<uint8_t>&& ne8 = math::vec4_cast<uint8_t>(sl_sample_bilinear<SL_ColorRGB8, SL_WrapMode::EDGE>(*bumpMap, uv[0]-stepX, uv[1]+stepY), 255);
+    math::vec4_t<uint8_t>&& se8 = math::vec4_cast<uint8_t>(sl_sample_bilinear<SL_ColorRGB8, SL_WrapMode::EDGE>(*bumpMap, uv[0]-stepX, uv[1]-stepY), 255);
+    math::vec4_t<uint8_t>&& sw8 = math::vec4_cast<uint8_t>(sl_sample_bilinear<SL_ColorRGB8, SL_WrapMode::EDGE>(*bumpMap, uv[0]+stepX, uv[1]-stepY), 255);;
+    math::vec4_t<uint8_t>&& nw8 = math::vec4_cast<uint8_t>(sl_sample_bilinear<SL_ColorRGB8, SL_WrapMode::EDGE>(*bumpMap, uv[0]+stepX, uv[1]+stepY), 255);
 
     // gather luminance
-    float&& c = math::length(color_cast<float, uint8_t>(c8));
-    float&& n = math::length(color_cast<float, uint8_t>(n8));
-    float&& e = math::length(color_cast<float, uint8_t>(e8));
-    float&& s = math::length(color_cast<float, uint8_t>(s8));
-    float&& w = math::length(color_cast<float, uint8_t>(w8));
-    float&& ne = math::length(color_cast<float, uint8_t>(ne8));
-    float&& se = math::length(color_cast<float, uint8_t>(se8));
-    float&& sw = math::length(color_cast<float, uint8_t>(sw8));
-    float&& nw = math::length(color_cast<float, uint8_t>(nw8));
+    float&& c = math::sum(color_cast<float, uint8_t>(c8)) / 3.f;
+    float&& n = math::sum(color_cast<float, uint8_t>(n8)) / 3.f;
+    float&& e = math::sum(color_cast<float, uint8_t>(e8)) / 3.f;
+    float&& s = math::sum(color_cast<float, uint8_t>(s8)) / 3.f;
+    float&& w = math::sum(color_cast<float, uint8_t>(w8)) / 3.f;
+    float&& ne = math::sum(color_cast<float, uint8_t>(ne8)) / 3.f;
+    float&& se = math::sum(color_cast<float, uint8_t>(se8)) / 3.f;
+    float&& sw = math::sum(color_cast<float, uint8_t>(sw8)) / 3.f;
+    float&& nw = math::sum(color_cast<float, uint8_t>(nw8)) / 3.f;
 
     // sobel filter
     const float dX = (ne + 2.f * e + se) - (nw + 2.f * w + sw);
@@ -170,7 +170,7 @@ SL_FragmentShader mrt_frag_shader()
 /*-----------------------------------------------------------------------------
  * Create a Full-screen quad
 -----------------------------------------------------------------------------*/
-int load_quad_into_scene(SL_SceneGraph& graph)
+int load_quad_into_scene(SL_SceneGraph& graph, unsigned texIdForMaterial)
 {
     SL_Context&        context     = graph.mContext;
     int                retCode     = 0;
@@ -227,19 +227,27 @@ int load_quad_into_scene(SL_SceneGraph& graph)
     ibo.init(6, SL_DataType::VERTEX_DATA_INT, indices);
     vao.set_index_buffer(0);
 
-    SL_Mesh mesh;
-    mesh.vaoId        = vaoId;
-    mesh.elementBegin = 0;
-    mesh.elementEnd   = 6;
-    mesh.mode         = SL_RenderMode::RENDER_MODE_INDEXED_TRIANGLES;
-    mesh.materialId   = ~0u;
+    {
+        SL_Material mat;
+        sl_reset(mat);
+        mat.pTextures[SL_MATERIAL_TEXTURE_AMBIENT] = &graph.mContext.texture(texIdForMaterial);
+        graph.mMaterials.push_back(mat);
+    }
+    {
+        SL_Mesh mesh;
+        mesh.vaoId = vaoId;
+        mesh.elementBegin = 0;
+        mesh.elementEnd = 6;
+        mesh.mode = SL_RenderMode::RENDER_MODE_INDEXED_TRIANGLES;
+        mesh.materialId = graph.mMaterials.size()-1;
 
-    SL_BoundingBox box;
-    box.min_point(math::vec3{-1.f, -1.f, 0.f});
-    box.max_point(math::vec3{1.f, 1.f, 0.f});
+        SL_BoundingBox box;
+        box.min_point(math::vec3{-1.f, -1.f, 0.f});
+        box.max_point(math::vec3{1.f, 1.f, 0.f});
 
-    size_t subMeshId = graph.insert_mesh(mesh, box);
-    graph.insert_mesh_node(SCENE_NODE_ROOT_ID, "FS_Quad", 1, &subMeshId, SL_Transform{});
+        size_t subMeshId = graph.insert_mesh(mesh, box);
+        graph.insert_mesh_node(SCENE_NODE_ROOT_ID, "FS_Quad", 1, &subMeshId, SL_Transform{});
+    }
 
     return 0;
 }
@@ -290,27 +298,43 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
 {
     int retCode = 0;
 
-    SL_SceneFileLoader meshLoader;
     utils::Pointer<SL_SceneGraph> pGraph{new SL_SceneGraph{}};
     SL_Context& context = pGraph->mContext;
 
+    // generate IDs for our output textures. This will help in identifying them
     size_t depthId   = context.create_texture();
     size_t texUvId   = context.create_texture();
     size_t texNormId = context.create_texture();
     size_t fboId     = context.create_framebuffer();
 
+    // load our input texture and renderable mesh
+    retCode = read_input_texture(*pGraph, "testdata/earth.png");
+    LS_ASSERT(retCode == 0);
+
+    retCode = load_quad_into_scene(*pGraph, 3);
+    LS_ASSERT(retCode == 0);
+
+    // resize the output textures to fit our input texture
     SL_Texture& texDepth = context.texture(depthId);
-    retCode = texDepth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     LS_ASSERT(retCode == 0);
 
     SL_Texture& texUv = context.texture(texUvId);
-    retCode = texUv.init(SL_ColorDataType::SL_COLOR_RGB_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     LS_ASSERT(retCode == 0);
 
     SL_Texture& texNorm = context.texture(texNormId);
-    retCode = texNorm.init(SL_ColorDataType::SL_COLOR_RGB_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     LS_ASSERT(retCode == 0);
 
+    SL_Texture& ambient = context.texture(3);
+    retCode = texDepth.init(SL_ColorDataType::SL_COLOR_R_16U, ambient.width(), ambient.height(), 1);
+    LS_ASSERT(retCode == 0);
+
+    retCode = texUv.init(SL_ColorDataType::SL_COLOR_RGB_8U, ambient.width(), ambient.height(), 1);
+    LS_ASSERT(retCode == 0);
+
+    retCode = texNorm.init(SL_ColorDataType::SL_COLOR_RGB_8U, ambient.width(), ambient.height(), 1);
+    LS_ASSERT(retCode == 0);
+
+    // populate our framebuffer
     SL_Framebuffer& fbo = context.framebuffer(fboId);
     retCode = fbo.reserve_color_buffers(2);
     LS_ASSERT(retCode == 0);
@@ -334,14 +358,6 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     retCode = fbo.valid();
     LS_ASSERT(retCode == 0);
 
-    retCode = load_quad_into_scene(*pGraph);
-    LS_ASSERT(retCode == 0);
-
-    retCode = read_input_texture(*pGraph, "testdata/earth.png");
-    LS_ASSERT(retCode == 0);
-
-    retCode = (int)pGraph->import(meshLoader.data());
-    LS_ASSERT(retCode == 1);
 
     // Always make sure the scene graph is updated before rendering
     pGraph->update();
@@ -377,13 +393,15 @@ void mesh_test_render(SL_SceneGraph* pGraph)
 
     for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
     {
-        const size_t          nodeMeshId = meshIds[meshId];
-        const SL_Mesh&        m          = pGraph->mMeshes[nodeMeshId];
-        pUniforms->pTexture = &context.texture(3);
+        const size_t       nodeMeshId = meshIds[meshId];
+        const SL_Mesh&     m          = pGraph->mMeshes[nodeMeshId];
+        const SL_Material& mat        = pGraph->mMaterials[m.materialId];
+
+        pUniforms->pTexture = mat.pTextures[SL_MATERIAL_TEXTURE_AMBIENT];
 
         // NOTE: Always validate your IDs in production
-        const size_t shaderId = 0;
-        const size_t fboid    = 0;
+        constexpr size_t shaderId = 0;
+        constexpr size_t fboid    = 0;
 
         context.draw(m, shaderId, fboid);
     }
