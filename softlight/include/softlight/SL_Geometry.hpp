@@ -414,7 +414,22 @@ ls::math::vec3 sl_calc_normal(
     const ls::math::vec3& v0,
     const ls::math::vec3& v1,
     const ls::math::vec3& v2
-);
+) noexcept;
+
+/**------------------------------------
+ * Helper function to calculate a vertex normal from 3 vertices.
+ *
+ * @param v0
+ * @param v1
+ * @param v2
+ *
+ * @return A 3-dimensional vector that represents a vertex normal.
+-------------------------------------*/
+ls::math::vec4 sl_calc_normal(
+    const ls::math::vec4& v0,
+    const ls::math::vec4& v1,
+    const ls::math::vec4& v2
+) noexcept;
 
 /**------------------------------------
  * Calculate the tangents for a set of triangles (placed in a vertex array).

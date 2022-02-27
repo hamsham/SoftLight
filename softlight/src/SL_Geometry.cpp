@@ -739,19 +739,25 @@ void sl_draw_line_fixed(SL_ColorRGB8* const pImg, coord_shrt_t w, coord_shrt_t x
 /*-------------------------------------
     Calculate the normal vector of a triangle
 -------------------------------------*/
-math::vec3 sl_calc_normal(
-    const math::vec3& v0,
-    const math::vec3& v1,
-    const math::vec3& v2
-) {
+math::vec3 sl_calc_normal(const math::vec3& v0, const math::vec3& v1, const math::vec3& v2) noexcept
+{
     const math::vec3&& a = v1 - v0;
     const math::vec3&& b = v2 - v0;
 
-    return math::normalize(math::vec3{
-        (a.v[1] * b.v[2]) - (a.v[2] * b.v[1]),
-        (a.v[2] * b.v[0]) - (a.v[0] * b.v[2]),
-        (a.v[0] * b.v[1]) - (a.v[1] * b.v[0])
-    });
+    return math::normalize(math::cross(a, b));
+}
+
+
+
+/*-------------------------------------
+    Calculate the normal vector of a triangle
+-------------------------------------*/
+math::vec4 sl_calc_normal(const math::vec4& v0, const math::vec4& v1, const math::vec4& v2) noexcept
+{
+    const math::vec4&& a = v1 - v0;
+    const math::vec4&& b = v2 - v0;
+
+    return math::normalize(math::cross(a, b));
 }
 
 
