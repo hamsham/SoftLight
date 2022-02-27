@@ -20,6 +20,9 @@ struct alignas(sizeof(color_t)) SL_ColorTypeHSV
 {
     static_assert(ls::setup::IsFloat<color_t>::value, "HSV can only be represented by floating-point numbers.");
 
+    typedef color_t value_type;
+    static constexpr unsigned num_components() noexcept { return 3; }
+
     color_t h; // should be between 0-360
     color_t s; // 0-1
     color_t v; // 0-1
@@ -38,6 +41,9 @@ template <typename color_t>
 struct alignas(sizeof(color_t)) SL_ColorTypeHSVA
 {
     static_assert(ls::setup::IsFloat<color_t>::value, "HSV can only be represented by floating-point numbers.");
+
+    typedef color_t value_type;
+    static constexpr unsigned num_components() noexcept { return 4; }
 
     color_t h; // should be between 0-360
     color_t s; // 0-1
@@ -59,6 +65,9 @@ struct alignas(sizeof(color_t)) SL_ColorTypeHSL
 {
     static_assert(ls::setup::IsFloat<color_t>::value, "HSL can only be represented by floating-point numbers.");
 
+    typedef color_t value_type;
+    static constexpr unsigned num_components() noexcept { return 3; }
+
     color_t h; // should be between 0-360
     color_t s; // 0-1
     color_t l; // 0-1
@@ -78,6 +87,9 @@ struct alignas(sizeof(color_t)) SL_ColorTypeHSLA
 {
     static_assert(ls::setup::IsFloat<color_t>::value, "HSL can only be represented by floating-point numbers.");
 
+    typedef color_t value_type;
+    static constexpr unsigned num_components() noexcept { return 4; }
+
     color_t h; // should be between 0-360
     color_t s; // 0-1
     color_t l; // 0-1
@@ -87,6 +99,354 @@ struct alignas(sizeof(color_t)) SL_ColorTypeHSLA
 typedef SL_ColorTypeHSLA<ls::math::half> SL_ColorTypeHSLAh;
 typedef SL_ColorTypeHSLA<float> SL_ColorTypeHSLAf;
 typedef SL_ColorTypeHSLA<double> SL_ColorTypeHSLAd;
+
+
+
+/*-----------------------------------------------------------------------------
+ * Internal limits of color HSV ranges
+-----------------------------------------------------------------------------*/
+/**
+ * @brief Template specialization which allows for internal color calculations
+ * to determine the maximum and minimum possible number ranges for certain
+ * data types and their color representations.
+ *
+ * @tparam color_t
+ * A basic C/C++ data type such as unsigned char, int, double, etc...
+ */
+template <typename color_t>
+struct SL_ColorLimits<color_t, SL_ColorTypeHSV>
+{
+    /**
+    * @brief Determine the minimum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::min(). Floating-point types will return 0.0.
+    */
+    static constexpr SL_ColorTypeHSV<color_t> min() noexcept
+    {
+        return SL_ColorTypeHSV<color_t>{
+            (color_t)0.0, (color_t)0.0, (color_t)0.0
+        };
+    }
+
+    /**
+    * @brief Determine the maximum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
+    */
+    static constexpr SL_ColorTypeHSV<color_t> max() noexcept
+    {
+        return SL_ColorTypeHSV<color_t>{
+            (color_t)360.0, (color_t)1.0, (color_t)1.0
+        };
+    }
+};
+
+
+
+template <>
+struct SL_ColorLimits<ls::math::half, SL_ColorTypeHSV>
+{
+    /**
+    * @brief Determine the minimum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::min(). Floating-point types will return 0.0.
+    */
+    static constexpr SL_ColorTypeHSV<ls::math::half> min() noexcept
+    {
+        return SL_ColorTypeHSV<ls::math::half>{
+            ls::math::half{0x00u, 0x00u},
+            ls::math::half{0x00u, 0x00u},
+            ls::math::half{0x00u, 0x00u}
+        };
+    }
+
+    /**
+    * @brief Determine the maximum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
+    */
+    static constexpr SL_ColorTypeHSV<ls::math::half> max() noexcept
+    {
+        return SL_ColorTypeHSV<ls::math::half>{
+            ls::math::half{0x5D, 0xA0u},
+            ls::math::half{0x7B, 0xFFu},
+            ls::math::half{0x7B, 0xFFu}
+        };
+    }
+};
+
+
+
+/*-----------------------------------------------------------------------------
+ * Internal limits of color HSVA ranges
+-----------------------------------------------------------------------------*/
+/**
+ * @brief Template specialization which allows for internal color calculations
+ * to determine the maximum and minimum possible number ranges for certain
+ * data types and their color representations.
+ *
+ * @tparam color_t
+ * A basic C/C++ data type such as unsigned char, int, double, etc...
+ */
+template <typename color_t>
+struct SL_ColorLimits<color_t, SL_ColorTypeHSVA>
+{
+    /**
+    * @brief Determine the minimum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::min(). Floating-point types will return 0.0.
+    */
+    static constexpr SL_ColorTypeHSVA<color_t> min() noexcept
+    {
+        return SL_ColorTypeHSVA<color_t>{
+            (color_t)0.0,
+            (color_t)0.0,
+            (color_t)0.0,
+            (color_t)0.0
+        };
+    }
+
+    /**
+    * @brief Determine the maximum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
+    */
+    static constexpr SL_ColorTypeHSVA<color_t> max() noexcept
+    {
+        return SL_ColorTypeHSVA<color_t>{
+            (color_t)360.0,
+            (color_t)1.0,
+            (color_t)1.0,
+            (color_t)1.0
+        };
+    }
+};
+
+
+
+template <>
+struct SL_ColorLimits<ls::math::half, SL_ColorTypeHSVA>
+{
+    /**
+    * @brief Determine the minimum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::min(). Floating-point types will return 0.0.
+    */
+    static constexpr SL_ColorTypeHSVA<ls::math::half> min() noexcept
+    {
+        return SL_ColorTypeHSVA<ls::math::half>{
+            ls::math::half{0x00u, 0x00u},
+            ls::math::half{0x00u, 0x00u},
+            ls::math::half{0x00u, 0x00u},
+            ls::math::half{0x00u, 0x00u}
+        };
+    }
+
+    /**
+    * @brief Determine the maximum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
+    */
+    static constexpr SL_ColorTypeHSVA<ls::math::half> max() noexcept
+    {
+        return SL_ColorTypeHSVA<ls::math::half>{
+            ls::math::half{0x5D, 0xA0u},
+            ls::math::half{0x7B, 0xFFu},
+            ls::math::half{0x7B, 0xFFu},
+            ls::math::half{0x7B, 0xFFu}
+        };
+    }
+};
+
+
+
+/*-----------------------------------------------------------------------------
+ * Internal limits of color HSV ranges
+-----------------------------------------------------------------------------*/
+/**
+ * @brief Template specialization which allows for internal color calculations
+ * to determine the maximum and minimum possible number ranges for certain
+ * data types and their color representations.
+ *
+ * @tparam color_t
+ * A basic C/C++ data type such as unsigned char, int, double, etc...
+ */
+template <typename color_t>
+struct SL_ColorLimits<color_t, SL_ColorTypeHSL>
+{
+    /**
+    * @brief Determine the minimum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::min(). Floating-point types will return 0.0.
+    */
+    static constexpr SL_ColorTypeHSL<color_t> min() noexcept
+    {
+        return SL_ColorTypeHSL<color_t>{
+            (color_t)0.0, (color_t)0.0, (color_t)0.0
+        };
+    }
+
+    /**
+    * @brief Determine the maximum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
+    */
+    static constexpr SL_ColorTypeHSL<color_t> max() noexcept
+    {
+        return SL_ColorTypeHSL<color_t>{
+            (color_t)360.0, (color_t)1.0, (color_t)1.0
+        };
+    }
+};
+
+
+
+template <>
+struct SL_ColorLimits<ls::math::half, SL_ColorTypeHSL>
+{
+    /**
+    * @brief Determine the minimum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::min(). Floating-point types will return 0.0.
+    */
+    static constexpr SL_ColorTypeHSL<ls::math::half> min() noexcept
+    {
+        return SL_ColorTypeHSL<ls::math::half>{
+            ls::math::half{0x00u, 0x00u},
+            ls::math::half{0x00u, 0x00u},
+            ls::math::half{0x00u, 0x00u}
+        };
+    }
+
+    /**
+    * @brief Determine the maximum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
+    */
+    static constexpr SL_ColorTypeHSL<ls::math::half> max() noexcept
+    {
+        return SL_ColorTypeHSL<ls::math::half>{
+            ls::math::half{0x5D, 0xA0u},
+            ls::math::half{0x7B, 0xFFu},
+            ls::math::half{0x7B, 0xFFu}
+        };
+    }
+};
+
+
+
+/*-----------------------------------------------------------------------------
+ * Internal limits of color HSVA ranges
+-----------------------------------------------------------------------------*/
+/**
+ * @brief Template specialization which allows for internal color calculations
+ * to determine the maximum and minimum possible number ranges for certain
+ * data types and their color representations.
+ *
+ * @tparam color_t
+ * A basic C/C++ data type such as unsigned char, int, double, etc...
+ */
+template <typename color_t>
+struct SL_ColorLimits<color_t, SL_ColorTypeHSLA>
+{
+    /**
+    * @brief Determine the minimum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::min(). Floating-point types will return 0.0.
+    */
+    static constexpr SL_ColorTypeHSLA<color_t> min() noexcept
+    {
+        return SL_ColorTypeHSLA<color_t>{
+            (color_t)0.0,
+            (color_t)0.0,
+            (color_t)0.0,
+            (color_t)0.0
+        };
+    }
+
+    /**
+    * @brief Determine the maximum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
+    */
+    static constexpr SL_ColorTypeHSLA<color_t> max() noexcept
+    {
+        return SL_ColorTypeHSLA<color_t>{
+            (color_t)360.0,
+            (color_t)1.0,
+            (color_t)1.0,
+            (color_t)1.0
+        };
+    }
+};
+
+
+
+template <>
+struct SL_ColorLimits<ls::math::half, SL_ColorTypeHSLA>
+{
+    /**
+    * @brief Determine the minimum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::min(). Floating-point types will return 0.0.
+    */
+    static constexpr SL_ColorTypeHSLA<ls::math::half> min() noexcept
+    {
+        return SL_ColorTypeHSLA<ls::math::half>{
+            ls::math::half{0x00u, 0x00u},
+            ls::math::half{0x00u, 0x00u},
+            ls::math::half{0x00u, 0x00u},
+            ls::math::half{0x00u, 0x00u}
+        };
+    }
+
+    /**
+    * @brief Determine the maximum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
+    */
+    static constexpr SL_ColorTypeHSLA<ls::math::half> max() noexcept
+    {
+        return SL_ColorTypeHSLA<ls::math::half>{
+            ls::math::half{0x5D, 0xA0u},
+            ls::math::half{0x7B, 0xFFu},
+            ls::math::half{0x7B, 0xFFu},
+            ls::math::half{0x7B, 0xFFu}
+        };
+    }
+};
 
 
 
@@ -148,7 +508,7 @@ SL_ColorRGBType<color_t> rgb_cast(const typename ls::setup::EnableIf<ls::setup::
     tempG += m;
     tempB += m;
 
-    constexpr color_t COLOR_MAX_VAL = SL_ColorLimits<color_t>::max();
+    constexpr color_t COLOR_MAX_VAL = SL_ColorLimits<color_t, SL_ColorRType>::max().r;
 
     return SL_ColorRGBType <color_t> {
         static_cast<color_t>(tempR * COLOR_MAX_VAL),
@@ -227,7 +587,7 @@ SL_ColorRGBType<color_t> rgb_cast(const typename ls::setup::EnableIf<ls::setup::
     tempG += m;
     tempB += m;
 
-    constexpr color_t COLOR_MAX_VAL = SL_ColorLimits<color_t>::max();
+    constexpr color_t COLOR_MAX_VAL = SL_ColorLimits<color_t, SL_ColorRType>::max().r;
 
     return SL_ColorRGBType<color_t>{
         static_cast<color_t>(tempR * COLOR_MAX_VAL),
@@ -268,7 +628,8 @@ SL_ColorTypeHSV<color_t> hsv_cast(const typename ls::setup::EnableIf<ls::setup::
     const color_t delta = maxVal - minVal;
 
     // check if we are near 0 (min)
-    if (ls::math::abs(maxVal) <= SL_ColorLimits<color_t>::min())
+    constexpr color_t COLOR_MIN_VAL = SL_ColorLimits<color_t, SL_ColorRType>::min().r;
+    if (ls::math::abs(maxVal) <= COLOR_MIN_VAL)
     {
         return SL_ColorTypeHSV<color_t>{
             static_cast<color_t>(-1.f),
@@ -364,6 +725,9 @@ template <typename color_t>
 SL_ColorTypeHSL<color_t> hsl_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<color_t>::value, SL_ColorRGBType<color_t>>::type& c) noexcept
 {
     const color_t COLOR_EPSILON = color_t{1.0e-6f};
+    constexpr color_t COLOR_MIN_VAL = SL_ColorLimits<color_t, SL_ColorRType>::min().r;
+    constexpr color_t COLOR_MAX_VAL = SL_ColorLimits<color_t, SL_ColorRType>::max().r;
+
     const color_t normR = (color_t)(0.5f * (static_cast<float>(c[0]) + 1.f));
     const color_t normG = (color_t)(0.5f * (static_cast<float>(c[1]) + 1.f));
     const color_t normB = (color_t)(0.5f * (static_cast<float>(c[2]) + 1.f));
@@ -374,7 +738,7 @@ SL_ColorTypeHSL<color_t> hsl_cast(const typename ls::setup::EnableIf<ls::setup::
     const color_t delta = maxVal - minVal;
 
     // check if we are near 0
-    if (ls::math::abs(maxVal) <= SL_ColorLimits<color_t>::min())
+    if (ls::math::abs(maxVal) <= COLOR_MIN_VAL)
     {
         return SL_ColorTypeHSL<color_t>{0.f, 0.f, 0.f};
     }
@@ -400,7 +764,7 @@ SL_ColorTypeHSL<color_t> hsl_cast(const typename ls::setup::EnableIf<ls::setup::
     color_t lightness = color_t{0.5f} * (maxVal + minVal);
     color_t saturation = color_t{0.f};
 
-    if (ls::math::abs(maxVal) > SL_ColorLimits<color_t>::min())
+    if (ls::math::abs(maxVal) > COLOR_MAX_VAL)
     {
         saturation = delta / (color_t{1.f} - ls::math::abs(color_t{2.f} * lightness - color_t{1.f}));
     }

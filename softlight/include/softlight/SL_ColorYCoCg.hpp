@@ -15,6 +15,9 @@
 template<typename color_t>
 struct alignas(sizeof(color_t)) SL_ColorTypeYCoCg
 {
+    typedef color_t value_type;
+    static constexpr unsigned num_components() noexcept { return 3; }
+
     color_t y;
     color_t co;
     color_t cg;
@@ -42,6 +45,9 @@ typedef SL_ColorYCoCgf SL_ColorYCoCg;
 template<typename color_t>
 struct alignas(sizeof(color_t)*4) SL_ColorTypeYCoCgA
 {
+    typedef color_t value_type;
+    static constexpr unsigned num_components() noexcept { return 4; }
+
     color_t y;
     color_t co;
     color_t cg;
@@ -61,6 +67,180 @@ typedef SL_ColorTypeYCoCgA<float>    SL_ColorYCoCgAf;
 typedef SL_ColorTypeYCoCgA<double>   SL_ColorYCoCgAd;
 
 typedef SL_ColorYCoCgAf SL_ColorYCoCgA;
+
+
+
+/*-----------------------------------------------------------------------------
+ * Internal limits of color HSV ranges
+-----------------------------------------------------------------------------*/
+/**
+ * @brief Template specialization which allows for internal color calculations
+ * to determine the maximum and minimum possible number ranges for certain
+ * data types and their color representations.
+ *
+ * @tparam color_t
+ * A basic C/C++ data type such as unsigned char, int, double, etc...
+ */
+template <typename color_t>
+struct SL_ColorLimits<color_t, SL_ColorTypeYCoCg>
+{
+    /**
+    * @brief Determine the minimum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::min(). Floating-point types will return 0.0.
+    */
+    static constexpr SL_ColorTypeYCoCg<color_t> min() noexcept
+    {
+        return SL_ColorTypeYCoCg<color_t>{
+            (color_t)0.0, (color_t)0.0, (color_t)0.0
+        };
+    }
+
+    /**
+    * @brief Determine the maximum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
+    */
+    static constexpr SL_ColorTypeYCoCg<color_t> max() noexcept
+    {
+        return SL_ColorTypeYCoCg<color_t>{
+            (color_t)1.0, (color_t)1.0, (color_t)1.0
+        };
+    }
+};
+
+
+
+template <>
+struct SL_ColorLimits<ls::math::half, SL_ColorTypeYCoCg>
+{
+    /**
+    * @brief Determine the minimum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::min(). Floating-point types will return 0.0.
+    */
+    static constexpr SL_ColorTypeYCoCg<ls::math::half> min() noexcept
+    {
+        return SL_ColorTypeYCoCg<ls::math::half>{
+            ls::math::half{0x00u, 0x00u},
+            ls::math::half{0x00u, 0x00u},
+            ls::math::half{0x00u, 0x00u}
+        };
+    }
+
+    /**
+    * @brief Determine the maximum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
+    */
+    static constexpr SL_ColorTypeYCoCg<ls::math::half> max() noexcept
+    {
+        return SL_ColorTypeYCoCg<ls::math::half>{
+            ls::math::half{0x7B, 0xFFu},
+            ls::math::half{0x7B, 0xFFu},
+            ls::math::half{0x7B, 0xFFu}
+        };
+    }
+};
+
+
+
+/*-----------------------------------------------------------------------------
+ * Internal limits of color HSVA ranges
+-----------------------------------------------------------------------------*/
+/**
+ * @brief Template specialization which allows for internal color calculations
+ * to determine the maximum and minimum possible number ranges for certain
+ * data types and their color representations.
+ *
+ * @tparam color_t
+ * A basic C/C++ data type such as unsigned char, int, double, etc...
+ */
+template <typename color_t>
+struct SL_ColorLimits<color_t, SL_ColorTypeYCoCgA>
+{
+    /**
+    * @brief Determine the minimum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::min(). Floating-point types will return 0.0.
+    */
+    static constexpr SL_ColorTypeYCoCgA<color_t> min() noexcept
+    {
+        return SL_ColorTypeYCoCgA<color_t>{
+            (color_t)0.0,
+            (color_t)0.0,
+            (color_t)0.0,
+            (color_t)0.0
+        };
+    }
+
+    /**
+    * @brief Determine the maximum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
+    */
+    static constexpr SL_ColorTypeYCoCgA<color_t> max() noexcept
+    {
+        return SL_ColorTypeYCoCgA<color_t>{
+            (color_t)1.0,
+            (color_t)1.0,
+            (color_t)1.0,
+            (color_t)1.0
+        };
+    }
+};
+
+
+
+template <>
+struct SL_ColorLimits<ls::math::half, SL_ColorTypeYCoCgA>
+{
+    /**
+    * @brief Determine the minimum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::min(). Floating-point types will return 0.0.
+    */
+    static constexpr SL_ColorTypeYCoCgA<ls::math::half> min() noexcept
+    {
+        return SL_ColorTypeYCoCgA<ls::math::half>{
+            ls::math::half{0x00u, 0x00u},
+            ls::math::half{0x00u, 0x00u},
+            ls::math::half{0x00u, 0x00u},
+            ls::math::half{0x00u, 0x00u}
+        };
+    }
+
+    /**
+    * @brief Determine the maximum possible value for a color object's internal
+    * data types.
+    *
+    * @return For integral types, the return value is equivalent to
+    * std::numeric_limits<color_t>::max(). Floating-point types will return 10.0.
+    */
+    static constexpr SL_ColorTypeYCoCgA<ls::math::half> max() noexcept
+    {
+        return SL_ColorTypeYCoCgA<ls::math::half>{
+            ls::math::half{0x7B, 0xFFu},
+            ls::math::half{0x7B, 0xFFu},
+            ls::math::half{0x7B, 0xFFu},
+            ls::math::half{0x7B, 0xFFu}
+        };
+    }
+};
 
 
 
