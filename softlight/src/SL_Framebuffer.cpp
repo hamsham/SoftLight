@@ -4,6 +4,7 @@
 #include "lightsky/math/vec_utils.h" // vector casting
 
 #include "softlight/SL_Color.hpp"
+#include "softlight/SL_ColorCompressed.hpp"
 
 #include "softlight/SL_Framebuffer.hpp"
 #include "softlight/SL_PipelineState.hpp" // SL_BlendMode
@@ -53,6 +54,47 @@ inline void assign_pixel(
         case 2: *reinterpret_cast<SL_ColorRGType<ConvertedType>*>(outTexel)   = c.rg; break;
         case 1: *reinterpret_cast<ConvertedType*>(outTexel)                   = c.r; break;
     }
+}
+
+
+
+/*-------------------------------------
+ * Place a compressed pixel onto a texture
+-------------------------------------*/
+template <>
+inline void assign_pixel<SL_ColorRGB565>(
+    uint16_t x,
+    uint16_t y,
+    const math::vec4& rgba,
+    SL_Texture* pTexture) noexcept
+{
+    // Get a reference to the source texel
+    SL_ColorRGB565* const outTexel = pTexture->texel_pointer<SL_ColorRGB565>(x, y);
+    *outTexel = rgb565_cast<float>(ls::math::vec3_cast(rgba));
+}
+
+template <>
+inline void assign_pixel<SL_ColorRGB5551>(
+    uint16_t x,
+    uint16_t y,
+    const math::vec4& rgba,
+    SL_Texture* pTexture) noexcept
+{
+    // Get a reference to the source texel
+    SL_ColorRGB5551* const outTexel = pTexture->texel_pointer<SL_ColorRGB5551>(x, y);
+    *outTexel = rgb5551_cast<float>(rgba);
+}
+
+template <>
+inline void assign_pixel<SL_ColorRGB4444>(
+    uint16_t x,
+    uint16_t y,
+    const math::vec4& rgba,
+    SL_Texture* pTexture) noexcept
+{
+    // Get a reference to the source texel
+    SL_ColorRGB4444* const outTexel = pTexture->texel_pointer<SL_ColorRGB4444>(x, y);
+    *outTexel = rgb4444_cast<float>(rgba);
 }
 
 
@@ -204,15 +246,15 @@ inline void assign_alpha_pixel(
     switch (color_type::num_components())
     {
         case 1:
-            d.rgba = math::vec4{d.r.r, 0.f, 0.f, 0.f};
+            d.rgba = math::vec4{d.r.r, 0.f, 0.f, 1.f};
             break;
 
         case 2:
-            d.rgba = math::vec4_cast<float>(d.rg, 0.f, 0.f);
+            d.rgba = math::vec4_cast<float>(d.rg, 0.f, 1.f);
             break;
 
         case 3:
-            d.rgba = math::vec4_cast<float>(d.rgb, 0.f);
+            d.rgba = math::vec4_cast<float>(d.rgb, 1.f);
             break;
 
         default:
@@ -263,6 +305,135 @@ inline void assign_alpha_pixel(
             *reinterpret_cast<SL_ColorRType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.r);
             break;
     }
+}
+
+template <>
+inline void assign_alpha_pixel<SL_ColorRGB565>(
+    uint16_t x,
+    uint16_t y,
+    const math::vec4& rgba,
+    SL_Texture* pTexture,
+    const SL_BlendMode blendMode) noexcept
+{
+    // Get a reference to the source texel
+    SL_ColorRGB565* const outTexel = pTexture->texel_pointer<SL_ColorRGB565>(x, y);
+
+    // sample the source texel
+    SL_ColorRGBAType<float> s = rgba;
+    SL_ColorRGBAType<float> d = math::vec4_cast(rgb_cast<float>(*outTexel), 1.f);
+
+    // This method of blending uses premultiplied alpha. I will need to support
+    // configurable blend modes later.
+    const math::vec4 srcAlpha = rgba[3];
+    const math::vec4&& modulation = math::vec4{1.f - rgba[3]};
+
+    if (blendMode == SL_BLEND_ALPHA)
+    {
+        const math::vec4&& dstMod = modulation * d[3];
+        d = math::fmadd(s, srcAlpha, (d * dstMod)) * math::rcp(d[3]);
+        d[3] = dstMod[3] + srcAlpha[3];
+    }
+    else if (blendMode == SL_BLEND_PREMULTIPLED_ALPHA)
+    {
+        d = math::fmadd(d, modulation, s);
+    }
+    else if (blendMode == SL_BLEND_ADDITIVE)
+    {
+        d = math::fmadd(s, srcAlpha, d);
+    }
+    else if (blendMode == SL_BLEND_SCREEN)
+    {
+        d = (s*srcAlpha) + (d*modulation);
+    }
+
+    d = math::clamp(d, math::vec4{0.f, 0.f, 0.f, 0.f}, math::vec4{1.f, 1.f, 1.f, 1.f});
+    *outTexel = rgb565_cast<float>(math::vec3_cast<float>(d));
+}
+
+template <>
+inline void assign_alpha_pixel<SL_ColorRGB5551>(
+    uint16_t x,
+    uint16_t y,
+    const math::vec4& rgba,
+    SL_Texture* pTexture,
+    const SL_BlendMode blendMode) noexcept
+{
+    // Get a reference to the source texel
+    SL_ColorRGB5551* const outTexel = pTexture->texel_pointer<SL_ColorRGB5551>(x, y);
+
+    // sample the source texel
+    SL_ColorRGBAType<float> s = rgba;
+    SL_ColorRGBAType<float> d = rgb_cast<float>(*outTexel);
+
+    // This method of blending uses premultiplied alpha. I will need to support
+    // configurable blend modes later.
+    const math::vec4 srcAlpha = rgba[3];
+    const math::vec4&& modulation = math::vec4{1.f - rgba[3]};
+
+    if (blendMode == SL_BLEND_ALPHA)
+    {
+        const math::vec4&& dstMod = modulation * d[3];
+        d = math::fmadd(s, srcAlpha, (d * dstMod)) * math::rcp(d[3]);
+        d[3] = dstMod[3] + srcAlpha[3];
+    }
+    else if (blendMode == SL_BLEND_PREMULTIPLED_ALPHA)
+    {
+        d = math::fmadd(d, modulation, s);
+    }
+    else if (blendMode == SL_BLEND_ADDITIVE)
+    {
+        d = math::fmadd(s, srcAlpha, d);
+    }
+    else if (blendMode == SL_BLEND_SCREEN)
+    {
+        d = (s*srcAlpha) + (d*modulation);
+    }
+
+    d = math::clamp(d, math::vec4{0.f, 0.f, 0.f, 0.f}, math::vec4{1.f, 1.f, 1.f, 1.f});
+    *outTexel = rgb5551_cast<float>(d);
+}
+
+template <>
+inline void assign_alpha_pixel<SL_ColorRGB4444>(
+    uint16_t x,
+    uint16_t y,
+    const math::vec4& rgba,
+    SL_Texture* pTexture,
+    const SL_BlendMode blendMode) noexcept
+{
+    // Get a reference to the source texel
+    SL_ColorRGB4444* const outTexel = pTexture->texel_pointer<SL_ColorRGB4444>(x, y);
+
+    // sample the source texel
+    SL_ColorRGBAType<float> s = rgba;
+    SL_ColorRGBAType<float> d = rgb_cast<float>(*outTexel);
+
+    // This method of blending uses premultiplied alpha. I will need to support
+    // configurable blend modes later.
+    const math::vec4 srcAlpha = rgba[3];
+    const math::vec4&& modulation = math::vec4{1.f - rgba[3]};
+
+    if (blendMode == SL_BLEND_ALPHA)
+    {
+        const math::vec4&& dstMod = modulation * d[3];
+        d = math::fmadd(s, srcAlpha, (d * dstMod)) * math::rcp(d[3]);
+        d[3] = dstMod[3] + srcAlpha[3];
+    }
+    else if (blendMode == SL_BLEND_PREMULTIPLED_ALPHA)
+    {
+        d = math::fmadd(d, modulation, s);
+    }
+    else if (blendMode == SL_BLEND_ADDITIVE)
+    {
+        d = math::fmadd(s, srcAlpha, d);
+    }
+    else if (blendMode == SL_BLEND_SCREEN)
+    {
+        d = (s*srcAlpha) + (d*modulation);
+    }
+
+    d = math::clamp(d, math::vec4{0.f, 0.f, 0.f, 0.f}, math::vec4{1.f, 1.f, 1.f, 1.f});
+    *outTexel = rgb4444_cast<float>(d);
 }
 
 
@@ -679,6 +850,10 @@ void SL_Framebuffer::put_pixel(
         case SL_COLOR_RGB_DOUBLE:  assign_pixel<SL_ColorRGBd>(x, y, rgba, pTexture); break;
         case SL_COLOR_RGBA_DOUBLE: assign_pixel<SL_ColorRGBAd>(x, y, rgba, pTexture); break;
 
+        case SL_ColorDataType::SL_COLOR_RGB_565:   assign_pixel<SL_ColorRGB565>(x, y, rgba, pTexture); break;
+        case SL_ColorDataType::SL_COLOR_RGBA_5551: assign_pixel<SL_ColorRGB5551>(x, y, rgba, pTexture); break;
+        case SL_ColorDataType::SL_COLOR_RGBA_4444: assign_pixel<SL_ColorRGB4444>(x, y, rgba, pTexture); break;
+
         default:
             LS_UNREACHABLE();
     }
@@ -755,6 +930,10 @@ void SL_Framebuffer::put_alpha_pixel(
         case SL_COLOR_RG_DOUBLE:   assign_alpha_pixel<SL_ColorRGd>(x, y, colors, pTexture, blendMode); break;
         case SL_COLOR_RGB_DOUBLE:  assign_alpha_pixel<SL_ColorRGBd>(x, y, colors, pTexture, blendMode); break;
         case SL_COLOR_RGBA_DOUBLE: assign_alpha_pixel<SL_ColorRGBAd>(x, y, colors, pTexture, blendMode); break;
+
+        case SL_ColorDataType::SL_COLOR_RGB_565:   assign_alpha_pixel<SL_ColorRGB565>(x, y, colors, pTexture, blendMode); break;
+        case SL_ColorDataType::SL_COLOR_RGBA_5551: assign_alpha_pixel<SL_ColorRGB5551>(x, y, colors, pTexture, blendMode); break;
+        case SL_ColorDataType::SL_COLOR_RGBA_4444: assign_alpha_pixel<SL_ColorRGB4444>(x, y, colors, pTexture, blendMode); break;
 
         default:
             LS_UNREACHABLE();

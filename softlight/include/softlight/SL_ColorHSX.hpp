@@ -712,6 +712,7 @@ SL_ColorTypeHSL<color_t> hsl_cast(const typename ls::setup::EnableIf<ls::setup::
     const color_t maxVal = ls::math::max(normR, ls::math::max(normG, normB));
     const color_t minVal = ls::math::min(normR, ls::math::min(normG, normB));
     const color_t delta = maxVal - minVal;
+    const color_t deltaInv = delta != color_t{0.f} ? ls::math::rcp(delta) : color_t{0.f};
 
     // check if we are near 0
     if (ls::math::abs(maxVal) <= COLOR_MIN_VAL)
@@ -723,26 +724,30 @@ SL_ColorTypeHSL<color_t> hsl_cast(const typename ls::setup::EnableIf<ls::setup::
 
     if (ls::math::abs(maxVal - normR) <= COLOR_EPSILON)
     {
-        hue *= ls::math::fmod(normG - normB, color_t{6.f}) / delta;
+        hue *= ls::math::fmod(normG - normB, color_t{6.f}) * deltaInv;
     }
     else if (ls::math::abs(maxVal - normG) <= COLOR_EPSILON)
     {
-        hue *= color_t{2.f} + ((normB - normR) / delta);
+        hue *= color_t{2.f} + ((normB - normR) * deltaInv);
     }
     else
     {
-        hue *= color_t{4.f} + ((normR - normG) / delta);
+        hue *= color_t{4.f} + ((normR - normG) * deltaInv);
     }
 
     // This part of the conversion requires a data type with more than 2 bytes.
     // Some values may be valid, others may be truncated/undefined.
-    hue = (hue < color_t{0.f}) ? (hue + color_t{360.f}) : hue;
+    if (hue < color_t{0.f})
+    {
+        hue = color_t{360.f} - ls::math::fmod(ls::math::abs(hue), color_t{360.f});
+    }
+
     color_t lightness = color_t{0.5f} * (maxVal + minVal);
     color_t saturation = color_t{0.f};
 
     if (ls::math::abs(maxVal) > COLOR_MAX_VAL)
     {
-        saturation = delta / (color_t{1.f} - ls::math::abs(color_t{2.f} * lightness - color_t{1.f}));
+        saturation = delta * ls::math::rcp(color_t{1.f} - ls::math::abs(color_t{2.f} * lightness - color_t{1.f}));
     }
 
     // result
@@ -758,7 +763,7 @@ template <typename color_t>
 inline SL_ColorTypeHSLA<color_t> hsl_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<color_t>::value, SL_ColorRGBAType<color_t>>::type& c) noexcept
 {
     const SL_ColorTypeHSL<color_t>&& hsl = hsl_cast<color_t>(ls::math::vec3_cast<color_t>(c));
-    return SL_ColorTypeHSLA<color_t>{hsl.h, hsl.s, hsl.v, c[3]};
+    return SL_ColorTypeHSLA<color_t>{hsl.h, hsl.s, hsl.l, c[3]};
 }
 
 

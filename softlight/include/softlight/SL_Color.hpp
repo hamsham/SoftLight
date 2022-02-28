@@ -58,8 +58,12 @@ enum SL_ColorDataType : uint8_t
     SL_COLOR_RGBA_FLOAT,
     SL_COLOR_RGBA_DOUBLE,
 
-    SL_COLOR_RGB_DEFAULT = SL_COLOR_RGB_8U,
-    SL_COLOR_INVALID
+    // These compressed formats require the inclusion of "SL_ColorCompressed.hpp"
+    SL_COLOR_RGB_565,
+    SL_COLOR_RGBA_5551,
+    SL_COLOR_RGBA_4444,
+
+    SL_COLOR_RGB_DEFAULT = SL_COLOR_RGB_8U
 };
 
 
@@ -619,39 +623,14 @@ struct SL_GeneralColor
         ls::math::vec4_t<uint64_t> rgba64;
         ls::math::vec4_t<float> rgbaf;
         ls::math::vec4_t<double> rgbad;
+
+        uint16_t rgb565;
+        uint16_t rgba5551;
+        uint16_t rgba4444;
     } color;
 };
 
-template <typename color_type>
-SL_GeneralColor sl_match_color_for_type(SL_ColorDataType typeToMatch, const color_type& inColor) noexcept;
-
-extern template SL_GeneralColor sl_match_color_for_type<SL_ColorRType<uint8_t>>( SL_ColorDataType, const SL_ColorRType<uint8_t>&) noexcept;
-extern template SL_GeneralColor sl_match_color_for_type<SL_ColorRType<uint16_t>>(SL_ColorDataType, const SL_ColorRType<uint16_t>&) noexcept;
-extern template SL_GeneralColor sl_match_color_for_type<SL_ColorRType<uint32_t>>(SL_ColorDataType, const SL_ColorRType<uint32_t>&) noexcept;
-extern template SL_GeneralColor sl_match_color_for_type<SL_ColorRType<uint64_t>>(SL_ColorDataType, const SL_ColorRType<uint64_t>&) noexcept;
-extern template SL_GeneralColor sl_match_color_for_type<SL_ColorRType<float>>(   SL_ColorDataType, const SL_ColorRType<float>&) noexcept;
-extern template SL_GeneralColor sl_match_color_for_type<SL_ColorRType<double>>(  SL_ColorDataType, const SL_ColorRType<double>&) noexcept;
-
-extern template SL_GeneralColor sl_match_color_for_type<ls::math::vec2_t<uint8_t>>( SL_ColorDataType, const ls::math::vec2_t<uint8_t>&) noexcept;
-extern template SL_GeneralColor sl_match_color_for_type<ls::math::vec2_t<uint16_t>>(SL_ColorDataType, const ls::math::vec2_t<uint16_t>&) noexcept;
-extern template SL_GeneralColor sl_match_color_for_type<ls::math::vec2_t<uint32_t>>(SL_ColorDataType, const ls::math::vec2_t<uint32_t>&) noexcept;
-extern template SL_GeneralColor sl_match_color_for_type<ls::math::vec2_t<uint64_t>>(SL_ColorDataType, const ls::math::vec2_t<uint64_t>&) noexcept;
-extern template SL_GeneralColor sl_match_color_for_type<ls::math::vec2_t<float>>(   SL_ColorDataType, const ls::math::vec2_t<float>&) noexcept;
-extern template SL_GeneralColor sl_match_color_for_type<ls::math::vec2_t<double>>(  SL_ColorDataType, const ls::math::vec2_t<double>&) noexcept;
-
-extern template SL_GeneralColor sl_match_color_for_type<ls::math::vec3_t<uint8_t>>( SL_ColorDataType, const ls::math::vec3_t<uint8_t>&) noexcept;
-extern template SL_GeneralColor sl_match_color_for_type<ls::math::vec3_t<uint16_t>>(SL_ColorDataType, const ls::math::vec3_t<uint16_t>&) noexcept;
-extern template SL_GeneralColor sl_match_color_for_type<ls::math::vec3_t<uint32_t>>(SL_ColorDataType, const ls::math::vec3_t<uint32_t>&) noexcept;
-extern template SL_GeneralColor sl_match_color_for_type<ls::math::vec3_t<uint64_t>>(SL_ColorDataType, const ls::math::vec3_t<uint64_t>&) noexcept;
-extern template SL_GeneralColor sl_match_color_for_type<ls::math::vec3_t<float>>(   SL_ColorDataType, const ls::math::vec3_t<float>&) noexcept;
-extern template SL_GeneralColor sl_match_color_for_type<ls::math::vec3_t<double>>(  SL_ColorDataType, const ls::math::vec3_t<double>&) noexcept;
-
-extern template SL_GeneralColor sl_match_color_for_type<ls::math::vec4_t<uint8_t>>( SL_ColorDataType, const ls::math::vec4_t<uint8_t>&) noexcept;
-extern template SL_GeneralColor sl_match_color_for_type<ls::math::vec4_t<uint16_t>>(SL_ColorDataType, const ls::math::vec4_t<uint16_t>&) noexcept;
-extern template SL_GeneralColor sl_match_color_for_type<ls::math::vec4_t<uint32_t>>(SL_ColorDataType, const ls::math::vec4_t<uint32_t>&) noexcept;
-extern template SL_GeneralColor sl_match_color_for_type<ls::math::vec4_t<uint64_t>>(SL_ColorDataType, const ls::math::vec4_t<uint64_t>&) noexcept;
-extern template SL_GeneralColor sl_match_color_for_type<ls::math::vec4_t<float>>(   SL_ColorDataType, const ls::math::vec4_t<float>&) noexcept;
-extern template SL_GeneralColor sl_match_color_for_type<ls::math::vec4_t<double>>(  SL_ColorDataType, const ls::math::vec4_t<double>&) noexcept;
+SL_GeneralColor sl_match_color_for_type(SL_ColorDataType typeToMatch, const ls::math::vec4_t<double>& inColor) noexcept;
 
 
 

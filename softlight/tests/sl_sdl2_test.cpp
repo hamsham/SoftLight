@@ -62,6 +62,14 @@
     #define SL_COMPRESSED_RGB565 1
 #endif /* SL_COMPRESSED_RGB565 */
 
+#ifndef SL_COMPRESSED_RGB5551
+    #define SL_COMPRESSED_RGB5551 1
+#endif /* SL_COMPRESSED_RGB5551 */
+
+#ifndef SL_COMPRESSED_RGB4444
+    #define SL_COMPRESSED_RGB4444 1
+#endif /* SL_COMPRESSED_RGB4444 */
+
 namespace math = ls::math;
 namespace utils = ls::utils;
 
@@ -472,7 +480,11 @@ utils::Pointer<SL_SceneGraph> create_context()
 
     SL_Texture& tex = context.texture(texId);
     #if SL_COMPRESSED_RGB565
-        retCode = tex.init(SL_ColorDataType::SL_COLOR_RGB_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+        retCode = tex.init(SL_ColorDataType::SL_COLOR_RGB_565, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    #elif SL_COMPRESSED_RGB5551
+        retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_5551, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    #elif SL_COMPRESSED_RGB4444
+        retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_4444, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     #else
         retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     #endif
@@ -515,10 +527,10 @@ utils::Pointer<SL_SceneGraph> create_context()
 
     pGraph->update();
 
-    const SL_VertexShader&&   normVertShader    = normal_vert_shader();
-    const SL_VertexShader&&   texVertShader     = texture_vert_shader();
-    const SL_FragmentShader&& normFragShader    = normal_frag_shader();
-    const SL_FragmentShader&& texFragShader     = texture_frag_shader();
+    const SL_VertexShader&&   normVertShader = normal_vert_shader();
+    const SL_VertexShader&&   texVertShader  = texture_vert_shader();
+    const SL_FragmentShader&& normFragShader = normal_frag_shader();
+    const SL_FragmentShader&& texFragShader  = texture_frag_shader();
 
     size_t uboId = context.create_ubo();
     SL_UniformBuffer& ubo = context.ubo(uboId);
@@ -552,13 +564,11 @@ inline Uint32 sl_pixel_fmt_to_sdl(const SL_ColorDataType slFmt) noexcept
 {
     switch (slFmt)
     {
-        #if SL_COMPRESSED_RGB565
-            case SL_COLOR_RGB_8U: return SDL_PIXELFORMAT_RGB565;
-        #else
-            case SL_COLOR_RGB_8U: return SDL_PIXELFORMAT_BGR888;
-        #endif
-
-        case SL_COLOR_RGBA_8U: return SDL_PIXELFORMAT_ARGB8888;
+        case SL_COLOR_RGB_565:   return SDL_PIXELFORMAT_RGB565;
+        case SL_COLOR_RGBA_5551: return SDL_PIXELFORMAT_RGB555;
+        case SL_COLOR_RGBA_4444: return SDL_PIXELFORMAT_ARGB4444;
+        case SL_COLOR_RGB_8U:    return SDL_PIXELFORMAT_BGR888;
+        case SL_COLOR_RGBA_8U:   return SDL_PIXELFORMAT_ARGB8888;
 
         default:
             break;
@@ -580,6 +590,7 @@ inline int sl_get_texture_pitch(const SL_Texture& pTex) noexcept
 
 int select_sdl_render_driver() noexcept
 {
+    int ret = -1;
     int numDrivers = SDL_GetNumRenderDrivers();
     for (int i = 0; i < numDrivers; ++i)
     {
@@ -589,34 +600,35 @@ int select_sdl_render_driver() noexcept
         {
             for (unsigned fmtId = 0; fmtId < info.num_texture_formats; ++fmtId)
             {
-                if (info.texture_formats[fmtId] == SDL_PIXELFORMAT_ARGB8888)
+                if (ret == -1 && info.texture_formats[fmtId] == SDL_PIXELFORMAT_ARGB8888)
                 {
-                    return i;
+                    ret = i;
                 }
+
+                LS_LOG_MSG("Renderer found: ", SDL_GetPixelFormatName(info.texture_formats[fmtId]));
             }
         }
     }
 
-    return -1;
+    return ret;
 }
 
 
 
 inline void update_sdl_backbuffer(SL_Texture& tex, SDL_Texture* pBackbuffer) noexcept
 {
-    #if SL_COMPRESSED_RGB565
+    #if !SL_COMPRESSED_RGB565 && (SL_COMPRESSED_RGB5551 || SL_COMPRESSED_RGB4444)
         void* pTexData = nullptr;
         int pitch = 0;
 
         SDL_LockTexture(pBackbuffer, nullptr, &pTexData, &pitch);
-        LS_ASSERT(pTexData != nullptr);
 
-        for (size_t i = 0; i < (size_t)tex.width()*(size_t)tex.height(); ++i)
+        if (!pTexData || pitch != sl_get_texture_pitch(tex))
         {
-            const SL_ColorRGB8& inRGB = reinterpret_cast<SL_ColorRGB8*>(tex.data())[i];
-            const SL_ColorRGB565&& in565 = rgb565_cast<uint8_t>(inRGB);
-            reinterpret_cast<uint16_t*>(pTexData)[i] = *reinterpret_cast<const uint16_t*>(&in565);
+            LS_ASSERT(false);
         }
+
+        utils::fast_memcpy(pTexData, tex.data(), (uint_fast64_t)pitch*(uint_fast64_t)tex.height());
         SDL_UnlockTexture(pBackbuffer);
 
     #else

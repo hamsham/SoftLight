@@ -2,9 +2,9 @@
 #include "lightsky/math/scalar_utils.h"
 #include "lightsky/math/fixed.h"
 
-#include "softlight/SL_Texture.hpp"
 #include "softlight/SL_ClearProcesor.hpp"
 #include "softlight/SL_ShaderUtil.hpp"
+#include "softlight/SL_Texture.hpp"
 
 
 
@@ -144,6 +144,10 @@ template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint16_t>>(const
 template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint64_t>>(const SL_ColorRGBAType<uint64_t>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<double>>(const SL_ColorRGBAType<double>&) noexcept;
 
+template void SL_ClearProcessor::clear_texture<SL_ColorRGB565>(const SL_ColorRGB565&) noexcept;
+template void SL_ClearProcessor::clear_texture<SL_ColorRGB5551>(const SL_ColorRGB5551&) noexcept;
+template void SL_ClearProcessor::clear_texture<SL_ColorRGB4444>(const SL_ColorRGB4444&) noexcept;
+
 #if !defined(LS_ARCH_X86)
     template void SL_ClearProcessor::clear_texture<SL_ColorRType<float>>(const SL_ColorRType<float>&) noexcept;
 
@@ -187,5 +191,9 @@ void SL_ClearProcessor::execute() noexcept
         case SL_COLOR_RGBA_64U:    clear_texture<SL_ColorRGBAType<uint64_t>>(*reinterpret_cast<const SL_ColorRGBAType<uint64_t>*>(mTexture)); break;
         case SL_COLOR_RGBA_FLOAT:  clear_texture<SL_ColorRGBAType<float>>(*reinterpret_cast<const SL_ColorRGBAType<float>*>(mTexture));    break;
         case SL_COLOR_RGBA_DOUBLE: clear_texture<SL_ColorRGBAType<double>>(*reinterpret_cast<const SL_ColorRGBAType<double>*>(mTexture));   break;
+
+        case SL_COLOR_RGB_565:    clear_texture<SL_ColorRGB565>(*reinterpret_cast<const SL_ColorRGB565*>(mTexture)); break;
+        case SL_COLOR_RGBA_5551:  clear_texture<SL_ColorRGB5551>(*reinterpret_cast<const SL_ColorRGB5551*>(mTexture)); break;
+        case SL_COLOR_RGBA_4444:  clear_texture<SL_ColorRGB4444>(*reinterpret_cast<const SL_ColorRGB4444*>(mTexture)); break;
     }
 }

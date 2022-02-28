@@ -147,9 +147,10 @@ SL_DataType get_bitmap_size(FIBITMAP* pImg)
 
 
 
-SL_ColorDataType get_pixel_format(FIBITMAP* pImg, unsigned bpp)
+SL_ColorDataType get_pixel_format(FIBITMAP* pImg, unsigned bpp, bool* success)
 {
     LS_LOG_MSG("\tImage Bits Per Pixel: ", bpp);
+    *success = true;
 
     // Get the data mType of the image. Convert to an internal format
     const FREE_IMAGE_TYPE dataType = FreeImage_GetImageType(pImg);
@@ -219,7 +220,8 @@ SL_ColorDataType get_pixel_format(FIBITMAP* pImg, unsigned bpp)
         return SL_COLOR_RGBA_FLOAT;
     }
 
-    return SL_COLOR_INVALID;
+    *success = false;
+    return SL_COLOR_RGBA_8U;
 }
 
 
@@ -273,6 +275,11 @@ FREE_IMAGE_TYPE sl_color_to_freeimage(SL_ColorDataType type)
         case SL_COLOR_RGB_DOUBLE:
         case SL_COLOR_RGBA_DOUBLE:
             return FIT_DOUBLE;
+
+        case SL_COLOR_RGB_565:
+        case SL_COLOR_RGBA_5551:
+        case SL_COLOR_RGBA_4444:
+            break;
     }
 
     return FIT_UNKNOWN;
@@ -529,17 +536,25 @@ SL_ImgFile::ImgStatus SL_ImgFile::load(const char* filename)
         return ImgStatus::UNSUPPORTED_FORMAT;
     }
 
+    bool success = true;
     this->mImgData = fileData;
     this->mDimens[0] = (int)FreeImage_GetWidth(fileData);
     this->mDimens[1] = (int)FreeImage_GetHeight(fileData);
     this->mDimens[2] = 1; // TODO
     this->mBpp = (unsigned)FreeImage_GetBPP(fileData);
-    this->mFormat = get_pixel_format(fileData, this->mBpp);
+    this->mFormat = get_pixel_format(fileData, this->mBpp, &success);
 
-    LS_LOG_MSG("\tSuccessfully loaded ", filename, ".\n");
+    if (success)
+    {
+        LS_LOG_MSG("\tSuccessfully loaded ", filename, ".\n");
+        return ImgStatus::FILE_LOAD_SUCCESS;
+    }
 
-    return ImgStatus::FILE_LOAD_SUCCESS;
+    LS_LOG_ERR('\t', filename, " contains an unsupported pixel format.\n");
+    FreeImage_Unload(fileData);
+    return ImgStatus::UNSUPPORTED_FORMAT;
 }
+
 
 
 /*-------------------------------------
@@ -550,7 +565,7 @@ SL_ImgFile::ImgStatus SL_ImgFile::load_memory_stream(const void* pImgBits, SL_Co
     LS_LOG_MSG("Importing image from memory.");
     unload();
 
-    if (!pImgBits || type == SL_ColorDataType::SL_COLOR_INVALID)
+    if (!pImgBits)
     {
         LS_LOG_ERR("\tFailed to load an image as no valid image data was provided.\n");
         return ImgStatus::INVALID_FILE_TYPE;
@@ -584,16 +599,23 @@ SL_ImgFile::ImgStatus SL_ImgFile::load_memory_stream(const void* pImgBits, SL_Co
         return ImgStatus::INTERNAL_ERROR;
     }
 
+    bool success = true;
     this->mImgData = fileData;
     this->mDimens[0] = (int)FreeImage_GetWidth(fileData);
     this->mDimens[1] = (int)FreeImage_GetHeight(fileData);
     this->mDimens[2] = 1; // TODO
     this->mBpp = (unsigned)FreeImage_GetBPP(fileData);
-    this->mFormat = get_pixel_format(fileData, this->mBpp);
+    this->mFormat = get_pixel_format(fileData, this->mBpp, &success);
 
-    LS_LOG_MSG("\tSuccessfully loaded an image from memory.\n");
+    if (success)
+    {
+        LS_LOG_MSG("\tSuccessfully loaded a memory stream.\n");
+        return ImgStatus::FILE_LOAD_SUCCESS;
+    }
 
-    return ImgStatus::FILE_LOAD_SUCCESS;
+    LS_LOG_ERR("\tImage memory stream contains an unsupported pixel format.\n");
+    FreeImage_Unload(fileData);
+    return ImgStatus::UNSUPPORTED_FORMAT;
 }
 
 
