@@ -37,22 +37,29 @@ inline void assign_pixel(
 
     // Get a reference to the source texel
     void* const outTexel = pTexture->texel_pointer<color_type>(x, y);
-
-    union
-    {
-        SL_ColorRGBAType<ConvertedType> rgba;
-        SL_ColorRGBType<ConvertedType>  rgb;
-        SL_ColorRGType<ConvertedType>   rg;
-        ConvertedType                   r;
-    } c{color_cast<ConvertedType, float>(rgba)};
+    const ls::math::vec4_t<ConvertedType>&& c = color_cast<ConvertedType, float>(rgba);
 
     // Should be optimized by the compiler
     switch (color_type::num_components())
     {
-        case 4: *reinterpret_cast<SL_ColorRGBAType<ConvertedType>*>(outTexel) = c.rgba; break;
-        case 3: *reinterpret_cast<SL_ColorRGBType<ConvertedType>*>(outTexel)  = c.rgb; break;
-        case 2: *reinterpret_cast<SL_ColorRGType<ConvertedType>*>(outTexel)   = c.rg; break;
-        case 1: *reinterpret_cast<ConvertedType*>(outTexel)                   = c.r; break;
+        case 4:
+            *reinterpret_cast<SL_ColorRGBAType<ConvertedType>*>(outTexel) = c;
+            break;
+
+        case 3:
+            *reinterpret_cast<SL_ColorRGBType<ConvertedType>*>(outTexel) = ls::math::vec3_cast<ConvertedType>(c);
+            break;
+
+        case 2:
+            *reinterpret_cast<SL_ColorRGType<ConvertedType>*>(outTexel) = ls::math::vec2_cast<ConvertedType>(c);
+            break;
+
+        case 1:
+            *reinterpret_cast<ConvertedType*>(outTexel) = c[0];
+            break;
+
+        default:
+            LS_UNREACHABLE();
     }
 }
 
@@ -70,7 +77,8 @@ inline void assign_pixel<SL_ColorRGB565>(
 {
     // Get a reference to the source texel
     SL_ColorRGB565* const outTexel = pTexture->texel_pointer<SL_ColorRGB565>(x, y);
-    *outTexel = rgb565_cast<float>(ls::math::vec3_cast(rgba));
+    //*outTexel = rgb565_cast<float>(ls::math::vec3_cast(rgba));
+    *outTexel = rgb565_cast<uint32_t>(ls::math::vec3_cast(color_cast<uint32_t, float>(rgba)));
 }
 
 template <>
@@ -82,7 +90,8 @@ inline void assign_pixel<SL_ColorRGB5551>(
 {
     // Get a reference to the source texel
     SL_ColorRGB5551* const outTexel = pTexture->texel_pointer<SL_ColorRGB5551>(x, y);
-    *outTexel = rgb5551_cast<float>(rgba);
+    //*outTexel = rgb5551_cast<float>(rgba);
+    *outTexel = rgb5551_cast<uint32_t>(color_cast<uint32_t, float>(rgba));
 }
 
 template <>
@@ -94,7 +103,8 @@ inline void assign_pixel<SL_ColorRGB4444>(
 {
     // Get a reference to the source texel
     SL_ColorRGB4444* const outTexel = pTexture->texel_pointer<SL_ColorRGB4444>(x, y);
-    *outTexel = rgb4444_cast<float>(rgba);
+    //*outTexel = rgb4444_cast<float>(rgba);
+    *outTexel = rgb4444_cast<uint32_t>(color_cast<uint32_t, float>(rgba));
 }
 
 
