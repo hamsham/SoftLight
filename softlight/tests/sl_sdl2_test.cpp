@@ -25,7 +25,6 @@
 #include "softlight/SL_BoundingBox.hpp"
 #include "softlight/SL_Camera.hpp"
 #include "softlight/SL_ColorCompressed.hpp"
-#include "softlight/SL_Config.hpp"
 #include "softlight/SL_Context.hpp"
 #include "softlight/SL_IndexBuffer.hpp"
 #include "softlight/SL_Framebuffer.hpp"
