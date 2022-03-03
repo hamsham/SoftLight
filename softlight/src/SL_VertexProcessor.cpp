@@ -141,8 +141,13 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
             {
                 // flip sign, otherwise the sorting goes from back-to-front
                 // due to the sortable nature of floats.
-                const float w = pBins[val.count].mScreenCoords[0].v[3];
-                return (unsigned long long) -(*reinterpret_cast<const int32_t*>(&w));
+                static_assert(sizeof(float) == sizeof(int32_t), "Current architecture doesn't have similar float & integer sizes.");
+                union
+                {
+                    float f;
+                    int32_t i;
+                } w{pBins[val.count].mScreenCoords[0].v[3]};
+                return (unsigned long long) -w.i;
             });
         }
 
