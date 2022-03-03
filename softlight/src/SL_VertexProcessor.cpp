@@ -54,6 +54,10 @@ inline LS_INLINE IntegralType _sl_cpu_yield_exponential(IntegralType yieldCount)
     {
         goto yield1;
     }
+    else
+    {
+        LS_UNREACHABLE();
+    }
 
     yield3:
     ls::setup::cpu_yield();
@@ -107,12 +111,14 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
     const int_fast64_t    syncPoint1   = -numThreads - 1;
     const int_fast64_t    tileId       = mFragProcessors->count.fetch_add(1ll, std::memory_order_acq_rel);
     const SL_FragmentBin* pBins        = mFragBins;
-    const uint_fast64_t   maxElements  = math::min<uint_fast64_t>(mBinsUsed->count.load(std::memory_order_consume), SL_SHADER_MAX_BINNED_PRIMS);
+    uint_fast64_t         maxElements;
     int_fast64_t          syncPoint2;
 
     // Sort the bins based on their depth.
     if (LS_UNLIKELY(tileId == numThreads-1u))
     {
+        maxElements = math::min<uint_fast64_t>(mBinsUsed->count.load(std::memory_order_consume), SL_SHADER_MAX_BINNED_PRIMS);
+
         // Try to perform depth sorting once, and only once, per opaque draw
         // call to reduce depth-buffer access during rasterization. Sorting
         // primitives multiple times here in the vertex processor will
@@ -135,7 +141,8 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
             {
                 // flip sign, otherwise the sorting goes from back-to-front
                 // due to the sortable nature of floats.
-                return (unsigned long long) -(*reinterpret_cast<const int32_t*>(pBins[val.count].mScreenCoords[0].v+3));
+                const float w = pBins[val.count].mScreenCoords[0].v[3];
+                return (unsigned long long) -(*reinterpret_cast<const int32_t*>(&w));
             });
         }
 
@@ -147,6 +154,8 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
         _sl_cpu_yield_loop([&]()->bool {
             return mFragProcessors->count.load(std::memory_order_consume) > 0;
         });
+
+        maxElements = math::min<uint_fast64_t>(mBinsUsed->count.load(std::memory_order_consume), SL_SHADER_MAX_BINNED_PRIMS);
     }
 
     static_assert(ls::setup::IsBaseOf<SL_FragmentProcessor, RasterizerType>::value, "Template parameter 'RasterizerType' must derive from SL_FragmentProcessor.");
@@ -162,7 +171,7 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
     rasterizer.mFbo = mFbo;
     rasterizer.mViewState = &viewState;
     rasterizer.mBinIds = mBinIds;
-    rasterizer.mBins = mFragBins;
+    rasterizer.mBins = pBins;
     rasterizer.mQueues = mFragQueues + mThreadId;
 
     rasterizer.execute();
@@ -192,14 +201,12 @@ template <typename RasterizerType>
 void SL_VertexProcessor::cleanup() noexcept
 {
     static_assert(ls::setup::IsBaseOf<SL_FragmentProcessor, RasterizerType>::value, "Template parameter 'RasterizerType' must derive from SL_FragmentProcessor.");
-    std::atomic<uint_fast64_t>& busyProcessors = mBusyProcessors->count;
-    std::atomic<int_fast64_t>& fragProcessors = mFragProcessors->count;
     uint_fast32_t currentIters = 0;
 
-    busyProcessors.fetch_sub(1, std::memory_order_acq_rel);
-    while (busyProcessors.load(std::memory_order_consume))
+    mBusyProcessors->count.fetch_sub(1, std::memory_order_acq_rel);
+    while (mBusyProcessors->count.load(std::memory_order_acquire))
     {
-        if (LS_UNLIKELY(fragProcessors.load(std::memory_order_consume)))
+        if (LS_LIKELY(mFragProcessors->count.load(std::memory_order_acquire) > 0))
         {
             flush_rasterizer<RasterizerType>();
         }
@@ -209,7 +216,7 @@ void SL_VertexProcessor::cleanup() noexcept
         }
     }
 
-    if (LS_LIKELY(mBinsUsed->count.load(std::memory_order_consume)))
+    if (LS_LIKELY(mBinsUsed->count.load(std::memory_order_acquire)))
     {
         flush_rasterizer<RasterizerType>();
     }
