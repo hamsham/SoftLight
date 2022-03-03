@@ -194,21 +194,18 @@ void SL_ProcessorPool::wait() noexcept
     // Each thread will pause except for the main thread.
     constexpr unsigned maxIters = 32;
     unsigned currentIters;
-    bool done;
 
     for (unsigned threadId = 0; threadId < mNumThreads - 1u; ++threadId)
     {
-        done = false;
         currentIters = 1;
 
-        while (!done && !mWorkers[threadId].ready())
+        while (!mWorkers[threadId].ready())
         {
             switch (currentIters)
             {
                 case 32:
                     mWorkers[threadId].wait();
-                    done = true;
-                    continue;
+                    break;
 
                 case 16:
                     ls::setup::cpu_yield();
