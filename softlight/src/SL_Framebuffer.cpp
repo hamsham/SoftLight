@@ -238,37 +238,45 @@ inline void assign_alpha_pixel(
     SL_Texture* pTexture,
     const SL_BlendMode blendMode) noexcept
 {
-    // texture objects will truncate excess color components
     typedef typename color_type::value_type ConvertedType;
 
+    const SL_ColorRGBAType<ConvertedType>&& minRGBA = SL_ColorLimits<ConvertedType, SL_ColorRGBAType>::min();
+    const SL_ColorRGBAType<ConvertedType>&& maxRGBA = SL_ColorLimits<ConvertedType, SL_ColorRGBAType>::max();
+
     // Get a reference to the source texel
-    void* const outTexel = pTexture->texel_pointer<color_type>(x, y);
+    color_type* const outTexel = pTexture->texel_pointer<color_type>(x, y);
 
     // sample the source texel
     union DestColor
     {
-        SL_ColorRGBAType<float> rgba;
-        SL_ColorRGBType<float> rgb;
-        SL_ColorRGType<float> rg;
-        SL_ColorRType<float> r;
-    } s{rgba}, d{color_cast<float, typename color_type::value_type>(*reinterpret_cast<SL_ColorRGBAType<ConvertedType>*>(outTexel))};
+        SL_ColorRGBAType<ConvertedType>* rgba;
+        SL_ColorRGBType<ConvertedType>* rgb;
+        SL_ColorRGType<ConvertedType>* rg;
+        SL_ColorRType<ConvertedType>* r;
+    } pD{reinterpret_cast<SL_ColorRGBAType<ConvertedType>*>(outTexel)};
+
+    ls::math::vec4 d;
 
     switch (color_type::num_components())
     {
         case 1:
-            d.rgba = math::vec4{d.r.r, 0.f, 0.f, 1.f};
+            d = color_cast<float, ConvertedType>(math::vec4_t<ConvertedType>{pD.r->r, minRGBA[1], minRGBA[2], maxRGBA[3]});
             break;
 
         case 2:
-            d.rgba = math::vec4_cast<float>(d.rg, 0.f, 1.f);
+            d = color_cast<float, ConvertedType>(math::vec4_t<ConvertedType>{pD.rg->v[0], pD.rg->v[1], minRGBA[2], maxRGBA[3]});
             break;
 
         case 3:
-            d.rgba = math::vec4_cast<float>(d.rgb, 1.f);
+            d = color_cast<float, ConvertedType>(math::vec4_t<ConvertedType>{pD.rgb->v[0], pD.rgb->v[0], pD.rgb->v[0], maxRGBA[3]});
+            break;
+
+        case 4:
+            d = color_cast<float, ConvertedType>(*pD.rgba);
             break;
 
         default:
-            break;
+            LS_UNREACHABLE();
     }
 
     // This method of blending uses premultiplied alpha. I will need to support
@@ -278,42 +286,47 @@ inline void assign_alpha_pixel(
 
     if (blendMode == SL_BLEND_ALPHA)
     {
-        const math::vec4&& dstMod = modulation * d.rgba[3];
-        d.rgba[3] = dstMod[3] + srcAlpha[3];
-        d.rgb = math::vec3_cast(math::fmadd(s.rgba, srcAlpha, (d.rgba * dstMod)) * math::rcp(d.rgba[3]));
+        const math::vec4&& dstMod   = modulation * d[3];
+        const float&&      dstAlpha = dstMod[3] + srcAlpha[3];
+        const math::vec4&& dstRgb   = math::fmadd(rgba, srcAlpha, (d * dstMod)) * math::rcp(dstAlpha);
+        d = math::vec4_cast(math::vec3_cast(dstRgb), dstAlpha);
     }
     else if (blendMode == SL_BLEND_PREMULTIPLED_ALPHA)
     {
-        d.rgba = math::fmadd(d.rgba, modulation, s.rgba);
+        d = math::fmadd(d, modulation, rgba);
     }
     else if (blendMode == SL_BLEND_ADDITIVE)
     {
-        d.rgba = math::fmadd(s.rgba, srcAlpha, d.rgba);
+        d = math::fmadd(rgba, srcAlpha, d);
     }
     else if (blendMode == SL_BLEND_SCREEN)
     {
-        d.rgba = (s.rgba*srcAlpha) + (d.rgba*modulation);
+        d = (rgba*srcAlpha) + (d*modulation);
     }
 
-    d.rgba = math::clamp(d.rgba, math::vec4{0.f, 0.f, 0.f, 0.f}, math::vec4{1.f, 1.f, 1.f, 1.f});
+    d = math::clamp(d, math::vec4{0.f, 0.f, 0.f, 0.f}, math::vec4{1.f, 1.f, 1.f, 1.f});
+    const math::vec4_t<ConvertedType>&& result = color_cast<ConvertedType, float>(d);
 
     switch (color_type::num_components())
     {
         case 4:
-            *reinterpret_cast<SL_ColorRGBAType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rgba);
+            *reinterpret_cast<SL_ColorRGBAType<ConvertedType>*>(outTexel) = result;
             break;
 
         case 3:
-            *reinterpret_cast<SL_ColorRGBType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rgb);
+            *reinterpret_cast<SL_ColorRGBType<ConvertedType>*>(outTexel) = math::vec3_cast<ConvertedType>(result);
             break;
 
         case 2:
-            *reinterpret_cast<SL_ColorRGType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.rg);
+            *reinterpret_cast<SL_ColorRGType<ConvertedType>*>(outTexel) = math::vec2_cast<ConvertedType>(result);
             break;
 
         case 1:
-            *reinterpret_cast<SL_ColorRType<ConvertedType>*>(outTexel) = color_cast<typename color_type::value_type, float>(d.r);
+            *reinterpret_cast<SL_ColorRType<ConvertedType>*>(outTexel) = SL_ColorRType<ConvertedType>{result[0]};
             break;
+
+        default:
+            LS_UNREACHABLE();
     }
 }
 
