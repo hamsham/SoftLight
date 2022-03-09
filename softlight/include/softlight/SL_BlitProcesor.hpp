@@ -1124,7 +1124,10 @@ struct SL_Blit_RGBA_to_RGBA<SL_ColorRGB4444, SL_ColorRGB5551>
 -----------------------------------------------------------------------------*/
 struct SL_BlitProcessor
 {
-    using sl_fixed_type = ls::math::ulong_lowp_t;
+    enum : uint_fast32_t
+    {
+        NUM_FIXED_BITS = 16u
+    };
 
     // 32 bits
     uint16_t mThreadId;
@@ -1416,23 +1419,23 @@ void SL_BlitProcessor::blit_nearest() noexcept
     const uint_fast32_t y0        = dstY0+mThreadId;
     const uint_fast32_t y1        = dstY1;
 
-    const sl_fixed_type finW      = ls::math::fixed_cast<sl_fixed_type>(inW);
-    const sl_fixed_type finH      = ls::math::fixed_cast<sl_fixed_type>(inH);
-    const sl_fixed_type foutW     = finW / ls::math::fixed_cast<sl_fixed_type>(totalOutW);
-    const sl_fixed_type foutH     = finH / ls::math::fixed_cast<sl_fixed_type>(totalOutH);
+    const uint_fast32_t finW      = (inW << NUM_FIXED_BITS);
+    const uint_fast32_t finH      = (inH << NUM_FIXED_BITS);
+    const uint_fast32_t foutW     = (finW / totalOutW) + 1u; // account for rounding errors
+    const uint_fast32_t foutH     = (finH / totalOutH) + 1u;
 
     uint_fast32_t y = y0;
     do
     {
-        const sl_fixed_type yf       = ls::math::fixed_cast<sl_fixed_type>(y) * foutH;
-        const uint_fast32_t srcY     = srcY1 - (srcY0 + ls::math::integer_cast<uint_fast32_t>(yf)) - 1;
+        const uint_fast32_t yf       = (y * foutH) >> NUM_FIXED_BITS;
+        const uint_fast32_t srcY     = srcY1 - (srcY0 + yf) - 1u;
         uint_fast32_t       outIndex = (x0 + totalOutW * y) * BlipOp::stride;
 
         uint_fast32_t x = x0;
         do
         {
-            const sl_fixed_type  xf       = ls::math::fixed_cast<sl_fixed_type>(x) * foutW;
-            const uint_fast32_t  srcX     = srcX0 + ls::math::integer_cast<uint_fast32_t>(xf);
+            const uint_fast32_t  xf       = x * foutW;
+            const uint_fast32_t  srcX     = xf >> NUM_FIXED_BITS;
 
             blitOp(mTexture, srcX, srcY, pOutBuf, outIndex);
             ++x;
