@@ -101,97 +101,38 @@ SL_VertexShader sky_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
-const int indexMatrix4x4[64] = {
-    0,  32, 8,  40, 2,  34, 10, 42,
-    48, 16, 56, 24, 50, 18, 58, 26,
-    12, 44, 4,  36, 14, 46, 6,  38,
-    60, 28, 52, 20, 62, 30, 54, 22,
-    3,  35, 11, 43, 1,  33, 9,  41,
-    51, 19, 59, 27, 49, 17, 57, 25,
-    15, 47, 7,  39, 13, 45, 5,  37,
-    63, 31, 55, 23, 61, 29, 53, 21
-};
-
-float indexValue(unsigned xPos, unsigned yPos)
+inline LS_INLINE float bayer_dither_4x4(const float c, const unsigned x, const unsigned y)
 {
-    unsigned x = (xPos % 8u);
-    unsigned y = (yPos % 8u);
-    return (float)indexMatrix4x4[(x + y * 8u)] / 64.f;
-}
-
-float hueDistance(float h1, float h2)
-{
-    float diff = math::abs((h1 - h2));
-    return math::min(math::abs((1.f - diff)), diff);
-}
-
-void closestColors(float hue, SL_ColorTypeHSL<float>& outA, SL_ColorTypeHSL<float>& outB)
-{
-    math::vec3 closest = math::vec3(-2.f, 0.f, 0.f);
-    math::vec3 secondClosest = math::vec3(-2.f, 0.f, 0.f);
-    math::vec3 temp;
-
-    constexpr unsigned paletteSize = 16;
-    constexpr unsigned palette[paletteSize] = {
-        0,   16,  32,  48,
-        64,  80,  96,  112,
-        128, 144, 160, 176,
-        192, 224, 240, 255
+    constexpr unsigned bayerMatrix16[16] = {
+        0,  8,  2,  10,
+        12, 4,  14, 6,
+        3,  11, 1,  9,
+        15, 7,  13, 5
     };
-
-    for (unsigned i = 0; i < paletteSize; ++i)
-    {
-        temp = math::vec3{0.5f} * math::vec3{(float)palette[i] / 255.f} - math::vec3{0.5f};
-        float tempDistance = hueDistance(temp[0], hue);
-        if (tempDistance < hueDistance(closest[0], hue))
-        {
-            secondClosest = closest;
-            closest = temp;
-        }
-        else
-        {
-            if (tempDistance < hueDistance(secondClosest[0], hue))
-            {
-                secondClosest = temp;
-            }
-        }
-    }
-
-    outA.h = closest[0];
-    outA.s = closest[1];
-    outA.l = closest[2];
-
-    outB.h = secondClosest[0];
-    outB.s = secondClosest[1];
-    outB.l = secondClosest[2];
+    return math::step(c, ((float)bayerMatrix16[(x % 4u) + (y % 4u) * 4u] - 0.5f) / 16.f);
 }
 
-float lightnessStep(float l)
+inline LS_INLINE float bayer_dither_8x8(const float c, const unsigned x, const unsigned y)
 {
-    /* Quantize the lightness to one of `lightnessSteps` values */
-    constexpr float lightnessSteps = 4.f;
-    return math::floor((0.5f + l * lightnessSteps)) / lightnessSteps;
+    constexpr unsigned bayerMatrix16[64] = {
+        0,  32, 8,  40, 2,  34, 10, 42,
+        48, 16, 56, 24, 50, 18, 58, 26,
+        12, 44, 4,  36, 14, 46, 6,  38,
+        60, 28, 52, 20, 62, 30, 54, 22,
+        3,  35, 11, 43, 1,  33, 9,  41,
+        51, 19, 59, 27, 49, 17, 57, 25,
+        15, 47, 7,  39, 13, 45, 5,  37,
+        63, 31, 55, 23, 61, 29, 53, 21
+    };
+    return math::step(c, ((float)bayerMatrix16[(x % 8u) + (y % 8u) * 8u] - 0.5f) / 64.f);
 }
 
-math::vec3 dither(unsigned xPos, unsigned yPos, const math::vec3& color)
+template <unsigned numBits = 8>
+inline float dither(float c, const unsigned x, const unsigned y)
 {
-    SL_ColorTypeHSL<float>&& hsl = hsl_cast<float>(color);
-
-    SL_ColorTypeHSL<float> cs[2];
-    closestColors(hsl.h, cs[0], cs[1]);
-    const SL_ColorTypeHSL<float>& c1 = cs[0];
-    const SL_ColorTypeHSL<float>& c2 = cs[1];
-    float d = indexValue(xPos, yPos);
-    float hueDiff = hueDistance(hsl.h, c1.h) / hueDistance(c2.h, c1.h);
-
-    float l1 = lightnessStep(math::max((hsl.l - 0.125f), 0.f));
-    float l2 = lightnessStep(math::min((hsl.l + 0.124f), 1.f));
-    float lightnessDiff = (hsl.l - l1) / (l2 - l1);
-
-    SL_ColorTypeHSL<float> resultColor = (hueDiff < d) ? c1 : c2;
-    resultColor.l = (lightnessDiff < d) ? l1 : l2;
-
-    return rgb_cast<float>(resultColor);
+    const float paletteColor = c * (float)((1u << numBits)-1u);
+    const float bayer = paletteColor + bayer_dither_4x4(c, x, y);
+    return bayer/(float)((1u << numBits)-1u);
 }
 
 
@@ -206,8 +147,14 @@ bool _sky_frag_shader(SL_FragmentParam& fragParam)
     const math::vec3&& albedof = color_cast<float, uint8_t>(albedo8);
 
     // output composition
-    const math::vec3&& ditheredColor = dither(fragParam.coord.x, fragParam.coord.y, albedof);
-    fragParam.pOutputs[0] = math::vec4_cast(ditheredColor, 1.f) * math::vec4_cast(albedof, 1.f);
+    const math::vec4 ditheredColor{
+        dither<5>(albedof[0], fragParam.coord.x, fragParam.coord.y),
+        dither<6>(albedof[1], fragParam.coord.x, fragParam.coord.y),
+        dither<5>(albedof[2], fragParam.coord.x, fragParam.coord.y),
+        1.f
+    };
+
+    fragParam.pOutputs[0] = ditheredColor;
 
     return true;
 }
@@ -471,7 +418,7 @@ utils::Pointer<SL_SceneGraph> init_sky_context()
     context.num_threads(SL_TEST_MAX_THREADS);
 
     SL_Texture& tex = context.texture(texId);
-    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_8U, 320, 240, 1);
+    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGB_565, 320, 240, 1);
     LS_ASSERT(retCode == 0);
 
     SL_Texture& depth = context.texture(depthId);
