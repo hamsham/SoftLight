@@ -297,7 +297,6 @@ inline LS_INLINE math::vec4 _sl_get_depth_texel4(const depth_type* pDepth)
 /*-----------------------------------------------------------------------------
  * SL_TriRasterizer Class
 -----------------------------------------------------------------------------*/
-#if SL_CONSERVE_MEMORY
 /*--------------------------------------
  * Bin-Rasterization
 --------------------------------------*/
@@ -433,7 +432,7 @@ void SL_TriRasterizer::iterate_tri_scanlines() const noexcept
             int32_t xMax;
             scanline.step(yf, x, xMax);
 
-            if (LS_LIKELY(x < xMax))
+            if (LS_LIKELY((uint32_t)x < (uint32_t)xMax))
             {
                 flush_scanlines<DepthCmpFunc, depth_type>(pBin, x, xMax, y);
             }
@@ -471,8 +470,6 @@ template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncOFF, ls::math:
 template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncOFF, float>() const noexcept;
 template void SL_TriRasterizer::iterate_tri_scanlines<SL_DepthFuncOFF, double>() const noexcept;
 
-#endif
-
 
 
 /*--------------------------------------
@@ -482,7 +479,7 @@ template <typename depth_type>
 void SL_TriRasterizer::flush_fragments(
     const SL_FragmentBin* pBin,
     uint_fast32_t         numQueuedFrags,
-    SL_FragCoord*         outCoords) const noexcept
+    SL_FragCoord* const   outCoords) const noexcept
 {
     const SL_PipelineState  pipeline      = mShader->pipelineState;
     const SL_BlendMode      blendMode     = pipeline.blend_mode();
@@ -497,32 +494,38 @@ void SL_TriRasterizer::flush_fragments(
     fragParams.pUniforms = pUniforms;
 
     const math::vec4* pPoints = pBin->mScreenCoords;
-    const math::vec4  homogenous{pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
-    uint_fast32_t i = 0;
+    uint_fast32_t i;
 
     // perspective correction
-    do
-    {
-        #if defined(LS_X86_AVX)
-            float* const pBc = reinterpret_cast<float*>(outCoords->bc+i);
-            const __m128 bc = _mm_mul_ps(_mm_load_ps(pBc), homogenous.simd);
+    #if defined(LS_X86_AVX)
+        const __m256 homogenous = _mm256_set_ps(0.f, pPoints[2][3], pPoints[1][3], pPoints[0][3], 0.f, pPoints[2][3], pPoints[1][3], pPoints[0][3]);
+        i = 0;
+        do
+        {
+            float* const pBc = reinterpret_cast<float*>(outCoords->bc + i);
+            const __m256 bc = _mm256_mul_ps(_mm256_load_ps(pBc), homogenous);
 
             // horizontal add
-            const __m128 a = _mm_permute_ps(bc, 0xB1);
-            const __m128 b = _mm_add_ps(bc, a);
-            const __m128 c = _mm_permute_ps(b, 0x0F);
-            const __m128 d = _mm_add_ps(c, b);
-            const __m128 persp = _mm_rcp_ps(d);
+            const __m256 a = _mm256_permute_ps(bc, 0xB1);
+            const __m256 b = _mm256_add_ps(bc, a);
+            const __m256 c = _mm256_permute_ps(b, 0x0F);
+            const __m256 d = _mm256_add_ps(c, b);
+            const __m256 persp = _mm256_rcp_ps(d);
 
-            _mm_store_ps(pBc, _mm_mul_ps(bc, persp));
+            _mm256_store_ps(pBc, _mm256_mul_ps(bc, persp));
+            i += 2;
+        }
+        while (i < numQueuedFrags);
 
-        #else
+    #else
+        const math::vec4  homogenous{pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
+        for (i = 0; i < numQueuedFrags; ++i)
+        {
             const math::vec4&& bc = outCoords->bc[i] * homogenous;
             const math::vec4&& persp = {math::sum_inv(bc)};
             outCoords->bc[i] = bc * persp;
-        #endif
-    }
-    while (++i < numQueuedFrags);
+        }
+    #endif
 
     for (i = 0; i < numQueuedFrags; ++i)
     {
@@ -546,9 +549,9 @@ void SL_TriRasterizer::flush_fragments(
 
 
 
-template void SL_TriRasterizer::flush_fragments<ls::math::half>(const SL_FragmentBin*, uint_fast32_t, SL_FragCoord*) const noexcept;
-template void SL_TriRasterizer::flush_fragments<float>(const SL_FragmentBin*, uint_fast32_t, SL_FragCoord*) const noexcept;
-template void SL_TriRasterizer::flush_fragments<double>(const SL_FragmentBin*, uint_fast32_t, SL_FragCoord*) const noexcept;
+template void SL_TriRasterizer::flush_fragments<ls::math::half>(const SL_FragmentBin*, uint_fast32_t, SL_FragCoord* const) const noexcept;
+template void SL_TriRasterizer::flush_fragments<float>(const SL_FragmentBin*, uint_fast32_t, SL_FragCoord* const) const noexcept;
+template void SL_TriRasterizer::flush_fragments<double>(const SL_FragmentBin*, uint_fast32_t, SL_FragCoord* const) const noexcept;
 
 
 
@@ -601,7 +604,7 @@ void SL_TriRasterizer::render_wireframe(const SL_Texture* depthBuffer) const noe
 
             const depth_type* const pDepth = depthBuffer->texel_pointer<depth_type>(0, (uint16_t)y);
 
-            for (int32_t ix = 0, x = xMinMax0[0]; x < xMinMax0[1]; ++ix, ++x)
+            for (int32_t ix = 0, x = xMinMax0[0]; (uint32_t)x < (uint32_t)xMinMax0[1]; ++ix, ++x)
             {
                 // skip to the start of the next horizontal edge
                 if (LS_UNLIKELY(ix == d0))
@@ -719,7 +722,6 @@ void SL_TriRasterizer::render_triangle(const SL_Texture* depthBuffer) const noex
         {
             // calculate the bounds of the current scan-line
             const float yf = (float)y;
-            const math::vec4&& bcY = math::fmadd(bcClipSpace[1], math::vec4{yf}, bcClipSpace[2]);
 
             // In this rasterizer, we're only rendering the absolute pixels
             // contained within the triangle edges. However this will serve as
@@ -728,13 +730,14 @@ void SL_TriRasterizer::render_triangle(const SL_Texture* depthBuffer) const noex
             int32_t xMax;
             scanline.step(yf, x, xMax);
 
-            if (LS_UNLIKELY(x >= xMax))
+            if (LS_UNLIKELY((uint32_t)x >= (uint32_t)xMax))
             {
                 y -= increment;
                 continue;
             }
 
             math::vec4&& xf{(float)x};
+            const math::vec4&& bcY = math::fmadd(bcClipSpace[1], math::vec4{yf}, bcClipSpace[2]);
             math::vec4&& bcX = math::fmadd(bcClipSpace[0], xf, bcY);
             const depth_type* pDepth = depthBuffer->texel_pointer<depth_type>((uint16_t)x, (uint16_t)y);
 
@@ -1054,7 +1057,7 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
             int32_t xMax;
             scanline.step(yf, xMin, xMax);
 
-            if (LS_LIKELY(xMin < xMax))
+            if (LS_LIKELY((uint32_t)xMin < (uint32_t)xMax))
             {
                 const depth_type* pDepth = depthBuffer->texel_pointer<depth_type>((uint16_t)xMin, (uint16_t)y);
                 const math::vec4&& bcY    = math::fmadd(bcClipSpace[1], math::vec4{yf}, bcClipSpace[2]);
