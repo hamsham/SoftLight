@@ -9,7 +9,6 @@
 
 #include "lightsky/math/vec4.h"
 
-#include "softlight/SL_BlitProcesor.hpp"
 #include "softlight/SL_FragmentProcessor.hpp"
 #include "softlight/SL_Framebuffer.hpp"
 #include "softlight/SL_ProcessorPool.hpp"
