@@ -191,9 +191,12 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
     }
     else
     {
-        _sl_cpu_yield_loop([&]()->bool {
-            return mFragProcessors->count.load(std::memory_order_consume) < 0;
-        });
+        if (LS_UNLIKELY(!mAmDone))
+        {
+            _sl_cpu_yield_loop([&]()->bool {
+                return mFragProcessors->count.load(std::memory_order_consume) < 0;
+            });
+        }
     }
 }
 
@@ -214,6 +217,10 @@ void SL_VertexProcessor::cleanup() noexcept
         if (LS_LIKELY(mFragProcessors->count.load(std::memory_order_acquire) > 0))
         {
             flush_rasterizer<RasterizerType>();
+
+            _sl_cpu_yield_loop([&]()->bool {
+                return mFragProcessors->count.load(std::memory_order_consume) < 0;
+            });
         }
         else
         {

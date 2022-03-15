@@ -426,7 +426,7 @@ inline LS_INLINE SL_ClipStatus face_visible(
 --------------------------------------*/
 inline LS_INLINE math::vec4_t<size_t> get_next_vertex3(const SL_IndexBuffer* LS_RESTRICT_PTR pIbo, size_t vId) noexcept
 {
-    #if defined(LS_ARCH_X86)
+    #if defined(LS_X86_SSE)
         union
         {
             __m128 asNative;
@@ -459,20 +459,34 @@ inline LS_INLINE math::vec4_t<size_t> get_next_vertex3(const SL_IndexBuffer* LS_
         ids = *reinterpret_cast<const decltype(ids)*>(pIbo->element(vId));
     #endif
 
-    switch (pIbo->type())
-    {
-        case VERTEX_DATA_BYTE:
-            return (math::vec4_t<size_t>)ids.asBytes;
+    #if defined(LS_X86_AVX2)
+        static_assert(sizeof(math::vec4_t<size_t>) == sizeof(__m256i), "No available conversion from math::vec4_t<size_t> to __m256i.");
+        union
+        {
+            __m256i simd;
+            math::vec4_t<size_t> u64;
+        } ret;
 
-        case VERTEX_DATA_SHORT:
-            return (math::vec4_t<size_t>)ids.asShorts;
+        switch (pIbo->type())
+        {
+            case VERTEX_DATA_BYTE:  ret.simd = _mm256_cvtepi8_epi64(_mm_castps_si128(ids.asNative));  break;
+            case VERTEX_DATA_SHORT: ret.simd = _mm256_cvtepi16_epi64(_mm_castps_si128(ids.asNative)); break;
+            case VERTEX_DATA_INT:   ret.simd = _mm256_cvtepi32_epi64(_mm_castps_si128(ids.asNative));  break;
+            default:                LS_UNREACHABLE();
+        }
 
-        case VERTEX_DATA_INT:
-            return (math::vec4_t<size_t>)ids.asInts;
+        return ret.u64;
 
-        default:
-            LS_UNREACHABLE();
-    }
+    #else
+        switch (pIbo->type())
+        {
+            case VERTEX_DATA_BYTE:  return (math::vec4_t<size_t>)ids.asBytes;
+            case VERTEX_DATA_SHORT: return (math::vec4_t<size_t>)ids.asShorts;
+            case VERTEX_DATA_INT:   return (math::vec4_t<size_t>)ids.asInts;
+            default:                LS_UNREACHABLE();
+        }
+
+    #endif
 
     return math::vec4_t<size_t>{0, 0, 0, 0};
 }
@@ -703,7 +717,7 @@ void SL_TriProcessor::clip_and_process_tris(
             visible0    = visible1;
         }
 
-        if (!numNewVerts)
+        if (LS_UNLIKELY(!numNewVerts))
         {
             return;
         }
@@ -885,6 +899,8 @@ void SL_TriProcessor::process_verts(
 --------------------------------------*/
 void SL_TriProcessor::execute() noexcept
 {
+    mAmDone = 0;
+
     if (mFragProcessors->count.load(std::memory_order_consume))
     {
         flush_rasterizer<SL_TriRasterizer>();
@@ -909,6 +925,8 @@ void SL_TriProcessor::execute() noexcept
             process_verts(mMeshes[0], i, scissorMat, viewportDims);
         }
     }
+
+    mAmDone = 1;
 
     this->cleanup<SL_TriRasterizer>();
 }

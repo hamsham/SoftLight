@@ -48,6 +48,7 @@ struct SL_TriRasterizer;
 class SL_VertexProcessor
 {
   public:
+    uint32_t mAmDone;
     uint16_t mThreadId;
     uint16_t mNumThreads;
 

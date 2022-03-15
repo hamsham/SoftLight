@@ -255,6 +255,8 @@ void SL_PointProcessor::process_verts(
 --------------------------------------*/
 void SL_PointProcessor::execute() noexcept
 {
+    mAmDone = 0;
+
     const math::vec4&&      fboDims      = (math::vec4)math::vec4_t<int>{0, 0, mFbo->width(), mFbo->height()};
     const SL_ViewportState& viewState    = mContext->viewport_state();
     const math::mat4&&      scissorMat   = viewState.scissor_matrix(fboDims[2], fboDims[3]);
@@ -274,6 +276,8 @@ void SL_PointProcessor::execute() noexcept
             process_verts(mMeshes[0], i, scissorMat, viewportDims);
         }
     }
+
+    mAmDone = 1;
 
     this->cleanup<SL_PointRasterizer>();
 }
