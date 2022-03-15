@@ -225,21 +225,21 @@ inline void LS_IMPERATIVE interpolate_tri_varyings(
  * Load and convert a depth texel from memory
 --------------------------------------*/
 template <typename depth_type>
-inline LS_INLINE float _sl_get_depth_texel(const depth_type* pDepth)
+inline LS_INLINE float _sl_get_depth_texel(const depth_type* LS_RESTRICT_PTR pDepth)
 {
     return (float)*pDepth;
 }
 
 #if defined(LS_ARCH_X86)
 template <>
-inline LS_INLINE float _sl_get_depth_texel<float>(const float* pDepth)
+inline LS_INLINE float _sl_get_depth_texel<float>(const float* LS_RESTRICT_PTR pDepth)
 {
     return _mm_cvtss_f32(_mm_load_ss(pDepth));
 }
 
 #elif defined(LS_ARM_NEON)
 template <>
-inline LS_INLINE float _sl_get_depth_texel<math::half>(const math::half* pDepth)
+inline LS_INLINE float _sl_get_depth_texel<math::half>(const math::half* LS_RESTRICT_PTR pDepth)
 {
     return (float)(*reinterpret_cast<const __fp16*>(pDepth));
 }
@@ -252,30 +252,30 @@ inline LS_INLINE float _sl_get_depth_texel<math::half>(const math::half* pDepth)
  * Load and convert 4 depth texels from memory
 --------------------------------------*/
 template <typename depth_type>
-inline LS_INLINE math::vec4 _sl_get_depth_texel4(const depth_type* pDepth);
+inline LS_INLINE math::vec4 _sl_get_depth_texel4(const depth_type* LS_RESTRICT_PTR pDepth);
 
 #if defined(LS_X86_FP16)
 template <>
-inline LS_INLINE math::vec4 _sl_get_depth_texel4<math::half>(const math::half* pDepth)
+inline LS_INLINE math::vec4 _sl_get_depth_texel4<math::half>(const math::half* LS_RESTRICT_PTR pDepth)
 {
     return math::vec4{_mm_cvtph_ps(_mm_loadl_epi64(reinterpret_cast<const __m128i*>(pDepth)))};
 }
 
 template <>
-inline LS_INLINE math::vec4 _sl_get_depth_texel4<float>(const float* pDepth)
+inline LS_INLINE math::vec4 _sl_get_depth_texel4<float>(const float* LS_RESTRICT_PTR pDepth)
 {
     return math::vec4{_mm_loadu_ps(pDepth)};
 }
 
 #elif defined(LS_ARM_NEON)
 template <>
-inline LS_INLINE math::vec4 _sl_get_depth_texel4<math::half>(const math::half* pDepth)
+inline LS_INLINE math::vec4 _sl_get_depth_texel4<math::half>(const math::half* LS_RESTRICT_PTR pDepth)
 {
     return math::vec4{vcvt_f32_f16(vld1_f16(reinterpret_cast<const __fp16*>(pDepth)))};
 }
 
 template <>
-inline LS_INLINE math::vec4 _sl_get_depth_texel4<float>(const float* pDepth)
+inline LS_INLINE math::vec4 _sl_get_depth_texel4<float>(const float* LS_RESTRICT_PTR pDepth)
 {
     return math::vec4{vld1q_f32(pDepth)};
 }
@@ -283,7 +283,7 @@ inline LS_INLINE math::vec4 _sl_get_depth_texel4<float>(const float* pDepth)
 #endif
 
 template <typename depth_type>
-inline LS_INLINE math::vec4 _sl_get_depth_texel4(const depth_type* pDepth)
+inline LS_INLINE math::vec4 _sl_get_depth_texel4(const depth_type* LS_RESTRICT_PTR pDepth)
 {
     return (math::vec4)(*reinterpret_cast<const math::vec4_t<depth_type>*>(pDepth));
 }
@@ -301,7 +301,7 @@ inline LS_INLINE math::vec4 _sl_get_depth_texel4(const depth_type* pDepth)
  * Bin-Rasterization
 --------------------------------------*/
 template <class DepthCmpFunc, typename depth_type>
-void SL_TriRasterizer::flush_scanlines(const SL_FragmentBin* pBin, uint32_t xMin, uint32_t xMax, uint32_t y) const noexcept
+void SL_TriRasterizer::flush_scanlines(const SL_FragmentBin* LS_RESTRICT_PTR pBin, uint32_t xMin, uint32_t xMax, uint32_t y) const noexcept
 {
     constexpr DepthCmpFunc   depthCmpFunc;
     const SL_PipelineState  pipeline      = mShader->pipelineState;
@@ -856,7 +856,7 @@ inline LS_INLINE void _sl_vec4_outer_ps(const __m128 v1, const __m128 v2, __m128
 
 
 template <class DepthCmpFunc, typename depth_type>
-void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const noexcept
+void SL_TriRasterizer::render_triangle_simd(const SL_Texture* LS_RESTRICT_PTR depthBuffer) const noexcept
 {
     constexpr DepthCmpFunc         depthCmpFunc;
     const SL_BinCounter<uint32_t>* pBinIds = mBinIds;
@@ -955,10 +955,10 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
                         const __m128i xyz0 = _mm_unpacklo_epi32(xy, _mm_castps_si128(z));
                         const __m128i xyz1 = _mm_unpackhi_epi32(xy, _mm_castps_si128(z));
 
-                        _mm_storel_pd(reinterpret_cast<double*>(outCoords->coord + numQueuedFrags), _mm_castsi128_pd(xyz0));
-                        _mm_storeh_pd(reinterpret_cast<double*>(outCoords->coord + storeMask1),     _mm_castsi128_pd(xyz0));
-                        _mm_storel_pd(reinterpret_cast<double*>(outCoords->coord + storeMask2),     _mm_castsi128_pd(xyz1));
-                        _mm_storeh_pd(reinterpret_cast<double*>(outCoords->coord + storeMask3),     _mm_castsi128_pd(xyz1));
+                        _mm_storel_pi(reinterpret_cast<__m64*>(outCoords->coord + numQueuedFrags), _mm_castsi128_ps(xyz0));
+                        _mm_storeh_pi(reinterpret_cast<__m64*>(outCoords->coord + storeMask1),     _mm_castsi128_ps(xyz0));
+                        _mm_storel_pi(reinterpret_cast<__m64*>(outCoords->coord + storeMask2),     _mm_castsi128_ps(xyz1));
+                        _mm_storeh_pi(reinterpret_cast<__m64*>(outCoords->coord + storeMask3),     _mm_castsi128_ps(xyz1));
                     }
 
                     numQueuedFrags += rasterCount;

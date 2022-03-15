@@ -30,7 +30,7 @@ inline void assign_pixel(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* pTexture) noexcept
+    SL_Texture* LS_RESTRICT_PTR pTexture) noexcept
 {
     // texture objects will truncate excess color components
     typedef typename color_type::value_type ConvertedType;
@@ -73,7 +73,7 @@ inline void assign_pixel<SL_ColorRGB565>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* pTexture) noexcept
+    SL_Texture* LS_RESTRICT_PTR pTexture) noexcept
 {
     // Get a reference to the source texel
     SL_ColorRGB565* const outTexel = pTexture->texel_pointer<SL_ColorRGB565>(x, y);
@@ -85,7 +85,7 @@ inline void assign_pixel<SL_ColorRGB5551>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* pTexture) noexcept
+    SL_Texture* LS_RESTRICT_PTR pTexture) noexcept
 {
     // Get a reference to the source texel
     SL_ColorRGB5551* const outTexel = pTexture->texel_pointer<SL_ColorRGB5551>(x, y);
@@ -97,7 +97,7 @@ inline void assign_pixel<SL_ColorRGB4444>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* pTexture) noexcept
+    SL_Texture* LS_RESTRICT_PTR pTexture) noexcept
 {
     // Get a reference to the source texel
     SL_ColorRGB4444* const outTexel = pTexture->texel_pointer<SL_ColorRGB4444>(x, y);
@@ -115,7 +115,7 @@ inline void assign_pixel<SL_ColorRGBA8>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* pTexture) noexcept
+    SL_Texture* LS_RESTRICT_PTR pTexture) noexcept
 {
     // Get a reference to the source texel
     int32_t* const  outTexel = pTexture->texel_pointer<int32_t>(x, y);
@@ -132,7 +132,7 @@ inline void assign_pixel<SL_ColorRGBA16>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* pTexture) noexcept
+    SL_Texture* LS_RESTRICT_PTR pTexture) noexcept
 {
     // Get a reference to the source texel
 
@@ -168,7 +168,7 @@ inline void assign_pixel<SL_ColorRGBAf>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* pTexture) noexcept
+    SL_Texture* LS_RESTRICT_PTR pTexture) noexcept
 {
     // Get a reference to the source texel
     SL_ColorRGBAf* const outTexel = pTexture->texel_pointer<SL_ColorRGBAf>(x, y);
@@ -184,7 +184,7 @@ inline void assign_pixel<SL_ColorRGBA8>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* pTexture) noexcept
+    SL_Texture* LS_RESTRICT_PTR pTexture) noexcept
 {
     // Get a reference to the source texel
     uint32_t* const outTexel = pTexture->texel_pointer<uint32_t>(x, y);
@@ -206,7 +206,7 @@ inline void assign_pixel<SL_ColorRGBA16>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* pTexture) noexcept
+    SL_Texture* LS_RESTRICT_PTR pTexture) noexcept
 {
     // Get a reference to the source texel
     int64_t* const outTexel = pTexture->texel_pointer<int64_t>(x, y);
@@ -232,7 +232,7 @@ inline void assign_alpha_pixel(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* pTexture,
+    SL_Texture* LS_RESTRICT_PTR pTexture,
     const SL_BlendMode blendMode) noexcept
 {
     typedef typename color_type::value_type ConvertedType;
@@ -332,7 +332,7 @@ inline void assign_alpha_pixel<SL_ColorRGB565>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* pTexture,
+    SL_Texture* LS_RESTRICT_PTR pTexture,
     const SL_BlendMode blendMode) noexcept
 {
     // Get a reference to the source texel
@@ -375,7 +375,7 @@ inline void assign_alpha_pixel<SL_ColorRGB5551>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* pTexture,
+    SL_Texture* LS_RESTRICT_PTR pTexture,
     const SL_BlendMode blendMode) noexcept
 {
     // Get a reference to the source texel
@@ -418,7 +418,7 @@ inline void assign_alpha_pixel<SL_ColorRGB4444>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* pTexture,
+    SL_Texture* LS_RESTRICT_PTR pTexture,
     const SL_BlendMode blendMode) noexcept
 {
     // Get a reference to the source texel

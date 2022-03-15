@@ -118,6 +118,9 @@ struct SL_WrapModeRepeat
 
 
 
+/*-----------------------------------------------------------------------------
+ * Nearest Neighbor filtering
+-----------------------------------------------------------------------------*/
 template <typename color_type, class WrapMode, SL_TexelOrder order = SL_TexelOrder::ORDERED>
 inline LS_INLINE color_type sl_sample_nearest(const SL_Texture& tex, float x, float y) noexcept
 {
@@ -179,6 +182,9 @@ inline LS_INLINE color_type sl_sample_nearest(const SL_Texture& tex, float x, fl
 
 
 
+/*-----------------------------------------------------------------------------
+ * Bilinear filtering
+-----------------------------------------------------------------------------*/
 template <typename color_type, class WrapMode, SL_TexelOrder order = SL_TexelOrder::ORDERED>
 inline LS_INLINE color_type sl_sample_bilinear(const SL_Texture& tex, float x, float y) noexcept
 {
@@ -250,6 +256,9 @@ inline LS_INLINE color_type sl_sample_bilinear(const SL_Texture& tex, float x, f
 
 
 
+/*-----------------------------------------------------------------------------
+ * Trilinear filtering
+-----------------------------------------------------------------------------*/
 template <typename color_type, class WrapMode, SL_TexelOrder order = SL_TexelOrder::ORDERED>
 inline LS_INLINE color_type sl_sample_trilinear(const SL_Texture& tex, float x, float y) noexcept
 {
@@ -311,18 +320,6 @@ inline LS_INLINE color_type sl_sample_trilinear(const SL_Texture& tex, float x, 
     }
 
     constexpr WrapMode wrapMode;
-
-    /*
-       V000 (1 - x) (1 - y) (1 - z) +
-       V100 x (1 - y) (1 - z) +
-       V010 (1 - x) y (1 - z) +
-       V001 (1 - x) (1 - y) z +
-       V101 x (1 - y) z +
-       V011 (1 - x) y z +
-       V110 x y (1 - z) +
-       V111 x y z
-     */
-
     namespace math = ls::math;
 
     x = wrapMode(x) * (float)tex.width();

@@ -35,7 +35,6 @@ struct SL_Blit_R_to_R
         uint_fast32_t outIndex) const noexcept
     {
         const SL_ColorRType<inColor_type> inColor = pTexture->texel<SL_ColorRType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
-
         *reinterpret_cast<SL_ColorRType<outColor_type>*>(pOutBuf + outIndex) = color_cast<outColor_type, inColor_type>(inColor);
     }
 };
@@ -56,7 +55,6 @@ struct SL_Blit_RG_to_R
         uint_fast32_t outIndex) const noexcept
     {
         const SL_ColorRGType<inColor_type> inColor = pTexture->texel<SL_ColorRGType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
-
         *reinterpret_cast<SL_ColorRType<outColor_type>*>(pOutBuf + outIndex) = color_cast<outColor_type, inColor_type>(inColor)[0];
     }
 };
@@ -77,7 +75,6 @@ struct SL_Blit_RGB_to_R
         uint_fast32_t outIndex) const noexcept
     {
         const SL_ColorRGBType<inColor_type> inColor = pTexture->texel<SL_ColorRGBType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
-
         *reinterpret_cast<SL_ColorRType<outColor_type>*>(pOutBuf + outIndex) = color_cast<outColor_type, inColor_type>(inColor)[0];
     }
 };
@@ -98,7 +95,6 @@ struct SL_Blit_RGBA_to_R
         uint_fast32_t outIndex) const noexcept
     {
         const SL_ColorRGBAType<inColor_type> inColor = pTexture->texel<SL_ColorRGBAType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
-
         *reinterpret_cast<SL_ColorRType<outColor_type>*>(pOutBuf + outIndex) = color_cast<outColor_type, inColor_type>(inColor)[0];
     }
 };
@@ -206,7 +202,6 @@ struct SL_Blit_RG_to_RG
         uint_fast32_t outIndex) const noexcept
     {
         const SL_ColorRGType<inColor_type> inColor = pTexture->texel<SL_ColorRGType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
-
         *reinterpret_cast<SL_ColorRGType<outColor_type>*>(pOutBuf + outIndex) = color_cast<outColor_type, inColor_type>(inColor);
     }
 };
@@ -424,7 +419,6 @@ struct SL_Blit_RGB_to_RGB
         uint_fast32_t outIndex) const noexcept
     {
         const SL_ColorRGBType<inColor_type> inColor = pTexture->texel<SL_ColorRGBType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
-
         *reinterpret_cast<SL_ColorRGBType<outColor_type>*>(pOutBuf + outIndex) = color_cast<outColor_type, inColor_type>(inColor);
     }
 };
@@ -1414,38 +1408,37 @@ void SL_BlitProcessor::blit_nearest() noexcept
 
     // Only tile data along the y-axis of the render buffer. This will help to
     // make use of the CPU prefetcher when iterating pixels along the x-axis
-    const uint_fast32_t x0        = ls::math::max<uint_fast32_t>(0u, dstX0);
-    const uint_fast32_t x1        = ls::math::min<uint_fast32_t>(totalOutW, x0 + outW);
-    const uint_fast32_t y0        = dstY0+mThreadId;
-    const uint_fast32_t y1        = dstY1;
-
-    const uint_fast32_t finW      = (inW << NUM_FIXED_BITS);
-    const uint_fast32_t finH      = (inH << NUM_FIXED_BITS);
-    const uint_fast32_t foutW     = (finW / totalOutW) + 1u; // account for rounding errors
-    const uint_fast32_t foutH     = (finH / totalOutH) + 1u;
+    const uint_fast32_t x0    = ls::math::max<uint_fast32_t>(0u, dstX0);
+    const uint_fast32_t x1    = ls::math::min<uint_fast32_t>(totalOutW, x0 + outW);
+    const uint_fast32_t y0    = dstY0+mThreadId;
+    const uint_fast32_t y1    = dstY1;
+    const uint_fast32_t finW  = (inW << NUM_FIXED_BITS);
+    const uint_fast32_t finH  = (inH << NUM_FIXED_BITS);
+    const uint_fast32_t foutW = (finW / totalOutW) + 1u; // account for rounding errors
+    const uint_fast32_t foutH = (finH / totalOutH) + 1u;
 
     uint_fast32_t y = y0;
-    do
+
+    while (LS_LIKELY(y < y1))
     {
         const uint_fast32_t yf       = (y * foutH) >> NUM_FIXED_BITS;
         const uint_fast32_t srcY     = srcY1 - (srcY0 + yf) - 1u;
         uint_fast32_t       outIndex = (x0 + totalOutW * y) * BlipOp::stride;
 
         uint_fast32_t x = x0;
-        do
+
+        while (LS_LIKELY(x < x1))
         {
-            const uint_fast32_t  xf       = x * foutW;
-            const uint_fast32_t  srcX     = xf >> NUM_FIXED_BITS;
+            const uint_fast32_t xf   = x * foutW;
+            const uint_fast32_t srcX = xf >> NUM_FIXED_BITS;
 
             blitOp(mTexture, srcX, srcY, pOutBuf, outIndex);
             ++x;
             outIndex += BlipOp::stride;
         }
-        while (LS_UNLIKELY(x < x1));
 
         y += mNumThreads;
     }
-    while (LS_UNLIKELY(y < y1));
 }
 
 
