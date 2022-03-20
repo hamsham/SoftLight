@@ -2,8 +2,8 @@
 // Created by hammy on 2022-03-17.
 //
 
-#ifndef SOFTLIGHT_DITHER_HPP
-#define SOFTLIGHT_DITHER_HPP
+#ifndef SL_DITHER_HPP
+#define SL_DITHER_HPP
 
 #include "lightsky/setup/Api.h"
 
@@ -115,4 +115,4 @@ inline float sl_dither8<1u>(float c, const unsigned x, const unsigned y)
 
 
 
-#endif /* SOFTLIGHT_DITHER_HPP */
+#endif /* SL_DITHER_HPP */
