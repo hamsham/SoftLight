@@ -132,6 +132,7 @@ set(SL_LIB_HEADERS
     include/softlight/SL_ColorYCoCg.hpp
     include/softlight/SL_Config.hpp
     include/softlight/SL_Context.hpp
+    include/softlight/SL_Dither.hpp
     include/softlight/SL_FontLoader.hpp
     include/softlight/SL_FragmentProcessor.hpp
     include/softlight/SL_Framebuffer.hpp
