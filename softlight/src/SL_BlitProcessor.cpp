@@ -1,6 +1,5 @@
 
 #include "lightsky/math/scalar_utils.h"
-#include "lightsky/math/fixed.h"
 
 #include "softlight/SL_BlitProcesor.hpp"
 
