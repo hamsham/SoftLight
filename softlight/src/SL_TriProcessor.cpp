@@ -387,9 +387,17 @@ inline LS_INLINE SL_ClipStatus face_visible(
         const uint32x2_t vis2 = vand_u32(vget_low_u32(vis), vget_high_u32(vis));
         const unsigned   visI = vget_lane_u32(vand_u32(vis2, vrev64_u32(vis2)), 0);
 
-        const uint32x2_t gt0 = vrshr_n_u32(vreinterpret_u32_f32(vget_low_f32(w0p)), 31);
-        const uint32x2_t gt1 = vrshr_n_u32(vreinterpret_u32_f32(vget_low_f32(w1p)), 31);
-        const uint32x2_t gt2 = vrshr_n_u32(vreinterpret_u32_f32(vget_low_f32(w2p)), 31);
+        #if defined(LS_ARCH_AARCH64)
+            const uint32x2_t gt0 = vcgtz_f32(vget_low_f32(w0p));
+            const uint32x2_t gt1 = vcgtz_f32(vget_low_f32(w1p));
+            const uint32x2_t gt2 = vcgtz_f32(vget_low_f32(w2p));
+        #else
+            const float32x2_t zero = vdup_n_f32(0.f);
+            const uint32x2_t gt0 = vcgt_f32(vget_low_f32(w0p), zero);
+            const uint32x2_t gt1 = vcgt_f32(vget_low_f32(w1p), zero);
+            const uint32x2_t gt2 = vcgt_f32(vget_low_f32(w2p), zero);
+        #endif
+
         const uint32x2_t part2 = vorr_u32(gt2, vorr_u32(gt1, gt0));
         const unsigned   partI = SL_TRIANGLE_PARTIALLY_VISIBLE & vget_lane_u32(part2, 0);
 
