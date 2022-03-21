@@ -429,18 +429,18 @@ void SL_ProcessorPool::run_blit_processors(
     processor.mType = SL_BLIT_PROCESSOR;
 
     SL_BlitProcessor& blitter = processor.mBlitter;
-    blitter.mThreadId         = 0;
-    blitter.mNumThreads       = (uint16_t)mNumThreads;
-    blitter.srcX0             = srcX0;
-    blitter.srcY0             = srcY0;
-    blitter.srcX1             = srcX1;
-    blitter.srcY1             = srcY1;
-    blitter.dstX0             = dstX0;
-    blitter.dstY0             = dstY0;
-    blitter.dstX1             = dstX1;
-    blitter.dstY1             = dstY1;
-    blitter.mTexture          = inTex;
-    blitter.mBackBuffer       = outTex;
+    blitter.mThreadId   = 0;
+    blitter.mNumThreads = (uint16_t)mNumThreads;
+    blitter.srcX0       = srcX0;
+    blitter.srcY0       = srcY0;
+    blitter.srcX1       = srcX1;
+    blitter.srcY1       = srcY1;
+    blitter.dstX0       = dstX0;
+    blitter.dstY0       = dstY0;
+    blitter.dstX1       = dstX1;
+    blitter.dstY1       = dstY1;
+    blitter.mSrcTex     = inTex;
+    blitter.mDstTex     = outTex;
 
     // Process most of the rendering on other threads first.
     for (uint16_t threadId = 0; threadId < mNumThreads - 1; ++threadId)
@@ -481,18 +481,18 @@ void SL_ProcessorPool::run_blit_compressed_processors(
     processor.mType = SL_BLIT_COMPRESSED_PROCESSOR;
 
     SL_BlitCompressedProcessor& blitter = processor.mBlitterCompressed;
-    blitter.mThreadId         = 0;
-    blitter.mNumThreads       = (uint16_t)mNumThreads;
-    blitter.srcX0             = srcX0;
-    blitter.srcY0             = srcY0;
-    blitter.srcX1             = srcX1;
-    blitter.srcY1             = srcY1;
-    blitter.dstX0             = dstX0;
-    blitter.dstY0             = dstY0;
-    blitter.dstX1             = dstX1;
-    blitter.dstY1             = dstY1;
-    blitter.mTexture          = inTex;
-    blitter.mBackBuffer       = outTex;
+    blitter.mThreadId   = 0;
+    blitter.mNumThreads = (uint16_t)mNumThreads;
+    blitter.srcX0       = srcX0;
+    blitter.srcY0       = srcY0;
+    blitter.srcX1       = srcX1;
+    blitter.srcY1       = srcY1;
+    blitter.dstX0       = dstX0;
+    blitter.dstY0       = dstY0;
+    blitter.dstX1       = dstX1;
+    blitter.dstY1       = dstY1;
+    blitter.mSrcTex     = inTex;
+    blitter.mDstTex     = outTex;
 
     // Process most of the rendering on other threads first.
     for (uint16_t threadId = 0; threadId < mNumThreads - 1; ++threadId)
@@ -523,10 +523,10 @@ void SL_ProcessorPool::run_clear_processors(const void* inColor, SL_Texture* out
     processor.mType = SL_CLEAR_PROCESSOR;
 
     SL_ClearProcessor& blitter = processor.mClear;
-    blitter.mThreadId         = 0;
-    blitter.mNumThreads       = (uint16_t)mNumThreads;
-    blitter.mTexture          = inColor;
-    blitter.mBackBuffer       = outTex;
+    blitter.mThreadId   = 0;
+    blitter.mNumThreads = (uint16_t)mNumThreads;
+    blitter.mTexture    = inColor;
+    blitter.mBackBuffer = outTex;
 
     // Process most of the rendering on other threads first.
     for (uint16_t threadId = 0; threadId < mNumThreads - 1; ++threadId)
@@ -557,8 +557,8 @@ void SL_ProcessorPool::run_clear_processors(const void* inColor, const void* dep
     processor.mType = SL_CLEAR_PROCESSOR;
 
     SL_ClearProcessor& blitter = processor.mClear;
-    blitter.mThreadId         = 0;
-    blitter.mNumThreads       = (uint16_t)mNumThreads;
+    blitter.mThreadId   = 0;
+    blitter.mNumThreads = (uint16_t)mNumThreads;
 
     // Process most of the rendering on other threads first.
     for (uint16_t threadId = 0; threadId < mNumThreads - 1; ++threadId)
@@ -603,8 +603,8 @@ void SL_ProcessorPool::run_clear_processors(const std::array<const void*, 2>& in
     processor.mType = SL_CLEAR_PROCESSOR;
 
     SL_ClearProcessor& blitter = processor.mClear;
-    blitter.mThreadId         = 0;
-    blitter.mNumThreads       = (uint16_t)mNumThreads;
+    blitter.mThreadId   = 0;
+    blitter.mNumThreads = (uint16_t)mNumThreads;
 
     // Process most of the rendering on other threads first.
     for (uint16_t threadId = 0; threadId < mNumThreads - 1; ++threadId)
@@ -657,8 +657,8 @@ void SL_ProcessorPool::run_clear_processors(const std::array<const void*, 3>& in
     processor.mType = SL_CLEAR_PROCESSOR;
 
     SL_ClearProcessor& blitter = processor.mClear;
-    blitter.mThreadId         = 0;
-    blitter.mNumThreads       = (uint16_t)mNumThreads;
+    blitter.mThreadId   = 0;
+    blitter.mNumThreads = (uint16_t)mNumThreads;
 
     // Process most of the rendering on other threads first.
     for (uint16_t threadId = 0; threadId < mNumThreads - 1; ++threadId)
@@ -719,8 +719,8 @@ void SL_ProcessorPool::run_clear_processors(const std::array<const void*, 4>& in
     processor.mType = SL_CLEAR_PROCESSOR;
 
     SL_ClearProcessor& blitter = processor.mClear;
-    blitter.mThreadId         = 0;
-    blitter.mNumThreads       = (uint16_t)mNumThreads;
+    blitter.mThreadId   = 0;
+    blitter.mNumThreads = (uint16_t)mNumThreads;
 
     // Process most of the rendering on other threads first.
     for (uint16_t threadId = 0; threadId < mNumThreads - 1; ++threadId)

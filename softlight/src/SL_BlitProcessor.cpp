@@ -428,7 +428,7 @@ struct SL_Blit_RGBA_to_RGBA<float, uint8_t>
 template<typename inColor_type>
 void SL_BlitProcessor::blit_src_r() noexcept
 {
-    switch (mBackBuffer->type())
+    switch (mDstTex->type())
     {
         case SL_COLOR_R_8U:         blit_nearest<SL_Blit_R_to_R<inColor_type, uint8_t>>();     break;
         case SL_COLOR_R_16U:        blit_nearest<SL_Blit_R_to_R<inColor_type, uint16_t>>();    break;
@@ -472,7 +472,7 @@ void SL_BlitProcessor::blit_src_r() noexcept
 template<typename inColor_type>
 void SL_BlitProcessor::blit_src_rg() noexcept
 {
-    switch (mBackBuffer->type())
+    switch (mDstTex->type())
     {
         case SL_COLOR_R_8U:         blit_nearest<SL_Blit_RG_to_R<inColor_type, uint8_t>>();     break;
         case SL_COLOR_R_16U:        blit_nearest<SL_Blit_RG_to_R<inColor_type, uint16_t>>();    break;
@@ -516,7 +516,7 @@ void SL_BlitProcessor::blit_src_rg() noexcept
 template<typename inColor_type>
 void SL_BlitProcessor::blit_src_rgb() noexcept
 {
-    switch (mBackBuffer->type())
+    switch (mDstTex->type())
     {
         case SL_COLOR_R_8U:         blit_nearest<SL_Blit_RGB_to_R<inColor_type, uint8_t>>();     break;
         case SL_COLOR_R_16U:        blit_nearest<SL_Blit_RGB_to_R<inColor_type, uint16_t>>();    break;
@@ -560,7 +560,7 @@ void SL_BlitProcessor::blit_src_rgb() noexcept
 template<typename inColor_type>
 void SL_BlitProcessor::blit_src_rgba() noexcept
 {
-    switch (mBackBuffer->type())
+    switch (mDstTex->type())
     {
         case SL_COLOR_R_8U:         blit_nearest<SL_Blit_RGBA_to_R<inColor_type, uint8_t>>();     break;
         case SL_COLOR_R_16U:        blit_nearest<SL_Blit_RGBA_to_R<inColor_type, uint16_t>>();    break;
@@ -605,14 +605,14 @@ template<class BlipOp>
 void SL_BlitProcessor::blit_nearest() noexcept
 {
     constexpr BlipOp blitOp;
-    unsigned char* const pOutBuf = reinterpret_cast<unsigned char* const>(mBackBuffer->data());
+    unsigned char* const pOutBuf = reinterpret_cast<unsigned char* const>(mDstTex->data());
 
     const uint_fast32_t inW  = (uint_fast32_t)srcX1 - (uint_fast32_t)srcX0;
     const uint_fast32_t inH  = (uint_fast32_t)srcY1 - (uint_fast32_t)srcY0;
     const uint_fast32_t outW = (uint_fast32_t)dstX1 - (uint_fast32_t)dstX0;
 
-    const uint_fast32_t totalOutW = mBackBuffer->width();
-    const uint_fast32_t totalOutH = mBackBuffer->height();
+    const uint_fast32_t totalOutW = mDstTex->width();
+    const uint_fast32_t totalOutH = mDstTex->height();
 
     // Only tile data along the y-axis of the render buffer. This will help to
     // make use of the CPU prefetcher when iterating pixels along the x-axis
@@ -640,7 +640,7 @@ void SL_BlitProcessor::blit_nearest() noexcept
             const uint_fast32_t xf   = x * foutW;
             const uint_fast32_t srcX = xf >> NUM_FIXED_BITS;
 
-            blitOp(mTexture, srcX, srcY, pOutBuf, outIndex);
+            blitOp(mSrcTex, srcX, srcY, pOutBuf, outIndex);
             ++x;
             outIndex += BlipOp::stride;
         }
@@ -656,9 +656,9 @@ void SL_BlitProcessor::blit_nearest() noexcept
 -------------------------------------*/
 void SL_BlitProcessor::execute() noexcept
 {
-    LS_ASSERT(!sl_is_compressed_color(mTexture->type()) && !sl_is_compressed_color(mBackBuffer->type()));
+    LS_ASSERT(!sl_is_compressed_color(mSrcTex->type()) && !sl_is_compressed_color(mDstTex->type()));
 
-    switch (mTexture->type())
+    switch (mSrcTex->type())
     {
         case SL_COLOR_R_8U:       blit_src_r<uint8_t>();     break;
         case SL_COLOR_R_16U:      blit_src_r<uint16_t>();    break;

@@ -49,8 +49,8 @@ struct SL_BlitCompressedProcessor
     uint16_t dstY1;
 
     // 64-128 bits
-    const SL_Texture* mTexture;
-    SL_Texture* mBackBuffer;
+    const SL_Texture* mSrcTex;
+    SL_Texture* mDstTex;
 
     // 224-288 bits total, 28-36 bytes
 
