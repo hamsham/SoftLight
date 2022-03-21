@@ -775,7 +775,7 @@ utils::Pointer<SL_SceneGraph> create_context()
     LS_ASSERT(retCode == (int)SL_TEST_MAX_THREADS);
 
     SL_Texture& tex = context.texture(texId);
-    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGB_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGB_332, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     LS_ASSERT(retCode == 0);
 
     SL_Texture& depth = context.texture(depthId);
@@ -863,9 +863,9 @@ int main()
     utils::Pointer<SL_RenderWindow> pWindow{std::move(SL_RenderWindow::create())};
     utils::Pointer<SL_WindowBuffer> pRenderBuf{SL_WindowBuffer::create()};
     utils::Pointer<SL_SceneGraph>   pGraph{std::move(create_context())};
-    utils::Pointer<bool[]>          pKeySyms{new bool[256]};
+    utils::Pointer<bool[]>          pKeySyms{new bool[65536]};
 
-    std::fill_n(pKeySyms.get(), 256, false);
+    std::fill_n(pKeySyms.get(), 65536, false);
 
     SL_Context& context = pGraph->mContext;
 

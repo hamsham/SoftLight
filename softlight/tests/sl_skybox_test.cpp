@@ -112,9 +112,9 @@ bool _sky_frag_shader(SL_FragmentParam& fragParam)
 
     // output composition
     const math::vec4 ditheredColor{
-        sl_dither2<5>(albedof[0], fragParam.coord.x, fragParam.coord.y),
-        sl_dither2<6>(albedof[1], fragParam.coord.x, fragParam.coord.y),
-        sl_dither2<5>(albedof[2], fragParam.coord.x, fragParam.coord.y),
+        sl_dither8<3>(albedof[0], fragParam.coord.x, fragParam.coord.y),
+        sl_dither8<3>(albedof[1], fragParam.coord.x, fragParam.coord.y),
+        sl_dither8<2>(albedof[2], fragParam.coord.x, fragParam.coord.y),
         1.f
     };
 
@@ -382,11 +382,11 @@ utils::Pointer<SL_SceneGraph> init_sky_context()
     context.num_threads(SL_TEST_MAX_THREADS);
 
     SL_Texture& tex = context.texture(texId);
-    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGB_565, 320, 240, 1);
+    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGB_332, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     LS_ASSERT(retCode == 0);
 
     SL_Texture& depth = context.texture(depthId);
-    retCode = depth.init(SL_ColorDataType::SL_COLOR_R_16U, 320, 240, 1);
+    retCode = depth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     LS_ASSERT(retCode == 0);
 
     SL_Framebuffer& fbo = context.framebuffer(fboId);
@@ -510,9 +510,9 @@ int main()
     ls::utils::Pointer<SL_WindowBuffer> pRenderBuf {SL_WindowBuffer::create()};
     ls::utils::Pointer<SL_SceneGraph>   pGraph     {std::move(init_sky_context())};
     SL_Context&                         context    = pGraph->mContext;
-    ls::utils::Pointer<bool[]>          pKeySyms   {new bool[1024]};
+    ls::utils::Pointer<bool[]>          pKeySyms   {new bool[65536]};
 
-    std::fill_n(pKeySyms.get(), 1024, false);
+    std::fill_n(pKeySyms.get(), 65536, false);
 
     ls::utils::Clock<float> timer;
     unsigned currFrames = 0;
