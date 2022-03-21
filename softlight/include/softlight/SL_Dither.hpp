@@ -36,6 +36,22 @@ inline float sl_dither2(float c, const unsigned x, const unsigned y)
 
 
 template <>
+inline float sl_dither2<3u>(float c, const unsigned x, const unsigned y)
+{
+    return 1.f-sl_bayer_dither_2x2(c, x, y);
+}
+
+
+
+template <>
+inline float sl_dither2<2u>(float c, const unsigned x, const unsigned y)
+{
+    return 1.f-sl_bayer_dither_2x2(c, x, y);
+}
+
+
+
+template <>
 inline float sl_dither2<1u>(float c, const unsigned x, const unsigned y)
 {
     return 1.f-sl_bayer_dither_2x2(c, x, y);
@@ -65,6 +81,22 @@ inline float sl_dither4(float c, const unsigned x, const unsigned y)
     const float paletteColor = c * (float)((1u << numBits)-1u);
     const float bayer = paletteColor + sl_bayer_dither_4x4(c, x, y);
     return ls::math::clamp(bayer/(float)((1u << numBits)-1u), 0.f, 1.f);
+}
+
+
+
+template <>
+inline float sl_dither4<3u>(float c, const unsigned x, const unsigned y)
+{
+    return 1.f-sl_bayer_dither_4x4(c, x, y);
+}
+
+
+
+template <>
+inline float sl_dither4<2u>(float c, const unsigned x, const unsigned y)
+{
+    return 1.f-sl_bayer_dither_4x4(c, x, y);
 }
 
 
@@ -103,6 +135,22 @@ inline float sl_dither8(float c, const unsigned x, const unsigned y)
     const float paletteColor = c * (float)((1u << numBits)-1u);
     const float bayer = paletteColor + sl_bayer_dither_8x8(c, x, y);
     return ls::math::clamp(bayer/(float)((1u << numBits)-1u), 0.f, 1.f);
+}
+
+
+
+template <>
+inline float sl_dither8<3u>(float c, const unsigned x, const unsigned y)
+{
+    return 1.f-sl_bayer_dither_8x8(c, x, y);
+}
+
+
+
+template <>
+inline float sl_dither8<2u>(float c, const unsigned x, const unsigned y)
+{
+    return 1.f-sl_bayer_dither_8x8(c, x, y);
 }
 
 

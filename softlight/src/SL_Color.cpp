@@ -41,6 +41,7 @@ size_t sl_bytes_per_color(SL_ColorDataType p)
         case SL_COLOR_RGBA_FLOAT:  return 4 * sizeof(float);
         case SL_COLOR_RGBA_DOUBLE: return 4 * sizeof(double);
 
+        case SL_COLOR_RGB_332:     return sizeof(uint8_t);
         case SL_COLOR_RGB_565:     return sizeof(uint16_t);
         case SL_COLOR_RGBA_5551:   return sizeof(uint16_t);
         case SL_COLOR_RGBA_4444:   return sizeof(uint16_t);
@@ -89,6 +90,7 @@ unsigned sl_elements_per_color(SL_ColorDataType p)
         case SL_COLOR_RGBA_FLOAT:  return 4;
         case SL_COLOR_RGBA_DOUBLE: return 4;
 
+        case SL_COLOR_RGB_332:     return 3;
         case SL_COLOR_RGB_565:     return 3;
         case SL_COLOR_RGBA_5551:   return 3;
         case SL_COLOR_RGBA_4444:   return 3;
@@ -109,6 +111,7 @@ bool sl_is_compressed_color(SL_ColorDataType p)
 {
     switch (p)
     {
+        case SL_COLOR_RGB_332:
         case SL_COLOR_RGB_565:
         case SL_COLOR_RGBA_5551:
         case SL_COLOR_RGBA_4444:
@@ -127,15 +130,15 @@ bool sl_is_compressed_color(SL_ColorDataType p)
  * helper function to avoid breaking reinterpret_cast from a compressed color
  * to uint16_t (i.e., don't break strict aliasing).
 -------------------------------------*/
-template <typename CompressedColorType>
-inline LS_INLINE uint16_t _sl_rgb565_as_bits(const CompressedColorType& c) noexcept
+template <typename CompressedColorType, typename convertedType>
+inline LS_INLINE convertedType _sl_rgb_compressed_as_bits(const CompressedColorType& c) noexcept
 {
-    static_assert(sizeof(CompressedColorType) == sizeof(uint16_t), "Error in compressed color size.");
+    static_assert(sizeof(CompressedColorType) == sizeof(convertedType), "Error in compressed color size.");
 
     union
     {
         CompressedColorType rgb;
-        uint16_t bits;
+        convertedType bits;
     } ret{c};
     return ret.bits;
 }
@@ -181,9 +184,10 @@ SL_GeneralColor sl_match_color_for_type(SL_ColorDataType typeToMatch, const ls::
         case SL_COLOR_RGB_DOUBLE:  outColor.color.rgbd = *reinterpret_cast<const SL_ColorRGBd*>(inColor.v); break;
         case SL_COLOR_RGBA_DOUBLE: outColor.color.rgbad = *reinterpret_cast<const SL_ColorRGBAd*>(inColor.v); break;
 
-        case SL_COLOR_RGB_565:     outColor.color.rgb565   = _sl_rgb565_as_bits(rgb565_cast<double>(ls::math::vec3_cast<double>(inColor))); break;
-        case SL_COLOR_RGBA_5551:   outColor.color.rgba5551 = _sl_rgb565_as_bits(rgb5551_cast<double>(inColor)); break;
-        case SL_COLOR_RGBA_4444:   outColor.color.rgba4444 = _sl_rgb565_as_bits(rgb4444_cast<double>(inColor)); break;
+        case SL_COLOR_RGB_332:     outColor.color.rgb332   = _sl_rgb_compressed_as_bits<SL_ColorRGB332, uint8_t>(rgb332_cast<double>(ls::math::vec3_cast<double>(inColor))); break;
+        case SL_COLOR_RGB_565:     outColor.color.rgb565   = _sl_rgb_compressed_as_bits<SL_ColorRGB565, uint16_t>(rgb565_cast<double>(ls::math::vec3_cast<double>(inColor))); break;
+        case SL_COLOR_RGBA_5551:   outColor.color.rgba5551 = _sl_rgb_compressed_as_bits<SL_ColorRGB5551, uint16_t>(rgb5551_cast<double>(inColor)); break;
+        case SL_COLOR_RGBA_4444:   outColor.color.rgba4444 = _sl_rgb_compressed_as_bits<SL_ColorRGB4444, uint16_t>(rgb4444_cast<double>(inColor)); break;
 
         default:
             LS_UNREACHABLE();

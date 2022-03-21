@@ -276,6 +276,7 @@ FREE_IMAGE_TYPE sl_color_to_freeimage(SL_ColorDataType type)
         case SL_COLOR_RGBA_DOUBLE:
             return FIT_DOUBLE;
 
+        case SL_COLOR_RGB_332:
         case SL_COLOR_RGB_565:
         case SL_COLOR_RGBA_5551:
         case SL_COLOR_RGBA_4444:

@@ -59,6 +59,28 @@ struct SL_Blit_Compressed_to_Compressed;
  * Compressed to R
 -------------------------------------*/
 template<typename outColor_type>
+struct SL_Blit_Compressed_to_R<SL_ColorRGB332, outColor_type>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRType<outColor_type>)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRGB332 inColor = pTexture->texel<SL_ColorRGB332>((uint16_t)srcX, (uint16_t)srcY);
+        *reinterpret_cast<SL_ColorRType<outColor_type>*>(pOutBuf + outIndex) = rgb_cast<outColor_type>(inColor)[0];
+    }
+};
+
+
+
+template<typename outColor_type>
 struct SL_Blit_Compressed_to_R<SL_ColorRGB565, outColor_type>
 {
     enum : uint_fast32_t
@@ -127,6 +149,28 @@ struct SL_Blit_Compressed_to_R<SL_ColorRGB4444, outColor_type>
 /*-------------------------------------
  * Compressed to RG
 -------------------------------------*/
+template<typename outColor_type>
+struct SL_Blit_Compressed_to_RG<SL_ColorRGB332, outColor_type>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGType<outColor_type>)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRGB332 inColor = pTexture->texel<SL_ColorRGB332>((uint16_t)srcX, (uint16_t)srcY);
+        *reinterpret_cast<SL_ColorRGType<outColor_type>*>(pOutBuf + outIndex) = ls::math::vec2_cast(rgb_cast<outColor_type>(inColor));
+    }
+};
+
+
+
 template<typename outColor_type>
 struct SL_Blit_Compressed_to_RG<SL_ColorRGB565, outColor_type>
 {
@@ -197,6 +241,28 @@ struct SL_Blit_Compressed_to_RG<SL_ColorRGB4444, outColor_type>
  * Compressed to RGB
 -------------------------------------*/
 template<typename outColor_type>
+struct SL_Blit_Compressed_to_RGB<SL_ColorRGB332, outColor_type>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGBType<outColor_type>)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRGB332 inColor = pTexture->texel<SL_ColorRGB332>((uint16_t)srcX, (uint16_t)srcY);
+        *reinterpret_cast<SL_ColorRGBType<outColor_type>*>(pOutBuf + outIndex) = rgb_cast<outColor_type>(inColor);
+    }
+};
+
+
+
+template<typename outColor_type>
 struct SL_Blit_Compressed_to_RGB<SL_ColorRGB565, outColor_type>
 {
     enum : uint_fast32_t
@@ -266,6 +332,28 @@ struct SL_Blit_Compressed_to_RGB<SL_ColorRGB4444, outColor_type>
  * Compressed to RGBA
 -------------------------------------*/
 template<typename outColor_type>
+struct SL_Blit_Compressed_to_RGBA<SL_ColorRGB332, outColor_type>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGBAType<outColor_type>)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRGB332 inColor = pTexture->texel<SL_ColorRGB332>((uint16_t)srcX, (uint16_t)srcY);
+        *reinterpret_cast<SL_ColorRGBAType<outColor_type>*>(pOutBuf + outIndex) = ls::math::vec4_cast(rgb_cast<outColor_type>(inColor), SL_ColorLimits<outColor_type, SL_ColorRGBAType>::max()[3]);
+    }
+};
+
+
+
+template<typename outColor_type>
 struct SL_Blit_Compressed_to_RGBA<SL_ColorRGB565, outColor_type>
 {
     enum : uint_fast32_t
@@ -334,6 +422,30 @@ struct SL_Blit_Compressed_to_RGBA<SL_ColorRGB4444, outColor_type>
 /*-------------------------------------
  * R to Compressed
 -------------------------------------*/
+template<typename inColor_type>
+struct SL_Blit_R_to_Compressed<inColor_type, SL_ColorRGB332>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGB332)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRType<inColor_type>  inColorR = pTexture->texel<SL_ColorRType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
+        const SL_ColorRGBType<inColor_type> inColor   = ls::math::vec3_t<inColor_type>(inColorR.r, SL_ColorLimits<inColor_type, SL_ColorRType>::min().r, SL_ColorLimits<inColor_type, SL_ColorRType>::min().r);
+
+        *reinterpret_cast<SL_ColorRGB332*>(pOutBuf + outIndex) = rgb332_cast<inColor_type>(inColor);
+    }
+};
+
+
+
 template<typename inColor_type>
 struct SL_Blit_R_to_Compressed<inColor_type, SL_ColorRGB565>
 {
@@ -411,6 +523,30 @@ struct SL_Blit_R_to_Compressed<inColor_type, SL_ColorRGB4444>
  * RG to Compressed
 -------------------------------------*/
 template<typename inColor_type>
+struct SL_Blit_RG_to_Compressed<inColor_type, SL_ColorRGB332>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGB332)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRGType<inColor_type>  inColorRG = pTexture->texel<SL_ColorRGType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
+        const SL_ColorRGBType<inColor_type> inColor   = ls::math::vec3_cast(inColorRG, SL_ColorLimits<inColor_type, SL_ColorRType>::min().r);
+
+        *reinterpret_cast<SL_ColorRGB332*>(pOutBuf + outIndex) = rgb332_cast<inColor_type>(inColor);
+    }
+};
+
+
+
+template<typename inColor_type>
 struct SL_Blit_RG_to_Compressed<inColor_type, SL_ColorRGB565>
 {
     enum : uint_fast32_t
@@ -486,6 +622,28 @@ struct SL_Blit_RG_to_Compressed<inColor_type, SL_ColorRGB4444>
  * RGB to Compressed
 -------------------------------------*/
 template<typename inColor_type>
+struct SL_Blit_RGB_to_Compressed<inColor_type, SL_ColorRGB332>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGB332)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRGBType<inColor_type> inColor = pTexture->texel<SL_ColorRGBType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
+        *reinterpret_cast<SL_ColorRGB332*>(pOutBuf + outIndex) = rgb332_cast<inColor_type>(inColor);
+    }
+};
+
+
+
+template<typename inColor_type>
 struct SL_Blit_RGB_to_Compressed<inColor_type, SL_ColorRGB565>
 {
     enum : uint_fast32_t
@@ -559,6 +717,30 @@ struct SL_Blit_RGB_to_Compressed<inColor_type, SL_ColorRGB4444>
  * RGBA to Compressed
 -------------------------------------*/
 template<typename inColor_type>
+struct SL_Blit_RGBA_to_Compressed<inColor_type, SL_ColorRGB332>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGB332)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRGBAType<inColor_type> inColorRGBA = pTexture->texel<SL_ColorRGBAType<inColor_type>>((uint16_t)srcX, (uint16_t)srcY);
+        const SL_ColorRGBType<inColor_type>  inColor     = ls::math::vec3_cast(inColorRGBA);
+
+        *reinterpret_cast<SL_ColorRGB332*>(pOutBuf + outIndex) = rgb332_cast<inColor_type>(inColor);
+    }
+};
+
+
+
+template<typename inColor_type>
 struct SL_Blit_RGBA_to_Compressed<inColor_type, SL_ColorRGB565>
 {
     enum : uint_fast32_t
@@ -630,6 +812,116 @@ struct SL_Blit_RGBA_to_Compressed<inColor_type, SL_ColorRGB4444>
  * Compressed to Compressed
 -------------------------------------*/
 template<>
+struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB332, SL_ColorRGB332>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGB332)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRGB332 inColor = pTexture->texel<SL_ColorRGB332>((uint16_t)srcX, (uint16_t)srcY);
+        *reinterpret_cast<SL_ColorRGB332*>(pOutBuf + outIndex) = inColor;
+    }
+};
+
+
+
+template<>
+struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB565, SL_ColorRGB332>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGB332)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRGB565 inColor = pTexture->texel<SL_ColorRGB565>((uint16_t)srcX, (uint16_t)srcY);
+        const ls::math::vec3_t<uint8_t> outColor = rgb_cast<uint8_t>(inColor);
+        *reinterpret_cast<SL_ColorRGB332*>(pOutBuf + outIndex) = rgb332_cast<uint8_t>(outColor);
+    }
+};
+
+
+
+template<>
+struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB5551, SL_ColorRGB332>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGB332)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRGB5551 inColor = pTexture->texel<SL_ColorRGB5551>((uint16_t)srcX, (uint16_t)srcY);
+        const ls::math::vec3_t<uint8_t> outColor = ls::math::vec3_cast<uint8_t>(rgb_cast<uint8_t>(inColor));
+        *reinterpret_cast<SL_ColorRGB332*>(pOutBuf + outIndex) = rgb332_cast<uint8_t>(outColor);
+    }
+};
+
+
+
+template<>
+struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB4444, SL_ColorRGB332>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGB332)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRGB4444 inColor = pTexture->texel<SL_ColorRGB4444>((uint16_t)srcX, (uint16_t)srcY);
+        const ls::math::vec3_t<uint8_t> outColor = ls::math::vec3_cast<uint8_t>(rgb_cast<uint8_t>(inColor));
+        *reinterpret_cast<SL_ColorRGB332*>(pOutBuf + outIndex) = rgb332_cast<uint8_t>(outColor);
+    }
+};
+
+template<>
+struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB332, SL_ColorRGB565>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGB565)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRGB332 inColor = pTexture->texel<SL_ColorRGB332>((uint16_t)srcX, (uint16_t)srcY);
+        const ls::math::vec3_t<uint8_t> outColor = rgb_cast<uint8_t>(inColor);
+        *reinterpret_cast<SL_ColorRGB565*>(pOutBuf + outIndex) = rgb565_cast<uint8_t>(outColor);
+    }
+};
+
+template<>
 struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB565, SL_ColorRGB565>
 {
     enum : uint_fast32_t
@@ -698,6 +990,29 @@ struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB4444, SL_ColorRGB565>
 
 
 template<>
+struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB332, SL_ColorRGB5551>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGB5551)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRGB332 inColor = pTexture->texel<SL_ColorRGB332>((uint16_t)srcX, (uint16_t)srcY);
+        const ls::math::vec4_t<uint8_t> outRGBA = ls::math::vec4_cast<uint8_t>(rgb_cast<uint8_t>(inColor), SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().a);
+        *reinterpret_cast<SL_ColorRGB5551*>(pOutBuf + outIndex) = rgb5551_cast<uint8_t>(outRGBA);
+    }
+};
+
+
+
+template<>
 struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB565, SL_ColorRGB5551>
 {
     enum : uint_fast32_t
@@ -760,6 +1075,29 @@ struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB4444, SL_ColorRGB5551>
         const SL_ColorRGB4444 inColor = pTexture->texel<SL_ColorRGB4444>((uint16_t)srcX, (uint16_t)srcY);
         const ls::math::vec4_t<uint8_t> outColor = rgb_cast<uint8_t>(inColor);
         *reinterpret_cast<SL_ColorRGB5551*>(pOutBuf + outIndex) = rgb5551_cast<uint8_t>(outColor);
+    }
+};
+
+
+
+template<>
+struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB332, SL_ColorRGB4444>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGB4444)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRGB332 inColor = pTexture->texel<SL_ColorRGB332>((uint16_t)srcX, (uint16_t)srcY);
+        const ls::math::vec4_t<uint8_t> outRGBA = ls::math::vec4_cast<uint8_t>(rgb_cast<uint8_t>(inColor), SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().a);
+        *reinterpret_cast<SL_ColorRGB4444*>(pOutBuf + outIndex) = rgb4444_cast<uint8_t>(outRGBA);
     }
 };
 
@@ -845,6 +1183,7 @@ void SL_BlitCompressedProcessor::blit_src_r() noexcept
 {
     switch (mDstTex->type())
     {
+        case SL_COLOR_RGB_332:     blit_nearest<SL_Blit_R_to_Compressed<inColor_type, SL_ColorRGB332>>();  break;
         case SL_COLOR_RGB_565:     blit_nearest<SL_Blit_R_to_Compressed<inColor_type, SL_ColorRGB565>>();  break;
         case SL_COLOR_RGBA_5551:   blit_nearest<SL_Blit_R_to_Compressed<inColor_type, SL_ColorRGB5551>>(); break;
         case SL_COLOR_RGBA_4444:   blit_nearest<SL_Blit_R_to_Compressed<inColor_type, SL_ColorRGB4444>>(); break;
@@ -865,6 +1204,7 @@ void SL_BlitCompressedProcessor::blit_src_rg() noexcept
 {
     switch (mDstTex->type())
     {
+        case SL_COLOR_RGB_332:     blit_nearest<SL_Blit_RG_to_Compressed<inColor_type, SL_ColorRGB332>>();  break;
         case SL_COLOR_RGB_565:     blit_nearest<SL_Blit_RG_to_Compressed<inColor_type, SL_ColorRGB565>>();  break;
         case SL_COLOR_RGBA_5551:   blit_nearest<SL_Blit_RG_to_Compressed<inColor_type, SL_ColorRGB5551>>(); break;
         case SL_COLOR_RGBA_4444:   blit_nearest<SL_Blit_RG_to_Compressed<inColor_type, SL_ColorRGB4444>>(); break;
@@ -885,6 +1225,7 @@ void SL_BlitCompressedProcessor::blit_src_rgb() noexcept
 {
     switch (mDstTex->type())
     {
+        case SL_COLOR_RGB_332:     blit_nearest<SL_Blit_RGB_to_Compressed<inColor_type, SL_ColorRGB332>>();  break;
         case SL_COLOR_RGB_565:     blit_nearest<SL_Blit_RGB_to_Compressed<inColor_type, SL_ColorRGB565>>();  break;
         case SL_COLOR_RGBA_5551:   blit_nearest<SL_Blit_RGB_to_Compressed<inColor_type, SL_ColorRGB5551>>(); break;
         case SL_COLOR_RGBA_4444:   blit_nearest<SL_Blit_RGB_to_Compressed<inColor_type, SL_ColorRGB4444>>(); break;
@@ -905,6 +1246,7 @@ void SL_BlitCompressedProcessor::blit_src_rgba() noexcept
 {
     switch (mDstTex->type())
     {
+        case SL_COLOR_RGB_332:     blit_nearest<SL_Blit_RGBA_to_Compressed<inColor_type, SL_ColorRGB332>>();  break;
         case SL_COLOR_RGB_565:     blit_nearest<SL_Blit_RGBA_to_Compressed<inColor_type, SL_ColorRGB565>>();  break;
         case SL_COLOR_RGBA_5551:   blit_nearest<SL_Blit_RGBA_to_Compressed<inColor_type, SL_ColorRGB5551>>(); break;
         case SL_COLOR_RGBA_4444:   blit_nearest<SL_Blit_RGBA_to_Compressed<inColor_type, SL_ColorRGB4444>>(); break;
@@ -953,6 +1295,7 @@ void SL_BlitCompressedProcessor::blit_src_compressed() noexcept
         case SL_COLOR_RGBA_FLOAT:   blit_nearest<SL_Blit_Compressed_to_RGBA<inColor_type, float>>();    break;
         case SL_COLOR_RGBA_DOUBLE:  blit_nearest<SL_Blit_Compressed_to_RGBA<inColor_type, double>>();   break;
 
+        case SL_COLOR_RGB_332:     blit_nearest<SL_Blit_Compressed_to_Compressed<inColor_type, SL_ColorRGB332>>();  break;
         case SL_COLOR_RGB_565:     blit_nearest<SL_Blit_Compressed_to_Compressed<inColor_type, SL_ColorRGB565>>();  break;
         case SL_COLOR_RGBA_5551:   blit_nearest<SL_Blit_Compressed_to_Compressed<inColor_type, SL_ColorRGB5551>>(); break;
         case SL_COLOR_RGBA_4444:   blit_nearest<SL_Blit_Compressed_to_Compressed<inColor_type, SL_ColorRGB4444>>(); break;
@@ -1055,6 +1398,7 @@ void SL_BlitCompressedProcessor::execute() noexcept
         case SL_COLOR_RGBA_FLOAT:  blit_src_rgba<float>();    break;
         case SL_COLOR_RGBA_DOUBLE: blit_src_rgba<double>();   break;
 
+        case SL_COLOR_RGB_332:     blit_src_compressed<SL_ColorRGB332>();  break;
         case SL_COLOR_RGB_565:     blit_src_compressed<SL_ColorRGB565>();  break;
         case SL_COLOR_RGBA_5551:   blit_src_compressed<SL_ColorRGB5551>(); break;
         case SL_COLOR_RGBA_4444:   blit_src_compressed<SL_ColorRGB4444>(); break;

@@ -74,6 +74,7 @@ extern template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint16_t>
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint64_t>>(const SL_ColorRGBAType<uint64_t>&) noexcept;
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<double>>(const SL_ColorRGBAType<double>&) noexcept;
 
+extern template void SL_ClearProcessor::clear_texture<SL_ColorRGB332>(const SL_ColorRGB332&) noexcept;
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRGB565>(const SL_ColorRGB565&) noexcept;
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRGB5551>(const SL_ColorRGB5551&) noexcept;
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRGB4444>(const SL_ColorRGB4444&) noexcept;

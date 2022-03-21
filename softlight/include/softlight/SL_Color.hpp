@@ -59,6 +59,7 @@ enum SL_ColorDataType : uint8_t
     SL_COLOR_RGBA_DOUBLE,
 
     // These compressed formats require the inclusion of "SL_ColorCompressed.hpp"
+    SL_COLOR_RGB_332,
     SL_COLOR_RGB_565,
     SL_COLOR_RGBA_5551,
     SL_COLOR_RGBA_4444,
@@ -631,6 +632,7 @@ struct SL_GeneralColor
         ls::math::vec4_t<float> rgbaf;
         ls::math::vec4_t<double> rgbad;
 
+        uint8_t rgb332;
         uint16_t rgb565;
         uint16_t rgba5551;
         uint16_t rgba4444;
