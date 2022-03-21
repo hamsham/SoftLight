@@ -5,6 +5,7 @@
 #include <cstdint>
 
 #include "softlight/SL_BlitProcesor.hpp"
+#include "softlight/SL_BlitCompressedProcesor.hpp"
 #include "softlight/SL_ClearProcesor.hpp"
 #include "softlight/SL_LineProcessor.hpp"
 #include "softlight/SL_PointProcessor.hpp"
@@ -25,6 +26,7 @@ enum SL_ShaderType : uint8_t
     SL_LINE_PROCESSOR,
     SL_POINT_PROCESSOR,
     SL_BLIT_PROCESSOR,
+    SL_BLIT_COMPRESSED_PROCESSOR,
     SL_CLEAR_PROCESSOR
 };
 
@@ -46,6 +48,7 @@ struct SL_ShaderProcessor
         SL_LineProcessor mLineProcessor;
         SL_PointProcessor mPointProcessor;
         SL_BlitProcessor mBlitter;
+        SL_BlitCompressedProcessor mBlitterCompressed;
         SL_ClearProcessor mClear;
     };
 
@@ -91,6 +94,10 @@ inline void SL_ShaderProcessor::operator()() noexcept
 
         case SL_BLIT_PROCESSOR:
             mBlitter.execute();
+            break;
+
+        case SL_BLIT_COMPRESSED_PROCESSOR:
+            mBlitterCompressed.execute();
             break;
 
         case SL_CLEAR_PROCESSOR:

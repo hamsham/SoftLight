@@ -103,6 +103,27 @@ unsigned sl_elements_per_color(SL_ColorDataType p)
 
 
 /*-------------------------------------
+ * Compressed format check
+-------------------------------------*/
+bool sl_is_compressed_color(SL_ColorDataType p)
+{
+    switch (p)
+    {
+        case SL_COLOR_RGB_565:
+        case SL_COLOR_RGBA_5551:
+        case SL_COLOR_RGBA_4444:
+            return true;
+
+        default:
+            break;
+    }
+
+    return false;
+}
+
+
+
+/*-------------------------------------
  * helper function to avoid breaking reinterpret_cast from a compressed color
  * to uint16_t (i.e., don't break strict aliasing).
 -------------------------------------*/

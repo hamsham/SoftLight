@@ -1,7 +1,6 @@
 
-// Abandon Hope All Ye Who Enter Here
-#ifndef SL_BLIT_PROCESSOR_HPP
-#define SL_BLIT_PROCESSOR_HPP
+#ifndef SL_BLIT_COMPRESSED_PROCESSOR_HPP
+#define SL_BLIT_COMPRESSED_PROCESSOR_HPP
 
 #include <cstdint>
 
@@ -26,7 +25,7 @@ class SL_Texture;
  * precision errors and increase ALU throughput. Benchmarks on x86 and ARM has
  * shown that floating-point logic performs worse in this area.
 -----------------------------------------------------------------------------*/
-struct SL_BlitProcessor
+struct SL_BlitCompressedProcessor
 {
     enum : uint_fast32_t
     {
@@ -71,6 +70,10 @@ struct SL_BlitProcessor
     template<typename inColor_type>
     void blit_src_rgba() noexcept;
 
+    // Blit compressed color components
+    template<typename inColor_type>
+    void blit_src_compressed() noexcept;
+
     // Blit all 4 color components
     template<class BlitOp>
     void blit_nearest() noexcept;
@@ -80,4 +83,4 @@ struct SL_BlitProcessor
 
 
 
-#endif /* SL_BLIT_PROCESSOR_HPP */
+#endif /* SL_BLIT_COMPRESSED_PROCESSOR_HPP */

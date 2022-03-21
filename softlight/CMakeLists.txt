@@ -123,6 +123,7 @@ set(SL_LIB_HEADERS
     include/softlight/SL_AnimationProperty.hpp
     include/softlight/SL_Atlas.hpp
     include/softlight/SL_BlitProcesor.hpp
+    include/softlight/SL_BlitCompressedProcesor.hpp
     include/softlight/SL_BoundingBox.hpp
     include/softlight/SL_Camera.hpp
     include/softlight/SL_ClearProcesor.hpp
@@ -213,6 +214,7 @@ set(SL_LIB_SOURCES
     src/SL_AnimationPlayer.cpp
     src/SL_Atlas.cpp
     src/SL_BlitProcessor.cpp
+    src/SL_BlitCompressedProcessor.cpp
     src/SL_BoundingBox.cpp
     src/SL_Camera.cpp
     src/SL_ClearProcessor.cpp

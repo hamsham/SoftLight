@@ -82,6 +82,13 @@ unsigned sl_elements_per_color(SL_ColorDataType p);
 
 
 
+/*-------------------------------------
+ * Compressed format check
+-------------------------------------*/
+bool sl_is_compressed_color(SL_ColorDataType p);
+
+
+
 /**----------------------------------------------------------------------------
  * @brief Red-only Color Types
 -----------------------------------------------------------------------------*/

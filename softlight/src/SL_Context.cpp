@@ -742,17 +742,13 @@ void SL_Context::blit(size_t outTextureId, size_t inTextureId) noexcept
     const uint16_t dstX1 = pOut->width();
     const uint16_t dstY1 = pOut->height();
 
-    mProcessors.run_blit_processors(
-        mTextures[inTextureId],
-        mTextures[outTextureId],
-        srcX0,
-        srcY0,
-        srcX1,
-        srcY1,
-        dstX0,
-        dstY0,
-        dstX1,
-        dstY1);
+    this->blit(
+        outTextureId,
+        inTextureId,
+        srcX0, srcY0,
+        srcX1, srcY1,
+        dstX0, dstY0,
+        dstX1, dstY1);
 }
 
 
@@ -772,17 +768,26 @@ void SL_Context::blit(
     uint16_t dstX1,
     uint16_t dstY1) noexcept
 {
-    mProcessors.run_blit_processors(
-        mTextures[inTextureId],
-        mTextures[outTextureId],
-        srcX0,
-        srcY0,
-        srcX1,
-        srcY1,
-        dstX0,
-        dstY0,
-        dstX1,
-        dstY1);
+    if (sl_is_compressed_color(mTextures[outTextureId]->type()) || sl_is_compressed_color(mTextures[inTextureId]->type()))
+    {
+        mProcessors.run_blit_compressed_processors(
+            mTextures[inTextureId],
+            mTextures[outTextureId],
+            srcX0, srcY0,
+            srcX1, srcY1,
+            dstX0, dstY0,
+            dstX1, dstY1);
+    }
+    else
+    {
+        mProcessors.run_blit_processors(
+            mTextures[inTextureId],
+            mTextures[outTextureId],
+            srcX0, srcY0,
+            srcX1, srcY1,
+            dstX0, dstY0,
+            dstX1, dstY1);
+    }
 }
 
 
@@ -802,17 +807,13 @@ void SL_Context::blit(SL_WindowBuffer& buffer, size_t textureId) noexcept
     const uint16_t dstX1 = (uint16_t)buffer.width();
     const uint16_t dstY1 = (uint16_t)buffer.height();
 
-    mProcessors.run_blit_processors(
-        mTextures[textureId],
-        &(buffer.mTexture),
-        srcX0,
-        srcY0,
-        srcX1,
-        srcY1,
-        dstX0,
-        dstY0,
-        dstX1,
-        dstY1);
+    this->blit(
+        buffer,
+        textureId,
+        srcX0, srcY0,
+        srcX1, srcY1,
+        dstX0, dstY0,
+        dstX1, dstY1);
 }
 
 
@@ -832,17 +833,26 @@ void SL_Context::blit(
     uint16_t dstX1,
     uint16_t dstY1) noexcept
 {
-    mProcessors.run_blit_processors(
-        mTextures[textureId],
-        &(buffer.mTexture),
-        srcX0,
-        srcY0,
-        srcX1,
-        srcY1,
-        dstX0,
-        dstY0,
-        dstX1,
-        dstY1);
+    if (sl_is_compressed_color(mTextures[textureId]->type()) || sl_is_compressed_color(buffer.mTexture.type()))
+    {
+        mProcessors.run_blit_compressed_processors(
+            mTextures[textureId],
+            &(buffer.mTexture),
+            srcX0, srcY0,
+            srcX1, srcY1,
+            dstX0, dstY0,
+            dstX1, dstY1);
+    }
+    else
+    {
+        mProcessors.run_blit_processors(
+            mTextures[textureId],
+            &(buffer.mTexture),
+            srcX0, srcY0,
+            srcX1, srcY1,
+            dstX0, dstY0,
+            dstX1, dstY1);
+    }
 }
 
 

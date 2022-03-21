@@ -112,6 +112,19 @@ class SL_ProcessorPool
         uint16_t dstY1
     ) noexcept;
 
+    void run_blit_compressed_processors(
+        const SL_Texture* inTex,
+        SL_Texture* outTex,
+        uint16_t srcX0,
+        uint16_t srcY0,
+        uint16_t srcX1,
+        uint16_t srcY1,
+        uint16_t dstX0,
+        uint16_t dstY0,
+        uint16_t dstX1,
+        uint16_t dstY1
+    ) noexcept;
+
     void run_clear_processors(const void* inColor, SL_Texture* outTex) noexcept;
 
     void run_clear_processors(const void* inColor, const void* depth, SL_Texture* colorBuf, SL_Texture* depthBuf) noexcept;

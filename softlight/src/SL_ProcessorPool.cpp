@@ -273,13 +273,15 @@ unsigned SL_ProcessorPool::concurrency(unsigned inNumThreads) noexcept
 
     LS_LOG_MSG(
         "Rendering threads updated:"
-        "\n\tThread Count:       ", inNumThreads,
-        "\n\tBytes per Task:     ", sizeof(SL_ShaderProcessor),
-        "\n\tBytes of Task Pool: ", sizeof(SL_ProcessorPool),
-        "\n\tVertex Task Size:   ", sizeof(SL_VertexProcessor),
-        "\n\tFragment Task Size: ", sizeof(SL_FragmentProcessor),
-        "\n\tFragment Bin Size:  ", sizeof(SL_FragmentBin),
-        "\n\tBlitter Task Size:  ", sizeof(SL_BlitProcessor));
+        "\n\tThread Count:                    ", inNumThreads,
+        "\n\tBytes per Task:                  ", sizeof(SL_ShaderProcessor),
+        "\n\tBytes of Task Pool:              ", sizeof(SL_ProcessorPool),
+        "\n\tVertex Task Size:                ", sizeof(SL_VertexProcessor),
+        "\n\tFragment Task Size:              ", sizeof(SL_FragmentProcessor),
+        "\n\tFragment Bin Size:               ", sizeof(SL_FragmentBin),
+        "\n\tBlitter Task Size:               ", sizeof(SL_BlitProcessor),
+        "\n\tBlitter (compressed) Task Size:  ", sizeof(SL_BlitCompressedProcessor)
+    );
 
     return inNumThreads;
 }
@@ -423,9 +425,62 @@ void SL_ProcessorPool::run_blit_processors(
     uint16_t dstY1) noexcept
 {
     SL_ShaderProcessor processor;
+    LS_ASSERT(!sl_is_compressed_color(inTex->type()) && !sl_is_compressed_color(outTex->type()));
     processor.mType = SL_BLIT_PROCESSOR;
 
     SL_BlitProcessor& blitter = processor.mBlitter;
+    blitter.mThreadId         = 0;
+    blitter.mNumThreads       = (uint16_t)mNumThreads;
+    blitter.srcX0             = srcX0;
+    blitter.srcY0             = srcY0;
+    blitter.srcX1             = srcX1;
+    blitter.srcY1             = srcY1;
+    blitter.dstX0             = dstX0;
+    blitter.dstY0             = dstY0;
+    blitter.dstX1             = dstX1;
+    blitter.dstY1             = dstY1;
+    blitter.mTexture          = inTex;
+    blitter.mBackBuffer       = outTex;
+
+    // Process most of the rendering on other threads first.
+    for (uint16_t threadId = 0; threadId < mNumThreads - 1; ++threadId)
+    {
+        blitter.mThreadId = threadId;
+
+        SL_ProcessorPool::ThreadedWorker& worker = mWorkers[threadId];
+        worker.busy_waiting(false);
+        worker.push(processor);
+    }
+
+    flush();
+    blitter.mThreadId = (uint16_t)(mNumThreads - 1u);
+    blitter.execute();
+
+    // Each thread should now pause except for the main thread.
+    wait();
+}
+
+
+/*-------------------------------------
+ * Execute a texture blit across threads
+-------------------------------------*/
+void SL_ProcessorPool::run_blit_compressed_processors(
+    const SL_Texture* inTex,
+    SL_Texture* outTex,
+    uint16_t srcX0,
+    uint16_t srcY0,
+    uint16_t srcX1,
+    uint16_t srcY1,
+    uint16_t dstX0,
+    uint16_t dstY0,
+    uint16_t dstX1,
+    uint16_t dstY1) noexcept
+{
+    SL_ShaderProcessor processor;
+    LS_ASSERT(sl_is_compressed_color(inTex->type()) || sl_is_compressed_color(outTex->type()));
+    processor.mType = SL_BLIT_COMPRESSED_PROCESSOR;
+
+    SL_BlitCompressedProcessor& blitter = processor.mBlitterCompressed;
     blitter.mThreadId         = 0;
     blitter.mNumThreads       = (uint16_t)mNumThreads;
     blitter.srcX0             = srcX0;
