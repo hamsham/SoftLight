@@ -444,7 +444,7 @@ rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SL_
         (uint8_t)(c[0] / (SL_ColorLimits<U, SL_ColorRGBType>::max()[0] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().r)),
         (uint8_t)(c[1] / (SL_ColorLimits<U, SL_ColorRGBType>::max()[1] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().g)),
         (uint8_t)(c[2] / (SL_ColorLimits<U, SL_ColorRGBType>::max()[2] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().b)),
-        (uint8_t)(c[3] / (SL_ColorLimits<U, SL_ColorRGBType>::max()[3] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().a))
+        (uint8_t)(SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().a)
     };
 }
 
@@ -473,7 +473,7 @@ rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value, SL_Col
         (uint8_t)(c[0] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().r),
         (uint8_t)(c[1] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().g),
         (uint8_t)(c[2] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().b),
-        (uint8_t)(c[3] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().a)
+        (uint8_t)(SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().a)
     };
 }
 
