@@ -82,18 +82,25 @@ struct SL_ColorLimits<uint8_t, SL_ColorRGB332Type>
 /*-----------------------------------------------------------------------------
  * RGB to RGB-332 Casting
 -----------------------------------------------------------------------------*/
-/*-------------------------------------
- * RGB (integral) to 332
--------------------------------------*/
-template <typename T>
-constexpr SL_ColorRGB332Type<uint8_t> rgb332_cast(
-    const typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGBType<T>>::type& c
-) noexcept
+template <typename T, typename U>
+constexpr typename ls::setup::EnableIf<ls::setup::IsSame<T, SL_ColorRGB332>::value, SL_ColorRGB332>::type
+rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SL_ColorRGBType<U>>::type& c)
 {
     return SL_ColorRGB332Type<uint8_t>{
-        (uint8_t)(c[0] / (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().r)),
-        (uint8_t)(c[1] / (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().g)),
-        (uint8_t)(c[2] / (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().b))
+        (uint8_t)(c[0] / (SL_ColorLimits<U, SL_ColorRGBType>::max()[0] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().r)),
+        (uint8_t)(c[1] / (SL_ColorLimits<U, SL_ColorRGBType>::max()[1] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().g)),
+        (uint8_t)(c[2] / (SL_ColorLimits<U, SL_ColorRGBType>::max()[2] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().b))
+    };
+}
+
+template <typename T, typename U>
+constexpr typename ls::setup::EnableIf<ls::setup::IsSame<T, SL_ColorRGB332>::value, SL_ColorRGB332>::type
+rgba_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SL_ColorRGBAType<U>>::type& c)
+{
+    return SL_ColorRGB332Type<uint8_t>{
+        (uint8_t)(c[0] / (SL_ColorLimits<U, SL_ColorRGBAType>::max()[0] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().r)),
+        (uint8_t)(c[1] / (SL_ColorLimits<U, SL_ColorRGBAType>::max()[1] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().g)),
+        (uint8_t)(c[2] / (SL_ColorLimits<U, SL_ColorRGBAType>::max()[2] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().b))
     };
 }
 
@@ -102,15 +109,25 @@ constexpr SL_ColorRGB332Type<uint8_t> rgb332_cast(
 /*-------------------------------------
  * RGB (float) to 332
 -------------------------------------*/
-template <typename T>
-constexpr SL_ColorRGB332Type<uint8_t> rgb332_cast(
-    const typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRGBType<T>>::type& c
-) noexcept
+template <typename T, typename U>
+constexpr typename ls::setup::EnableIf<ls::setup::IsSame<T, SL_ColorRGB332>::value, SL_ColorRGB332>::type
+rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value, SL_ColorRGBType<U>>::type& c)
 {
     return SL_ColorRGB332Type<uint8_t>{
-        (uint8_t)(c[0] * (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().r),
-        (uint8_t)(c[1] * (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().g),
-        (uint8_t)(c[2] * (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().b)
+        (uint8_t)(c[0] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().r),
+        (uint8_t)(c[1] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().g),
+        (uint8_t)(c[2] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().b)
+    };
+}
+
+template <typename T, typename U>
+constexpr typename ls::setup::EnableIf<ls::setup::IsSame<T, SL_ColorRGB332>::value, SL_ColorRGB332>::type
+rgba_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value, SL_ColorRGBAType<U>>::type& c)
+{
+    return SL_ColorRGB332Type<uint8_t>{
+        (uint8_t)(c[0] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().r),
+        (uint8_t)(c[1] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().g),
+        (uint8_t)(c[2] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().b)
     };
 }
 
@@ -119,16 +136,24 @@ constexpr SL_ColorRGB332Type<uint8_t> rgb332_cast(
 /*-----------------------------------------------------------------------------
  * RGB-332 to RGB Casting
 -----------------------------------------------------------------------------*/
-/*-------------------------------------
- * 332 to RGB (integral)
--------------------------------------*/
-template <typename T>
+template <typename T, typename U>
 constexpr SL_ColorRGBType<T> rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGB332Type<uint8_t>>::type& c) noexcept
 {
     return SL_ColorRGBType<T>{
-        (T)(c.r * (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().r)),
-        (T)(c.g * (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().g)),
-        (T)(c.b * (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().b))
+        (T)(c.r * (SL_ColorLimits<T, SL_ColorRGBType>::max()[0] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().r)),
+        (T)(c.g * (SL_ColorLimits<T, SL_ColorRGBType>::max()[1] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().g)),
+        (T)(c.b * (SL_ColorLimits<T, SL_ColorRGBType>::max()[2] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().b))
+    };
+}
+
+template <typename T, typename U>
+constexpr SL_ColorRGBAType<T> rgba_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGB332Type<uint8_t>>::type& c) noexcept
+{
+    return SL_ColorRGBAType<T>{
+        (T)(c.r * (SL_ColorLimits<T, SL_ColorRGBAType>::max()[0] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().r)),
+        (T)(c.g * (SL_ColorLimits<T, SL_ColorRGBAType>::max()[1] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().g)),
+        (T)(c.b * (SL_ColorLimits<T, SL_ColorRGBAType>::max()[2] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().b)),
+        SL_ColorLimits<T, SL_ColorRGBAType>::max()[3]
     };
 }
 
@@ -137,13 +162,24 @@ constexpr SL_ColorRGBType<T> rgb_cast(const typename ls::setup::EnableIf<ls::set
 /*-------------------------------------
  * 332 to RGB (float)
 -------------------------------------*/
-template <typename T>
+template <typename T, typename U>
 constexpr SL_ColorRGBType<T> rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRGB332Type<uint8_t>>::type& c) noexcept
 {
     return SL_ColorRGBType<T>{
         (T)c.r / (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().r,
-        (T)c.b / (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().g,
-        (T)c.g / (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().b
+        (T)c.g / (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().g,
+        (T)c.b / (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().b
+    };
+}
+
+template <typename T, typename U>
+constexpr SL_ColorRGBAType<T> rgba_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRGB332Type<uint8_t>>::type& c) noexcept
+{
+    return SL_ColorRGBAType<T>{
+        (T)c.r / (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().r,
+        (T)c.g / (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().g,
+        (T)c.b / (T)SL_ColorLimits<uint8_t, SL_ColorRGB332Type>::max().b,
+        SL_ColorLimits<T, SL_ColorRGBAType>::max()[3]
     };
 }
 
@@ -224,18 +260,25 @@ struct SL_ColorLimits<uint8_t, SL_ColorRGB565Type>
 /*-----------------------------------------------------------------------------
  * RGB to RGB-565 Casting
 -----------------------------------------------------------------------------*/
-/*-------------------------------------
- * RGB (integral) to 565
--------------------------------------*/
-template <typename T>
-constexpr SL_ColorRGB565Type<uint8_t> rgb565_cast(
-    const typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGBType<T>>::type& c
-) noexcept
+template <typename T, typename U>
+constexpr typename ls::setup::EnableIf<ls::setup::IsSame<T, SL_ColorRGB565>::value, SL_ColorRGB565>::type
+rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SL_ColorRGBType<U>>::type& c)
 {
     return SL_ColorRGB565Type<uint8_t>{
-        (uint8_t)(c[0] / (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().r)),
-        (uint8_t)(c[1] / (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().g)),
-        (uint8_t)(c[2] / (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().b))
+        (uint8_t)(c[0] / (SL_ColorLimits<U, SL_ColorRGBType>::max()[0] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().r)),
+        (uint8_t)(c[1] / (SL_ColorLimits<U, SL_ColorRGBType>::max()[1] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().g)),
+        (uint8_t)(c[2] / (SL_ColorLimits<U, SL_ColorRGBType>::max()[2] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().b))
+    };
+}
+
+template <typename T, typename U>
+constexpr typename ls::setup::EnableIf<ls::setup::IsSame<T, SL_ColorRGB565>::value, SL_ColorRGB565>::type
+rgba_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SL_ColorRGBAType<U>>::type& c)
+{
+    return SL_ColorRGB565Type<uint8_t>{
+        (uint8_t)(c[0] / (SL_ColorLimits<U, SL_ColorRGBAType>::max()[0] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().r)),
+        (uint8_t)(c[1] / (SL_ColorLimits<U, SL_ColorRGBAType>::max()[1] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().g)),
+        (uint8_t)(c[2] / (SL_ColorLimits<U, SL_ColorRGBAType>::max()[2] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().b))
     };
 }
 
@@ -244,15 +287,25 @@ constexpr SL_ColorRGB565Type<uint8_t> rgb565_cast(
 /*-------------------------------------
  * RGB (float) to 565
 -------------------------------------*/
-template <typename T>
-constexpr SL_ColorRGB565Type<uint8_t> rgb565_cast(
-    const typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRGBType<T>>::type& c
-) noexcept
+template <typename T, typename U>
+constexpr typename ls::setup::EnableIf<ls::setup::IsSame<T, SL_ColorRGB565>::value, SL_ColorRGB565>::type
+rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value, SL_ColorRGBType<U>>::type& c)
 {
     return SL_ColorRGB565Type<uint8_t>{
-        (uint8_t)(c[0] * (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().r),
-        (uint8_t)(c[1] * (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().g),
-        (uint8_t)(c[2] * (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().b)
+        (uint8_t)(c[0] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().r),
+        (uint8_t)(c[1] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().g),
+        (uint8_t)(c[2] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().b)
+    };
+}
+
+template <typename T, typename U>
+constexpr typename ls::setup::EnableIf<ls::setup::IsSame<T, SL_ColorRGB565>::value, SL_ColorRGB565>::type
+rgba_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value, SL_ColorRGBAType<U>>::type& c)
+{
+    return SL_ColorRGB565Type<uint8_t>{
+        (uint8_t)(c[0] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().r),
+        (uint8_t)(c[1] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().g),
+        (uint8_t)(c[2] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().b)
     };
 }
 
@@ -261,16 +314,24 @@ constexpr SL_ColorRGB565Type<uint8_t> rgb565_cast(
 /*-----------------------------------------------------------------------------
  * RGB-565 to RGB Casting
 -----------------------------------------------------------------------------*/
-/*-------------------------------------
- * 565 to RGB (integral)
--------------------------------------*/
-template <typename T>
+template <typename T, typename U>
 constexpr SL_ColorRGBType<T> rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGB565Type<uint8_t>>::type& c) noexcept
 {
     return SL_ColorRGBType<T>{
-        (T)(c.r * (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().r)),
-        (T)(c.g * (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().g)),
-        (T)(c.b * (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().b))
+        (T)(c.r * (SL_ColorLimits<T, SL_ColorRGBType>::max()[0] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().r)),
+        (T)(c.g * (SL_ColorLimits<T, SL_ColorRGBType>::max()[1] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().g)),
+        (T)(c.b * (SL_ColorLimits<T, SL_ColorRGBType>::max()[2] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().b))
+    };
+}
+
+template <typename T, typename U>
+constexpr SL_ColorRGBAType<T> rgba_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGB565Type<uint8_t>>::type& c) noexcept
+{
+    return SL_ColorRGBAType<T>{
+        (T)(c.r * (SL_ColorLimits<T, SL_ColorRGBAType>::max()[0] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().r)),
+        (T)(c.g * (SL_ColorLimits<T, SL_ColorRGBAType>::max()[1] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().g)),
+        (T)(c.b * (SL_ColorLimits<T, SL_ColorRGBAType>::max()[2] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().b)),
+        SL_ColorLimits<T, SL_ColorRGBAType>::max()[3]
     };
 }
 
@@ -279,13 +340,24 @@ constexpr SL_ColorRGBType<T> rgb_cast(const typename ls::setup::EnableIf<ls::set
 /*-------------------------------------
  * 565 to RGB (float)
 -------------------------------------*/
-template <typename T>
+template <typename T, typename U>
 constexpr SL_ColorRGBType<T> rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRGB565Type<uint8_t>>::type& c) noexcept
 {
     return SL_ColorRGBType<T>{
         (T)c.r / (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().r,
-        (T)c.b / (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().g,
-        (T)c.g / (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().b
+        (T)c.g / (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().g,
+        (T)c.b / (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().b
+    };
+}
+
+template <typename T, typename U>
+constexpr SL_ColorRGBAType<T> rgba_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRGB565Type<uint8_t>>::type& c) noexcept
+{
+    return SL_ColorRGBAType<T>{
+        (T)c.r / (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().r,
+        (T)c.g / (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().g,
+        (T)c.b / (T)SL_ColorLimits<uint8_t, SL_ColorRGB565Type>::max().b,
+        SL_ColorLimits<T, SL_ColorRGBAType>::max()[3]
     };
 }
 
@@ -364,16 +436,27 @@ struct SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>
 /*-------------------------------------
  * RGB (integral) to 5551
 -------------------------------------*/
-template <typename T>
-constexpr SL_ColorRGB5551Type<uint8_t> rgb5551_cast(
-    const typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGBAType<T>>::type& c
-) noexcept
+template <typename T, typename U>
+constexpr typename ls::setup::EnableIf<ls::setup::IsSame<T, SL_ColorRGB5551>::value, SL_ColorRGB5551>::type
+rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SL_ColorRGBType<U>>::type& c)
 {
     return SL_ColorRGB5551Type<uint8_t>{
-        (uint8_t)(c[0] / (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().r)),
-        (uint8_t)(c[1] / (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().g)),
-        (uint8_t)(c[2] / (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().b)),
-        (uint8_t)(c[3] > (std::numeric_limits<T>::max() / T{2}))
+        (uint8_t)(c[0] / (SL_ColorLimits<U, SL_ColorRGBType>::max()[0] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().r)),
+        (uint8_t)(c[1] / (SL_ColorLimits<U, SL_ColorRGBType>::max()[1] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().g)),
+        (uint8_t)(c[2] / (SL_ColorLimits<U, SL_ColorRGBType>::max()[2] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().b)),
+        (uint8_t)(c[3] / (SL_ColorLimits<U, SL_ColorRGBType>::max()[3] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().a))
+    };
+}
+
+template <typename T, typename U>
+constexpr typename ls::setup::EnableIf<ls::setup::IsSame<T, SL_ColorRGB5551>::value, SL_ColorRGB5551>::type
+rgba_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SL_ColorRGBAType<U>>::type& c)
+{
+    return SL_ColorRGB5551Type<uint8_t>{
+        (uint8_t)(c[0] / (SL_ColorLimits<U, SL_ColorRGBAType>::max()[0] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().r)),
+        (uint8_t)(c[1] / (SL_ColorLimits<U, SL_ColorRGBAType>::max()[1] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().g)),
+        (uint8_t)(c[2] / (SL_ColorLimits<U, SL_ColorRGBAType>::max()[2] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().b)),
+        (uint8_t)(c[3] / (SL_ColorLimits<U, SL_ColorRGBAType>::max()[3] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().a))
     };
 }
 
@@ -382,16 +465,27 @@ constexpr SL_ColorRGB5551Type<uint8_t> rgb5551_cast(
 /*-------------------------------------
  * RGB (float) to 5551
 -------------------------------------*/
-template <typename T>
-constexpr SL_ColorRGB5551Type<uint8_t> rgb5551_cast(
-    const typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRGBAType<T>>::type& c
-) noexcept
+template <typename T, typename U>
+constexpr typename ls::setup::EnableIf<ls::setup::IsSame<T, SL_ColorRGB5551>::value, SL_ColorRGB5551>::type
+rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value, SL_ColorRGBType<U>>::type& c)
 {
     return SL_ColorRGB5551Type<uint8_t>{
-        (uint8_t)(c[0] * (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().r),
-        (uint8_t)(c[1] * (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().g),
-        (uint8_t)(c[2] * (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().b),
-        (uint8_t)(c[3] > (SL_ColorLimits<T, SL_ColorRGBAType>::max()[3] / T{2.0}))
+        (uint8_t)(c[0] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().r),
+        (uint8_t)(c[1] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().g),
+        (uint8_t)(c[2] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().b),
+        (uint8_t)(c[3] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().a)
+    };
+}
+
+template <typename T, typename U>
+constexpr typename ls::setup::EnableIf<ls::setup::IsSame<T, SL_ColorRGB5551>::value, SL_ColorRGB5551>::type
+rgba_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value, SL_ColorRGBAType<U>>::type& c)
+{
+    return SL_ColorRGB5551Type<uint8_t>{
+        (uint8_t)(c[0] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().r),
+        (uint8_t)(c[1] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().g),
+        (uint8_t)(c[2] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().b),
+        (uint8_t)(c[3] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().a)
     };
 }
 
@@ -403,14 +497,24 @@ constexpr SL_ColorRGB5551Type<uint8_t> rgb5551_cast(
 /*-------------------------------------
  * 5551 to RGB (integral)
 -------------------------------------*/
-template <typename T>
-constexpr SL_ColorRGBAType<T> rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGB5551Type<uint8_t>>::type& c) noexcept
+template <typename T, typename U>
+constexpr SL_ColorRGBType<T> rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGB5551Type<uint8_t>>::type& c) noexcept
+{
+    return SL_ColorRGBType<T>{
+        (T)(c.r * (SL_ColorLimits<T, SL_ColorRGBType>::max()[0] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().r)),
+        (T)(c.g * (SL_ColorLimits<T, SL_ColorRGBType>::max()[1] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().g)),
+        (T)(c.b * (SL_ColorLimits<T, SL_ColorRGBType>::max()[2] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().b))
+    };
+}
+
+template <typename T, typename U>
+constexpr SL_ColorRGBAType<T> rgba_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGB5551Type<uint8_t>>::type& c) noexcept
 {
     return SL_ColorRGBAType<T>{
-        (T)(c.r * (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().r)),
-        (T)(c.g * (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().g)),
-        (T)(c.b * (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().b)),
-        (c.a ? (T)SL_ColorLimits<T, SL_ColorRGBAType>::max()[3] : (T)SL_ColorLimits<T, SL_ColorRGBAType>::min()[3])
+        (T)(c.r * (SL_ColorLimits<T, SL_ColorRGBAType>::max()[0] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().r)),
+        (T)(c.g * (SL_ColorLimits<T, SL_ColorRGBAType>::max()[1] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().g)),
+        (T)(c.b * (SL_ColorLimits<T, SL_ColorRGBAType>::max()[2] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().b)),
+        (T)(c.a * (SL_ColorLimits<T, SL_ColorRGBAType>::max()[3] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().a)),
     };
 }
 
@@ -419,14 +523,23 @@ constexpr SL_ColorRGBAType<T> rgb_cast(const typename ls::setup::EnableIf<ls::se
 /*-------------------------------------
  * 5551 to RGB (float)
 -------------------------------------*/
-template <typename T>
-constexpr SL_ColorRGBAType<T> rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRGB5551Type<uint8_t>>::type& c) noexcept
+template <typename T, typename U>
+constexpr SL_ColorRGBType<T> rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRGB5551Type<uint8_t>>::type& c) noexcept
+{
+    return SL_ColorRGBType<T>{
+        (T)c.r / (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().r,
+        (T)c.g / (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().g,
+        (T)c.b / (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().b
+    };
+}
+template <typename T, typename U>
+constexpr SL_ColorRGBAType<T> rgba_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRGB5551Type<uint8_t>>::type& c) noexcept
 {
     return SL_ColorRGBAType<T>{
         (T)c.r / (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().r,
         (T)c.g / (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().g,
         (T)c.b / (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().b,
-        (c.a ? SL_ColorLimits<T, SL_ColorRGBAType>::max()[3] : SL_ColorLimits<T, SL_ColorRGBAType>::min()[3])
+        (T)c.a / (T)SL_ColorLimits<uint8_t, SL_ColorRGB5551Type>::max().a
     };
 }
 
@@ -502,19 +615,27 @@ struct SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>
 /*-----------------------------------------------------------------------------
  * RGB to RGB-4444 Casting
 -----------------------------------------------------------------------------*/
-/*-------------------------------------
- * RGB (integral) to 4444
--------------------------------------*/
-template <typename T>
-constexpr SL_ColorRGB4444Type<uint8_t> rgb4444_cast(
-    const typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGBAType<T>>::type& c
-) noexcept
+template <typename T, typename U>
+constexpr typename ls::setup::EnableIf<ls::setup::IsSame<T, SL_ColorRGB4444>::value, SL_ColorRGB4444>::type
+rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SL_ColorRGBType<U>>::type& c)
 {
     return SL_ColorRGB4444Type<uint8_t>{
-        (uint8_t)(c[0] / (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().r)),
-        (uint8_t)(c[1] / (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().g)),
-        (uint8_t)(c[2] / (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().b)),
-        (uint8_t)(c[3] / (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().a))
+        (uint8_t)(c[0] / (SL_ColorLimits<U, SL_ColorRGBType>::max()[0] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().r)),
+        (uint8_t)(c[1] / (SL_ColorLimits<U, SL_ColorRGBType>::max()[1] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().g)),
+        (uint8_t)(c[2] / (SL_ColorLimits<U, SL_ColorRGBType>::max()[2] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().b)),
+        SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().a
+    };
+}
+
+template <typename T, typename U>
+constexpr typename ls::setup::EnableIf<ls::setup::IsSame<T, SL_ColorRGB4444>::value, SL_ColorRGB4444>::type
+rgba_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SL_ColorRGBAType<U>>::type& c)
+{
+    return SL_ColorRGB4444Type<uint8_t>{
+        (uint8_t)(c[0] / (SL_ColorLimits<U, SL_ColorRGBAType>::max()[0] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().r)),
+        (uint8_t)(c[1] / (SL_ColorLimits<U, SL_ColorRGBAType>::max()[1] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().g)),
+        (uint8_t)(c[2] / (SL_ColorLimits<U, SL_ColorRGBAType>::max()[2] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().b)),
+        (uint8_t)(c[3] / (SL_ColorLimits<U, SL_ColorRGBAType>::max()[3] / (U)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().a))
     };
 }
 
@@ -523,16 +644,27 @@ constexpr SL_ColorRGB4444Type<uint8_t> rgb4444_cast(
 /*-------------------------------------
  * RGB (float) to 4444
 -------------------------------------*/
-template <typename T>
-constexpr SL_ColorRGB4444Type<uint8_t> rgb4444_cast(
-    const typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRGBAType<T>>::type& c
-) noexcept
+template <typename T, typename U>
+constexpr typename ls::setup::EnableIf<ls::setup::IsSame<T, SL_ColorRGB4444>::value, SL_ColorRGB4444>::type
+rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value, SL_ColorRGBType<U>>::type& c)
 {
     return SL_ColorRGB4444Type<uint8_t>{
-        (uint8_t)(c[0] * (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().r),
-        (uint8_t)(c[1] * (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().g),
-        (uint8_t)(c[2] * (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().b),
-        (uint8_t)(c[3] * (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().a)
+        (uint8_t)(c[0] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().r),
+        (uint8_t)(c[1] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().g),
+        (uint8_t)(c[2] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().b),
+        (uint8_t)(SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().a)
+    };
+}
+
+template <typename T, typename U>
+constexpr typename ls::setup::EnableIf<ls::setup::IsSame<T, SL_ColorRGB4444>::value, SL_ColorRGB4444>::type
+rgba_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value, SL_ColorRGBAType<U>>::type& c)
+{
+    return SL_ColorRGB4444Type<uint8_t>{
+        (uint8_t)(c[0] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().r),
+        (uint8_t)(c[1] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().g),
+        (uint8_t)(c[2] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().b),
+        (uint8_t)(c[3] * (U)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().a)
     };
 }
 
@@ -541,17 +673,24 @@ constexpr SL_ColorRGB4444Type<uint8_t> rgb4444_cast(
 /*-----------------------------------------------------------------------------
  * RGB-4444 to RGB Casting
 -----------------------------------------------------------------------------*/
-/*-------------------------------------
- * 4444 to RGB (integral)
--------------------------------------*/
-template <typename T>
-constexpr SL_ColorRGBAType<T> rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGB4444Type<uint8_t>>::type& c) noexcept
+template <typename T, typename U>
+constexpr SL_ColorRGBType<T> rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGB4444Type<uint8_t>>::type& c) noexcept
+{
+    return SL_ColorRGBType<T>{
+        (T)(c.r * (SL_ColorLimits<T, SL_ColorRGBType>::max()[0] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().r)),
+        (T)(c.g * (SL_ColorLimits<T, SL_ColorRGBType>::max()[1] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().g)),
+        (T)(c.b * (SL_ColorLimits<T, SL_ColorRGBType>::max()[2] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().b))
+    };
+}
+
+template <typename T, typename U>
+constexpr SL_ColorRGBAType<T> rgba_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGB4444Type<uint8_t>>::type& c) noexcept
 {
     return SL_ColorRGBAType<T>{
-        (T)(c.r * (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().r)),
-        (T)(c.g * (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().g)),
-        (T)(c.b * (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().b)),
-        (T)(c.a * (std::numeric_limits<T>::max() / (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().a))
+        (T)(c.r * (SL_ColorLimits<T, SL_ColorRGBAType>::max()[0] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().r)),
+        (T)(c.g * (SL_ColorLimits<T, SL_ColorRGBAType>::max()[1] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().g)),
+        (T)(c.b * (SL_ColorLimits<T, SL_ColorRGBAType>::max()[2] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().b)),
+        (T)(c.a * (SL_ColorLimits<T, SL_ColorRGBAType>::max()[3] / (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().a))
     };
 }
 
@@ -560,8 +699,18 @@ constexpr SL_ColorRGBAType<T> rgb_cast(const typename ls::setup::EnableIf<ls::se
 /*-------------------------------------
  * 4444 to RGB (float)
 -------------------------------------*/
-template <typename T>
-constexpr SL_ColorRGBAType<T> rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRGB4444Type<uint8_t>>::type& c) noexcept
+template <typename T, typename U>
+constexpr SL_ColorRGBType<T> rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRGB4444Type<uint8_t>>::type& c) noexcept
+{
+    return SL_ColorRGBType<T>{
+        (T)c.r / (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().r,
+        (T)c.g / (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().g,
+        (T)c.b / (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().b
+    };
+}
+
+template <typename T, typename U>
+constexpr SL_ColorRGBAType<T> rgba_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRGB4444Type<uint8_t>>::type& c) noexcept
 {
     return SL_ColorRGBAType<T>{
         (T)c.r / (T)SL_ColorLimits<uint8_t, SL_ColorRGB4444Type>::max().r,

@@ -72,21 +72,28 @@ enum SL_ColorDataType : uint8_t
 /*-------------------------------------
  * Number of bytes per color
 -------------------------------------*/
-size_t sl_bytes_per_color(SL_ColorDataType p);
+size_t sl_bytes_per_color(SL_ColorDataType p) noexcept;
 
 
 
 /*-------------------------------------
  * Number of elements per color
 -------------------------------------*/
-unsigned sl_elements_per_color(SL_ColorDataType p);
+unsigned sl_elements_per_color(SL_ColorDataType p) noexcept;
 
 
 
 /*-------------------------------------
  * Compressed format check
 -------------------------------------*/
-bool sl_is_compressed_color(SL_ColorDataType p);
+constexpr bool sl_is_compressed_color(SL_ColorDataType p) noexcept
+{
+    return
+        (p == SL_COLOR_RGB_332) ||
+            (p == SL_COLOR_RGB_565) ||
+                (p == SL_COLOR_RGBA_5551) ||
+                    (p == SL_COLOR_RGBA_4444);
+}
 
 
 
@@ -102,16 +109,16 @@ struct alignas(sizeof(T)) SL_ColorRType
     T r;
 
     constexpr SL_ColorRType() noexcept = default;
-    constexpr SL_ColorRType(const SL_ColorRType& c ) noexcept = default;
-    constexpr SL_ColorRType(SL_ColorRType&& c ) noexcept = default;
+    constexpr SL_ColorRType(const SL_ColorRType& c) noexcept = default;
+    constexpr SL_ColorRType(SL_ColorRType&& c) noexcept = default;
 
     explicit constexpr SL_ColorRType(T n) noexcept : r{n} {}
 
     template <typename C>
     explicit constexpr SL_ColorRType(C n) noexcept : r{(T)n} {}
 
-    inline SL_ColorRType& operator=(const SL_ColorRType& c ) noexcept = default;
-    inline SL_ColorRType& operator=(SL_ColorRType&& c ) noexcept = default;
+    inline SL_ColorRType& operator=(const SL_ColorRType& c) noexcept = default;
+    inline SL_ColorRType& operator=(SL_ColorRType&& c) noexcept = default;
     inline SL_ColorRType& operator=(const T n) noexcept { r = n; return *this; }
 
     explicit constexpr operator T() const noexcept { return r; }

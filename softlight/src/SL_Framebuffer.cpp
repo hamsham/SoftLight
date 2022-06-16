@@ -77,7 +77,7 @@ inline void assign_pixel<SL_ColorRGB332>(
 {
     // Get a reference to the source texel
     SL_ColorRGB332* const outTexel = pTexture->texel_pointer<SL_ColorRGB332>(x, y);
-    *outTexel = rgb332_cast<float>(ls::math::vec3_cast(rgba));
+    *outTexel = rgba_cast<SL_ColorRGB332, float>(rgba);
 }
 
 template <>
@@ -89,7 +89,7 @@ inline void assign_pixel<SL_ColorRGB565>(
 {
     // Get a reference to the source texel
     SL_ColorRGB565* const outTexel = pTexture->texel_pointer<SL_ColorRGB565>(x, y);
-    *outTexel = rgb565_cast<float>(ls::math::vec3_cast(rgba));
+    *outTexel = rgba_cast<SL_ColorRGB565, float>(rgba);
 }
 
 template <>
@@ -101,7 +101,7 @@ inline void assign_pixel<SL_ColorRGB5551>(
 {
     // Get a reference to the source texel
     SL_ColorRGB5551* const outTexel = pTexture->texel_pointer<SL_ColorRGB5551>(x, y);
-    *outTexel = rgb5551_cast<float>(rgba);
+    *outTexel = rgba_cast<SL_ColorRGB5551, float>(rgba);
 }
 
 template <>
@@ -113,7 +113,7 @@ inline void assign_pixel<SL_ColorRGB4444>(
 {
     // Get a reference to the source texel
     SL_ColorRGB4444* const outTexel = pTexture->texel_pointer<SL_ColorRGB4444>(x, y);
-    *outTexel = rgb4444_cast<float>(rgba);
+    *outTexel = rgba_cast<SL_ColorRGB4444, float>(rgba);
 }
 
 
@@ -352,7 +352,7 @@ inline void assign_alpha_pixel<SL_ColorRGB332>(
 
     // sample the source texel
     SL_ColorRGBAType<float> s = rgba;
-    SL_ColorRGBAType<float> d = math::vec4_cast(rgb_cast<float>(*outTexel), 1.f);
+    SL_ColorRGBAType<float> d = rgba_cast<float, SL_ColorRGB332>(*outTexel);
 
     // This method of blending uses premultiplied alpha. I will need to support
     // configurable blend modes later.
@@ -379,7 +379,7 @@ inline void assign_alpha_pixel<SL_ColorRGB332>(
     }
 
     d = math::clamp(d, math::vec4{0.f, 0.f, 0.f, 0.f}, math::vec4{1.f, 1.f, 1.f, 1.f});
-    *outTexel = rgb332_cast<float>(math::vec3_cast<float>(d));
+    *outTexel = rgba_cast<SL_ColorRGB332, float>(d);
 }
 
 template <>
@@ -395,7 +395,7 @@ inline void assign_alpha_pixel<SL_ColorRGB565>(
 
     // sample the source texel
     SL_ColorRGBAType<float> s = rgba;
-    SL_ColorRGBAType<float> d = math::vec4_cast(rgb_cast<float>(*outTexel), 1.f);
+    SL_ColorRGBAType<float> d = rgba_cast<float, SL_ColorRGB565>(*outTexel);
 
     // This method of blending uses premultiplied alpha. I will need to support
     // configurable blend modes later.
@@ -422,7 +422,7 @@ inline void assign_alpha_pixel<SL_ColorRGB565>(
     }
 
     d = math::clamp(d, math::vec4{0.f, 0.f, 0.f, 0.f}, math::vec4{1.f, 1.f, 1.f, 1.f});
-    *outTexel = rgb565_cast<float>(math::vec3_cast<float>(d));
+    *outTexel = rgba_cast<SL_ColorRGB565, float>(d);
 }
 
 template <>
@@ -438,7 +438,7 @@ inline void assign_alpha_pixel<SL_ColorRGB5551>(
 
     // sample the source texel
     SL_ColorRGBAType<float> s = rgba;
-    SL_ColorRGBAType<float> d = rgb_cast<float>(*outTexel);
+    SL_ColorRGBAType<float> d = rgba_cast<float, SL_ColorRGB5551>(*outTexel);
 
     // This method of blending uses premultiplied alpha. I will need to support
     // configurable blend modes later.
@@ -465,7 +465,7 @@ inline void assign_alpha_pixel<SL_ColorRGB5551>(
     }
 
     d = math::clamp(d, math::vec4{0.f, 0.f, 0.f, 0.f}, math::vec4{1.f, 1.f, 1.f, 1.f});
-    *outTexel = rgb5551_cast<float>(d);
+    *outTexel = rgba_cast<SL_ColorRGB5551, float>(d);
 }
 
 template <>
@@ -481,7 +481,7 @@ inline void assign_alpha_pixel<SL_ColorRGB4444>(
 
     // sample the source texel
     SL_ColorRGBAType<float> s = rgba;
-    SL_ColorRGBAType<float> d = rgb_cast<float>(*outTexel);
+    SL_ColorRGBAType<float> d = rgba_cast<float, SL_ColorRGB4444>(*outTexel);
 
     // This method of blending uses premultiplied alpha. I will need to support
     // configurable blend modes later.
@@ -508,7 +508,7 @@ inline void assign_alpha_pixel<SL_ColorRGB4444>(
     }
 
     d = math::clamp(d, math::vec4{0.f, 0.f, 0.f, 0.f}, math::vec4{1.f, 1.f, 1.f, 1.f});
-    *outTexel = rgb4444_cast<float>(d);
+    *outTexel = rgba_cast<SL_ColorRGB4444, float>(d);
 }
 
 
