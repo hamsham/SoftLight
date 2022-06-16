@@ -57,9 +57,9 @@ struct SL_WrapModeClampEdge
         return ls::math::clamp<SL_WrapMode::fixed_type>(uvw, SL_WrapMode::fixed_type{0u}, ls::math::fixed_cast<SL_WrapMode::fixed_type>(1u));
     }
 
-    constexpr LS_INLINE int operator()(int uvw, int maxVal) const noexcept
+    constexpr LS_INLINE unsigned operator()(unsigned uvw, unsigned maxVal) const noexcept
     {
-        return ls::math::clamp<int>(uvw, 0, maxVal);
+        return ls::math::clamp<unsigned>(uvw, 0u, maxVal);
     }
 
     inline LS_INLINE float operator()(float uvw) const noexcept
@@ -81,11 +81,9 @@ struct SL_WrapModeClampBorder
             : ls::math::fixed_cast<SL_WrapMode::fixed_type>(-1u);
     }
 
-    constexpr LS_INLINE int operator()(int uvw, int maxVal) const noexcept
+    constexpr LS_INLINE unsigned operator()(unsigned uvw, unsigned maxVal) const noexcept
     {
-        return (uvw < maxVal && uvw >= 0)
-            ? uvw
-            : -1;
+        return (uvw < maxVal) ? uvw : ~0u;
     }
 
     constexpr LS_INLINE float operator()(float uvw) const noexcept
@@ -105,9 +103,9 @@ struct SL_WrapModeRepeat
         return ls::math::clamp<SL_WrapMode::fixed_type>(uvw, SL_WrapMode::fixed_type{0u}, ls::math::fixed_cast<SL_WrapMode::fixed_type>(1u));
     }
 
-    constexpr LS_INLINE int operator()(int uvw, int maxVal) const noexcept
+    constexpr LS_INLINE unsigned operator()(unsigned uvw, unsigned maxVal) const noexcept
     {
-        return ls::math::clamp<int>(uvw, 0, maxVal);
+        return uvw % maxVal;
     }
 
     inline LS_INLINE float operator()(float uvw) const noexcept
