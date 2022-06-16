@@ -313,7 +313,7 @@ inline LS_INLINE float face_determinant(
             return vget_lane_f32(sum, 0);
         #endif
 
-    #elif 1
+    #elif 0
         const math::mat3 det{
             math::vec3{p0[0], p0[1], p0[3]},
             math::vec3{p1[0], p1[1], p1[3]},
@@ -326,13 +326,16 @@ inline LS_INLINE float face_determinant(
         // Get the normalized homogeneous normal of a triangle and determine
         // if the normal's Z-component is towards, or away from, the camera's
         // Z component.
-        const math::vec4&& v0 = p0 / p0[3];
-        const math::vec4&& v1 = p1 / p1[3];
-        const math::vec4&& v2 = p2 / p2[3];
-        const math::vec4&& cx = math::cross(v1-v0, v2-v0);
-
-        // Z-component of the triangle normal
-        return cx[2];
+        const float w0 = math::rcp(p0[3]);
+        const float w1 = math::rcp(p1[3]);
+        const float w2 = math::rcp(p2[3]);
+        const math::vec4&& v0 = p0 * w0;
+        const math::vec4&& v1 = p1 * w1;
+        const math::vec4&& v2 = p2 * w2;
+        const math::vec4 yCAB{v2[1], v0[1], v1[1], 0.f};
+        const math::vec4 yBCA{v1[1], v2[1], v0[1], 0.f};
+        const math::vec4 xABC{v0[0], v1[0], v2[0], 0.f};
+        return math::dot(xABC, (yBCA - yCAB));
 
     #endif
 }
