@@ -40,7 +40,7 @@ inline void LS_IMPERATIVE interpolate_line_varyings(
     math::vec4* const       outVaryings
 ) noexcept
 {
-    const uint32_t i2 = numVaryings;
+    constexpr uint32_t i2 = SL_SHADER_MAX_VARYING_VECTORS;
 
     for (uint32_t i = numVaryings; i--;)
     {
@@ -164,25 +164,10 @@ inline bool sl_clip_liang_barsky(math::vec2 screenCoords[2], const math::vec4_t<
  * Process the line fragments using a simple DDA algorithm
 --------------------------------------*/
 template <class DepthCmpFunc, typename depth_type>
-void SL_LineRasterizer::render_line(
-    const uint32_t binId,
-    SL_Framebuffer* fbo,
-    const math::vec4_t<int32_t> dimens) noexcept
+void SL_LineRasterizer::render_line(const uint32_t binId, SL_Framebuffer* fbo, const math::vec4_t<int32_t>& dimens) noexcept
 {
-    typedef math::long_medp_t fixed_type;
-    constexpr fixed_type ZERO = fixed_type{0};
-
-    constexpr DepthCmpFunc  depthCmp    = {};
-    const SL_PipelineState  pipeline    = mShader->pipelineState;
-    const SL_BlendMode      blendMode   = pipeline.blend_mode();
-    const SL_FboOutputMask  fboOutMask  = sl_calc_fbo_out_mask((unsigned)pipeline.num_render_targets(), (blendMode != SL_BLEND_OFF));
-    const uint32_t          numVaryings = (unsigned)pipeline.num_varyings();
-    const bool              depthMask   = pipeline.depth_mask() == SL_DEPTH_MASK_ON;
-    const auto              shader      = mShader->pFragShader;
-    const SL_UniformBuffer* pUniforms   = mShader->pUniforms;
-
-    const math::vec4  screenCoord0  = mBins[binId].mScreenCoords[0];
-    const math::vec4  screenCoord1  = mBins[binId].mScreenCoords[1];
+    const math::vec4& screenCoord0  = mBins[binId].mScreenCoords[0];
+    const math::vec4& screenCoord1  = mBins[binId].mScreenCoords[1];
     float             z0            = screenCoord0[2];
     float             z1            = screenCoord1[2];
     const math::vec4* inVaryings    = mBins[binId].mVaryings;
@@ -193,48 +178,46 @@ void SL_LineRasterizer::render_line(
         return;
     }
 
-    const float      x1f   = screenCoord0[0];
-    const float      y1f   = screenCoord0[1];
-    const fixed_type x1    = math::fixed_cast<fixed_type, float>(clipCoords[0][0]);
-    const fixed_type y1    = math::fixed_cast<fixed_type, float>(clipCoords[0][1]);
-    const fixed_type x2    = math::fixed_cast<fixed_type, float>(clipCoords[1][0]);
-    const fixed_type y2    = math::fixed_cast<fixed_type, float>(clipCoords[1][1]);
-    fixed_type       x     = x1;
-    fixed_type       y     = y1;
-    fixed_type       dx    = x2 - x1;
-    fixed_type       dy    = y2 - y1;
-    const fixed_type step  = math::abs((dx >= dy ? dx : dy));
-    const int32_t    istep = math::integer_cast<int32_t, fixed_type>(step);
+    constexpr DepthCmpFunc  depthCmp    = {};
+    const SL_PipelineState  pipeline    = mShader->pipelineState;
+    const SL_BlendMode      blendMode   = pipeline.blend_mode();
+    const SL_FboOutputMask  fboOutMask  = sl_calc_fbo_out_mask((unsigned)pipeline.num_render_targets(), (blendMode != SL_BLEND_OFF));
+    const uint32_t          numVaryings = (unsigned)pipeline.num_varyings();
+    const bool              depthMask   = pipeline.depth_mask() == SL_DEPTH_MASK_ON;
+    const auto              shader      = mShader->pFragShader;
+    const SL_UniformBuffer* pUniforms   = mShader->pUniforms;
 
-    dx = (step > ZERO) ? (dx/step) : ZERO;
-    dy = (step > ZERO) ? (dy/step) : ZERO;
+    const SL_Texture*  depthBuf = fbo->get_depth_buffer();
+    const float        dist     = math::inversesqrt(math::length_squared(math::vec2_cast(screenCoord1)-math::vec2_cast(screenCoord0)));
+    const math::vec4&& p0       = math::vec4_cast(math::vec2_cast(screenCoord0), 0.f, 0.f);
+    const math::vec4&& p1       = math::vec4_cast(clipCoords[0], 0.f, 0.f);
+    const math::vec4&& p2       = math::vec4_cast(clipCoords[1], 0.f, 0.f);
+    math::vec4         p        = p1;
+    math::vec4&&       d        = p2 - p1;
+    const float        step     = math::abs(math::max(d[0], d[1]));
+    const int32_t      istep    = (int32_t)step;
 
-    const float       dist     = 1.f / math::length(math::vec2_cast(screenCoord1)-math::vec2_cast(screenCoord0));
-    const SL_Texture* depthBuf = fbo->get_depth_buffer();
+    d /= step;
 
     SL_FragmentParam fragParams;
     fragParams.pUniforms = pUniforms;
 
-    for (int32_t i = 0; i <= istep; ++i, x += dx, y += dy)
+    for (int32_t i = 0; i <= istep; ++i, p += d)
     {
-        const float      xf      = math::float_cast<float, fixed_type>(x);
-        const float      yf      = math::float_cast<float, fixed_type>(y);
-        const int32_t    xi      = math::max(0, math::integer_cast<int32_t, fixed_type>(math::floor(x)));
-        const int32_t    yi      = math::max(0, math::integer_cast<int32_t, fixed_type>(math::floor(y)));
+        const math::vec4_t<uint16_t>&& pi = (math::vec4_t<uint16_t>)math::max(math::vec4{0.f}, p);
+        const float currLen = math::length(p - p0);
+        const float interp  = currLen * dist;
+        const float z       = math::mix(z0, z1, interp);
 
-        const float      currLen = math::length(math::vec2{xf-x1f, yf-y1f});
-        const float      interp  = (currLen*dist);
-        const float      z       = math::mix(z0, z1, interp);
-
-        if (!depthCmp(z, (float)depthBuf->texel<depth_type>((uint16_t)xi, (uint16_t)yi)))
+        if (!depthCmp(z, (float)depthBuf->texel<depth_type>(pi[0], pi[1])))
         {
             continue;
         }
 
         interpolate_line_varyings(interp, numVaryings, inVaryings, fragParams.pVaryings);
 
-        fragParams.coord.x     = (uint16_t)xi;
-        fragParams.coord.y     = (uint16_t)yi;
+        fragParams.coord.x     = pi[0];
+        fragParams.coord.y     = pi[1];
         fragParams.coord.depth = z;
         const bool haveOutputs = shader(fragParams);
 
@@ -252,33 +235,33 @@ void SL_LineRasterizer::render_line(
 
 
 
-template void SL_LineRasterizer::render_line<SL_DepthFuncLT, ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncLT, float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncLT, double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncLT, ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncLT, float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncLT, double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>&) noexcept;
 
-template void SL_LineRasterizer::render_line<SL_DepthFuncLE, ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncLE, float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncLE, double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncLE, ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncLE, float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncLE, double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>&) noexcept;
 
-template void SL_LineRasterizer::render_line<SL_DepthFuncGT, ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncGT, float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncGT, double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncGT, ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncGT, float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncGT, double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>&) noexcept;
 
-template void SL_LineRasterizer::render_line<SL_DepthFuncGE, ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncGE, float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncGE, double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncGE, ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncGE, float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncGE, double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>&) noexcept;
 
-template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>&) noexcept;
 
-template void SL_LineRasterizer::render_line<SL_DepthFuncNE, ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncNE, float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncNE, double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncNE, ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncNE, float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncNE, double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>&) noexcept;
 
-template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, ls::math::half>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, float>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, double>(const uint32_t, SL_Framebuffer* const, const ls::math::vec4_t<int32_t>&) noexcept;
 
 
 

@@ -213,7 +213,6 @@ void SL_LineProcessor::push_bin(size_t primIndex, const math::vec4& viewportDims
     const float fboH = viewportDims[1]+viewportDims[3];
 
     int isPrimHidden = (bboxMaxX < viewportDims[0] || bboxMaxY < viewportDims[1] || fboW < bboxMinX || fboH < bboxMinY);
-    isPrimHidden = isPrimHidden || (bboxMaxX-bboxMinX < 1.f) || (bboxMaxY-bboxMinY < 1.f);
     if (LS_UNLIKELY(isPrimHidden))
     {
         return;
