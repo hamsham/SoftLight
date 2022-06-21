@@ -281,7 +281,7 @@ bool _unfiltered_ycocg_frag_shader(SL_FragmentParam& fragParams)
     }
 
     const bool         amOdd  = ((x0 & 1) == (y0 & 1));
-    const uint16_t     x1     = x0 > 0 ? (x0 - 1) : x0;
+    const uint16_t     x1     = x0 > 0 ? (x0 - 1) : (x0 + 1);
     const math::vec2&& pixel1 = (math::vec2)albedo->texel<math::vec2_t<uint8_t>>(x1, y0) * norm255;
     const float        co     = amOdd ? pixel1[1] : pixel0[1];
     const float        cg     = amOdd ? pixel0[1] : pixel1[1];
@@ -405,15 +405,16 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     utils::Pointer<SL_SceneGraph> pGraph{new SL_SceneGraph{}};
     SL_Context& context = pGraph->mContext;
 
-    size_t depthId = context.create_texture();
-    SL_Texture& depth = context.texture(depthId);
-    retCode = depth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
-    LS_ASSERT(retCode == 0);
-
     // FBO 0, compact YCoCg buffer
     {
-        size_t texId = context.create_texture();
         size_t fboId = context.create_framebuffer();
+
+        size_t depthId = context.create_texture();
+        SL_Texture& depth = context.texture(depthId);
+        retCode = depth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+        LS_ASSERT(retCode == 0);
+
+        size_t texId = context.create_texture();
         SL_Texture& tex = context.texture(texId);
         retCode = tex.init(SL_ColorDataType::SL_COLOR_RG_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
         LS_ASSERT(retCode == 0);
@@ -437,8 +438,14 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
 
     // FBO 1, decompressed RGB
     {
-        size_t texId = context.create_texture();
         size_t fboId = context.create_framebuffer();
+
+        size_t depthId = context.create_texture();
+        SL_Texture& depth = context.texture(depthId);
+        retCode = depth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+        LS_ASSERT(retCode == 0);
+
+        size_t texId = context.create_texture();
         SL_Texture& tex = context.texture(texId);
         retCode = tex.init(SL_ColorDataType::SL_COLOR_RGB_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
         LS_ASSERT(retCode == 0);
@@ -600,18 +607,26 @@ int main()
     SL_WindowEvent                   evt;
     math::mat4         projMatrix     = math::infinite_perspective(LS_DEG2RAD(80.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
     SL_Context&        context        = pGraph->mContext;
-    SL_Texture&        tex            = context.texture(2);
     SL_Texture&        depth          = context.texture(0);
+    SL_Texture&        tex            = context.texture(3);
     int                shouldQuit     = 0;
     int                numFrames      = 0;
     int                totalFrames    = 0;
     float              secondsCounter = 0.f;
     float              tickTime       = 0.f;
-    bool               useEdgeFilter  = true;
+    bool               useEdgeFilter  = false;
 
     viewMatrix.type(SL_TransformType::SL_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
     viewMatrix.look_at(math::vec3{10.f, 30.f, 70.f}, math::vec3{0.f, 20.f, 0.f}, math::vec3{0.f, 1.f, 0.f});
     viewMatrix.apply_transform();
+
+    mesh_test_render(pGraph.get(), projMatrix, viewMatrix.transform(), false);
+
+    retCode = sl_img_save_ppm(tex.width(), tex.height(), reinterpret_cast<const SL_ColorRGB8*>(tex.data()), "ycocg_test_image.ppm");
+    LS_ASSERT(retCode == 0);
+
+    retCode = sl_img_save_ppm(depth.width(), depth.height(), reinterpret_cast<const SL_ColorRf*>(depth.data()), "ycocg_test_depth.ppm");
+    LS_ASSERT(retCode == 0);
 
     timer.start();
 
@@ -634,6 +649,7 @@ int main()
                 context.texture(0).init(context.texture(0).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
                 context.texture(1).init(context.texture(1).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
                 context.texture(2).init(context.texture(2).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
+                context.texture(3).init(context.texture(3).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
 
                 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
             }
@@ -644,6 +660,21 @@ int main()
                 {
                     LS_LOG_MSG("Escape button pressed. Exiting.");
                     shouldQuit = true;
+                }
+                else if (keySym == SL_KeySymbol::KEY_SYM_SPACE)
+                {
+                    if (pWindow->state() == WindowStateInfo::WINDOW_RUNNING)
+                    {
+                        std::cout << "Space button pressed. Pausing." << std::endl;
+                        pWindow->pause();
+                        timer.stop();
+                    }
+                    else
+                    {
+                        std::cout << "Space button pressed. Resuming." << std::endl;
+                        pWindow->run();
+                        timer.start();
+                    }
                 }
                 else if (keySym == SL_KeySymbol::KEY_SYM_1)
                 {
@@ -673,7 +704,7 @@ int main()
 
             mesh_test_render(pGraph.get(), projMatrix, viewMatrix.transform(), useEdgeFilter);
 
-            context.blit(*pRenderBuf, 2);
+            context.blit(*pRenderBuf, 3);
             pWindow->render(*pRenderBuf);
 
             ++numFrames;
@@ -701,12 +732,6 @@ int main()
             shouldQuit = true;
         }
     }
-
-    retCode = sl_img_save_ppm(tex.width(), tex.height(), reinterpret_cast<const SL_ColorRGB8*>(tex.data()), "ycocg_test_image.ppm");
-    LS_ASSERT(retCode == 0);
-
-    retCode = sl_img_save_ppm(depth.width(), depth.height(), reinterpret_cast<const SL_ColorRf*>(depth.data()), "ycocg_test_depth.ppm");
-    LS_ASSERT(retCode == 0);
 
     pRenderBuf->terminate();
     return pWindow->destroy();
