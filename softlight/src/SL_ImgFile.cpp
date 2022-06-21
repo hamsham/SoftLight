@@ -280,6 +280,7 @@ FREE_IMAGE_TYPE sl_color_to_freeimage(SL_ColorDataType type)
         case SL_COLOR_RGB_565:
         case SL_COLOR_RGBA_5551:
         case SL_COLOR_RGBA_4444:
+        case SL_COLOR_RGBA_1010102:
             break;
     }
 

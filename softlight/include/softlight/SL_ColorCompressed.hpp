@@ -722,5 +722,182 @@ constexpr SL_ColorRGBAType<T> rgba_cast(const typename ls::setup::EnableIf<ls::s
 
 
 
+/*-----------------------------------------------------------------------------
+ * RGB1010102 Types
+-----------------------------------------------------------------------------*/
+template <typename color_t>
+struct SL_ColorRGB1010102Type;
+
+/**
+ * @brief RGBA-1010102 Color Structure
+ */
+ template <>
+struct alignas(alignof(uint32_t)) SL_ColorRGB1010102Type<uint16_t>
+{
+    typedef uint16_t value_type;
+    static constexpr unsigned num_components() noexcept { return 4; }
+
+    uint32_t r : 10;
+    uint32_t g : 10;
+    uint32_t b : 10;
+    uint32_t a : 2;
+};
+
+static_assert(sizeof(SL_ColorRGB1010102Type<uint16_t>) == sizeof(uint32_t), "Compressed RGB1010102 is not 16 bytes.");
+
+
+
+/*-------------------------------------
+ * Typedef Specializations
+-------------------------------------*/
+typedef SL_ColorRGB1010102Type<uint16_t>  SL_ColorRGB1010102;
+
+
+
+/*-----------------------------------------------------------------------------
+ * Internal limits of color RGBA1010102 ranges
+-----------------------------------------------------------------------------*/
+/**
+ * @brief Template specialization which allows for internal color calculations
+ * to determine the maximum and minimum possible number ranges for certain
+ * data types and their color representations.
+ *
+ * @tparam color_t
+ * A basic C/C++ data type such as unsigned char, int, double, etc...
+ */
+template <>
+struct SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>
+{
+    /**
+    * @brief Determine the minimum possible value for a color object's internal
+    * data types.
+    */
+    static constexpr SL_ColorRGB1010102Type<uint16_t> min() noexcept
+    {
+        return SL_ColorRGB1010102Type<uint16_t>{0, 0, 0, 0};
+    }
+
+    /**
+    * @brief Determine the maximum possible value for a color object's internal
+    * data types.
+    */
+    static constexpr SL_ColorRGB1010102Type<uint16_t> max() noexcept
+    {
+        return SL_ColorRGB1010102Type<uint16_t>{1023, 1023, 1023, 3};
+    }
+};
+
+
+
+/*-----------------------------------------------------------------------------
+ * RGB to RGB-1010102 Casting
+-----------------------------------------------------------------------------*/
+template <typename T, typename U>
+constexpr typename ls::setup::EnableIf<ls::setup::IsSame<T, SL_ColorRGB1010102>::value, SL_ColorRGB1010102>::type
+rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SL_ColorRGBType<U>>::type& c)
+{
+    return SL_ColorRGB1010102Type<uint16_t>{
+        (uint16_t)(c[0] / (SL_ColorLimits<U, SL_ColorRGBType>::max()[0] / (U)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().r)),
+        (uint16_t)(c[1] / (SL_ColorLimits<U, SL_ColorRGBType>::max()[1] / (U)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().g)),
+        (uint16_t)(c[2] / (SL_ColorLimits<U, SL_ColorRGBType>::max()[2] / (U)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().b)),
+        SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().a
+    };
+}
+
+template <typename T, typename U>
+constexpr typename ls::setup::EnableIf<ls::setup::IsSame<T, SL_ColorRGB1010102>::value, SL_ColorRGB1010102>::type
+rgba_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SL_ColorRGBAType<U>>::type& c)
+{
+    return SL_ColorRGB1010102Type<uint16_t>{
+        (uint16_t)(c[0] / (SL_ColorLimits<U, SL_ColorRGBAType>::max()[0] / (U)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().r)),
+        (uint16_t)(c[1] / (SL_ColorLimits<U, SL_ColorRGBAType>::max()[1] / (U)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().g)),
+        (uint16_t)(c[2] / (SL_ColorLimits<U, SL_ColorRGBAType>::max()[2] / (U)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().b)),
+        (uint16_t)(c[3] / (SL_ColorLimits<U, SL_ColorRGBAType>::max()[3] / (U)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().a))
+    };
+}
+
+
+
+/*-------------------------------------
+ * RGB (float) to 1010102
+-------------------------------------*/
+template <typename T, typename U>
+constexpr typename ls::setup::EnableIf<ls::setup::IsSame<T, SL_ColorRGB1010102>::value, SL_ColorRGB1010102>::type
+rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value, SL_ColorRGBType<U>>::type& c)
+{
+    return SL_ColorRGB1010102Type<uint16_t>{
+        (uint16_t)(c[0] * (U)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().r),
+        (uint16_t)(c[1] * (U)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().g),
+        (uint16_t)(c[2] * (U)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().b),
+        (uint16_t)(SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().a)
+    };
+}
+
+template <typename T, typename U>
+constexpr typename ls::setup::EnableIf<ls::setup::IsSame<T, SL_ColorRGB1010102>::value, SL_ColorRGB1010102>::type
+rgba_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value, SL_ColorRGBAType<U>>::type& c)
+{
+    return SL_ColorRGB1010102Type<uint16_t>{
+        (uint16_t)(c[0] * (U)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().r),
+        (uint16_t)(c[1] * (U)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().g),
+        (uint16_t)(c[2] * (U)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().b),
+        (uint16_t)(c[3] * (U)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().a)
+    };
+}
+
+
+
+/*-----------------------------------------------------------------------------
+ * RGB-1010102 to RGB Casting
+-----------------------------------------------------------------------------*/
+template <typename T, typename U>
+constexpr SL_ColorRGBType<T> rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGB1010102Type<uint16_t>>::type& c) noexcept
+{
+    return SL_ColorRGBType<T>{
+        (T)((c.r * SL_ColorLimits<T, SL_ColorRGBType>::max()[0]) / (T)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().r),
+        (T)((c.g * SL_ColorLimits<T, SL_ColorRGBType>::max()[1]) / (T)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().g),
+        (T)((c.b * SL_ColorLimits<T, SL_ColorRGBType>::max()[2]) / (T)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().b)
+    };
+}
+
+template <typename T, typename U>
+constexpr SL_ColorRGBAType<T> rgba_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGB1010102Type<uint16_t>>::type& c) noexcept
+{
+    return SL_ColorRGBAType<T>{
+        (T)((c.r * (uint32_t)SL_ColorLimits<T, SL_ColorRGBAType>::max()[0]) / SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().r),
+        (T)((c.g * (uint32_t)SL_ColorLimits<T, SL_ColorRGBAType>::max()[1]) / SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().g),
+        (T)((c.b * (uint32_t)SL_ColorLimits<T, SL_ColorRGBAType>::max()[2]) / SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().b),
+        (T)((c.a * (uint32_t)SL_ColorLimits<T, SL_ColorRGBAType>::max()[3]) / SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().a)
+    };
+}
+
+
+
+/*-------------------------------------
+ * 1010102 to RGB (float)
+-------------------------------------*/
+template <typename T, typename U>
+constexpr SL_ColorRGBType<T> rgb_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRGB1010102Type<uint16_t>>::type& c) noexcept
+{
+    return SL_ColorRGBType<T>{
+        (T)c.r / (T)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().r,
+        (T)c.g / (T)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().g,
+        (T)c.b / (T)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().b
+    };
+}
+
+template <typename T, typename U>
+constexpr SL_ColorRGBAType<T> rgba_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRGB1010102Type<uint16_t>>::type& c) noexcept
+{
+    return SL_ColorRGBAType<T>{
+        (T)c.r / (T)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().r,
+        (T)c.g / (T)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().g,
+        (T)c.b / (T)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().b,
+        (T)c.a / (T)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().a
+    };
+}
+
+
+
 #endif /* SL_COLOR_COMPRESSED_HPP */
 

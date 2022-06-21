@@ -78,6 +78,7 @@ extern template void SL_ClearProcessor::clear_texture<SL_ColorRGB332>(const SL_C
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRGB565>(const SL_ColorRGB565&) noexcept;
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRGB5551>(const SL_ColorRGB5551&) noexcept;
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRGB4444>(const SL_ColorRGB4444&) noexcept;
+extern template void SL_ClearProcessor::clear_texture<SL_ColorRGB1010102>(const SL_ColorRGB1010102&) noexcept;
 
 
 

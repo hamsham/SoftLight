@@ -63,6 +63,7 @@ enum SL_ColorDataType : uint8_t
     SL_COLOR_RGB_565,
     SL_COLOR_RGBA_5551,
     SL_COLOR_RGBA_4444,
+    SL_COLOR_RGBA_1010102,
 
     SL_COLOR_RGB_DEFAULT = SL_COLOR_RGB_8U
 };
@@ -90,9 +91,10 @@ constexpr bool sl_is_compressed_color(SL_ColorDataType p) noexcept
 {
     return
         (p == SL_COLOR_RGB_332) ||
-            (p == SL_COLOR_RGB_565) ||
-                (p == SL_COLOR_RGBA_5551) ||
-                    (p == SL_COLOR_RGBA_4444);
+        (p == SL_COLOR_RGB_565) ||
+        (p == SL_COLOR_RGBA_5551) ||
+        (p == SL_COLOR_RGBA_4444) ||
+        (p == SL_COLOR_RGBA_1010102);
 }
 
 
@@ -643,6 +645,7 @@ struct SL_GeneralColor
         uint16_t rgb565;
         uint16_t rgba5551;
         uint16_t rgba4444;
+        uint32_t rgba1010102;
     } color;
 };
 

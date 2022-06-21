@@ -253,6 +253,9 @@ struct SL_Blit_Compressed_to_Compressed<inCompressed_type, inCompressed_type>
 
 
 
+/*-------------------------------------
+ * Convert to 332
+-------------------------------------*/
 template<>
 struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB565, SL_ColorRGB332>
 {
@@ -320,6 +323,34 @@ struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB4444, SL_ColorRGB332>
     }
 };
 
+
+
+template<>
+struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB1010102, SL_ColorRGB332>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGB332)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRGB1010102 inColor = pTexture->texel<SL_ColorRGB1010102>((uint16_t)srcX, (uint16_t)srcY);
+        const ls::math::vec3_t<uint8_t> outColor = rgb_cast<uint8_t, SL_ColorRGB1010102>(inColor);
+        *reinterpret_cast<SL_ColorRGB332*>(pOutBuf + outIndex) = rgb_cast<SL_ColorRGB332, uint8_t>(outColor);
+    }
+};
+
+
+
+/*-------------------------------------
+ * Convert to 565
+-------------------------------------*/
 template<>
 struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB332, SL_ColorRGB565>
 {
@@ -390,6 +421,32 @@ struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB4444, SL_ColorRGB565>
 
 
 template<>
+struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB1010102, SL_ColorRGB565>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGB565)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRGB1010102 inColor = pTexture->texel<SL_ColorRGB1010102>((uint16_t)srcX, (uint16_t)srcY);
+        const ls::math::vec3_t<uint8_t> outColor = rgb_cast<uint8_t, SL_ColorRGB1010102>(inColor);
+        *reinterpret_cast<SL_ColorRGB565*>(pOutBuf + outIndex) = rgb_cast<SL_ColorRGB565, uint8_t>(outColor);
+    }
+};
+
+
+
+/*-------------------------------------
+ * Convert to 5551
+-------------------------------------*/
+template<>
 struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB332, SL_ColorRGB5551>
 {
     enum : uint_fast32_t
@@ -459,6 +516,32 @@ struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB4444, SL_ColorRGB5551>
 
 
 template<>
+struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB1010102, SL_ColorRGB5551>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGB5551)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRGB1010102 inColor = pTexture->texel<SL_ColorRGB1010102>((uint16_t)srcX, (uint16_t)srcY);
+        const ls::math::vec4_t<uint8_t> outColor = rgba_cast<uint8_t, SL_ColorRGB1010102>(inColor);
+        *reinterpret_cast<SL_ColorRGB5551*>(pOutBuf + outIndex) = rgba_cast<SL_ColorRGB5551, uint8_t>(outColor);
+    }
+};
+
+
+
+/*-------------------------------------
+ * Convert to 4444
+-------------------------------------*/
+template<>
 struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB332, SL_ColorRGB4444>
 {
     enum : uint_fast32_t
@@ -527,6 +610,124 @@ struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB5551, SL_ColorRGB4444>
 
 
 
+template<>
+struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB1010102, SL_ColorRGB4444>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGB4444)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRGB1010102 inColor = pTexture->texel<SL_ColorRGB1010102>((uint16_t)srcX, (uint16_t)srcY);
+        const ls::math::vec4_t<uint8_t> outColor = rgba_cast<uint8_t, SL_ColorRGB1010102>(inColor);
+        *reinterpret_cast<SL_ColorRGB4444*>(pOutBuf + outIndex) = rgba_cast<SL_ColorRGB4444, uint8_t>(outColor);
+    }
+};
+
+
+
+/*-------------------------------------
+ * Convert to 1010102
+-------------------------------------*/
+template<>
+struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB332, SL_ColorRGB1010102>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGB1010102)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRGB332 inColor = pTexture->texel<SL_ColorRGB332>((uint16_t)srcX, (uint16_t)srcY);
+        const ls::math::vec4_t<uint16_t> outRGBA = rgba_cast<uint16_t, SL_ColorRGB332>(inColor);
+        *reinterpret_cast<SL_ColorRGB1010102*>(pOutBuf + outIndex) = rgba_cast<SL_ColorRGB1010102, uint16_t>(outRGBA);
+    }
+};
+
+
+
+template<>
+struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB565, SL_ColorRGB1010102>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGB1010102)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRGB565 inColor = pTexture->texel<SL_ColorRGB565>((uint16_t)srcX, (uint16_t)srcY);
+        const ls::math::vec4_t<uint16_t> outRGBA = rgba_cast<uint16_t, SL_ColorRGB565>(inColor);
+        *reinterpret_cast<SL_ColorRGB1010102*>(pOutBuf + outIndex) = rgba_cast<SL_ColorRGB1010102, uint16_t>(outRGBA);
+    }
+};
+
+
+
+template<>
+struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB5551, SL_ColorRGB1010102>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGB1010102)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRGB5551 inColor = pTexture->texel<SL_ColorRGB5551>((uint16_t)srcX, (uint16_t)srcY);
+        const ls::math::vec4_t<uint16_t> outColor = rgba_cast<uint16_t, SL_ColorRGB5551>(inColor);
+        *reinterpret_cast<SL_ColorRGB1010102*>(pOutBuf + outIndex) = rgba_cast<SL_ColorRGB1010102, uint16_t>(outColor);
+    }
+};
+
+
+
+template<>
+struct SL_Blit_Compressed_to_Compressed<SL_ColorRGB4444, SL_ColorRGB1010102>
+{
+    enum : uint_fast32_t
+    {
+        stride = sizeof(SL_ColorRGB1010102)
+    };
+
+    inline LS_INLINE void operator()(
+        const SL_Texture* pTexture,
+        const uint_fast32_t srcX,
+        const uint_fast32_t srcY,
+        unsigned char* const pOutBuf,
+        uint_fast32_t outIndex) const noexcept
+    {
+        const SL_ColorRGB4444 inColor = pTexture->texel<SL_ColorRGB4444>((uint16_t)srcX, (uint16_t)srcY);
+        const ls::math::vec4_t<uint16_t> outColor = rgba_cast<uint16_t, SL_ColorRGB4444>(inColor);
+        *reinterpret_cast<SL_ColorRGB1010102*>(pOutBuf + outIndex) = rgba_cast<SL_ColorRGB1010102, uint16_t>(outColor);
+    }
+};
+
+
+
 
 /*-----------------------------------------------------------------------------
  * SL_BlitProcessorCompressed functions and namespaces
@@ -539,10 +740,11 @@ void SL_BlitCompressedProcessor::blit_src_r() noexcept
 {
     switch (mDstTex->type())
     {
-        case SL_COLOR_RGB_332:     blit_nearest<SL_Blit_R_to_Compressed<inColor_type, SL_ColorRGB332>>();  break;
-        case SL_COLOR_RGB_565:     blit_nearest<SL_Blit_R_to_Compressed<inColor_type, SL_ColorRGB565>>();  break;
-        case SL_COLOR_RGBA_5551:   blit_nearest<SL_Blit_R_to_Compressed<inColor_type, SL_ColorRGB5551>>(); break;
-        case SL_COLOR_RGBA_4444:   blit_nearest<SL_Blit_R_to_Compressed<inColor_type, SL_ColorRGB4444>>(); break;
+        case SL_COLOR_RGB_332:      blit_nearest<SL_Blit_R_to_Compressed<inColor_type, SL_ColorRGB332>>();     break;
+        case SL_COLOR_RGB_565:      blit_nearest<SL_Blit_R_to_Compressed<inColor_type, SL_ColorRGB565>>();     break;
+        case SL_COLOR_RGBA_5551:    blit_nearest<SL_Blit_R_to_Compressed<inColor_type, SL_ColorRGB5551>>();    break;
+        case SL_COLOR_RGBA_4444:    blit_nearest<SL_Blit_R_to_Compressed<inColor_type, SL_ColorRGB4444>>();    break;
+        case SL_COLOR_RGBA_1010102: blit_nearest<SL_Blit_R_to_Compressed<inColor_type, SL_ColorRGB1010102>>(); break;
 
         default:
             LS_ASSERT(false);
@@ -560,10 +762,11 @@ void SL_BlitCompressedProcessor::blit_src_rg() noexcept
 {
     switch (mDstTex->type())
     {
-        case SL_COLOR_RGB_332:     blit_nearest<SL_Blit_RG_to_Compressed<inColor_type, SL_ColorRGB332>>();  break;
-        case SL_COLOR_RGB_565:     blit_nearest<SL_Blit_RG_to_Compressed<inColor_type, SL_ColorRGB565>>();  break;
-        case SL_COLOR_RGBA_5551:   blit_nearest<SL_Blit_RG_to_Compressed<inColor_type, SL_ColorRGB5551>>(); break;
-        case SL_COLOR_RGBA_4444:   blit_nearest<SL_Blit_RG_to_Compressed<inColor_type, SL_ColorRGB4444>>(); break;
+        case SL_COLOR_RGB_332:      blit_nearest<SL_Blit_RG_to_Compressed<inColor_type, SL_ColorRGB332>>();     break;
+        case SL_COLOR_RGB_565:      blit_nearest<SL_Blit_RG_to_Compressed<inColor_type, SL_ColorRGB565>>();     break;
+        case SL_COLOR_RGBA_5551:    blit_nearest<SL_Blit_RG_to_Compressed<inColor_type, SL_ColorRGB5551>>();    break;
+        case SL_COLOR_RGBA_4444:    blit_nearest<SL_Blit_RG_to_Compressed<inColor_type, SL_ColorRGB4444>>();    break;
+        case SL_COLOR_RGBA_1010102: blit_nearest<SL_Blit_RG_to_Compressed<inColor_type, SL_ColorRGB1010102>>(); break;
 
         default:
             LS_ASSERT(false);
@@ -581,10 +784,11 @@ void SL_BlitCompressedProcessor::blit_src_rgb() noexcept
 {
     switch (mDstTex->type())
     {
-        case SL_COLOR_RGB_332:     blit_nearest<SL_Blit_RGB_to_Compressed<inColor_type, SL_ColorRGB332>>();  break;
-        case SL_COLOR_RGB_565:     blit_nearest<SL_Blit_RGB_to_Compressed<inColor_type, SL_ColorRGB565>>();  break;
-        case SL_COLOR_RGBA_5551:   blit_nearest<SL_Blit_RGB_to_Compressed<inColor_type, SL_ColorRGB5551>>(); break;
-        case SL_COLOR_RGBA_4444:   blit_nearest<SL_Blit_RGB_to_Compressed<inColor_type, SL_ColorRGB4444>>(); break;
+        case SL_COLOR_RGB_332:      blit_nearest<SL_Blit_RGB_to_Compressed<inColor_type, SL_ColorRGB332>>();     break;
+        case SL_COLOR_RGB_565:      blit_nearest<SL_Blit_RGB_to_Compressed<inColor_type, SL_ColorRGB565>>();     break;
+        case SL_COLOR_RGBA_5551:    blit_nearest<SL_Blit_RGB_to_Compressed<inColor_type, SL_ColorRGB5551>>();    break;
+        case SL_COLOR_RGBA_4444:    blit_nearest<SL_Blit_RGB_to_Compressed<inColor_type, SL_ColorRGB4444>>();    break;
+        case SL_COLOR_RGBA_1010102: blit_nearest<SL_Blit_RGB_to_Compressed<inColor_type, SL_ColorRGB1010102>>(); break;
 
         default:
             LS_ASSERT(false);
@@ -602,10 +806,11 @@ void SL_BlitCompressedProcessor::blit_src_rgba() noexcept
 {
     switch (mDstTex->type())
     {
-        case SL_COLOR_RGB_332:     blit_nearest<SL_Blit_RGBA_to_Compressed<inColor_type, SL_ColorRGB332>>();  break;
-        case SL_COLOR_RGB_565:     blit_nearest<SL_Blit_RGBA_to_Compressed<inColor_type, SL_ColorRGB565>>();  break;
-        case SL_COLOR_RGBA_5551:   blit_nearest<SL_Blit_RGBA_to_Compressed<inColor_type, SL_ColorRGB5551>>(); break;
-        case SL_COLOR_RGBA_4444:   blit_nearest<SL_Blit_RGBA_to_Compressed<inColor_type, SL_ColorRGB4444>>(); break;
+        case SL_COLOR_RGB_332:      blit_nearest<SL_Blit_RGBA_to_Compressed<inColor_type, SL_ColorRGB332>>();     break;
+        case SL_COLOR_RGB_565:      blit_nearest<SL_Blit_RGBA_to_Compressed<inColor_type, SL_ColorRGB565>>();     break;
+        case SL_COLOR_RGBA_5551:    blit_nearest<SL_Blit_RGBA_to_Compressed<inColor_type, SL_ColorRGB5551>>();    break;
+        case SL_COLOR_RGBA_4444:    blit_nearest<SL_Blit_RGBA_to_Compressed<inColor_type, SL_ColorRGB4444>>();    break;
+        case SL_COLOR_RGBA_1010102: blit_nearest<SL_Blit_RGBA_to_Compressed<inColor_type, SL_ColorRGB1010102>>(); break;
 
         default:
             LS_ASSERT(false);
@@ -651,10 +856,11 @@ void SL_BlitCompressedProcessor::blit_src_compressed() noexcept
         case SL_COLOR_RGBA_FLOAT:   blit_nearest<SL_Blit_Compressed_to_RGBA<inColor_type, float>>();    break;
         case SL_COLOR_RGBA_DOUBLE:  blit_nearest<SL_Blit_Compressed_to_RGBA<inColor_type, double>>();   break;
 
-        case SL_COLOR_RGB_332:     blit_nearest<SL_Blit_Compressed_to_Compressed<inColor_type, SL_ColorRGB332>>();  break;
-        case SL_COLOR_RGB_565:     blit_nearest<SL_Blit_Compressed_to_Compressed<inColor_type, SL_ColorRGB565>>();  break;
-        case SL_COLOR_RGBA_5551:   blit_nearest<SL_Blit_Compressed_to_Compressed<inColor_type, SL_ColorRGB5551>>(); break;
-        case SL_COLOR_RGBA_4444:   blit_nearest<SL_Blit_Compressed_to_Compressed<inColor_type, SL_ColorRGB4444>>(); break;
+        case SL_COLOR_RGB_332:      blit_nearest<SL_Blit_Compressed_to_Compressed<inColor_type, SL_ColorRGB332>>();     break;
+        case SL_COLOR_RGB_565:      blit_nearest<SL_Blit_Compressed_to_Compressed<inColor_type, SL_ColorRGB565>>();     break;
+        case SL_COLOR_RGBA_5551:    blit_nearest<SL_Blit_Compressed_to_Compressed<inColor_type, SL_ColorRGB5551>>();    break;
+        case SL_COLOR_RGBA_4444:    blit_nearest<SL_Blit_Compressed_to_Compressed<inColor_type, SL_ColorRGB4444>>();    break;
+        case SL_COLOR_RGBA_1010102: blit_nearest<SL_Blit_Compressed_to_Compressed<inColor_type, SL_ColorRGB1010102>>(); break;
 
         default:
             LS_ASSERT(false);
@@ -754,10 +960,11 @@ void SL_BlitCompressedProcessor::execute() noexcept
         case SL_COLOR_RGBA_FLOAT:  blit_src_rgba<float>();    break;
         case SL_COLOR_RGBA_DOUBLE: blit_src_rgba<double>();   break;
 
-        case SL_COLOR_RGB_332:     blit_src_compressed<SL_ColorRGB332>();  break;
-        case SL_COLOR_RGB_565:     blit_src_compressed<SL_ColorRGB565>();  break;
-        case SL_COLOR_RGBA_5551:   blit_src_compressed<SL_ColorRGB5551>(); break;
-        case SL_COLOR_RGBA_4444:   blit_src_compressed<SL_ColorRGB4444>(); break;
+        case SL_COLOR_RGB_332:      blit_src_compressed<SL_ColorRGB332>();     break;
+        case SL_COLOR_RGB_565:      blit_src_compressed<SL_ColorRGB565>();     break;
+        case SL_COLOR_RGBA_5551:    blit_src_compressed<SL_ColorRGB5551>();    break;
+        case SL_COLOR_RGBA_4444:    blit_src_compressed<SL_ColorRGB4444>();    break;
+        case SL_COLOR_RGBA_1010102: blit_src_compressed<SL_ColorRGB1010102>(); break;
 
         default:
             LS_ASSERT(false);

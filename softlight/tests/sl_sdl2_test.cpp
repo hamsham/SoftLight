@@ -69,6 +69,10 @@
     #define SL_COMPRESSED_RGB4444 1
 #endif /* SL_COMPRESSED_RGB4444 */
 
+#ifndef SL_COMPRESSED_RGB1010102
+    #define SL_COMPRESSED_RGB1010102 1
+#endif /* SL_COMPRESSED_RGB1010102 */
+
 namespace math = ls::math;
 namespace utils = ls::utils;
 
@@ -484,6 +488,8 @@ utils::Pointer<SL_SceneGraph> create_context()
         retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_5551, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     #elif SL_COMPRESSED_RGB4444
         retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_4444, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    #elif SL_COMPRESSED_RGB1010102
+        retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_1010102, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     #else
         retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     #endif
@@ -563,11 +569,12 @@ inline Uint32 sl_pixel_fmt_to_sdl(const SL_ColorDataType slFmt) noexcept
 {
     switch (slFmt)
     {
-        case SL_COLOR_RGB_565:   return SDL_PIXELFORMAT_RGB565;
-        case SL_COLOR_RGBA_5551: return SDL_PIXELFORMAT_RGB555;
-        case SL_COLOR_RGBA_4444: return SDL_PIXELFORMAT_ARGB4444;
-        case SL_COLOR_RGB_8U:    return SDL_PIXELFORMAT_BGR888;
-        case SL_COLOR_RGBA_8U:   return SDL_PIXELFORMAT_ARGB8888;
+        case SL_COLOR_RGB_565:      return SDL_PIXELFORMAT_RGB565;
+        case SL_COLOR_RGBA_5551:    return SDL_PIXELFORMAT_RGB555;
+        case SL_COLOR_RGBA_4444:    return SDL_PIXELFORMAT_ARGB4444;
+        case SL_COLOR_RGBA_1010102: return SDL_PIXELFORMAT_ARGB2101010;
+        case SL_COLOR_RGB_8U:       return SDL_PIXELFORMAT_BGR888;
+        case SL_COLOR_RGBA_8U:      return SDL_PIXELFORMAT_ARGB8888;
 
         default:
             break;
@@ -616,7 +623,7 @@ int select_sdl_render_driver() noexcept
 
 inline void update_sdl_backbuffer(SL_Texture& tex, SDL_Texture* pBackbuffer) noexcept
 {
-    #if !SL_COMPRESSED_RGB565 && (SL_COMPRESSED_RGB5551 || SL_COMPRESSED_RGB4444)
+    #if !(SL_COMPRESSED_RGB565 || SL_COMPRESSED_RGB1010102) && (SL_COMPRESSED_RGB5551 || SL_COMPRESSED_RGB4444)
         void* pTexData = nullptr;
         int pitch = 0;
 

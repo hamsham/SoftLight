@@ -116,6 +116,18 @@ inline void assign_pixel<SL_ColorRGB4444>(
     *outTexel = rgba_cast<SL_ColorRGB4444, float>(rgba);
 }
 
+template <>
+inline void assign_pixel<SL_ColorRGB1010102>(
+    uint16_t x,
+    uint16_t y,
+    const math::vec4& rgba,
+    SL_Texture* LS_RESTRICT_PTR pTexture) noexcept
+{
+    // Get a reference to the source texel
+    SL_ColorRGB1010102* const outTexel = pTexture->texel_pointer<SL_ColorRGB1010102>(x, y);
+    *outTexel = rgba_cast<SL_ColorRGB1010102, float>(rgba);
+}
+
 
 
 /*-------------------------------------
@@ -509,6 +521,49 @@ inline void assign_alpha_pixel<SL_ColorRGB4444>(
 
     d = math::clamp(d, math::vec4{0.f, 0.f, 0.f, 0.f}, math::vec4{1.f, 1.f, 1.f, 1.f});
     *outTexel = rgba_cast<SL_ColorRGB4444, float>(d);
+}
+
+template <>
+inline void assign_alpha_pixel<SL_ColorRGB1010102>(
+    uint16_t x,
+    uint16_t y,
+    const math::vec4& rgba,
+    SL_Texture* LS_RESTRICT_PTR pTexture,
+    const SL_BlendMode blendMode) noexcept
+{
+    // Get a reference to the source texel
+    SL_ColorRGB1010102* const outTexel = pTexture->texel_pointer<SL_ColorRGB1010102>(x, y);
+
+    // sample the source texel
+    SL_ColorRGBAType<float> s = rgba;
+    SL_ColorRGBAType<float> d = rgba_cast<float, SL_ColorRGB1010102>(*outTexel);
+
+    // This method of blending uses premultiplied alpha. I will need to support
+    // configurable blend modes later.
+    const math::vec4 srcAlpha = rgba[3];
+    const math::vec4&& modulation = math::vec4{1.f - rgba[3]};
+
+    if (blendMode == SL_BLEND_ALPHA)
+    {
+        const math::vec4&& dstMod = modulation * d[3];
+        d = math::fmadd(s, srcAlpha, (d * dstMod)) * math::rcp(d[3]);
+        d[3] = dstMod[3] + srcAlpha[3];
+    }
+    else if (blendMode == SL_BLEND_PREMULTIPLED_ALPHA)
+    {
+        d = math::fmadd(d, modulation, s);
+    }
+    else if (blendMode == SL_BLEND_ADDITIVE)
+    {
+        d = math::fmadd(s, srcAlpha, d);
+    }
+    else if (blendMode == SL_BLEND_SCREEN)
+    {
+        d = (s*srcAlpha) + (d*modulation);
+    }
+
+    d = math::clamp(d, math::vec4{0.f, 0.f, 0.f, 0.f}, math::vec4{1.f, 1.f, 1.f, 1.f});
+    *outTexel = rgba_cast<SL_ColorRGB1010102, float>(d);
 }
 
 
@@ -925,10 +980,11 @@ void SL_Framebuffer::put_pixel(
         case SL_COLOR_RGB_DOUBLE:  assign_pixel<SL_ColorRGBd>(x, y, rgba, pTexture); break;
         case SL_COLOR_RGBA_DOUBLE: assign_pixel<SL_ColorRGBAd>(x, y, rgba, pTexture); break;
 
-        case SL_ColorDataType::SL_COLOR_RGB_332:   assign_pixel<SL_ColorRGB332>(x, y, rgba, pTexture); break;
-        case SL_ColorDataType::SL_COLOR_RGB_565:   assign_pixel<SL_ColorRGB565>(x, y, rgba, pTexture); break;
-        case SL_ColorDataType::SL_COLOR_RGBA_5551: assign_pixel<SL_ColorRGB5551>(x, y, rgba, pTexture); break;
-        case SL_ColorDataType::SL_COLOR_RGBA_4444: assign_pixel<SL_ColorRGB4444>(x, y, rgba, pTexture); break;
+        case SL_ColorDataType::SL_COLOR_RGB_332:      assign_pixel<SL_ColorRGB332>(x, y, rgba, pTexture); break;
+        case SL_ColorDataType::SL_COLOR_RGB_565:      assign_pixel<SL_ColorRGB565>(x, y, rgba, pTexture); break;
+        case SL_ColorDataType::SL_COLOR_RGBA_5551:    assign_pixel<SL_ColorRGB5551>(x, y, rgba, pTexture); break;
+        case SL_ColorDataType::SL_COLOR_RGBA_4444:    assign_pixel<SL_ColorRGB4444>(x, y, rgba, pTexture); break;
+        case SL_ColorDataType::SL_COLOR_RGBA_1010102: assign_pixel<SL_ColorRGB1010102>(x, y, rgba, pTexture); break;
 
         default:
             LS_UNREACHABLE();
@@ -1007,10 +1063,11 @@ void SL_Framebuffer::put_alpha_pixel(
         case SL_COLOR_RGB_DOUBLE:  assign_alpha_pixel<SL_ColorRGBd>(x, y, colors, pTexture, blendMode); break;
         case SL_COLOR_RGBA_DOUBLE: assign_alpha_pixel<SL_ColorRGBAd>(x, y, colors, pTexture, blendMode); break;
 
-        case SL_ColorDataType::SL_COLOR_RGB_332:   assign_alpha_pixel<SL_ColorRGB332>(x, y, colors, pTexture, blendMode); break;
-        case SL_ColorDataType::SL_COLOR_RGB_565:   assign_alpha_pixel<SL_ColorRGB565>(x, y, colors, pTexture, blendMode); break;
-        case SL_ColorDataType::SL_COLOR_RGBA_5551: assign_alpha_pixel<SL_ColorRGB5551>(x, y, colors, pTexture, blendMode); break;
-        case SL_ColorDataType::SL_COLOR_RGBA_4444: assign_alpha_pixel<SL_ColorRGB4444>(x, y, colors, pTexture, blendMode); break;
+        case SL_ColorDataType::SL_COLOR_RGB_332:      assign_alpha_pixel<SL_ColorRGB332>(x, y, colors, pTexture, blendMode); break;
+        case SL_ColorDataType::SL_COLOR_RGB_565:      assign_alpha_pixel<SL_ColorRGB565>(x, y, colors, pTexture, blendMode); break;
+        case SL_ColorDataType::SL_COLOR_RGBA_5551:    assign_alpha_pixel<SL_ColorRGB5551>(x, y, colors, pTexture, blendMode); break;
+        case SL_ColorDataType::SL_COLOR_RGBA_4444:    assign_alpha_pixel<SL_ColorRGB4444>(x, y, colors, pTexture, blendMode); break;
+        case SL_ColorDataType::SL_COLOR_RGBA_1010102: assign_alpha_pixel<SL_ColorRGB1010102>(x, y, colors, pTexture, blendMode); break;
 
         default:
             LS_UNREACHABLE();
