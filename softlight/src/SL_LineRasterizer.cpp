@@ -1,11 +1,10 @@
 
 #include "lightsky/setup/Api.h" // LS_IMPERATIVE
 
-#include "lightsky/math/bits.h"
-#include "lightsky/math/fixed.h"
 #include "lightsky/math/half.h"
 #include "lightsky/math/vec_utils.h"
 
+#include "softlight/SL_Geometry.hpp"
 #include "softlight/SL_LineRasterizer.hpp"
 #include "softlight/SL_Framebuffer.hpp" // SL_Framebuffer
 #include "softlight/SL_ViewportState.hpp"
@@ -168,9 +167,6 @@ void SL_LineRasterizer::render_line(const uint32_t binId, SL_Framebuffer* fbo, c
 {
     const math::vec4& screenCoord0  = mBins[binId].mScreenCoords[0];
     const math::vec4& screenCoord1  = mBins[binId].mScreenCoords[1];
-    float             z0            = screenCoord0[2];
-    float             z1            = screenCoord1[2];
-    const math::vec4* inVaryings    = mBins[binId].mVaryings;
     math::vec2        clipCoords[2] = {math::vec2_cast(screenCoord0), math::vec2_cast(screenCoord1)};
 
     if (!sl_clip_liang_barsky(clipCoords, dimens))
@@ -187,50 +183,50 @@ void SL_LineRasterizer::render_line(const uint32_t binId, SL_Framebuffer* fbo, c
     const auto              shader      = mShader->pFragShader;
     const SL_UniformBuffer* pUniforms   = mShader->pUniforms;
 
-    const SL_Texture*  depthBuf = fbo->get_depth_buffer();
-    const float        dist     = math::inversesqrt(math::length_squared(math::vec2_cast(screenCoord1)-math::vec2_cast(screenCoord0)));
-    const math::vec4&& p0       = math::vec4_cast(math::vec2_cast(screenCoord0), 0.f, 0.f);
-    const math::vec4&& p1       = math::vec4_cast(clipCoords[0], 0.f, 0.f);
-    const math::vec4&& p2       = math::vec4_cast(clipCoords[1], 0.f, 0.f);
-    math::vec4         p        = p1;
-    math::vec4&&       d        = p2 - p1;
-    const float        step     = math::abs(math::max(d[0], d[1]));
-    const int32_t      istep    = (int32_t)step;
-
-    d /= step;
+    const SL_Texture*  depthBuf   = fbo->get_depth_buffer();
+    const float        dist       = math::inversesqrt(math::length_squared(math::vec2_cast(screenCoord1)-math::vec2_cast(screenCoord0)));
+    const math::vec4&& p0         = math::vec4_cast(math::vec2_cast(screenCoord0), 0.f, 0.f);
+    float              z0         = screenCoord0[2];
+    float              z1         = screenCoord1[2];
+    const math::vec4*  inVaryings = mBins[binId].mVaryings;
 
     SL_FragmentParam fragParams;
     fragParams.pUniforms = pUniforms;
 
-    for (int32_t i = 0; i <= istep; ++i, p += d)
-    {
-        const math::vec4_t<uint16_t>&& pi = (math::vec4_t<uint16_t>)math::max(math::vec4{0.f}, p);
-        const float currLen = math::length(p - p0);
-        const float interp  = currLen * dist;
-        const float z       = math::mix(z0, z1, interp);
-
-        if (!depthCmp(z, (float)depthBuf->texel<depth_type>(pi[0], pi[1])))
+    sl_draw_line_fixed(
+        (uint16_t)clipCoords[0][0],
+        (uint16_t)clipCoords[0][1],
+        (uint16_t)clipCoords[1][0],
+        (uint16_t)clipCoords[1][1],[&](uint16_t x, uint16_t y)->void
         {
-            continue;
-        }
+            const math::vec4&& p = (math::vec4)math::vec4_t<uint16_t>{x, y, 0, 0};
+            const float currLen = math::length(p - p0);
+            const float interp  = currLen * dist;
+            const float z       = math::mix(z0, z1, interp);
 
-        interpolate_line_varyings(interp, numVaryings, inVaryings, fragParams.pVaryings);
-
-        fragParams.coord.x     = pi[0];
-        fragParams.coord.y     = pi[1];
-        fragParams.coord.depth = z;
-        const bool haveOutputs = shader(fragParams);
-
-        if (LS_LIKELY(haveOutputs))
-        {
-            mFbo->put_pixel(fboOutMask, blendMode, fragParams);
-
-            if (depthMask)
+            if (!depthCmp(z, (float)depthBuf->texel<depth_type>(x, y)))
             {
-                fbo->put_depth_pixel<depth_type>(fragParams.coord.x, fragParams.coord.y, (depth_type)fragParams.coord.depth);
+                return;
+            }
+
+            interpolate_line_varyings(interp, numVaryings, inVaryings, fragParams.pVaryings);
+
+            fragParams.coord.x     = x;
+            fragParams.coord.y     = y;
+            fragParams.coord.depth = z;
+            const bool haveOutputs = shader(fragParams);
+
+            if (LS_LIKELY(haveOutputs))
+            {
+                mFbo->put_pixel(fboOutMask, blendMode, fragParams);
+
+                if (depthMask)
+                {
+                    fbo->put_depth_pixel<depth_type>(fragParams.coord.x, fragParams.coord.y, (depth_type)fragParams.coord.depth);
+                }
             }
         }
-    }
+    );
 }
 
 
