@@ -95,11 +95,13 @@ int sl_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SL_ColorRG
     // iterate through the image height, then the width
     for (coord_shrt_t i = 0; i < h; ++i)
     {
+        coord_shrt_t i2 = h - i - 1;
+
         for(coord_shrt_t j = 0; j < w; ++j)
         {
-            const SL_ColorRG8&& c = color_cast<uint8_t, colorType>(colors[numPixels - (w * i + j)]);
-            const SL_ColorRGB8 temp{c[0], c[1], 0};
-            f.write(reinterpret_cast<const char*>(&temp), sizeof(SL_ColorRGB8));
+            const SL_ColorRG8&& c = color_cast<uint8_t, colorType>(colors[numPixels - (w * i2 + j)]);
+            const SL_ColorRGB8 o = {c[2], c[1], c[0]};
+            f.write(reinterpret_cast<const char*>(&o), sizeof(SL_ColorRGB8));
         }
     }
 
@@ -137,14 +139,14 @@ int sl_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SL_ColorRG
     // simple, so we only use 255 colors per pixel component.
     f << "P6\n" << w << ' ' << h << '\n' << 255 << '\n';
 
-    const size_t numPixels = (size_t)w * (size_t)h;
-
     // iterate through the image height, then the width
     for (coord_shrt_t i = 0; i < h; ++i)
     {
+        coord_shrt_t i2 = h - i - 1;
+
         for(coord_shrt_t j = 0; j < w; ++j)
         {
-            const SL_ColorRGB8&& c = color_cast<uint8_t, colorType>(colors[numPixels - (w * i + j)]);
+            const SL_ColorRGB8&& c = color_cast<uint8_t, colorType>(colors[w * i2 + j]);
             const SL_ColorRGB8 o = {c[2], c[1], c[0]};
             f.write(reinterpret_cast<const char*>(&o), sizeof(SL_ColorRGB8));
         }
@@ -184,14 +186,14 @@ int sl_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SL_ColorRG
     // simple, so we only use 255 colors per pixel component.
     f << "P6\n" << w << ' ' << h << '\n' << 255 << '\n';
 
-    const size_t numPixels = (size_t)w * (size_t)h;
-
     // iterate through the image height, then the width
     for (coord_shrt_t i = 0; i < h; ++i)
     {
+        coord_shrt_t i2 = h - i - 1;
+
         for(coord_shrt_t j = 0; j < w; ++j)
         {
-            const SL_ColorRGBA8&& c = color_cast<uint8_t, colorType>(colors[numPixels - (w * i + j)]);
+            const SL_ColorRGBA8&& c = color_cast<uint8_t, colorType>(colors[w * i2 + j]);
             const SL_ColorRGB8 o = {c[2], c[1], c[0]};
             f.write(reinterpret_cast<const char*>(&o), sizeof(SL_ColorRGB8));
         }

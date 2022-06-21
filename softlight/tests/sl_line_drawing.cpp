@@ -132,12 +132,17 @@ int run_benchmark(
 ------------------------------------------------------------------------------*/
 int main()
 {
-    std::thread t1(run_benchmark, std::string{"EFLA_5"},       (uint16_t)IMAGE_WIDTH, (uint16_t)IMAGE_HEIGHT, &sl_draw_line_efla5);
-    std::thread t2(run_benchmark, std::string{"Bresenham_FP"}, (uint16_t)IMAGE_WIDTH, (uint16_t)IMAGE_HEIGHT, &sl_draw_line_fixed);
-    std::thread t3(run_benchmark, std::string{"Bresenham"},    (uint16_t)IMAGE_WIDTH, (uint16_t)IMAGE_HEIGHT, &sl_draw_line_bresenham);
-    t1.join();
-    t2.join();
-    t3.join();
+    //std::thread t1(run_benchmark, std::string{"EFLA_5"},       (uint16_t)IMAGE_WIDTH, (uint16_t)IMAGE_HEIGHT, &sl_draw_colored_line_efla5);
+    //std::thread t2(run_benchmark, std::string{"Bresenham_FP"}, (uint16_t)IMAGE_WIDTH, (uint16_t)IMAGE_HEIGHT, &sl_draw_colored_line_fixed);
+    //std::thread t3(run_benchmark, std::string{"Bresenham"},    (uint16_t)IMAGE_WIDTH, (uint16_t)IMAGE_HEIGHT, &sl_draw_colored_line_bresenham);
+    //t1.join();
+    //t2.join();
+    //t3.join();
+
+    run_benchmark(std::string{"EFLA_5"},       (uint16_t)IMAGE_WIDTH, (uint16_t)IMAGE_HEIGHT, &sl_draw_colored_line_efla5);
+    run_benchmark(std::string{"Bresenham_FP"}, (uint16_t)IMAGE_WIDTH, (uint16_t)IMAGE_HEIGHT, &sl_draw_colored_line_fixed);
+    run_benchmark(std::string{"Bresenham"},    (uint16_t)IMAGE_WIDTH, (uint16_t)IMAGE_HEIGHT, &sl_draw_colored_line_bresenham);
+
     return 0;
 }
 

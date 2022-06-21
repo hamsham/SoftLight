@@ -37,14 +37,14 @@ int sl_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SL_ColorRG
     // simple, so we only use 255 colors per pixel component.
     f << "P6\n" << w << ' ' << h << '\n' << 255 << '\n';
 
-    const size_t numPixels = (size_t)w * (size_t)h;
-
     // iterate through the image height, then the width
     for (coord_shrt_t i = 0; i < h; ++i)
     {
+        coord_shrt_t i2 = h - i - 1;
+
         for(coord_shrt_t j = 0; j < w; ++j)
         {
-            const SL_ColorRGB8 c = colors[numPixels - (w * i + j)];
+            const SL_ColorRGB8 c = colors[w * i2 + j];
             const SL_ColorRGB8 o = {c[2], c[1], c[0]};
             f.write(reinterpret_cast<const char*>(o.v), sizeof(SL_ColorRGB8));
         }
@@ -159,19 +159,27 @@ SL_ColorRGB8* sl_img_load_ppm(coord_shrt_t& w, coord_shrt_t& h, const char* cons
     // iterate through the image height, then the width
     for (uint64_t i = 0; i < height; ++i)
     {
+        coord_shrt_t i2 = height - i - 1;
+
         for(uint64_t j = 0; j < width; ++j)
         {
-            SL_ColorRGB8* p = pImg + (width * i + j);
+            SL_ColorRGB8* p = pImg + (width * i2 + j);
 
             // PPM Images can be 8-bits or 16-bits per component.
             if (pixelMaxVal < 256)
             {
-                f.read(reinterpret_cast<char*>(p->v), sizeof(uint8_t)*SL_ColorRGB8::num_components());
+                //f.read(reinterpret_cast<char*>(p->v), sizeof(uint8_t)*SL_ColorRGB8::num_components());
+                f.read(reinterpret_cast<char*>(&p->v[2]), sizeof(uint8_t));
+                f.read(reinterpret_cast<char*>(&p->v[1]), sizeof(uint8_t));
+                f.read(reinterpret_cast<char*>(&p->v[0]), sizeof(uint8_t));
             }
             else
             {
                 SL_ColorRGB16 p2;
-                f.read(reinterpret_cast<char*>(p2.v), sizeof(uint16_t)*SL_ColorRGB16::num_components());
+                //f.read(reinterpret_cast<char*>(p2.v), sizeof(uint16_t)*SL_ColorRGB16::num_components());
+                f.read(reinterpret_cast<char*>(&p2.v[2]), sizeof(uint16_t));
+                f.read(reinterpret_cast<char*>(&p2.v[1]), sizeof(uint16_t));
+                f.read(reinterpret_cast<char*>(&p2.v[0]), sizeof(uint16_t));
                 *p = color_cast<uint8_t, uint16_t>(p2);
             }
         }

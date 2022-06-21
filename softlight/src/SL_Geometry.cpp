@@ -562,58 +562,12 @@ unsigned sl_index_byte_size(const SL_DataType indexType)
 /*-------------------------------------
  * Line Drawing: Bresenham Base Case
 -------------------------------------*/
-void sl_draw_line_bresenham(SL_ColorRGB8* const pImg, coord_shrt_t w, coord_shrt_t x1, coord_shrt_t y1, coord_shrt_t x2, coord_shrt_t y2, const SL_ColorRGB8& color)
+void sl_draw_colored_line_bresenham(SL_ColorRGB8* const pImg, coord_shrt_t w, coord_shrt_t x1, coord_shrt_t y1, coord_shrt_t x2, coord_shrt_t y2, const SL_ColorRGB8& color) noexcept
 {
-    const bool steep = math::abs(x1 - x2) < math::abs(y1 - y2);
-    if (steep)
+    sl_draw_line_bresenham(x1, y1, x2, y2, [&](coord_shrt_t x, coord_shrt_t y)->void
     {
-        std::swap(x1, y1);
-        std::swap(x2, y2);
-    }
-    
-    if (x1 > x2)
-    {
-        std::swap(x1, x2);
-        std::swap(y1, y2);
-    }
-    
-    const coord_shrt_t dx = x2 - x1;
-    const coord_shrt_t dy = y2 - y1;
-    const coord_shrt_t dErr = math::abs(dy) * 2;
-    const coord_shrt_t yErr = (y2 > y1) ? 1 : -1;
-    coord_shrt_t currentErr = 0;
-    coord_shrt_t y = y1;
-
-    // This if-statement has been pulled out of the main loop in order to avoid
-    // branching on intel CPUs. It makes no difference on ARM.
-    if (steep)
-    {
-        for (coord_shrt_t x = x1; x <= x2; ++x)
-        {
-            sl_draw_pixel(pImg, w, y, x, color);
-            currentErr += dErr;
-
-            if (currentErr > dx)
-            {
-                y += yErr;
-                currentErr -= 2 * dx;
-            }
-        }
-    }
-    else
-    {
-        for (coord_shrt_t x = x1; x <= x2; ++x)
-        {
-            sl_draw_pixel(pImg, w, x, y, color);
-            currentErr += dErr;
-
-            if (currentErr > dx)
-            {
-                y += yErr;
-                currentErr -= 2 * dx;
-            }
-        }
-    }
+        sl_draw_pixel(pImg, w, x, y, color);
+    });
 }
 
 
@@ -621,60 +575,12 @@ void sl_draw_line_bresenham(SL_ColorRGB8* const pImg, coord_shrt_t w, coord_shrt
 /*-------------------------------------
  * Line Drawing: EFLA (Variant 5)
 -------------------------------------*/
-void sl_draw_line_efla5(SL_ColorRGB8* pImg, coord_shrt_t width, coord_shrt_t x1, coord_shrt_t y1, coord_shrt_t x2, coord_shrt_t y2, const SL_ColorRGB8& color)
+void sl_draw_colored_line_efla5(SL_ColorRGB8* pImg, coord_shrt_t width, coord_shrt_t x1, coord_shrt_t y1, coord_shrt_t x2, coord_shrt_t y2, const SL_ColorRGB8& color) noexcept
 {
-    coord_long_t shortLen = y2 - y1;
-    coord_long_t longLen  = x2 - x1;
-    const bool yLonger    = math::abs(shortLen) > math::abs(longLen);
-    
-    if (yLonger)
+    sl_draw_line_efla5(x1, y1, x2, y2, [&](coord_shrt_t x, coord_shrt_t y)->void
     {
-        std::swap(shortLen, longLen);
-    }
-    
-    const coord_long_t decInc = (longLen == 0) ? 0 : (((coord_long_t)shortLen << FIXED_BITS) / longLen);
-
-    if (yLonger)
-    {
-        const coord_long_t fixedX = (coord_long_t)x1 << FIXED_BITS;
-        const coord_long_t longLenY = longLen + y1;
-            
-        if (longLen > 0)
-        {
-            for (coord_long_t j = MASK_BITS+fixedX; y1 <= longLenY; ++y1)
-            {
-                sl_draw_pixel(pImg, width, j >> FIXED_BITS, y1, color);
-                j += decInc;
-            }
-            return;
-        }
-        
-        for (coord_long_t j = MASK_BITS+fixedX; y1 >= longLenY; --y1)
-        {
-            sl_draw_pixel(pImg, width, j >> FIXED_BITS, y1, color);
-            j -= decInc;
-        }
-        return; 
-    }
-
-    const coord_long_t fixedY = (coord_long_t)y1 << FIXED_BITS;
-    const coord_long_t longLenX = longLen + x1;
-    
-    if (longLen > 0)
-    {
-        for (coord_long_t j = MASK_BITS+fixedY; x1 <= longLenX; ++x1)
-        {
-            sl_draw_pixel(pImg, width, x1, j >> FIXED_BITS, color);
-            j += decInc;
-        }
-        return;
-    }
-    
-    for (coord_long_t j = MASK_BITS+fixedY; x1 >= longLenX; --x1)
-    {
-        sl_draw_pixel(pImg, width, x1, j >> FIXED_BITS, color);
-        j -= decInc;
-    }
+        sl_draw_pixel(pImg, width, x, y, color);
+    });
 }
 
 
@@ -682,53 +588,12 @@ void sl_draw_line_efla5(SL_ColorRGB8* pImg, coord_shrt_t width, coord_shrt_t x1,
 /*-------------------------------------
  * Line Drawing: Bresenham's (Fixed-Point)
 -------------------------------------*/
-void sl_draw_line_fixed(SL_ColorRGB8* const pImg, coord_shrt_t w, coord_shrt_t x1, coord_shrt_t y1, coord_shrt_t x2, coord_shrt_t y2, const SL_ColorRGB8& color)
+void sl_draw_colored_line_fixed(SL_ColorRGB8* const pImg, coord_shrt_t width, coord_shrt_t x1, coord_shrt_t y1, coord_shrt_t x2, coord_shrt_t y2, const SL_ColorRGB8& color) noexcept
 {
-    union
+    sl_draw_line_fixed(x1, y1, x2, y2, [&](coord_shrt_t x, coord_shrt_t y)->void
     {
-        coord_long_t i;
-        struct
-        {
-            coord_shrt_t lo;
-            coord_shrt_t hi;
-        } fx;
-    } f, g;
-
-    // allow lines to be more vertical than horizontal
-    if (y1 >= y2 && x1 >= x2)
-    {
-        std::swap(y1, y2);
-        std::swap(x1, x2);
-    }    
-    
-    const coord_long_t dx = x2 - x1;
-    const coord_long_t dy = y2 - y1;
-    constexpr coord_long_t COORD_SHORT_MAX = std::numeric_limits<coord_shrt_t>::max();
-    
-    if (dx >= dy)
-    {
-        const coord_long_t m  = dx ? ((coord_long_t)dy << FIXED_BITS) / dx : 0;
-        
-        f.i = (coord_long_t)y1 << FIXED_BITS;
-        
-        for (coord_shrt_t x = x1; x <= x2; ++x, f.i += m)
-        {
-            g.i = f.i + COORD_SHORT_MAX;
-            sl_draw_pixel(pImg, w, x, g.fx.hi, color);
-        }
-    }
-    else
-    {
-        const coord_long_t m  = dy ? ((coord_long_t)dx << FIXED_BITS) / dy : 0;
-        
-        f.i = (coord_long_t)x1 << FIXED_BITS;
-        
-        for (coord_shrt_t y = y1; y <= y2; ++y, f.i += m)
-        {
-            g.i = f.i + COORD_SHORT_MAX;
-            sl_draw_pixel(pImg, w, g.fx.hi, y, color);
-        }
-    }
+        sl_draw_pixel(pImg, width, x, y, color);
+    });
 }
 
 
