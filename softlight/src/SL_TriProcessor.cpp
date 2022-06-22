@@ -24,18 +24,6 @@ namespace
 
 
 
-/*-------------------------------------
- * Enum to help with determining face visibility
--------------------------------------*/
-enum SL_ClipStatus
-{
-    SL_TRIANGLE_NOT_VISIBLE       = 0x00,
-    SL_TRIANGLE_PARTIALLY_VISIBLE = 0x01,
-    SL_TRIANGLE_FULLY_VISIBLE     = 0x03,
-};
-
-
-
 /*--------------------------------------
  * Convert world coordinates to screen coordinates
 --------------------------------------*/
@@ -361,13 +349,13 @@ inline LS_INLINE SL_ClipStatus face_visible(
         const __m128 ge1 = _mm_and_ps(_mm_cmple_ps(_mm_or_ps(w1p, sign), clip1.simd), _mm_cmpge_ps(w1p, clip1.simd));
         const __m128 ge2 = _mm_and_ps(_mm_cmple_ps(_mm_or_ps(w2p, sign), clip2.simd), _mm_cmpge_ps(w2p, clip2.simd));
         const __m128 vis = _mm_and_ps(_mm_and_ps(ge0, ge1), ge2);
-        const int visI = SL_TRIANGLE_FULLY_VISIBLE & -(_mm_movemask_ps(vis) == 0x0F);
+        const int visI = SL_CLIP_STATUS_FULLY_VISIBLE & -(_mm_movemask_ps(vis) == 0x0F);
 
         const __m128 le0 = _mm_cmpgt_ps(w0p, _mm_setzero_ps());
         const __m128 le1 = _mm_cmpgt_ps(w1p, _mm_setzero_ps());
         const __m128 le2 = _mm_cmpgt_ps(w2p, _mm_setzero_ps());
         const __m128 part = _mm_or_ps(_mm_or_ps(le0, le1), le2);
-        const int partI = SL_TRIANGLE_PARTIALLY_VISIBLE & -(_mm_movemask_ps(part) == 0x0F);
+        const int partI = SL_CLIP_STATUS_PARTIALLY_VISIBLE & -(_mm_movemask_ps(part) == 0x0F);
 
         return (SL_ClipStatus)(visI | partI);
 
@@ -386,7 +374,7 @@ inline LS_INLINE SL_ClipStatus face_visible(
         const uint32x4_t le1  = vcaleq_f32(clip1.simd, w1p);
         const uint32x4_t le2  = vcaleq_f32(clip2.simd, w2p);
 
-        const uint32x4_t vis = vandq_u32(vandq_u32(le2, vandq_u32(le1, le0)), vdupq_n_u32(SL_TRIANGLE_FULLY_VISIBLE));
+        const uint32x4_t vis = vandq_u32(vandq_u32(le2, vandq_u32(le1, le0)), vdupq_n_u32(SL_CLIP_STATUS_FULLY_VISIBLE));
         const uint32x2_t vis2 = vand_u32(vget_low_u32(vis), vget_high_u32(vis));
         const unsigned   visI = vget_lane_u32(vand_u32(vis2, vrev64_u32(vis2)), 0);
 
@@ -402,7 +390,7 @@ inline LS_INLINE SL_ClipStatus face_visible(
         #endif
 
         const uint32x2_t part2 = vorr_u32(gt2, vorr_u32(gt1, gt0));
-        const unsigned   partI = SL_TRIANGLE_PARTIALLY_VISIBLE & vget_lane_u32(part2, 0);
+        const unsigned   partI = SL_CLIP_STATUS_PARTIALLY_VISIBLE & vget_lane_u32(part2, 0);
 
         return (SL_ClipStatus)(visI | partI);
 
@@ -415,7 +403,7 @@ inline LS_INLINE SL_ClipStatus face_visible(
         const math::vec4 w0n = -clip0[3];
         const math::vec4 w2n = -clip2[3];
 
-        int vis = SL_TRIANGLE_FULLY_VISIBLE & -(
+        int vis = SL_CLIP_STATUS_FULLY_VISIBLE & -(
             clip0 <= w0p &&
             clip1 <= w1p &&
             clip2 <= w2p &&
@@ -424,7 +412,7 @@ inline LS_INLINE SL_ClipStatus face_visible(
             clip2 >= w2n
         );
 
-        int part = SL_TRIANGLE_PARTIALLY_VISIBLE & -(w0p > 0.f || w1p > 0.f || w2p > 0.f);
+        int part = SL_CLIP_STATUS_PARTIALLY_VISIBLE & -(w0p > 0.f || w1p > 0.f || w2p > 0.f);
 
         return (SL_ClipStatus)(vis | part);
     #endif
@@ -879,13 +867,13 @@ void SL_TriProcessor::process_verts(
 
         // Clip-space culling
         const SL_ClipStatus visStatus = face_visible(pVert0.vert, pVert1.vert, pVert2.vert);
-        if (visStatus == SL_TRIANGLE_FULLY_VISIBLE)
+        if (visStatus == SL_CLIP_STATUS_FULLY_VISIBLE)
         {
             sl_perspective_divide3(pVert0.vert, pVert1.vert, pVert2.vert);
             sl_world_to_screen_coords_divided3(pVert0.vert, pVert1.vert, pVert2.vert, viewportDims);
             push_bin(i*instanceId+i, pVert0, pVert1, pVert2);
         }
-        else if (visStatus == SL_TRIANGLE_PARTIALLY_VISIBLE)
+        else if (visStatus == SL_CLIP_STATUS_PARTIALLY_VISIBLE)
         {
             clip_and_process_tris(i*instanceId+i, viewportDims, pVert0, pVert1, pVert2);
         }
@@ -895,7 +883,7 @@ void SL_TriProcessor::process_verts(
         }
 
         #if SL_VERTEX_CACHING_ENABLED
-            if (LS_LIKELY(visStatus != SL_TRIANGLE_NOT_VISIBLE))
+            if (LS_LIKELY(visStatus != SL_CLIP_STATUS_NOT_VISIBLE))
             {
                 LS_PREFETCH(&ptvCache, LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_NONTEMPORAL);
             }

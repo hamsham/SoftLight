@@ -184,6 +184,34 @@ inline LS_INLINE void sl_world_to_screen_coords_divided2(
 
 
 
+/*--------------------------------------
+ * Cull only triangle outside of the screen
+--------------------------------------*/
+inline LS_INLINE SL_ClipStatus line_visible(
+    const math::vec4& LS_RESTRICT_PTR clip0,
+    const math::vec4& LS_RESTRICT_PTR clip1
+) noexcept
+{
+    const math::vec4 w0p = clip0[3];
+    const math::vec4 w1p = clip1[3];
+
+    const math::vec4 w1n = -clip1[3];
+    const math::vec4 w0n = -clip0[3];
+
+    int vis = SL_CLIP_STATUS_FULLY_VISIBLE & -(
+        clip0 <= w0p &&
+        clip1 <= w1p &&
+        clip0 >= w0n &&
+        clip1 >= w1n
+    );
+
+    int part = SL_CLIP_STATUS_PARTIALLY_VISIBLE & -(w0p > 0.f || w1p > 0.f);
+
+    return (SL_ClipStatus)(vis | part);
+}
+
+
+
 } // end anonymous namespace
 
 
@@ -240,6 +268,128 @@ void SL_LineProcessor::push_bin(size_t primIndex, const math::vec4& viewportDims
 
     bin.primIndex = primIndex;
     mBinIds[binId].count = binId;
+}
+
+
+
+/*-------------------------------------
+ * Ensure only visible lines get rendered. Lines should have already been
+ * tested for visibility within clip-space. Now we need to clip the remaining
+ * lines and generate new ones
+-------------------------------------*/
+void SL_LineProcessor::clip_and_process_lines(
+    size_t primIndex,
+    const ls::math::vec4& viewportDims,
+    const SL_TransformedVert& a,
+    const SL_TransformedVert& b
+) noexcept
+{
+    const float dx = b.vert[0] - a.vert[0];
+    const float dy = b.vert[1] - a.vert[1];
+    const float xMin = viewportDims[0];
+    const float yMin = viewportDims[1];
+    const float xMax = viewportDims[2];
+    const float yMax = viewportDims[3];
+
+    if (math::abs(dx) < LS_EPSILON && math::abs(dy) < LS_EPSILON)
+    {
+        if (a.vert[0] >= xMin && a.vert[0] <= xMax && a.vert[1] >= yMin && a.vert[1] <= yMax)
+        {
+            push_bin(primIndex, viewportDims, a, b);
+            return;
+        }
+    }
+
+    const unsigned numVarys = (unsigned)mShader->pipelineState.num_varyings();
+
+    const auto _interpolate_varyings = [&numVarys](const math::vec4* inVarys0, const math::vec4* inVarys1, math::vec4* outVarys, float amt) noexcept->void
+    {
+        for (unsigned i = numVarys; i--;)
+        {
+            *outVarys++ = math::mix(*inVarys0++, *inVarys1++, amt);
+        }
+    };
+
+    bool (*const _clip_segment)(float, float, float&, float&) = [](float num, float denom, float& tE, float& tL) noexcept->bool
+    {
+        if (math::abs(denom) < LS_EPSILON)
+            return num < 0.f;
+
+        const float t = num / denom;
+
+        if (denom > 0.f)
+        {
+            if (t > tL)
+            {
+                return false;
+            }
+
+            if (t > tE)
+            {
+                tE = t;
+            }
+        }
+        else
+        {
+            if (t < tE)
+            {
+                return false;
+            }
+
+            if (t < tL)
+            {
+                tL = t;
+            }
+        }
+
+        return true;
+    };
+
+    SL_TransformedVert p0 = a;
+    SL_TransformedVert p1 = b;
+
+    float& x1 = p0.vert[0];
+    float& y1 = p0.vert[1];
+    float& x2 = p1.vert[0];
+    float& y2 = p1.vert[1];
+
+    const float dist = math::inversesqrt(math::length_squared(math::vec2_cast(p0.vert)-math::vec2_cast(p1.vert)));
+    float tE = 0.f;
+    float tL = 1.f;
+
+    if (_clip_segment(xMin-x1,  dx, tE, tL) &&
+        _clip_segment(x1-xMax, -dx, tE, tL) &&
+        _clip_segment(yMin-y1,  dy, tE, tL) &&
+        _clip_segment(y1-yMax, -dy, tE, tL))
+    {
+        if (tL < 1.f)
+        {
+            x2 = x1 + tL * dx;
+            y2 = y1 + tL * dy;
+        }
+
+        if (tE > 0.f)
+        {
+            x1 += tE * dx;
+            y1 += tE * dy;
+        }
+
+        const float len0 = math::length(p0.vert - a.vert);
+        const float len1 = math::length(p1.vert - b.vert);
+
+        const float interp0 = len0 * dist;
+        const float interp1 = len1 * dist;
+
+        p0.vert[2] = math::mix(a.vert[2], b.vert[2], interp0);
+        p0.vert[3] = math::mix(a.vert[3], b.vert[3], interp0);
+        p1.vert[2] = math::mix(b.vert[2], a.vert[2], interp1);
+        p1.vert[3] = math::mix(b.vert[3], a.vert[3], interp1);
+
+        _interpolate_varyings(a.varyings, b.varyings, p0.varyings, interp0);
+        _interpolate_varyings(b.varyings, a.varyings, p1.varyings, interp1);
+
+        push_bin(primIndex, viewportDims, p0, p1);
+    }
 }
 
 
@@ -315,12 +465,28 @@ void SL_LineProcessor::process_verts(
             pVert1.vert = scissorMat * vertShader(params);
         #endif
 
-        if (pVert0.vert[3] >= 0.f && pVert1.vert[3] >= 0.f)
+        // Clip-space culling
+        if (pVert0.vert[3] < 0.f || pVert1.vert[3] < 0.f)
         {
-            sl_perspective_divide2(pVert0.vert, pVert1.vert);
-            sl_world_to_screen_coords_divided2(pVert0.vert, pVert1.vert, viewportDims);
+            continue;
+        }
 
+        const SL_ClipStatus visStatus = line_visible(pVert0.vert, pVert1.vert);
+        if (visStatus == SL_CLIP_STATUS_NOT_VISIBLE)
+        {
+            continue;
+        }
+
+        sl_perspective_divide2(pVert0.vert, pVert1.vert);
+        sl_world_to_screen_coords_divided2(pVert0.vert, pVert1.vert, viewportDims);
+
+        if (visStatus == SL_CLIP_STATUS_FULLY_VISIBLE)
+        {
             push_bin(i, viewportDims, pVert0, pVert1);
+        }
+        else if (visStatus == SL_CLIP_STATUS_PARTIALLY_VISIBLE)
+        {
+            clip_and_process_lines(i*instanceId+i, viewportDims, pVert0, pVert1);
         }
     }
 }

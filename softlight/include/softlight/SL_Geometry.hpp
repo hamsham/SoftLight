@@ -503,6 +503,22 @@ void sl_draw_colored_line_fixed(SL_ColorRGB8* const pImg, coord_shrt_t w, coord_
 
 
 
+/*--------------------------------------
+ * Clip a line segment
+--------------------------------------*/
+bool sl_clip_line(
+    int32_t& x0,
+    int32_t& y0,
+    int32_t& x1,
+    int32_t& y1,
+    int32_t xMin,
+    int32_t xMax,
+    int32_t yMin,
+    int32_t yMax
+) noexcept;
+
+
+
 /*-----------------------------------------------------------------------------
  * Triangle Feature Algorithms
 -----------------------------------------------------------------------------*/

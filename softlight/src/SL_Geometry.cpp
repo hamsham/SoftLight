@@ -598,6 +598,104 @@ void sl_draw_colored_line_fixed(SL_ColorRGB8* const pImg, coord_shrt_t width, co
 
 
 
+/*--------------------------------------
+ * Clip a line segment
+ *
+ * This method was adapted from Stephen M. Cameron's implementation of the
+ * Liang-Barsky line clipping algorithm:
+ *     https://github.com/smcameron/liang-barsky-in-c
+ *
+ * His method was also adapted from Hin Jang's C++ implementation:
+ *     http://hinjang.com/articles/04.html#eight
+--------------------------------------*/
+bool sl_clip_line(
+    int32_t& x0,
+    int32_t& y0,
+    int32_t& x1,
+    int32_t& y1,
+    int32_t xMin,
+    int32_t xMax,
+    int32_t yMin,
+    int32_t yMax
+) noexcept
+{
+    bool (*const _clip_segment)(int32_t, int32_t, int32_t&, int32_t&) = [](int32_t num, int32_t denom, int32_t& tE, int32_t& tL) noexcept->bool
+    {
+        if (!math::abs(denom))
+        {
+            return num < 0;
+        }
+
+        const float t = num / denom;
+
+        if (denom > 0)
+        {
+            if (t > tL)
+            {
+                return false;
+            }
+
+            if (t > tE)
+            {
+                tE = t;
+            }
+        }
+        else
+        {
+            if (t < tE)
+            {
+                return false;
+            }
+
+            if (t < tL)
+            {
+                tL = t;
+            }
+        }
+
+        return true;
+    };
+
+    int32_t tE, tL;
+    const int32_t dx = x1 - x0;
+    const int32_t dy = y1 - y0;
+
+    if (math::abs(dx) < LS_EPSILON && math::abs(dy) < LS_EPSILON)
+    {
+        if (x0 >= xMin && x0 <= xMax && y0 >= yMin && y0 <= yMax)
+        {
+            return true;
+        }
+    }
+
+    tE = 0.f;
+    tL = 1.f;
+
+    if (_clip_segment(xMin - x0, dx, tE, tL) &&
+        _clip_segment(x0 - xMax, -dx, tE, tL) &&
+        _clip_segment(yMin - y0, dy, tE, tL) &&
+        _clip_segment(y0 - yMax, -dy, tE, tL))
+    {
+        if (tL < 1.f)
+        {
+            x1 = x0 + tL * dx;
+            y1 = y0 + tL * dy;
+        }
+
+        if (tE > 0.f)
+        {
+            x0 += tE * dx;
+            y0 += tE * dy;
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
+
+
 /*-----------------------------------------------------------------------------
  * Vertex Information Algorithms
 -----------------------------------------------------------------------------*/

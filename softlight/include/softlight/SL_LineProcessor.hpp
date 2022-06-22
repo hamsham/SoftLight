@@ -14,6 +14,13 @@ class SL_LineProcessor final : public SL_VertexProcessor
   private:
     void push_bin(size_t primIndex, const ls::math::vec4_t<float>& viewportDims, const SL_TransformedVert& v0, const SL_TransformedVert& v1) const noexcept;
 
+    void clip_and_process_lines(
+        size_t primIndex,
+        const ls::math::vec4& viewportDims,
+        const SL_TransformedVert& a,
+        const SL_TransformedVert& b
+    ) noexcept;
+
     void process_verts(
         const SL_Mesh& m,
         size_t instanceId,

@@ -43,6 +43,18 @@ struct SL_TriRasterizer;
 
 
 
+/*-------------------------------------
+ * Enum to help with determining face visibility
+-------------------------------------*/
+enum SL_ClipStatus
+{
+    SL_CLIP_STATUS_NOT_VISIBLE       = 0x00,
+    SL_CLIP_STATUS_PARTIALLY_VISIBLE = 0x01,
+    SL_CLIP_STATUS_FULLY_VISIBLE     = 0x03,
+};
+
+
+
 /*-----------------------------------------------------------------------------
 -----------------------------------------------------------------------------*/
 class SL_VertexProcessor

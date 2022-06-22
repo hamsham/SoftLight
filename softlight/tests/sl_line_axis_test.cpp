@@ -324,7 +324,7 @@ void render_scene(SL_SceneGraph* pGraph, const math::mat4& vpMatrix)
 -------------------------------------*/
 void update_cam_position(SL_Transform& camTrans, float tickTime, utils::Pointer<bool[]>& pKeys)
 {
-    const float camSpeed = 1000.f;
+    const float camSpeed = 1.f;
 
     if (pKeys[SL_KeySymbol::KEY_SYM_w] || pKeys[SL_KeySymbol::KEY_SYM_W])
     {
@@ -370,7 +370,7 @@ int main()
     SL_Context&                         context    = pGraph->mContext;
     ls::utils::Pointer<bool[]>          pKeySyms   {new bool[65536]};
 
-    std::fill_n(pKeySyms.get(), 65536 , false);
+    std::fill_n(pKeySyms.get(), 65536, false);
 
     int shouldQuit = pWindow->init(IMAGE_WIDTH, IMAGE_HEIGHT);
 
