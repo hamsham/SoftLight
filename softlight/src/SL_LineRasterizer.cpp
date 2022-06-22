@@ -39,14 +39,85 @@ inline void LS_IMPERATIVE interpolate_line_varyings(
     math::vec4* const       outVaryings
 ) noexcept
 {
-    constexpr uint32_t i2 = SL_SHADER_MAX_VARYING_VECTORS;
+    #if defined(LS_X86_AVX2)
+        (void)numVaryings;
+        const __m256 p = _mm256_set1_ps(percent);
+        __m256 v0, v1, v2, v3, v4, v5, o0, o1;
 
-    for (uint32_t i = numVaryings; i--;)
-    {
-        const math::vec4& v0 = inVaryings[i];
-        const math::vec4& v1 = inVaryings[i+i2];
-        outVaryings[i] = math::mix(v0, v1, percent);
-    }
+        v0 = _mm256_load_ps(reinterpret_cast<const float*>(inVaryings));
+        v1 = _mm256_load_ps(reinterpret_cast<const float*>(inVaryings+SL_SHADER_MAX_VARYING_VECTORS));
+        v3 = _mm256_load_ps(reinterpret_cast<const float*>(inVaryings+2));
+        v4 = _mm256_load_ps(reinterpret_cast<const float*>(inVaryings+2+SL_SHADER_MAX_VARYING_VECTORS));
+
+        v2 = _mm256_sub_ps(v1, v0);
+        v5 = _mm256_sub_ps(v4, v3);
+        o0 = _mm256_fmadd_ps(v2, p, v0);
+        o1 = _mm256_fmadd_ps(v5, p, v3);
+
+        _mm256_store_ps(reinterpret_cast<float*>(outVaryings), o0);
+        _mm256_store_ps(reinterpret_cast<float*>(outVaryings+2), o1);
+
+        _mm256_zeroupper();
+
+    #elif defined(LS_X86_FMA)
+        (void)numVaryings;
+        const __m128 p = _mm_set1_ps(percent);
+        __m128 v0, v1, v2, v3, v4, v5, o0, o1;
+
+        v0 = _mm_load_ps(reinterpret_cast<const float*>(inVaryings));
+        v1 = _mm_load_ps(reinterpret_cast<const float*>(inVaryings+SL_SHADER_MAX_VARYING_VECTORS));
+        v3 = _mm_load_ps(reinterpret_cast<const float*>(inVaryings+1));
+        v4 = _mm_load_ps(reinterpret_cast<const float*>(inVaryings+1+SL_SHADER_MAX_VARYING_VECTORS));
+
+        v2 = _mm_sub_ps(v1, v0);
+        v5 = _mm_sub_ps(v4, v3);
+        o0 = _mm_fmadd_ps(v2, p, v0);
+        o1 = _mm_fmadd_ps(v5, p, v3);
+
+        _mm_store_ps(reinterpret_cast<float*>(outVaryings), o0);
+        _mm_store_ps(reinterpret_cast<float*>(outVaryings+1), o1);
+
+        v0 = _mm_load_ps(reinterpret_cast<const float*>(inVaryings+2));
+        v1 = _mm_load_ps(reinterpret_cast<const float*>(inVaryings+2+SL_SHADER_MAX_VARYING_VECTORS));
+        v3 = _mm_load_ps(reinterpret_cast<const float*>(inVaryings+3));
+        v4 = _mm_load_ps(reinterpret_cast<const float*>(inVaryings+3+SL_SHADER_MAX_VARYING_VECTORS));
+
+        v2 = _mm_sub_ps(v1, v0);
+        v5 = _mm_sub_ps(v4, v3);
+        o0 = _mm_fmadd_ps(v2, p, v0);
+        o1 = _mm_fmadd_ps(v5, p, v3);
+
+        _mm_store_ps(reinterpret_cast<float*>(outVaryings+2), o0);
+        _mm_store_ps(reinterpret_cast<float*>(outVaryings+3), o1);
+
+    #else
+        const math::vec4* v0;
+        const math::vec4* v1;
+
+        switch (numVaryings)
+        {
+            case 4:
+                v0 = inVaryings+3;
+                v1 = inVaryings+3+SL_SHADER_MAX_VARYING_VECTORS;
+                outVaryings[3] = math::mix(*v0, *v1, percent);
+
+            case 3:
+                v0 = inVaryings+2;
+                v1 = inVaryings+2+SL_SHADER_MAX_VARYING_VECTORS;
+                outVaryings[2] = math::mix(*v0, *v1, percent);
+
+            case 2:
+                v0 = inVaryings+1;
+                v1 = inVaryings+1+SL_SHADER_MAX_VARYING_VECTORS;
+                outVaryings[1] = math::mix(*v0, *v1, percent);
+
+            case 1:
+                v0 = inVaryings;
+                v1 = inVaryings+SL_SHADER_MAX_VARYING_VECTORS;
+                outVaryings[0] = math::mix(*v0, *v1, percent);
+        }
+
+    #endif
 }
 
 
@@ -63,7 +134,7 @@ inline void LS_IMPERATIVE interpolate_line_varyings(
 --------------------------------------*/
 template <typename depth_type>
 void SL_LineRasterizer::flush_fragments(
-    const SL_FragmentBin* pBin,
+    const SL_FragmentBin& bin,
     uint_fast32_t         numQueuedFrags,
     SL_FragCoord* const   outCoords) const noexcept
 {
@@ -83,9 +154,9 @@ void SL_LineRasterizer::flush_fragments(
 
     for (i = 0; i < numQueuedFrags; ++i)
     {
-        const float interp = outCoords->bc[i][0];
+        const float interp = outCoords->lineInterp[i];
 
-        interpolate_line_varyings(interp, numVaryings, pBin->mVaryings, fragParams.pVaryings);
+        interpolate_line_varyings(interp, numVaryings, bin.mVaryings, fragParams.pVaryings);
 
         fragParams.coord = outCoords->coord[i];
 
@@ -105,9 +176,9 @@ void SL_LineRasterizer::flush_fragments(
 
 
 
-template void SL_LineRasterizer::flush_fragments<ls::math::half>(const SL_FragmentBin*, uint_fast32_t, SL_FragCoord* const) const noexcept;
-template void SL_LineRasterizer::flush_fragments<float>(const SL_FragmentBin*, uint_fast32_t, SL_FragCoord* const) const noexcept;
-template void SL_LineRasterizer::flush_fragments<double>(const SL_FragmentBin*, uint_fast32_t, SL_FragCoord* const) const noexcept;
+template void SL_LineRasterizer::flush_fragments<ls::math::half>(const SL_FragmentBin&, uint_fast32_t, SL_FragCoord* const) const noexcept;
+template void SL_LineRasterizer::flush_fragments<float>(const SL_FragmentBin&, uint_fast32_t, SL_FragCoord* const) const noexcept;
+template void SL_LineRasterizer::flush_fragments<double>(const SL_FragmentBin&, uint_fast32_t, SL_FragCoord* const) const noexcept;
 
 
 
@@ -115,21 +186,22 @@ template void SL_LineRasterizer::flush_fragments<double>(const SL_FragmentBin*, 
  * Process the line fragments using a simple DDA algorithm
 --------------------------------------*/
 template <class DepthCmpFunc, typename depth_type>
-void SL_LineRasterizer::render_line(const uint32_t binId, SL_Framebuffer* fbo) noexcept
+void SL_LineRasterizer::render_line(const SL_FragmentBin& bin, SL_Framebuffer* fbo) noexcept
 {
-    const math::vec4&  screenCoord0  = mBins[binId].mScreenCoords[0];
-    const math::vec4&  screenCoord1  = mBins[binId].mScreenCoords[1];
-    math::vec2         clipCoords[2] = {math::vec2_cast(screenCoord0), math::vec2_cast(screenCoord1)};
+    const ls::math::vec4* coords     = bin.mScreenCoords;
+    const math::vec4&  screenCoord0  = coords[0];
+    const math::vec4&  screenCoord1  = coords[1];
+    const float        z0            = screenCoord0[2];
+    const float        z1            = screenCoord1[2];
+    const math::vec2&& sc0           = math::vec2_cast(screenCoord0);
+    const math::vec2&& sc1           = math::vec2_cast(screenCoord1);
+
+    const math::vec4&& p0            = math::vec4_cast(sc0, 0.f, 0.f);
+    math::vec2         clipCoords[2] = {sc0, sc1};
+    const float        dist          = math::inversesqrt(math::length_squared(sc1-sc0));
     const SL_Texture*  depthBuf      = fbo->get_depth_buffer();
-    const float        dist          = math::inversesqrt(math::length_squared(math::vec2_cast(screenCoord1)-math::vec2_cast(screenCoord0)));
-    const math::vec4&& p0            = math::vec4_cast(math::vec2_cast(screenCoord0), 0.f, 0.f);
-    float              z0            = screenCoord0[2];
-    float              z1            = screenCoord1[2];
 
     constexpr DepthCmpFunc depthCmp = {};
-
-    SL_FragmentParam fragParams;
-    fragParams.pUniforms = mShader->pUniforms;
 
     SL_FragCoord* outCoords = mQueues;
     uint32_t numQueuedFrags = 0;
@@ -156,7 +228,7 @@ void SL_LineRasterizer::render_line(const uint32_t binId, SL_Framebuffer* fbo) n
                 return;
             }
 
-            outCoords->bc[numQueuedFrags][0]       = interp;
+            outCoords->lineInterp[numQueuedFrags]  = interp;
             outCoords->coord[numQueuedFrags].x     = x;
             outCoords->coord[numQueuedFrags].y     = y;
             outCoords->coord[numQueuedFrags].depth = z;
@@ -166,7 +238,7 @@ void SL_LineRasterizer::render_line(const uint32_t binId, SL_Framebuffer* fbo) n
             if (LS_UNLIKELY(numQueuedFrags == SL_SHADER_MAX_QUEUED_FRAGS))
             {
                 numQueuedFrags = 0;
-                flush_fragments<depth_type>(mBins+binId, SL_SHADER_MAX_QUEUED_FRAGS, outCoords);
+                flush_fragments<depth_type>(bin, SL_SHADER_MAX_QUEUED_FRAGS, outCoords);
             }
         }
     );
@@ -174,39 +246,39 @@ void SL_LineRasterizer::render_line(const uint32_t binId, SL_Framebuffer* fbo) n
     // cleanup remaining fragments
     if (LS_LIKELY(numQueuedFrags > 0))
     {
-        flush_fragments<depth_type>(mBins+binId, numQueuedFrags, outCoords);
+        flush_fragments<depth_type>(bin, numQueuedFrags, outCoords);
     }
 }
 
 
 
-template void SL_LineRasterizer::render_line<SL_DepthFuncLT, ls::math::half>(const uint32_t, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncLT, float>(const uint32_t, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncLT, double>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncLT, ls::math::half>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncLT, float>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncLT, double>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
 
-template void SL_LineRasterizer::render_line<SL_DepthFuncLE, ls::math::half>(const uint32_t, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncLE, float>(const uint32_t, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncLE, double>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncLE, ls::math::half>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncLE, float>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncLE, double>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
 
-template void SL_LineRasterizer::render_line<SL_DepthFuncGT, ls::math::half>(const uint32_t, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncGT, float>(const uint32_t, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncGT, double>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncGT, ls::math::half>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncGT, float>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncGT, double>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
 
-template void SL_LineRasterizer::render_line<SL_DepthFuncGE, ls::math::half>(const uint32_t, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncGE, float>(const uint32_t, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncGE, double>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncGE, ls::math::half>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncGE, float>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncGE, double>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
 
-template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, ls::math::half>(const uint32_t, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, float>(const uint32_t, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, double>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, ls::math::half>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, float>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, double>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
 
-template void SL_LineRasterizer::render_line<SL_DepthFuncNE, ls::math::half>(const uint32_t, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncNE, float>(const uint32_t, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncNE, double>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncNE, ls::math::half>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncNE, float>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncNE, double>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
 
-template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, ls::math::half>(const uint32_t, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, float>(const uint32_t, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, double>(const uint32_t, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, ls::math::half>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, float>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, double>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
 
 
 
@@ -222,21 +294,21 @@ void SL_LineRasterizer::dispatch_bins() noexcept
     {
         for (uint64_t binId = 0; binId < mNumBins; ++binId)
         {
-            render_line<DepthCmpFunc, math::half>(binId, mFbo);
+            render_line<DepthCmpFunc, math::half>(mBins[binId], mFbo);
         }
     }
     else if (depthBpp == sizeof(float))
     {
         for (uint64_t binId = 0; binId < mNumBins; ++binId)
         {
-            render_line<DepthCmpFunc, float>(binId, mFbo);
+            render_line<DepthCmpFunc, float>(mBins[binId], mFbo);
         }
     }
     else if (depthBpp == sizeof(double))
     {
         for (uint64_t binId = 0; binId < mNumBins; ++binId)
         {
-            render_line<DepthCmpFunc, double>(binId, mFbo);
+            render_line<DepthCmpFunc, double>(mBins[binId], mFbo);
         }
     }
 }

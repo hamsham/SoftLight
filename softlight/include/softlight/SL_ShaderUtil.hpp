@@ -681,7 +681,11 @@ static_assert(sizeof(SL_FragCoordXYZ) == sizeof(uint64_t), "Unexpected size of S
 
 struct SL_FragCoord
 {
-    ls::math::vec4 bc[SL_SHADER_MAX_QUEUED_FRAGS]; // 32*4
+    union
+    {
+        ls::math::vec4 bc[SL_SHADER_MAX_QUEUED_FRAGS]; // 32*4
+        float lineInterp[SL_SHADER_MAX_QUEUED_FRAGS]; // 32*4
+    };
 
     SL_FragCoordXYZ coord[SL_SHADER_MAX_QUEUED_FRAGS];
     // 256 bits / 32 bytes
