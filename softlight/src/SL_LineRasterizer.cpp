@@ -59,33 +59,80 @@ inline void LS_IMPERATIVE interpolate_line_varyings(
  * SL_LineRasterizer Class
 -----------------------------------------------------------------------------*/
 /*--------------------------------------
+ * Bin-Rasterization
+--------------------------------------*/
+template <typename depth_type>
+void SL_LineRasterizer::flush_fragments(
+    const SL_FragmentBin* pBin,
+    uint_fast32_t         numQueuedFrags,
+    SL_FragCoord* const   outCoords) const noexcept
+{
+    const SL_PipelineState  pipeline      = mShader->pipelineState;
+    const SL_BlendMode      blendMode     = pipeline.blend_mode();
+    const SL_FboOutputMask  fboOutMask    = sl_calc_fbo_out_mask((unsigned)pipeline.num_render_targets(), (blendMode != SL_BLEND_OFF));
+    const uint32_t          numVaryings   = (unsigned)pipeline.num_varyings();
+    const int_fast32_t      haveDepthMask = pipeline.depth_mask() == SL_DEPTH_MASK_ON;
+    const SL_UniformBuffer* pUniforms     = mShader->pUniforms;
+    const auto              fragShader    = mShader->pFragShader;
+    SL_Texture* const       pDepthBuf     = mFbo->get_depth_buffer();
+
+    SL_FragmentParam fragParams;
+    fragParams.pUniforms = pUniforms;
+
+    uint_fast32_t i;
+
+    for (i = 0; i < numQueuedFrags; ++i)
+    {
+        const float interp = outCoords->bc[i][0];
+
+        interpolate_line_varyings(interp, numVaryings, pBin->mVaryings, fragParams.pVaryings);
+
+        fragParams.coord = outCoords->coord[i];
+
+        const bool haveOutputs = fragShader(fragParams);
+
+        if (LS_LIKELY(haveOutputs))
+        {
+            mFbo->put_pixel(fboOutMask, blendMode, fragParams);
+
+            if (LS_LIKELY(haveDepthMask))
+            {
+                pDepthBuf->texel<depth_type>(fragParams.coord.x, fragParams.coord.y) = (depth_type)fragParams.coord.depth;
+            }
+        }
+    }
+}
+
+
+
+template void SL_LineRasterizer::flush_fragments<ls::math::half>(const SL_FragmentBin*, uint_fast32_t, SL_FragCoord* const) const noexcept;
+template void SL_LineRasterizer::flush_fragments<float>(const SL_FragmentBin*, uint_fast32_t, SL_FragCoord* const) const noexcept;
+template void SL_LineRasterizer::flush_fragments<double>(const SL_FragmentBin*, uint_fast32_t, SL_FragCoord* const) const noexcept;
+
+
+
+/*--------------------------------------
  * Process the line fragments using a simple DDA algorithm
 --------------------------------------*/
 template <class DepthCmpFunc, typename depth_type>
 void SL_LineRasterizer::render_line(const uint32_t binId, SL_Framebuffer* fbo) noexcept
 {
-    const math::vec4& screenCoord0  = mBins[binId].mScreenCoords[0];
-    const math::vec4& screenCoord1  = mBins[binId].mScreenCoords[1];
-    math::vec2        clipCoords[2] = {math::vec2_cast(screenCoord0), math::vec2_cast(screenCoord1)};
+    const math::vec4&  screenCoord0  = mBins[binId].mScreenCoords[0];
+    const math::vec4&  screenCoord1  = mBins[binId].mScreenCoords[1];
+    math::vec2         clipCoords[2] = {math::vec2_cast(screenCoord0), math::vec2_cast(screenCoord1)};
+    const SL_Texture*  depthBuf      = fbo->get_depth_buffer();
+    const float        dist          = math::inversesqrt(math::length_squared(math::vec2_cast(screenCoord1)-math::vec2_cast(screenCoord0)));
+    const math::vec4&& p0            = math::vec4_cast(math::vec2_cast(screenCoord0), 0.f, 0.f);
+    float              z0            = screenCoord0[2];
+    float              z1            = screenCoord1[2];
 
-    constexpr DepthCmpFunc  depthCmp    = {};
-    const SL_PipelineState  pipeline    = mShader->pipelineState;
-    const SL_BlendMode      blendMode   = pipeline.blend_mode();
-    const SL_FboOutputMask  fboOutMask  = sl_calc_fbo_out_mask((unsigned)pipeline.num_render_targets(), (blendMode != SL_BLEND_OFF));
-    const uint32_t          numVaryings = (unsigned)pipeline.num_varyings();
-    const bool              depthMask   = pipeline.depth_mask() == SL_DEPTH_MASK_ON;
-    const auto              shader      = mShader->pFragShader;
-    const SL_UniformBuffer* pUniforms   = mShader->pUniforms;
-
-    const SL_Texture*  depthBuf   = fbo->get_depth_buffer();
-    const float        dist       = math::inversesqrt(math::length_squared(math::vec2_cast(screenCoord1)-math::vec2_cast(screenCoord0)));
-    const math::vec4&& p0         = math::vec4_cast(math::vec2_cast(screenCoord0), 0.f, 0.f);
-    float              z0         = screenCoord0[2];
-    float              z1         = screenCoord1[2];
-    const math::vec4*  inVaryings = mBins[binId].mVaryings;
+    constexpr DepthCmpFunc depthCmp = {};
 
     SL_FragmentParam fragParams;
-    fragParams.pUniforms = pUniforms;
+    fragParams.pUniforms = mShader->pUniforms;
+
+    SL_FragCoord* outCoords = mQueues;
+    uint32_t numQueuedFrags = 0;
 
     sl_draw_line_bresenham(
         (uint16_t)clipCoords[0][0],
@@ -109,24 +156,26 @@ void SL_LineRasterizer::render_line(const uint32_t binId, SL_Framebuffer* fbo) n
                 return;
             }
 
-            interpolate_line_varyings(interp, numVaryings, inVaryings, fragParams.pVaryings);
+            outCoords->bc[numQueuedFrags][0]       = interp;
+            outCoords->coord[numQueuedFrags].x     = x;
+            outCoords->coord[numQueuedFrags].y     = y;
+            outCoords->coord[numQueuedFrags].depth = z;
 
-            fragParams.coord.x     = x;
-            fragParams.coord.y     = y;
-            fragParams.coord.depth = z;
-            const bool haveOutputs = shader(fragParams);
+            ++numQueuedFrags;
 
-            if (LS_LIKELY(haveOutputs))
+            if (LS_UNLIKELY(numQueuedFrags == SL_SHADER_MAX_QUEUED_FRAGS))
             {
-                mFbo->put_pixel(fboOutMask, blendMode, fragParams);
-
-                if (depthMask)
-                {
-                    fbo->put_depth_pixel<depth_type>(fragParams.coord.x, fragParams.coord.y, (depth_type)fragParams.coord.depth);
-                }
+                numQueuedFrags = 0;
+                flush_fragments<depth_type>(mBins+binId, SL_SHADER_MAX_QUEUED_FRAGS, outCoords);
             }
         }
     );
+
+    // cleanup remaining fragments
+    if (LS_LIKELY(numQueuedFrags > 0))
+    {
+        flush_fragments<depth_type>(mBins+binId, numQueuedFrags, outCoords);
+    }
 }
 
 
