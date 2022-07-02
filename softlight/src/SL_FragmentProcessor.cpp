@@ -82,6 +82,41 @@ inline void LS_IMPERATIVE interpolate_line_varyings(
         _mm_store_ps(reinterpret_cast<float*>(outVaryings+2), o0);
         _mm_store_ps(reinterpret_cast<float*>(outVaryings+3), o1);
 
+    #elif defined(LS_ARM_NEON)
+        const float32x4_t p = vdupq_n_f32(percent);
+        float32x4_t v0, v1, v2, o;
+
+        switch (numVaryings)
+        {
+            case 4:
+                v0 = vld1q_f32(reinterpret_cast<const float*>(inVaryings + 3));
+                v1 = vld1q_f32(reinterpret_cast<const float*>(inVaryings + 3 + SL_SHADER_MAX_VARYING_VECTORS));
+                v2 = vsubq_f32(v1, v0);
+                o = vmlaq_f32(v0, p, v2);
+                vst1q_f32(reinterpret_cast<float*>(outVaryings + 3), o);
+
+            case 3:
+                v0 = vld1q_f32(reinterpret_cast<const float*>(inVaryings + 2));
+                v1 = vld1q_f32(reinterpret_cast<const float*>(inVaryings + 2 + SL_SHADER_MAX_VARYING_VECTORS));
+                v2 = vsubq_f32(v1, v0);
+                o = vmlaq_f32(v0, p, v2);
+                vst1q_f32(reinterpret_cast<float*>(outVaryings + 2), o);
+
+            case 2:
+                v0 = vld1q_f32(reinterpret_cast<const float*>(inVaryings + 1));
+                v1 = vld1q_f32(reinterpret_cast<const float*>(inVaryings + 1 + SL_SHADER_MAX_VARYING_VECTORS));
+                v2 = vsubq_f32(v1, v0);
+                o = vmlaq_f32(v0, p, v2);
+                vst1q_f32(reinterpret_cast<float*>(outVaryings + 1), o);
+
+            case 1:
+                v0 = vld1q_f32(reinterpret_cast<const float*>(inVaryings + 0));
+                v1 = vld1q_f32(reinterpret_cast<const float*>(inVaryings + 0 + SL_SHADER_MAX_VARYING_VECTORS));
+                v2 = vsubq_f32(v1, v0);
+                o = vmlaq_f32(v0, p, v2);
+                vst1q_f32(reinterpret_cast<float*>(outVaryings + 0), o);
+        }
+
     #else
         const math::vec4* v0;
         const math::vec4* v1;
