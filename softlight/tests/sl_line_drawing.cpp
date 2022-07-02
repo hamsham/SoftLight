@@ -48,7 +48,7 @@ typedef chrono::milliseconds hr_prec;
 /*------------------------------------------------------------------------------
  * Create Images
 ------------------------------------------------------------------------------*/
-ls::utils::Pointer<SL_ColorRGB8[]> create_image(const coord_shrt_t width, const coord_shrt_t height)
+ls::utils::Pointer<SL_ColorRGB8[]> create_image(const sl_lowp_t width, const sl_lowp_t height)
 {
     ls::utils::Pointer<SL_ColorRGB8[]> pImg{new SL_ColorRGB8[width * height]};
 
@@ -58,9 +58,9 @@ ls::utils::Pointer<SL_ColorRGB8[]> create_image(const coord_shrt_t width, const 
         return pImg;
     }
 
-    for (coord_shrt_t i = 0; i < height; ++i)
+    for (sl_lowp_t i = 0; i < height; ++i)
     {
-        for (coord_shrt_t j = 0; j < width; ++j)
+        for (sl_lowp_t j = 0; j < width; ++j)
         {
             pImg[width * i + j] = SL_ColorRGB8{0, 0, 0};
         }
@@ -76,12 +76,12 @@ ls::utils::Pointer<SL_ColorRGB8[]> create_image(const coord_shrt_t width, const 
 ------------------------------------------------------------------------------*/
 int run_benchmark(
     const std::string& testName,
-    coord_shrt_t w,
-    coord_shrt_t h,
-    void (*line_callback)(SL_ColorRGB8* const, coord_shrt_t, coord_shrt_t, coord_shrt_t, coord_shrt_t, coord_shrt_t, const SL_ColorRGB8&))
+    sl_lowp_t w,
+    sl_lowp_t h,
+    void (*line_callback)(SL_ColorRGB8* const, sl_lowp_t, sl_lowp_t, sl_lowp_t, sl_lowp_t, sl_lowp_t, const SL_ColorRGB8&))
 {
-    const coord_shrt_t w1 = w - 1;
-    const coord_shrt_t h1 = h - 1;
+    const sl_lowp_t w1 = w - 1;
+    const sl_lowp_t h1 = h - 1;
     ls::utils::Pointer<SL_ColorRGB8[]> img = create_image(w, h);
     hr_time t1, t2;
     
@@ -89,12 +89,12 @@ int run_benchmark(
     
     for (unsigned t = 0; t < NUM_TEST_RUNS; ++t)
     {
-        for (coord_shrt_t i = 0; i < w; i += 10)
+        for (sl_lowp_t i = 0; i < w; i += 10)
         {
             line_callback(img.get(), w, i, 0, w1-i, h1, SL_ColorRGB8{0, 255, 0});
         }
     
-        for (coord_shrt_t i = 0; i < h; i += 10)
+        for (sl_lowp_t i = 0; i < h; i += 10)
         {
             line_callback(img.get(), w, 0, i, w1, h1-i, SL_ColorRGB8{255, 0, 0});
         }
@@ -111,7 +111,7 @@ int run_benchmark(
     const int ret = sl_img_save_ppm(w, h, img.get(), filename.c_str());
 
     const std::string filename2 = testName + "2.ppm";
-    coord_shrt_t w2, h2;
+    sl_lowp_t w2, h2;
     const SL_ColorRGB8* pImg2 = sl_img_load_ppm(w2, h2, filename.c_str());
 
     LS_ASSERT(w == w2);

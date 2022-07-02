@@ -12,7 +12,7 @@
 /*------------------------------------------------------------------------------
  * Save Images
 ------------------------------------------------------------------------------*/
-int sl_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SL_ColorRGB8* const colors, const char* const pFilename);
+int sl_img_save_ppm(const sl_lowp_t w, const sl_lowp_t h, const SL_ColorRGB8* const colors, const char* const pFilename);
 
 
 
@@ -20,7 +20,7 @@ int sl_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SL_ColorRG
  * Save R Images
 ------------------------------------------------------------------------------*/
 template <typename colorType>
-int sl_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SL_ColorRType<colorType>* const colors, const char* const pFilename)
+int sl_img_save_ppm(const sl_lowp_t w, const sl_lowp_t h, const SL_ColorRType<colorType>* const colors, const char* const pFilename)
 {
     if (w <= 0)
     {
@@ -46,9 +46,9 @@ int sl_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SL_ColorRT
     const size_t numPixels = (size_t)w * (size_t)h;
 
     // iterate through the image height, then the width
-    for (coord_shrt_t i = 0; i < h; ++i)
+    for (sl_lowp_t i = 0; i < h; ++i)
     {
-        for(coord_shrt_t j = 0; j < w; ++j)
+        for(sl_lowp_t j = 0; j < w; ++j)
         {
             const SL_ColorR8&& c = color_cast<uint8_t, colorType>(colors[numPixels - (w * i + j)]);
             const SL_ColorRGB8 temp{c.r, c.r, c.r};
@@ -67,7 +67,7 @@ int sl_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SL_ColorRT
  * Save RG Images
 ------------------------------------------------------------------------------*/
 template <typename colorType>
-int sl_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SL_ColorRGType<colorType>* const colors, const char* const pFilename)
+int sl_img_save_ppm(const sl_lowp_t w, const sl_lowp_t h, const SL_ColorRGType<colorType>* const colors, const char* const pFilename)
 {
     if (w <= 0)
     {
@@ -93,11 +93,11 @@ int sl_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SL_ColorRG
     const size_t numPixels = (size_t)w * (size_t)h;
 
     // iterate through the image height, then the width
-    for (coord_shrt_t i = 0; i < h; ++i)
+    for (sl_lowp_t i = 0; i < h; ++i)
     {
-        coord_shrt_t i2 = h - i - 1;
+        sl_lowp_t i2 = h - i - 1;
 
-        for(coord_shrt_t j = 0; j < w; ++j)
+        for(sl_lowp_t j = 0; j < w; ++j)
         {
             const SL_ColorRG8&& c = color_cast<uint8_t, colorType>(colors[numPixels - (w * i2 + j)]);
             const SL_ColorRGB8 o = {c[2], c[1], c[0]};
@@ -116,7 +116,7 @@ int sl_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SL_ColorRG
  * Save RGB Images
 ------------------------------------------------------------------------------*/
 template <typename colorType>
-int sl_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SL_ColorRGBType<colorType>* const colors, const char* const pFilename)
+int sl_img_save_ppm(const sl_lowp_t w, const sl_lowp_t h, const SL_ColorRGBType<colorType>* const colors, const char* const pFilename)
 {
     if (w <= 0)
     {
@@ -140,11 +140,11 @@ int sl_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SL_ColorRG
     f << "P6\n" << w << ' ' << h << '\n' << 255 << '\n';
 
     // iterate through the image height, then the width
-    for (coord_shrt_t i = 0; i < h; ++i)
+    for (sl_lowp_t i = 0; i < h; ++i)
     {
-        coord_shrt_t i2 = h - i - 1;
+        sl_lowp_t i2 = h - i - 1;
 
-        for(coord_shrt_t j = 0; j < w; ++j)
+        for(sl_lowp_t j = 0; j < w; ++j)
         {
             const SL_ColorRGB8&& c = color_cast<uint8_t, colorType>(colors[w * i2 + j]);
             const SL_ColorRGB8 o = {c[2], c[1], c[0]};
@@ -163,7 +163,7 @@ int sl_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SL_ColorRG
  * Save RGB Images
 ------------------------------------------------------------------------------*/
 template <typename colorType>
-int sl_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SL_ColorRGBAType<colorType>* const colors, const char* const pFilename)
+int sl_img_save_ppm(const sl_lowp_t w, const sl_lowp_t h, const SL_ColorRGBAType<colorType>* const colors, const char* const pFilename)
 {
     if (w <= 0)
     {
@@ -187,11 +187,11 @@ int sl_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SL_ColorRG
     f << "P6\n" << w << ' ' << h << '\n' << 255 << '\n';
 
     // iterate through the image height, then the width
-    for (coord_shrt_t i = 0; i < h; ++i)
+    for (sl_lowp_t i = 0; i < h; ++i)
     {
-        coord_shrt_t i2 = h - i - 1;
+        sl_lowp_t i2 = h - i - 1;
 
-        for(coord_shrt_t j = 0; j < w; ++j)
+        for(sl_lowp_t j = 0; j < w; ++j)
         {
             const SL_ColorRGBA8&& c = color_cast<uint8_t, colorType>(colors[w * i2 + j]);
             const SL_ColorRGB8 o = {c[2], c[1], c[0]};
@@ -209,7 +209,7 @@ int sl_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SL_ColorRG
 /*------------------------------------------------------------------------------
  * Load Images
 ------------------------------------------------------------------------------*/
-SL_ColorRGB8* sl_img_load_ppm(coord_shrt_t& w, coord_shrt_t& h, const char* const pFilename);
+SL_ColorRGB8* sl_img_load_ppm(sl_lowp_t& w, sl_lowp_t& h, const char* const pFilename);
 
 
 

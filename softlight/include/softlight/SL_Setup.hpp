@@ -8,13 +8,12 @@
 #include "lightsky/utils/AlignedAllocator.hpp"
 
 
-typedef uint32_t SL_IdType;
 
-typedef int16_t coord_shrt_t;
-typedef int32_t coord_long_t;
+typedef int16_t sl_lowp_t;
+typedef int32_t sl_highp_t;
 
-constexpr coord_long_t FIXED_BITS = 16;
-constexpr coord_long_t MASK_BITS = 0x8000;
+constexpr sl_highp_t SL_FIXED_BITS = 16;
+constexpr sl_highp_t SL_MASK_BITS = 0x8000;
 
 
 

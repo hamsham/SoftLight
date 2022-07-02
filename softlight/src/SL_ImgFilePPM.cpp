@@ -14,7 +14,7 @@
 /*------------------------------------------------------------------------------
  * Save Images
 ------------------------------------------------------------------------------*/
-int sl_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SL_ColorRGB8* const colors, const char* const pFilename)
+int sl_img_save_ppm(const sl_lowp_t w, const sl_lowp_t h, const SL_ColorRGB8* const colors, const char* const pFilename)
 {
     if (w <= 0)
     {
@@ -38,11 +38,11 @@ int sl_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SL_ColorRG
     f << "P6\n" << w << ' ' << h << '\n' << 255 << '\n';
 
     // iterate through the image height, then the width
-    for (coord_shrt_t i = 0; i < h; ++i)
+    for (sl_lowp_t i = 0; i < h; ++i)
     {
-        coord_shrt_t i2 = h - i - 1;
+        sl_lowp_t i2 = h - i - 1;
 
-        for(coord_shrt_t j = 0; j < w; ++j)
+        for(sl_lowp_t j = 0; j < w; ++j)
         {
             const SL_ColorRGB8 c = colors[w * i2 + j];
             const SL_ColorRGB8 o = {c[2], c[1], c[0]};
@@ -60,7 +60,7 @@ int sl_img_save_ppm(const coord_shrt_t w, const coord_shrt_t h, const SL_ColorRG
 /*------------------------------------------------------------------------------
  * Load Images
 ------------------------------------------------------------------------------*/
-SL_ColorRGB8* sl_img_load_ppm(coord_shrt_t& w, coord_shrt_t& h, const char* const pFilename)
+SL_ColorRGB8* sl_img_load_ppm(sl_lowp_t& w, sl_lowp_t& h, const char* const pFilename)
 {
     uint64_t width = 0;
     uint64_t height = 0;
@@ -122,13 +122,13 @@ SL_ColorRGB8* sl_img_load_ppm(coord_shrt_t& w, coord_shrt_t& h, const char* cons
         return nullptr;
     }
 
-    if (width < 1 || width > (uint64_t)std::numeric_limits<coord_shrt_t>::max())
+    if (width < 1 || width > (uint64_t)std::numeric_limits<sl_lowp_t>::max())
     {
         LS_LOG_ERR("Invalid PPM image width: ", width);
         return nullptr;
     }
 
-    if (height < 1 || height > (uint64_t)std::numeric_limits<coord_shrt_t>::max())
+    if (height < 1 || height > (uint64_t)std::numeric_limits<sl_lowp_t>::max())
     {
         LS_LOG_ERR("Invalid PPM image height: ", height);
         return nullptr;
@@ -159,7 +159,7 @@ SL_ColorRGB8* sl_img_load_ppm(coord_shrt_t& w, coord_shrt_t& h, const char* cons
     // iterate through the image height, then the width
     for (uint64_t i = 0; i < height; ++i)
     {
-        coord_shrt_t i2 = height - i - 1;
+        sl_lowp_t i2 = height - i - 1;
 
         for(uint64_t j = 0; j < width; ++j)
         {
@@ -187,8 +187,8 @@ SL_ColorRGB8* sl_img_load_ppm(coord_shrt_t& w, coord_shrt_t& h, const char* cons
 
     f.close();
 
-    w = (coord_shrt_t)width;
-    h = (coord_shrt_t)height;
+    w = (sl_lowp_t)width;
+    h = (sl_lowp_t)height;
 
     LS_LOG_MSG("Successfully loaded a ", w, 'x', h, " PPM image: ", pFilename);
 

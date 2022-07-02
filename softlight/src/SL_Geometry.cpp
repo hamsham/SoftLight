@@ -562,9 +562,9 @@ unsigned sl_index_byte_size(const SL_DataType indexType)
 /*-------------------------------------
  * Line Drawing: Bresenham Base Case
 -------------------------------------*/
-void sl_draw_colored_line_bresenham(SL_ColorRGB8* const pImg, coord_shrt_t w, coord_shrt_t x1, coord_shrt_t y1, coord_shrt_t x2, coord_shrt_t y2, const SL_ColorRGB8& color) noexcept
+void sl_draw_colored_line_bresenham(SL_ColorRGB8* const pImg, sl_lowp_t w, sl_lowp_t x1, sl_lowp_t y1, sl_lowp_t x2, sl_lowp_t y2, const SL_ColorRGB8& color) noexcept
 {
-    sl_draw_line_bresenham(x1, y1, x2, y2, [&](coord_shrt_t x, coord_shrt_t y)->void
+    sl_draw_line_bresenham(x1, y1, x2, y2, [&](sl_lowp_t x, sl_lowp_t y)->void
     {
         sl_draw_pixel(pImg, w, x, y, color);
     });
@@ -575,9 +575,9 @@ void sl_draw_colored_line_bresenham(SL_ColorRGB8* const pImg, coord_shrt_t w, co
 /*-------------------------------------
  * Line Drawing: EFLA (Variant 5)
 -------------------------------------*/
-void sl_draw_colored_line_efla5(SL_ColorRGB8* pImg, coord_shrt_t width, coord_shrt_t x1, coord_shrt_t y1, coord_shrt_t x2, coord_shrt_t y2, const SL_ColorRGB8& color) noexcept
+void sl_draw_colored_line_efla5(SL_ColorRGB8* pImg, sl_lowp_t width, sl_lowp_t x1, sl_lowp_t y1, sl_lowp_t x2, sl_lowp_t y2, const SL_ColorRGB8& color) noexcept
 {
-    sl_draw_line_efla5(x1, y1, x2, y2, [&](coord_shrt_t x, coord_shrt_t y)->void
+    sl_draw_line_efla5(x1, y1, x2, y2, [&](sl_lowp_t x, sl_lowp_t y)->void
     {
         sl_draw_pixel(pImg, width, x, y, color);
     });
@@ -588,9 +588,9 @@ void sl_draw_colored_line_efla5(SL_ColorRGB8* pImg, coord_shrt_t width, coord_sh
 /*-------------------------------------
  * Line Drawing: Bresenham's (Fixed-Point)
 -------------------------------------*/
-void sl_draw_colored_line_fixed(SL_ColorRGB8* const pImg, coord_shrt_t width, coord_shrt_t x1, coord_shrt_t y1, coord_shrt_t x2, coord_shrt_t y2, const SL_ColorRGB8& color) noexcept
+void sl_draw_colored_line_fixed(SL_ColorRGB8* const pImg, sl_lowp_t width, sl_lowp_t x1, sl_lowp_t y1, sl_lowp_t x2, sl_lowp_t y2, const SL_ColorRGB8& color) noexcept
 {
-    sl_draw_line_fixed(x1, y1, x2, y2, [&](coord_shrt_t x, coord_shrt_t y)->void
+    sl_draw_line_fixed(x1, y1, x2, y2, [&](sl_lowp_t x, sl_lowp_t y)->void
     {
         sl_draw_pixel(pImg, width, x, y, color);
     });
