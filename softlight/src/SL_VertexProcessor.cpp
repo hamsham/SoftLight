@@ -164,17 +164,14 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
     }
 
     static_assert(ls::setup::IsBaseOf<SL_FragmentProcessor, RasterizerType>::value, "Template parameter 'RasterizerType' must derive from SL_FragmentProcessor.");
+
     RasterizerType rasterizer;
-
-    const SL_ViewportState& viewState = mContext->viewport_state();
-
     rasterizer.mThreadId = (uint16_t)mThreadId;
     rasterizer.mMode = mRenderMode;
     rasterizer.mNumProcessors = (uint32_t)mNumThreads;
     rasterizer.mNumBins = maxElements;
     rasterizer.mShader = mShader;
     rasterizer.mFbo = mFbo;
-    rasterizer.mViewState = &viewState;
     rasterizer.mBinIds = mBinIds;
     rasterizer.mBins = pBins;
     rasterizer.mQueues = mFragQueues + mThreadId;

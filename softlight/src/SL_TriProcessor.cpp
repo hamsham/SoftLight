@@ -812,7 +812,8 @@ void SL_TriProcessor::process_verts(
         end += m.elementBegin;
 
         SL_PTVCache ptvCache{};
-        const auto&& vertTransform = [&](size_t key, SL_TransformedVert& tv)->void {
+        const auto&& vertTransform = [&](size_t key, SL_TransformedVert& tv)noexcept ->void
+        {
             params.vertId = key;
             params.pVaryings = tv.varyings;
             tv.vert = scissorMat * vertShader(params);
@@ -876,10 +877,6 @@ void SL_TriProcessor::process_verts(
         else if (visStatus == SL_CLIP_STATUS_PARTIALLY_VISIBLE)
         {
             clip_and_process_tris(i*instanceId+i, viewportDims, pVert0, pVert1, pVert2);
-        }
-        else
-        {
-            continue;
         }
 
         #if SL_VERTEX_CACHING_ENABLED

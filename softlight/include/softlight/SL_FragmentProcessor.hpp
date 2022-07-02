@@ -47,15 +47,32 @@ struct SL_FragmentProcessor
     uint_fast32_t mNumBins;
     const SL_Shader* mShader;
     SL_Framebuffer* mFbo;
-    const SL_ViewportState* mViewState;
     SL_BinCounter<uint32_t>* mBinIds;
     const SL_FragmentBin* mBins;
     SL_FragCoord* mQueues;
 
     virtual ~SL_FragmentProcessor() noexcept {}
 
+    template <typename depth_type>
+    void flush_line_fragments(const SL_FragmentBin& bin, uint_fast32_t numQueuedFrags, SL_FragCoord* const outCoords) const noexcept;
+
+    template <typename depth_type>
+    void flush_tri_fragments(const SL_FragmentBin& bin, uint_fast32_t numQueuedFrags, SL_FragCoord* const outCoords) const noexcept;
+
     virtual void execute() noexcept = 0;
 };
+
+
+
+extern template void SL_FragmentProcessor::flush_line_fragments<ls::math::half>(const SL_FragmentBin&, uint_fast32_t, SL_FragCoord* const) const noexcept;
+extern template void SL_FragmentProcessor::flush_line_fragments<float>(const SL_FragmentBin&, uint_fast32_t, SL_FragCoord* const) const noexcept;
+extern template void SL_FragmentProcessor::flush_line_fragments<double>(const SL_FragmentBin&, uint_fast32_t, SL_FragCoord* const) const noexcept;
+
+
+
+extern template void SL_FragmentProcessor::flush_tri_fragments<ls::math::half>(const SL_FragmentBin&, uint_fast32_t, SL_FragCoord* const) const noexcept;
+extern template void SL_FragmentProcessor::flush_tri_fragments<float>(const SL_FragmentBin&, uint_fast32_t, SL_FragCoord* const) const noexcept;
+extern template void SL_FragmentProcessor::flush_tri_fragments<double>(const SL_FragmentBin&, uint_fast32_t, SL_FragCoord* const) const noexcept;
 
 
 

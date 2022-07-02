@@ -41,9 +41,6 @@ struct SL_DepthFuncOFF;
 -----------------------------------------------------------------------------*/
 struct SL_LineRasterizer final : public SL_FragmentProcessor
 {
-    template <typename depth_type>
-    void flush_fragments(const SL_FragmentBin& bin, uint_fast32_t numQueuedFrags, SL_FragCoord* const outCoords) const noexcept;
-
     template <class DepthCmpFunc, typename depth_type>
     void render_line(const SL_FragmentBin& bin, SL_Framebuffer* const fbo) noexcept;
 
@@ -52,12 +49,6 @@ struct SL_LineRasterizer final : public SL_FragmentProcessor
 
     virtual void execute() noexcept override;
 };
-
-
-
-extern template void SL_LineRasterizer::flush_fragments<ls::math::half>(const SL_FragmentBin&, uint_fast32_t, SL_FragCoord* const) const noexcept;
-extern template void SL_LineRasterizer::flush_fragments<float>(const SL_FragmentBin&, uint_fast32_t, SL_FragCoord* const) const noexcept;
-extern template void SL_LineRasterizer::flush_fragments<double>(const SL_FragmentBin&, uint_fast32_t, SL_FragCoord* const) const noexcept;
 
 
 
