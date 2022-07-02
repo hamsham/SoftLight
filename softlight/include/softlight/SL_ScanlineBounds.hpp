@@ -29,13 +29,24 @@
  * The initial scanline for a line or triangle being rendered.
 -------------------------------------*/
 template <typename data_t>
+constexpr LS_INLINE data_t sl_scanline_offset_impl(
+    const data_t numThreads,
+    const data_t threadId,
+    const data_t fragmentY,
+    const data_t numThreadsSub1) noexcept
+{
+    return numThreadsSub1 - ((fragmentY + (numThreadsSub1 - threadId)) % numThreads);
+}
+
+template <typename data_t>
 constexpr LS_INLINE data_t sl_scanline_offset(
     const data_t numThreads,
     const data_t threadId,
     const data_t fragmentY) noexcept
 {
-    //return numThreads - 1 - (((fragmentY % numThreads) + threadId) % numThreads);
-    return ((fragmentY + threadId) % numThreads);
+    //return (numThreads - (fragmentY % numThreads) + threadId) % numThreads;
+    //return numThreads-1-((fragmentY + (numThreads-1-threadId)) % numThreads);
+    return sl_scanline_offset_impl<data_t>(numThreads, threadId, fragmentY, numThreads-1);
 }
 
 
@@ -251,28 +262,28 @@ struct alignas(sizeof(float)*4) SL_ScanlineBounds
     }
 
     #if defined(LS_X86_AVX)
-    inline LS_INLINE void step(const __m128 y, __m128i& xMin, __m128i& xMax) const noexcept
-    {
-        const __m128 v01   = _mm_set_ss(v0y);
-        const __m128 v11   = _mm_set_ss(v1y);
-        const __m128 p201  = _mm_set_ss(p20y);
-        const __m128 d0    = _mm_sub_ss(y, v01);
-        const __m128 d1    = _mm_sub_ss(y, v11);
-        const __m128 alpha = _mm_mul_ss(d0, p201);
+        inline LS_INLINE void step(const __m128& y, __m128i& xMin, __m128i& xMax) const noexcept
+        {
+            const __m128 v01   = _mm_set_ss(v0y);
+            const __m128 v11   = _mm_set_ss(v1y);
+            const __m128 p201  = _mm_set_ss(p20y);
+            const __m128 d0    = _mm_sub_ss(y, v01);
+            const __m128 d1    = _mm_sub_ss(y, v11);
+            const __m128 alpha = _mm_mul_ss(d0, p201);
 
-        const __m128 v00   = _mm_set_ss(v0x);
-        const __m128 v10   = _mm_set_ss(v1x);
-        const __m128 p1001 = _mm_set_ss(p10xy);
-        const __m128 p200  = _mm_set_ss(p20x);
-        const __m128 p2101 = _mm_set_ss(p21xy);
-        const __m128 lo    = _mm_fmadd_ss( p200,  alpha, v00);
-        const __m128 pdv0  = _mm_fmadd_ss( p1001, d0,    v00);
-        const __m128 pdv1  = _mm_fmadd_ss( p2101, d1,    v10);
-        const __m128 hi    = _mm_blendv_ps(pdv0,  pdv1,  d1);
+            const __m128 v00   = _mm_set_ss(v0x);
+            const __m128 v10   = _mm_set_ss(v1x);
+            const __m128 p1001 = _mm_set_ss(p10xy);
+            const __m128 p200  = _mm_set_ss(p20x);
+            const __m128 p2101 = _mm_set_ss(p21xy);
+            const __m128 lo    = _mm_fmadd_ss( p200,  alpha, v00);
+            const __m128 pdv0  = _mm_fmadd_ss( p1001, d0,    v00);
+            const __m128 pdv1  = _mm_fmadd_ss( p2101, d1,    v10);
+            const __m128 hi    = _mm_blendv_ps(pdv0,  pdv1,  d1);
 
-        xMin = _mm_cvtps_epi32(_mm_broadcastss_ps(_mm_min_ss(lo, hi)));
-        xMax = _mm_cvtps_epi32(_mm_broadcastss_ps(_mm_max_ss(lo, hi)));
-    }
+            xMin = _mm_cvtps_epi32(_mm_broadcastss_ps(_mm_min_ss(lo, hi)));
+            xMax = _mm_cvtps_epi32(_mm_broadcastss_ps(_mm_max_ss(lo, hi)));
+        }
     #endif
 };
 
