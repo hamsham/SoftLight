@@ -513,12 +513,10 @@ void SL_TriProcessor::push_bin(size_t primIndex, const SL_TransformedVert& a, co
     const math::vec4& p2 = c.vert;
 
     // establish a bounding box to detect overlap with a thread's tiles
-    const float bboxMinX = math::min(p0.v[0], p1.v[0], p2.v[0]);
-    const float bboxMinY = math::min(p0.v[1], p1.v[1], p2.v[1]);
-    const float bboxMaxX = math::max(p0.v[0], p1.v[0], p2.v[0]);
-    const float bboxMaxY = math::max(p0.v[1], p1.v[1], p2.v[1]);
+    const math::vec4&& bboxMin = math::min(math::min(p0, p1), p2);
+    const math::vec4&& bboxMax = math::max(math::max(p0, p1), p2);
 
-    const int isPrimHidden = (bboxMaxX-bboxMinX < 1.f) || (bboxMaxY-bboxMinY < 1.f);
+    const int isPrimHidden = (bboxMax[0]-bboxMin[0] < 1.f) || (bboxMax[1]-bboxMin[1] < 1.f);
     if (LS_UNLIKELY(isPrimHidden))
     {
         return;

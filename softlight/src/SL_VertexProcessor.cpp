@@ -146,7 +146,7 @@ void SL_VertexProcessor::flush_rasterizer() const noexcept
                 {
                     float f;
                     int32_t i;
-                } w{pBins[val.count].mScreenCoords[0].v[3]};
+                } w{pBins[val.count].mScreenCoords[0][3]};
                 return (unsigned long long) -w.i;
             });
         }

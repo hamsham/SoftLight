@@ -646,10 +646,10 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
                         {
                             const uint16_t y16 = (uint16_t)y;
 
-                            outCoords->coord[storeMask0] = SL_FragCoordXYZ{(uint16_t)x4.v[0], y16, z.v[0]};
-                            outCoords->coord[storeMask1] = SL_FragCoordXYZ{(uint16_t)x4.v[1], y16, z.v[1]};
-                            outCoords->coord[storeMask2] = SL_FragCoordXYZ{(uint16_t)x4.v[2], y16, z.v[2]};
-                            outCoords->coord[storeMask3] = SL_FragCoordXYZ{(uint16_t)x4.v[3], y16, z.v[3]};
+                            outCoords->coord[storeMask0] = SL_FragCoordXYZ{(uint16_t)x4.v[0], y16, z[0]};
+                            outCoords->coord[storeMask1] = SL_FragCoordXYZ{(uint16_t)x4.v[1], y16, z[1]};
+                            outCoords->coord[storeMask2] = SL_FragCoordXYZ{(uint16_t)x4.v[2], y16, z[2]};
+                            outCoords->coord[storeMask3] = SL_FragCoordXYZ{(uint16_t)x4.v[3], y16, z[3]};
                         }
 
                         {
