@@ -41,7 +41,7 @@ struct alignas(sizeof(int32_t)) SL_PackedVertex_2_10_10_10
         w{0}
     {}
 
-    constexpr LS_INLINE SL_PackedVertex_2_10_10_10(const ls::math::vec4& v) noexcept :
+    inline LS_INLINE SL_PackedVertex_2_10_10_10(const ls::math::vec4& v) noexcept :
         x{(int32_t)(v[0] * 511.f)},
         y{(int32_t)(v[1] * 511.f)},
         z{(int32_t)(v[2] * 511.f)},
