@@ -51,7 +51,13 @@
 namespace math = ls::math;
 namespace utils = ls::utils;
 
+
+
+template class SL_Quadtree<int, 16>;
 typedef SL_Quadtree<int, 16> QuadtreeType;
+
+template class SL_QuadtreeNode<int>;
+typedef SL_QuadtreeNode<int> QuadtreeNodeType;
 
 
 
@@ -280,7 +286,7 @@ QuadtreeType init_quadtree(float randomPx, float randomPy)
         << '\n';
     */
 
-    return quadtree;
+    return std::move(quadtree);
 }
 
 
@@ -288,7 +294,7 @@ QuadtreeType init_quadtree(float randomPx, float randomPy)
 /*-------------------------------------
  * Render a scene
 -------------------------------------*/
-void render_quadtree(SL_SceneGraph* pGraph, const QuadtreeType& quadtree, const math::mat4& vpMatrix, size_t renderableDepth, float testX, float testY)
+void render_quadtree(SL_SceneGraph* pGraph, const QuadtreeNodeType& quadtree, const math::mat4& vpMatrix, size_t renderableDepth, float testX, float testY)
 {
     SL_Context&     context   = pGraph->mContext;
     QuadtreeUniforms* pUniforms = context.ubo(0).as<QuadtreeUniforms>();
@@ -298,7 +304,7 @@ void render_quadtree(SL_SceneGraph* pGraph, const QuadtreeType& quadtree, const 
     color.s = 1.f;
     color.v = 1.f;
 
-    quadtree.iterate_top_down([&](const QuadtreeType* pTree, size_t depth)->bool {
+    quadtree.iterate_top_down([&](const QuadtreeNodeType* pTree, size_t depth)->bool {
         const float percent = (float)(depth+1) / (float)(maxDepth+1);
         color.h = 360.f * percent;
 
@@ -332,7 +338,7 @@ int main()
     ls::utils::Pointer<SL_RenderWindow> pWindow    {SL_RenderWindow::create()};
     ls::utils::Pointer<SL_WindowBuffer> pRenderBuf {SL_WindowBuffer::create()};
     ls::utils::Pointer<SL_SceneGraph>   pGraph     {init_context()};
-    QuadtreeType                        quadtree   {init_quadtree(1.f, 1.f)};
+    QuadtreeType&&                      quadtree   = init_quadtree(1.f, 1.f);
     SL_Context&                         context    = pGraph->mContext;
 
     int shouldQuit = pWindow->init(IMAGE_WIDTH, IMAGE_HEIGHT);
@@ -479,7 +485,10 @@ int main()
 
             const float radomPx = math::cos(ls::math::radians((currSeconds*recipLoopTime) * 360.f)) * 384.f;
             const float radomPy = math::sin(ls::math::radians((currSeconds*recipLoopTime) * 360.f)) * 384.f;
-            quadtree = init_quadtree(radomPx, radomPy);
+
+            quadtree.clear();
+            quadtree = std::move(init_quadtree(radomPx, radomPy));
+
             maxDepth = quadtree.depth();
             currDepth = math::clamp<size_t>(currDepth, 0, maxDepth);
 

@@ -4,10 +4,17 @@
 #include "softlight/SL_Quadtree.hpp"
 
 
+
+template class SL_Quadtree<int, 16>;
+typedef SL_Quadtree<int, 16> QuadtreeType;
+
+template class SL_QuadtreeNode<int>;
+typedef SL_QuadtreeNode<int> QuadtreeNodeType;
+
+
 int main()
 {
-    typedef SL_Quadtree<int, 16> Quadtree;
-    Quadtree quadtree{ls::math::vec2{0.f, 0.f}, 512.f};
+    QuadtreeType quadtree{ls::math::vec2{0.f, 0.f}, 512.f};
 
     // insert the world node
     quadtree.insert(ls::math::vec2{0.f, 0.f}, 512.f, 0);
@@ -27,7 +34,7 @@ int main()
         << '\n'
         << std::endl;
 
-    const  Quadtree* const* subNodes = quadtree.sub_nodes();
+    const  QuadtreeNodeType* const* subNodes = quadtree.sub_nodes();
     size_t numSubNodes = 0;
     for (size_t i = 0; i < 8; ++i)
     {
@@ -36,7 +43,7 @@ int main()
     std::cout << "Found " << numSubNodes << " top-level sub-nodes." << std::endl;
 
     const ls::math::vec2 subTreePos{-4.f, -36.f};
-    SL_Quadtree<int, 16>* pSubtree = quadtree.find(subTreePos);
+    QuadtreeNodeType* pSubtree = quadtree.find(subTreePos);
     std::cout
         << "Found sub-tree:"
         << "\n\tLocation: " << subTreePos[0] << ',' << subTreePos[1]
@@ -51,7 +58,7 @@ int main()
 
     std::cout << "\nIterating: " << std::endl;
 
-    quadtree.iterate_bottom_up([](const Quadtree* pTree, size_t depth)->bool {
+    quadtree.iterate_bottom_up([](const QuadtreeNodeType* pTree, size_t depth)->bool {
         const ls::math::vec2& pos = pTree->origin();
         bool amPositive = 0x07 != (0x07 & ls::math::sign_mask(pos));
 

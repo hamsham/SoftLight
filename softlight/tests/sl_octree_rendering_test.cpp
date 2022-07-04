@@ -51,7 +51,13 @@
 namespace math = ls::math;
 namespace utils = ls::utils;
 
+
+
+template class SL_Octree<int, 16>;
 typedef SL_Octree<int, 16> OctreeType;
+
+template class SL_OctreeNode<int>;
+typedef SL_OctreeNode<int> OctreeNodeType;
 
 
 
@@ -310,7 +316,7 @@ OctreeType init_octree()
         << '\n'
         << std::endl;
 
-    return octree;
+    return std::move(octree);
 }
 
 
@@ -318,7 +324,7 @@ OctreeType init_octree()
 /*-------------------------------------
  * Render a scene
 -------------------------------------*/
-void render_octree(SL_SceneGraph* pGraph, const OctreeType& octree, const math::mat4& vpMatrix, size_t renderableDepth)
+void render_octree(SL_SceneGraph* pGraph, const OctreeNodeType& octree, const math::mat4& vpMatrix, size_t renderableDepth)
 {
     SL_Context&     context   = pGraph->mContext;
     OctreeUniforms* pUniforms = context.ubo(0).as<OctreeUniforms>();
@@ -328,7 +334,7 @@ void render_octree(SL_SceneGraph* pGraph, const OctreeType& octree, const math::
     color.s = 1.f;
     color.v = 1.f;
 
-    octree.iterate_top_down([&](const OctreeType* pTree, size_t depth)->bool {
+    octree.iterate_top_down([&](const OctreeNodeType* pTree, size_t depth)->bool {
         const float percent = (float)(depth+1) / (float)(maxDepth+1);
         color.h = 360.f * percent;
 
@@ -393,7 +399,7 @@ int main()
     ls::utils::Pointer<SL_RenderWindow> pWindow    {SL_RenderWindow::create()};
     ls::utils::Pointer<SL_WindowBuffer> pRenderBuf {SL_WindowBuffer::create()};
     ls::utils::Pointer<SL_SceneGraph>   pGraph     {init_context()};
-    OctreeType                          octree     {init_octree()};
+    OctreeType&&                        octree     = init_octree();
     SL_Context&                         context    = pGraph->mContext;
     ls::utils::Pointer<bool[]>          pKeySyms   {new bool[65536]};
 

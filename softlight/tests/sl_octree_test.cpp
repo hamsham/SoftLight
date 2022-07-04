@@ -4,9 +4,17 @@
 #include "softlight/SL_Octree.hpp"
 
 
+
+template class SL_Octree<int, 16>;
+typedef SL_Octree<int, 16> OctreeType;
+
+template class SL_OctreeNode<int>;
+typedef SL_OctreeNode<int> OctreeNodeType;
+
+
+
 int main()
 {
-    typedef SL_Octree<int, 16> OctreeType;
     OctreeType octree{ls::math::vec3{0.f, 0.f, 0.f}, 512.f};
 
     // insert the world node
@@ -27,7 +35,7 @@ int main()
         << '\n'
         << std::endl;
 
-    const  OctreeType* const* subNodes = octree.sub_nodes();
+    const  OctreeNodeType* const* subNodes = octree.sub_nodes();
     size_t numSubNodes = 0;
     for (size_t i = 0; i < 8; ++i)
     {
@@ -36,7 +44,7 @@ int main()
     std::cout << "Found " << numSubNodes << " top-level sub-nodes." << std::endl;
 
     const ls::math::vec3 subTreePos{-4.f, -36.f, -12.f};
-    SL_Octree<int, 16>* pSubtree = octree.find(subTreePos);
+    OctreeNodeType* pSubtree = octree.find(subTreePos);
     std::cout
         << "Found sub-tree:"
         << "\n\tLocation: " << subTreePos[0] << ',' << subTreePos[1] << ',' << subTreePos[2]
@@ -51,7 +59,7 @@ int main()
 
     std::cout << "\nIterating: " << std::endl;
 
-    octree.iterate_bottom_up([](const OctreeType* pTree, size_t depth)->bool {
+    octree.iterate_bottom_up([](const OctreeNodeType* pTree, size_t depth)->bool {
         const ls::math::vec4& pos = pTree->origin();
         bool amPositive = 0x07 != (0x07 & ls::math::sign_mask(pos));
 
