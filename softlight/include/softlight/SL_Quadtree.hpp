@@ -51,8 +51,6 @@ class SL_QuadtreeNode
     std::vector<T, Allocator> mData;
 
   private:
-    bool emplace_internal(const ls::math::vec2& location, float radius, T&& value, size_t currDepth) noexcept;
-
     template <typename ConstIterCallbackType>
     void iterate_from_bottom_internal(ConstIterCallbackType&& iterCallback, size_t currDepth) const noexcept;
 
