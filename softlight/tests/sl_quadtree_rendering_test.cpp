@@ -306,7 +306,7 @@ void render_quadtree(SL_SceneGraph* pGraph, const QuadtreeNodeType& quadtree, co
 
     quadtree.iterate_top_down([&](const QuadtreeNodeType* pTree, size_t depth)->bool {
         const float percent = (float)(depth+1) / (float)(maxDepth+1);
-        color.h = 360.f * percent;
+        color.h = percent;
 
         pUniforms->origin    = pTree->origin();
         pUniforms->radius    = pTree->radius();

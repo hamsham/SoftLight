@@ -336,7 +336,7 @@ void render_octree(SL_SceneGraph* pGraph, const OctreeNodeType& octree, const ma
 
     octree.iterate_top_down([&](const OctreeNodeType* pTree, size_t depth)->bool {
         const float percent = (float)(depth+1) / (float)(maxDepth+1);
-        color.h = 360.f * percent;
+        color.h = percent;
 
         pUniforms->origin    = math::vec3_cast(pTree->origin());
         pUniforms->radius    = pTree->radius();
