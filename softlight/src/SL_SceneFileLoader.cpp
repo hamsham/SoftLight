@@ -840,8 +840,8 @@ int SL_SceneFileLoader::import_materials(const aiScene* const pScene) noexcept
 
         if (AI_SUCCESS == pMaterial->Get(AI_MATKEY_COLOR_TRANSPARENT, inMatColor))
         {
-            LS_LOG_MSG("\t\t\tUsing transparent material: ", inMatColor.r, ", ", inMatColor.g, ", ", inMatColor.b);
-            inTransparent = (float)math::min<ai_real>(1.f, math::max<ai_real>(0.f, inMatColor.r, inMatColor.g, inMatColor.b));
+            inTransparent = (float)math::clamp<ai_real>((inMatColor.r+inMatColor.g+inMatColor.b) / 3.f, 0.0, 1.0);
+            LS_LOG_MSG("\t\t\tUsing transparent material: ", inMatColor.r, ", ", inMatColor.g, ", ", inMatColor.b, " (avg: ", inTransparent, ')');
         }
 
         // Assimp uses BGR formatting for material colors. We must convert back to RGB
