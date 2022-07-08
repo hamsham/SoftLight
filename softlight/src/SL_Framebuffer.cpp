@@ -302,15 +302,15 @@ inline void assign_alpha_pixel(
 
     // This method of blending uses premultiplied alpha. I will need to support
     // configurable blend modes later.
-    const math::vec4 srcAlpha = rgba[3];
-    const math::vec4&& modulation = math::vec4{1.f - rgba[3]};
+    const math::vec4 srcAlpha{rgba[3]};
+    const math::vec4&& modulation = math::vec4{1.f} - srcAlpha;
 
     if (blendMode == SL_BLEND_ALPHA)
     {
         const math::vec4&& dstMod   = modulation * d[3];
-        const float&&      dstAlpha = dstMod[3] + srcAlpha[3];
+        const math::vec4&& dstAlpha = dstMod + srcAlpha;
         const math::vec4&& dstRgb   = math::fmadd(rgba, srcAlpha, (d * dstMod)) * math::rcp(dstAlpha);
-        d = math::vec4_cast(math::vec3_cast(dstRgb), dstAlpha);
+        d = math::vec4_cast(math::vec3_cast(dstRgb), dstAlpha[0]);
     }
     else if (blendMode == SL_BLEND_PREMULTIPLED_ALPHA)
     {
@@ -368,14 +368,15 @@ inline void assign_alpha_pixel<SL_ColorRGB332>(
 
     // This method of blending uses premultiplied alpha. I will need to support
     // configurable blend modes later.
-    const math::vec4 srcAlpha = rgba[3];
-    const math::vec4&& modulation = math::vec4{1.f - rgba[3]};
+    const math::vec4 srcAlpha{rgba[3]};
+    const math::vec4&& modulation = math::vec4{1.f} - srcAlpha;
 
     if (blendMode == SL_BLEND_ALPHA)
     {
-        const math::vec4&& dstMod = modulation * d[3];
-        d = math::fmadd(s, srcAlpha, (d * dstMod)) * math::rcp(d[3]);
-        d[3] = dstMod[3] + srcAlpha[3];
+        const math::vec4&& dstMod   = modulation * d[3];
+        const math::vec4&& dstAlpha = dstMod + srcAlpha;
+        const math::vec4&& dstRgb   = math::fmadd(rgba, srcAlpha, (d * dstMod)) * math::rcp(dstAlpha);
+        d = math::vec4_cast(math::vec3_cast(dstRgb), dstAlpha[0]);
     }
     else if (blendMode == SL_BLEND_PREMULTIPLED_ALPHA)
     {
@@ -411,14 +412,15 @@ inline void assign_alpha_pixel<SL_ColorRGB565>(
 
     // This method of blending uses premultiplied alpha. I will need to support
     // configurable blend modes later.
-    const math::vec4 srcAlpha = rgba[3];
-    const math::vec4&& modulation = math::vec4{1.f - rgba[3]};
+    const math::vec4 srcAlpha{rgba[3]};
+    const math::vec4&& modulation = math::vec4{1.f} - srcAlpha;
 
     if (blendMode == SL_BLEND_ALPHA)
     {
-        const math::vec4&& dstMod = modulation * d[3];
-        d = math::fmadd(s, srcAlpha, (d * dstMod)) * math::rcp(d[3]);
-        d[3] = dstMod[3] + srcAlpha[3];
+        const math::vec4&& dstMod   = modulation * d[3];
+        const math::vec4&& dstAlpha = dstMod + srcAlpha;
+        const math::vec4&& dstRgb   = math::fmadd(rgba, srcAlpha, (d * dstMod)) * math::rcp(dstAlpha);
+        d = math::vec4_cast(math::vec3_cast(dstRgb), dstAlpha[0]);
     }
     else if (blendMode == SL_BLEND_PREMULTIPLED_ALPHA)
     {
@@ -454,14 +456,15 @@ inline void assign_alpha_pixel<SL_ColorRGB5551>(
 
     // This method of blending uses premultiplied alpha. I will need to support
     // configurable blend modes later.
-    const math::vec4 srcAlpha = rgba[3];
-    const math::vec4&& modulation = math::vec4{1.f - rgba[3]};
+    const math::vec4 srcAlpha{rgba[3]};
+    const math::vec4&& modulation = math::vec4{1.f} - srcAlpha;
 
     if (blendMode == SL_BLEND_ALPHA)
     {
-        const math::vec4&& dstMod = modulation * d[3];
-        d = math::fmadd(s, srcAlpha, (d * dstMod)) * math::rcp(d[3]);
-        d[3] = dstMod[3] + srcAlpha[3];
+        const math::vec4&& dstMod   = modulation * d[3];
+        const math::vec4&& dstAlpha = dstMod + srcAlpha;
+        const math::vec4&& dstRgb   = math::fmadd(rgba, srcAlpha, (d * dstMod)) * math::rcp(dstAlpha);
+        d = math::vec4_cast(math::vec3_cast(dstRgb), dstAlpha[0]);
     }
     else if (blendMode == SL_BLEND_PREMULTIPLED_ALPHA)
     {
@@ -497,14 +500,15 @@ inline void assign_alpha_pixel<SL_ColorRGB4444>(
 
     // This method of blending uses premultiplied alpha. I will need to support
     // configurable blend modes later.
-    const math::vec4 srcAlpha = rgba[3];
-    const math::vec4&& modulation = math::vec4{1.f - rgba[3]};
+    const math::vec4 srcAlpha{rgba[3]};
+    const math::vec4&& modulation = math::vec4{1.f} - srcAlpha;
 
     if (blendMode == SL_BLEND_ALPHA)
     {
-        const math::vec4&& dstMod = modulation * d[3];
-        d = math::fmadd(s, srcAlpha, (d * dstMod)) * math::rcp(d[3]);
-        d[3] = dstMod[3] + srcAlpha[3];
+        const math::vec4&& dstMod   = modulation * d[3];
+        const math::vec4&& dstAlpha = dstMod + srcAlpha;
+        const math::vec4&& dstRgb   = math::fmadd(rgba, srcAlpha, (d * dstMod)) * math::rcp(dstAlpha);
+        d = math::vec4_cast(math::vec3_cast(dstRgb), dstAlpha[0]);
     }
     else if (blendMode == SL_BLEND_PREMULTIPLED_ALPHA)
     {
@@ -540,14 +544,15 @@ inline void assign_alpha_pixel<SL_ColorRGB1010102>(
 
     // This method of blending uses premultiplied alpha. I will need to support
     // configurable blend modes later.
-    const math::vec4 srcAlpha = rgba[3];
-    const math::vec4&& modulation = math::vec4{1.f - rgba[3]};
+    const math::vec4 srcAlpha{rgba[3]};
+    const math::vec4&& modulation = math::vec4{1.f} - srcAlpha;
 
     if (blendMode == SL_BLEND_ALPHA)
     {
-        const math::vec4&& dstMod = modulation * d[3];
-        d = math::fmadd(s, srcAlpha, (d * dstMod)) * math::rcp(d[3]);
-        d[3] = dstMod[3] + srcAlpha[3];
+        const math::vec4&& dstMod   = modulation * d[3];
+        const math::vec4&& dstAlpha = dstMod + srcAlpha;
+        const math::vec4&& dstRgb   = math::fmadd(rgba, srcAlpha, (d * dstMod)) * math::rcp(dstAlpha);
+        d = math::vec4_cast(math::vec3_cast(dstRgb), dstAlpha[0]);
     }
     else if (blendMode == SL_BLEND_PREMULTIPLED_ALPHA)
     {
