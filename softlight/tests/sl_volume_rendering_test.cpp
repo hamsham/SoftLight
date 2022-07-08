@@ -155,7 +155,7 @@ inline LS_INLINE bool can_skip_render(const SL_Texture& volumeTex, const math::v
     {
         const SL_ColorR8&& intensity = sl_sample_nearest<SL_ColorR8, SL_WrapMode::EDGE>(volumeTex, rayPos[0], rayPos[1], rayPos[2]);
 
-        if (intensity.r >= 17)
+        if (intensity.r > 16)
         {
             return false;
         }
@@ -179,7 +179,6 @@ bool _volume_frag_shader(SL_FragmentParam& fragParam)
     const SL_Texture&     volumeTex = *pUniforms->pCubeMap;
     const SL_Texture&     alphaTex  = *pUniforms->pOpacityMap;
     const SL_Texture&     colorTex  = *pUniforms->pColorMap;
-    //const math::vec4&     pos       = fragParam.pVaryings[0];
     const math::vec4&     pos       = fragParam.pVaryings[0] * scaling;
     const math::vec4&&    rayDir    = math::normalize(fragParam.pVaryings[1]);
     float                 nearPos;
@@ -213,26 +212,18 @@ bool _volume_frag_shader(SL_FragmentParam& fragParam)
     {
         intensity = sl_sample_trilinear<SL_ColorR8, SL_WrapMode::EDGE>(volumeTex, rayPos[0], rayPos[1], rayPos[2]).r;
 
-        if (intensity >= 17)
+        if (intensity > 16)
         {
             // regular opacity (doesn't take ray steps into account).
-            srcAlpha = alphaTex.texel<float>(intensity);// * ((1.f+(float)i) * step);
+            srcAlpha = alphaTex.texel<float>(intensity) * step * 100.f;
             if (srcAlpha > 0.f)
             {
                 const math::vec4&& norm      = calc_normal<numSteps>(volumeTex, rayPos);
                 const float        luminance = 2.f * math::clamp(math::dot(norm, math::vec4{1.f, 0.f, 1.f, 0.f}), 0.f, 1.f);
-                //const math::vec3&& volColor  = math::vec3_cast(norm) * luminance;
-                //const math::vec3&& volColor  = math::vec3_cast(norm);
-                //const math::vec3&& volColor  = math::vec3{(float)intensity/256.f};
-                //const math::vec3&& volColor  = colorTex.raw_texel<SL_ColorRGBf>(intensity);
                 const math::vec3&& volColor  = colorTex.texel<SL_ColorRGBf>(intensity) * luminance;
-                const math::vec4&& srcRGBA   = math::vec4_cast(volColor, 1.f);
+                const math::vec4&& srcRGBA   = math::vec4_cast(volColor, 1.f) * srcAlpha;
 
-                // corrected opacity, from:
-                // https://github.com/chrislu/schism/blob/master/projects/examples/ex_volume_ray_cast/src/renderer/shader/volume_ray_cast.glslf
-                srcAlpha = 1.f - math::pow(1.f - srcAlpha, math::length(rayPos - rayNear));
-
-                dstTexel = (srcRGBA*srcAlpha) + (dstTexel - dstTexel*srcAlpha);
+                dstTexel = math::fmadd(dstTexel, math::vec4{1.f}-srcAlpha, srcRGBA);
             }
         }
 
@@ -432,21 +423,22 @@ int create_opacity_map(SL_SceneGraph& graph)
         }
     };
 
-    #if 1
-    add_transfer_func(0,  17,  0.f);
-    add_transfer_func(17, 29,  0.02f);
-    add_transfer_func(29, 40,  0.12f);
-    add_transfer_func(40, 50,  0.05f);
-    add_transfer_func(50, 60,  0.03f);
-    add_transfer_func(60, 75,  0.004f);
-    add_transfer_func(75, 255, 0.001f);
-    #else
-    add_transfer_func(0,  17,  0.f);
-    add_transfer_func(17, 40,  0.025f);
-    add_transfer_func(40, 50,  0.1f);
-    add_transfer_func(50, 75,  0.15f);
-    add_transfer_func(75, 255, 0.5f);
-    #endif
+    add_transfer_func(0,   15,  0.f);
+    add_transfer_func(16,  31,  0.1f); // fat/skin
+    add_transfer_func(32,  47,  0.1f); // skin
+    add_transfer_func(48,  63,  0.25f); // soft tissue & brain
+    add_transfer_func(64,  79,  0.5f); // cartilage & brain crevices
+    add_transfer_func(80,  95,  0.2f); // brain crevices & bone
+    add_transfer_func(96,  111, 0.05f); // bone
+    add_transfer_func(112, 127, 0.05f); // bone
+    add_transfer_func(128, 143, 0.05f); // bone
+    add_transfer_func(144, 159, 0.05f); // bone
+    add_transfer_func(160, 175, 0.05f); // bone
+    add_transfer_func(176, 191, 0.05f); // bone
+    add_transfer_func(192, 207, 0.05f); // bone
+    add_transfer_func(208, 223, 0.05f); // bone
+    add_transfer_func(224, 239, 0.05f); // bone
+    add_transfer_func(240, 255, 0.05f); // bone
 
     return 0;
 }
@@ -479,18 +471,10 @@ int create_color_map(SL_SceneGraph& graph)
         }
     };
 
-    /*
-    add_transfer_func(0,  17,  SL_ColorRGBType<float>{0.f,   0.f,  0.f});
-    add_transfer_func(17, 40,  SL_ColorRGBType<float>{0.5f,  0.2f, 0.2f});
-    add_transfer_func(40, 50,  SL_ColorRGBType<float>{0.4f,  0.3f, 0.1f});
-    add_transfer_func(50, 75,  SL_ColorRGBType<float>{1.f,   1.f,  1.f});
-    add_transfer_func(75, 255, SL_ColorRGBType<float>{0.6f,  0.6f, 0.6f});
-    */
-    add_transfer_func(0,  17,  SL_ColorRGBType<float>{0.f,   0.f,  0.f,});
-    add_transfer_func(17, 40,  SL_ColorRGBType<float>{0.2f,  0.2f, 0.5f});
-    add_transfer_func(40, 50,  SL_ColorRGBType<float>{0.1f,  0.3f, 0.4f});
-    add_transfer_func(50, 75,  SL_ColorRGBType<float>{1.f,   1.f,  1.f,});
-    add_transfer_func(75, 255, SL_ColorRGBType<float>{0.6f,  0.6f, 0.6f});
+    add_transfer_func(16, 47,  SL_ColorRGBType<float>{0.6f,  0.65f, 0.65f});
+    add_transfer_func(48, 79,  SL_ColorRGBType<float>{0.2f,  0.2f, 0.6f});
+    add_transfer_func(80, 96,  SL_ColorRGBType<float>{0.1f,  0.3f, 0.4f});
+    add_transfer_func(96, 255, SL_ColorRGBType<float>{0.6f,  0.6f, 0.6f});
 
     return 0;
 }
