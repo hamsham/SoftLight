@@ -84,6 +84,8 @@ using Tuple = utils::Tuple<data_t...>;
 struct AnimUniforms
 {
     const SL_Texture* pTexture;
+    math::vec4        ambient;
+    math::vec4        diffuse;
     size_t            instanceId;
     utils::UniqueAlignedArray<math::mat4> instanceMatrix;
     math::mat4        modelMatrix;
@@ -147,7 +149,7 @@ bool _texture_frag_shader(SL_FragmentParam& fragParam)
     const math::vec4&    uv        = fragParam.pVaryings[1];
     const math::vec4&&   norm      = math::normalize(fragParam.pVaryings[2]);
     const SL_Texture*    pTexture  = pUniforms->pTexture;
-    const math::vec4     ambient   = {0.1f, 0.1f, 0.1f, 1.f};
+    const math::vec4&    ambient   = pUniforms->ambient;
     math::vec4           albedo;
 
     // normalize the texture colors to within (0.f, 1.f)
@@ -160,9 +162,9 @@ bool _texture_frag_shader(SL_FragmentParam& fragParam)
     // Light direction calculation
     math::vec4          lightDir   = math::normalize(pUniforms->camPos - pos);
     const float         lightAngle = 0.5f * math::dot(-lightDir, norm) + 0.5f;
-    const math::vec4&&  diffuse    = math::vec4{1.f} * lightAngle;
+    const math::vec4&&  diffuse    = pUniforms->diffuse * lightAngle;
+    const math::vec4&&  rgba       = albedo * (ambient+diffuse);
 
-    const math::vec4 rgba = albedo * (ambient+diffuse);
     fragParam.pOutputs[0] = math::min(rgba, math::vec4{1.f});
 
     return true;
@@ -175,7 +177,7 @@ SL_FragmentShader texture_frag_shader()
     SL_FragmentShader shader;
     shader.numVaryings = 3;
     shader.numOutputs  = 1;
-    shader.blend       = SL_BLEND_OFF;
+    shader.blend       = SL_BLEND_PREMULTIPLED_ALPHA;
     shader.depthTest   = SL_DEPTH_TEST_GREATER_EQUAL;
     shader.depthMask   = SL_DEPTH_MASK_ON;
     shader.shader      = _texture_frag_shader;
@@ -256,6 +258,8 @@ void render_scene(SL_SceneGraph* pGraph, const math::mat4& vpMatrix, bool useIns
             const SL_Material& material   = pGraph->mMaterials[m.materialId];
 
             pUniforms->pTexture = material.pTextures[SL_MATERIAL_TEXTURE_DIFFUSE];
+            pUniforms->ambient = material.ambient;
+            pUniforms->diffuse = material.diffuse;
 
             if (useInstancing)
             {
