@@ -54,7 +54,7 @@ struct SL_WrapModeClampEdge
 
     constexpr LS_INLINE SL_WrapMode::fixed_type operator()(SL_WrapMode::fixed_type uvw) const noexcept
     {
-        return ls::math::clamp<SL_WrapMode::fixed_type>(uvw, SL_WrapMode::fixed_type{0u}, ls::math::fixed_cast<SL_WrapMode::fixed_type>(1u));
+        return ls::math::clamp<SL_WrapMode::fixed_type>(uvw, ls::math::fixed_cast<SL_WrapMode::fixed_type, int>(0), ls::math::fixed_cast<SL_WrapMode::fixed_type, int>(1));
     }
 
     constexpr LS_INLINE unsigned operator()(unsigned uvw, unsigned maxVal) const noexcept
@@ -76,9 +76,9 @@ struct SL_WrapModeClampBorder
 
     constexpr LS_INLINE SL_WrapMode::fixed_type operator()(SL_WrapMode::fixed_type uvw) const noexcept
     {
-        return (uvw >= ls::math::fixed_cast<SL_WrapMode::fixed_type>(0u) && uvw < ls::math::fixed_cast<SL_WrapMode::fixed_type>(1u))
+        return (uvw >= ls::math::fixed_cast<SL_WrapMode::fixed_type, int>(0) && uvw < ls::math::fixed_cast<SL_WrapMode::fixed_type, int>(1))
             ? uvw
-            : ls::math::fixed_cast<SL_WrapMode::fixed_type>(-1u);
+            : ls::math::fixed_cast<SL_WrapMode::fixed_type, int>(-1);
     }
 
     constexpr LS_INLINE unsigned operator()(unsigned uvw, unsigned maxVal) const noexcept
@@ -100,7 +100,7 @@ struct SL_WrapModeRepeat
 
     constexpr LS_INLINE SL_WrapMode::fixed_type operator()(SL_WrapMode::fixed_type uvw) const noexcept
     {
-        return ls::math::clamp<SL_WrapMode::fixed_type>(uvw, SL_WrapMode::fixed_type{0u}, ls::math::fixed_cast<SL_WrapMode::fixed_type>(1u));
+        return ls::math::clamp<SL_WrapMode::fixed_type>(uvw, ls::math::fixed_cast<SL_WrapMode::fixed_type, int>(0), ls::math::fixed_cast<SL_WrapMode::fixed_type, int>(1));
     }
 
     constexpr LS_INLINE unsigned operator()(unsigned uvw, unsigned maxVal) const noexcept
