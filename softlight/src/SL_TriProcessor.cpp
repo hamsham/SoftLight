@@ -522,32 +522,11 @@ void SL_TriProcessor::push_bin(size_t primIndex, const SL_TransformedVert& a, co
         return;
     }
 
-    // Check if the output bin is full
-    uint_fast64_t binId;
-
-    // Attempt to grab a bin index. Flush the bins if they've filled up.
-    while (true)
-    {
-        binId = pLocks->count.fetch_add(1, std::memory_order_acq_rel);
-        if (LS_LIKELY(binId < SL_SHADER_MAX_BINNED_PRIMS))
-        {
-            break;
-        }
-
-        flush_rasterizer<SL_TriRasterizer>();
-    }
-
-    // place a triangle into the next available bin
-    SL_FragmentBin& bin = pFragBins[binId];
-    bin.mScreenCoords[0] = p0;
-    bin.mScreenCoords[1] = p1;
-    bin.mScreenCoords[2] = p2;
-
     // In case these formulas look unfamiliar, these are partial derivatives
     // used in the generation of barycentric coordinates. See the branch below
     // for the general formulas, and SL_TriRasterizer.cpp for their
     // application.
-    {
+    //{
         const math::vec2&& xy = math::vec2_cast(p0 - p1);
         const math::vec2&& zy = math::vec2_cast(p2 - p1);
         const math::mat4&& pt = math::transpose(math::mat4{
@@ -566,10 +545,32 @@ void SL_TriProcessor::push_bin(size_t primIndex, const SL_TransformedVert& a, co
         const math::vec4&& ddy = math::cross(math::vec4{1.f}, pt.m[0]);
         const math::vec4&& ddz = math::cross(pt.m[0], pt.m[1]);
 
+        // Check if the output bin is full
+        uint_fast64_t binId;
+
+        // Attempt to grab a bin index. Flush the bins if they've filled up.
+        do
+        {
+            binId = pLocks->count.fetch_add(1, std::memory_order_acq_rel);
+            if (LS_LIKELY(binId < SL_SHADER_MAX_BINNED_PRIMS))
+            {
+                break;
+            }
+
+            flush_rasterizer<SL_TriRasterizer>();
+        }
+        while (true);
+
+        // place a triangle into the next available bin
+        SL_FragmentBin& bin = pFragBins[binId];
+        bin.mScreenCoords[0] = p0;
+        bin.mScreenCoords[1] = p1;
+        bin.mScreenCoords[2] = p2;
+
         bin.mBarycentricCoords[0] = denom * ddx;
         bin.mBarycentricCoords[1] = denom * ddy;
         bin.mBarycentricCoords[2] = denom * ddz;
-    }
+    //}
 
     switch (numVaryings)
     {
