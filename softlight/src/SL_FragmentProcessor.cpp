@@ -414,32 +414,59 @@ void SL_FragmentProcessor::flush_tri_fragments(
     fragParams.pUniforms = pUniforms;
 
     const math::vec4* pPoints = bin.mScreenCoords;
-    uint_fast32_t i;
 
     // perspective correction
     #if defined(LS_X86_AVX)
-        const __m256 homogenous = _mm256_set_ps(0.f, pPoints[2][3], pPoints[1][3], pPoints[0][3], 0.f, pPoints[2][3], pPoints[1][3], pPoints[0][3]);
-        i = 0;
-        do
+        #if defined(LS_X86_AVX2)
+            const __m256 mask       = _mm256_castsi256_ps(_mm256_set_epi32(0, -1, -1, -1, 0, -1, -1, -1));
+            const __m256i idx       = _mm256_set_epi32(-1, 11, 7, 3, -1, 11, 7, 3);
+            const __m256 homogenous = _mm256_mask_i32gather_ps(_mm256_setzero_ps(), reinterpret_cast<const float*>(pPoints), idx, mask, sizeof(float));
+        #else
+            const __m256 homogenous = _mm256_set_ps(0.f, pPoints[2][3], pPoints[1][3], pPoints[0][3], 0.f, pPoints[2][3], pPoints[1][3], pPoints[0][3]);
+        #endif
+
+        for (uint_fast32_t i = 0; i < numQueuedFrags; i += 2)
         {
             float* const pBc = reinterpret_cast<float*>(outCoords->bc + i);
             const __m256 bc = _mm256_mul_ps(_mm256_load_ps(pBc), homogenous);
 
             // horizontal add
-            const __m256 a = _mm256_permute_ps(bc, 0xB1);
-            const __m256 b = _mm256_add_ps(bc, a);
-            const __m256 c = _mm256_permute_ps(b, 0x0F);
-            const __m256 d = _mm256_add_ps(c, b);
+            const __m256 a     = _mm256_permute_ps(bc, 0xB1);
+            const __m256 b     = _mm256_add_ps(bc, a);
+            const __m256 c     = _mm256_permute_ps(b, 0x0F);
+            const __m256 d     = _mm256_add_ps(c, b);
             const __m256 persp = _mm256_rcp_ps(d);
 
             _mm256_store_ps(pBc, _mm256_mul_ps(bc, persp));
-            i += 2;
         }
-        while (i < numQueuedFrags);
+
+    #elif defined(LS_ARM_NEON)
+        const float32x4_t homogenous = vld4q_f32(reinterpret_cast<const float*>(pPoints)).val[3];
+
+        for (uint_fast32_t i = 0; i < numQueuedFrags; ++i)
+        {
+            float* const pBc = reinterpret_cast<float*>(outCoords->bc + i);
+            const float32x4_t bc = vmulq_f32(vld1q_f32(pBc), homogenous);
+
+            // horizontal add
+            #if defined(LS_ARCH_AARCH64)
+                const float32x4_t a = vdupq_n_f32(vaddvq_f32(bc));
+                vst1q_f32(pBc, vdivq_f32(bc, a));
+            #else
+                const float32x4_t a     = vrev64q_f32(bc);
+                const float32x4_t b     = vaddq_f32(bc, a);
+                const float32x2_t c     = vdup_lane_f32(vget_high_f32(b), 3);
+                const float32x2_t d     = vadd_f32(vget_low_f32(b), c);
+                const float32x4_t e     = vdupq_lane_f32(d, 0);
+                const float32x4_t f     = vrecpeq_f32(e);
+                const float32x4_t persp = vmulq_f32(vrecpsq_f32(e, f), f);
+                vst1q_f32(pBc, vmulq_f32(bc, persp));
+            #endif
+        }
 
     #else
         const math::vec4 homogenous{pPoints[0][3], pPoints[1][3], pPoints[2][3], 0.f};
-        for (i = 0; i < numQueuedFrags; ++i)
+        for (uint_fast32_t i = 0; i < numQueuedFrags; ++i)
         {
             const math::vec4&& bc = outCoords->bc[i] * homogenous;
             const math::vec4&& persp = {math::sum_inv(bc)};
@@ -447,7 +474,7 @@ void SL_FragmentProcessor::flush_tri_fragments(
         }
     #endif
 
-    for (i = 0; i < numQueuedFrags; ++i)
+    for (uint_fast32_t i = 0; i < numQueuedFrags; ++i)
     {
         interpolate_tri_varyings(&outCoords->bc[i], numVaryings, bin.mVaryings, fragParams.pVaryings);
 

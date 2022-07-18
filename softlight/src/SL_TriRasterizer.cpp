@@ -1,11 +1,8 @@
 
-#include <iostream>
-
 #include "lightsky/setup/Api.h" // LS_IMPERATIVE
 
 #include "lightsky/utils/Assertions.h" // LS_DEBUG_ASSERT
 
-#include "lightsky/math/fixed.h"
 #include "lightsky/math/half.h"
 #include "lightsky/math/vec_utils.h"
 #include "lightsky/math/mat_utils.h"
@@ -540,6 +537,233 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* LS_RESTRICT_PTR de
             y += increment;
         }
         while (LS_UNLIKELY(y < bboxMaxY));
+
+        if (LS_LIKELY(0 < numQueuedFrags))
+        {
+            flush_tri_fragments<depth_type>(bin, numQueuedFrags, outCoords);
+        }
+    }
+}
+
+
+
+#elif defined(LS_ARM_NEON)
+
+
+
+inline LS_INLINE int32_t _sl_bbox_min_y(const int32x4_t& points) noexcept
+{
+    int32x2_t lo   = vget_low_s32(points);
+    int32x2_t hi   = vdup_lane_s32(vget_high_s32(points), 0);
+    int32x2_t min0 = vmin_s32(lo, hi);
+    int32x2_t min1 = vpmin_s32(min0, min0);
+    return vget_lane_s32(min1, 0);
+}
+
+
+
+inline LS_INLINE int32_t _sl_bbox_max_y(const int32x4_t& points) noexcept
+{
+    int32x2_t lo   = vget_low_s32(points);
+    int32x2_t hi   = vdup_lane_s32(vget_high_s32(points), 0);
+    int32x2_t max0 = vmax_s32(lo, hi);
+    int32x2_t max1 = vpmax_s32(max0, max0);
+    return vget_lane_s32(max1, 0);
+}
+
+
+
+inline LS_INLINE float32x4_t _sl_mul_vec4_mat4_ps(const float32x4_t& v, const float32x4x4_t& m) noexcept
+{
+    #if defined(LS_ARCH_AARCH64)
+        const float32x4_t aq = vmulq_f32(m.val[0], v);
+        const float32x4_t bq = vmulq_f32(m.val[1], v);
+        const float32x4_t cq = vmulq_f32(m.val[2], v);
+        const float32x4_t dq = vmulq_f32(m.val[3], v);
+
+        float32x4_t ret = vdupq_n_f32(vaddvq_f32(aq));
+        ret = vsetq_lane_f32(vaddvq_f32(bq), ret, 1);
+        ret = vsetq_lane_f32(vaddvq_f32(cq), ret, 2);
+        ret = vsetq_lane_f32(vaddvq_f32(dq), ret, 3);
+
+    #else
+        const float32x4_t aq = vmulq_f32(m.val[0], v);
+        const float32x4_t bq = vmulq_f32(m.val[1], v);
+        const float32x4_t cq = vmulq_f32(m.val[2], v);
+        const float32x4_t dq = vmulq_f32(m.val[3], v);
+
+        const float32x2_t ad = vadd_f32(vget_high_f32(aq), vget_low_f32(aq));
+        const float32x2_t bd = vadd_f32(vget_high_f32(bq), vget_low_f32(bq));
+        const float32x2_t cd = vadd_f32(vget_high_f32(cq), vget_low_f32(cq));
+        const float32x2_t dd = vadd_f32(vget_high_f32(dq), vget_low_f32(dq));
+
+        float32x4_t ret = vcombine_f32(vpadd_f32(ad, ad), vpadd_f32(cd, cd));
+        ret = vsetq_lane_f32(vget_lane_f32(vpadd_f32(bd, bd), 0), ret, 1);
+        ret = vsetq_lane_f32(vget_lane_f32(vpadd_f32(dd, dd), 0), ret, 3);
+
+    #endif
+
+    return ret;
+}
+
+
+
+inline LS_INLINE void _sl_vec4_outer_ps(const float32x4_t& v1, const float32x4_t& v2, float32x4x4_t& ret) noexcept
+{
+    #if defined(LS_ARCH_AARCH64)
+        ret.val[0] = vmulq_laneq_f32(v2, v1, 0);
+        ret.val[1] = vmulq_laneq_f32(v2, v1, 1);
+        ret.val[2] = vmulq_laneq_f32(v2, v1, 2);
+        ret.val[3] = vmulq_laneq_f32(v2, v1, 3);
+
+    #else
+        const float32x4_t a = vdupq_lane_f32(vget_low_f32(v1), 0);
+        const float32x4_t b = vdupq_lane_f32(vget_low_f32(v1), 1);
+        const float32x4_t c = vdupq_lane_f32(vget_high_f32(v1), 0);
+        const float32x4_t d = vdupq_lane_f32(vget_high_f32(v1), 1);
+        ret.val[0] = vmulq_f32(a, v2);
+        ret.val[1] = vmulq_f32(b, v2);
+        ret.val[2] = vmulq_f32(c, v2);
+        ret.val[3] = vmulq_f32(d, v2);
+    #endif
+}
+
+
+
+template <class DepthCmpFunc, typename depth_type>
+void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const noexcept
+{
+    constexpr DepthCmpFunc         depthCmpFunc;
+    const SL_BinCounter<uint32_t>* pBinIds = mBinIds;
+    const SL_FragmentBin* const    pBins   = mBins;
+    const uint32_t                 numBins = (uint32_t)mNumBins;
+
+    SL_FragCoord*     outCoords    = mQueues;
+    const int32_t     yOffset      = (int32_t)mThreadId;
+    const int32_t     increment    = (int32_t)mNumProcessors;
+    SL_ScanlineBounds scanline;
+
+    for (uint32_t i = 0; i < numBins; ++i)
+    {
+        const uint32_t binId = pBinIds[i].count;
+        const SL_FragmentBin& bin = pBins[binId];
+        unsigned numQueuedFrags = 0;
+
+        const float32x4x4_t points         = vld4q_f32(reinterpret_cast<const float*>(bin.mScreenCoords));
+        const int32x4_t     pointsY        = vcvtq_s32_f32(points.val[1]);
+        const int32_t       bboxMinY       = _sl_bbox_min_y(pointsY);
+        const int32_t       bboxMaxY       = _sl_bbox_max_y(pointsY);
+        const int32_t       scanLineOffset = sl_scanline_offset<int32_t>(increment, yOffset, bboxMinY);
+
+        int32_t y = bboxMinY + scanLineOffset;
+        if (LS_UNLIKELY(y >= bboxMaxY))
+        {
+            continue;
+        }
+
+        const float32x4_t depth = vsetq_lane_f32(0.f, points.val[2], 3);
+
+        scanline.init(points);
+
+        const float32x4x3_t bcClipSpace = {
+            vld1q_f32(reinterpret_cast<const float*>(bin.mBarycentricCoords + 0)),
+            vld1q_f32(reinterpret_cast<const float*>(bin.mBarycentricCoords + 1)),
+            vld1q_f32(reinterpret_cast<const float*>(bin.mBarycentricCoords + 2))
+        };
+
+        do
+        {
+            // calculate the bounds of the current scan-line
+            const float32x4_t yf = vdupq_n_f32((float)y);
+
+            // In this rasterizer, we're only rendering the absolute pixels
+            // contained within the triangle edges. However this will serve as a
+            // guard against any pixels we don't want to render.
+            int32x4_t xMin;
+            int32x4_t xMax;
+            scanline.step(yf, xMin, xMax);
+
+            if (LS_LIKELY(vgetq_lane_s32(vcltq_s32(xMin, xMax), 0)))
+            {
+                constexpr int32_t indices[4] = {0, 1, 2, 3};
+                const depth_type* pDepth = depthBuffer->texel_pointer<depth_type>((uint16_t)vgetq_lane_s32(xMin, 0), (uint16_t)y);
+                const float32x4_t bcY    = vmlaq_f32(bcClipSpace.val[2], bcClipSpace.val[1], yf);
+                int32x4_t         x4     = vaddq_s32(vld1q_s32(indices), xMin);
+                const int32x4_t   xMax4  = xMax;
+                const float32x4_t bcX    = vmulq_f32(bcClipSpace.val[0], vdupq_n_f32(4.f));
+
+                float32x4x4_t bc;
+                _sl_vec4_outer_ps(vcvtq_f32_s32(x4), bcClipSpace.val[0], bc);
+                bc.val[0] = vaddq_f32(bc.val[0], bcY);
+                bc.val[1] = vaddq_f32(bc.val[1], bcY);
+                bc.val[2] = vaddq_f32(bc.val[2], bcY);
+                bc.val[3] = vaddq_f32(bc.val[3], bcY);
+
+                do
+                {
+                    // calculate barycentric coordinates and perform a depth test
+                    const uint32x4_t  xBound     = vshrq_n_u32(vcltq_s32(x4, xMax4), 31);
+                    const float32x4_t d          = _sl_get_depth_texel4<depth_type>(pDepth).simd;
+                    const float32x4_t z          = _sl_mul_vec4_mat4_ps(depth, bc);
+                    const uint32x4_t  storeMask4 = vandq_u32(xBound, vreinterpretq_u32_f32(depthCmpFunc(z, d)));
+                    const uint32x2_t  boundsTest = vorr_u32(vget_low_u32(storeMask4), vget_high_u32(storeMask4));
+
+                    if (LS_LIKELY(vget_lane_u64(vreinterpret_u64_u32(boundsTest), 0) != 0))
+                    {
+                        const unsigned storeMask0 = numQueuedFrags;
+                        const unsigned storeMask1 = vgetq_lane_u32(storeMask4, 0) + storeMask0;
+                        const unsigned storeMask2 = vgetq_lane_u32(storeMask4, 1) + storeMask1;
+                        const unsigned storeMask3 = vgetq_lane_u32(storeMask4, 2) + storeMask2;
+
+                        {
+                            const int16x4x2_t xy16 = vtrn_s16(vmovn_s32(x4), vdup_n_s16((int16_t)y));
+                            const int32x4_t   xy32 = vcombine_s32(vreinterpret_s32_s16(xy16.val[0]), vreinterpret_s32_s16(xy16.val[1]));
+                            const int32x4x2_t xyz  = vtrnq_s32(xy32, vreinterpretq_s32_f32(z));
+                            const int64x2_t   xyz0 = vreinterpretq_s64_s32(xyz.val[0]);
+                            const int64x2_t   xyz1 = vreinterpretq_s64_s32(xyz.val[1]);
+
+                            vst1_s64(reinterpret_cast<int64_t*>(outCoords->coord+storeMask0), vget_low_s64(xyz0));
+                            vst1_s64(reinterpret_cast<int64_t*>(outCoords->coord+storeMask1), vget_high_s64(xyz0));
+                            vst1_s64(reinterpret_cast<int64_t*>(outCoords->coord+storeMask2), vget_low_s64(xyz1));
+                            vst1_s64(reinterpret_cast<int64_t*>(outCoords->coord+storeMask3), vget_high_s64(xyz1));
+                        }
+
+                        {
+                            vst1q_f32(reinterpret_cast<float*>(outCoords->bc+storeMask0), bc.val[0]);
+                            vst1q_f32(reinterpret_cast<float*>(outCoords->bc+storeMask1), bc.val[1]);
+                            vst1q_f32(reinterpret_cast<float*>(outCoords->bc+storeMask2), bc.val[2]);
+                            vst1q_f32(reinterpret_cast<float*>(outCoords->bc+storeMask3), bc.val[3]);
+                        }
+
+                        #if defined(LS_ARCH_AARCH64)
+                            numQueuedFrags += vaddvq_u32(storeMask4);
+                        #else
+                        {
+                            const uint32x2_t a = vadd_u32(vget_high_u32(storeMask4), vget_low_u32(storeMask4));
+                            numQueuedFrags += vget_lane_u32(vpadd_u32(a, a), 0);
+                        }
+                        #endif
+
+                        if (LS_UNLIKELY(numQueuedFrags > SL_SHADER_MAX_QUEUED_FRAGS - 4))
+                        {
+                            flush_tri_fragments<depth_type>(bin, numQueuedFrags, outCoords);
+                            numQueuedFrags = 0;
+                        }
+                    }
+
+                    pDepth += 4;
+                    bc.val[0] = vaddq_f32(bc.val[0], bcX);
+                    bc.val[1] = vaddq_f32(bc.val[1], bcX);
+                    bc.val[2] = vaddq_f32(bc.val[2], bcX);
+                    bc.val[3] = vaddq_f32(bc.val[3], bcX);
+                    x4 = vaddq_s32(x4, vdupq_n_s32(4));
+                }
+                while (vgetq_lane_s32(vcltq_s32(x4, xMax4), 0));
+            }
+
+            y += increment;
+        }
+        while (y < bboxMaxY);
 
         if (LS_LIKELY(0 < numQueuedFrags))
         {

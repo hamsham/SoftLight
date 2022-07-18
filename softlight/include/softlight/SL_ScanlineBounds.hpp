@@ -92,6 +92,15 @@ inline LS_INLINE void sl_sort_minmax(float32x4_t& a, float32x4_t& b)  noexcept
     b = vbslq_f32(mask, at, bt);
 }
 
+inline LS_INLINE void sl_sort_minmax(float32x2_t& a, float32x2_t& b)  noexcept
+{
+    const uint32x2_t mask = vdup_lane_u32(vclt_f32(a, b), 1);
+    const float32x2_t at = a;
+    const float32x2_t bt = b;
+    a = vbsl_f32(mask, bt, at);
+    b = vbsl_f32(mask, at, bt);
+}
+
 #endif
 
 
@@ -175,6 +184,58 @@ struct alignas(sizeof(float)*4) SL_ScanlineBounds
             _mm_store_ss(&p10xy, _mm_mul_ss(p1p0, _mm_movehdup_ps(r1r0)));
         #endif
     }
+
+
+
+    #if defined(LS_ARM_NEON)
+        inline void LS_INLINE init(const float32x4x4_t& points) noexcept
+        {
+            const float32x4x2_t pointsXY = vtrnq_f32(points.val[0], points.val[1]);
+            float32x2_t p0 = vget_low_f32(pointsXY.val[0]);
+            float32x2_t p1 = vget_high_f32(pointsXY.val[0]);
+            float32x2_t p2 = vget_low_f32(pointsXY.val[1]);
+
+            sl_sort_minmax(p0, p1);
+            sl_sort_minmax(p0, p2);
+            sl_sort_minmax(p1, p2);
+
+            v0y = vget_lane_f32(p0, 1);
+            v1y = vget_lane_f32(p1, 1);
+            v0x = vget_lane_f32(p0, 0);
+            v1x = vget_lane_f32(p1, 0);
+
+            #ifdef LS_ARCH_AARCH64
+                const float32x2_t p2p0 = vsub_f32(p2, p0);
+                const float32x2_t p2p1 = vsub_f32(p2, p1);
+                const float32x2_t p1p0 = vsub_f32(p1, p0);
+
+                float32x2_t r2p0 = vrecpe_f32(p2p0);
+                r2p0 = vmul_f32(vrecps_f32(p2p0, r2p0), r2p0);
+
+                p20y  = vget_lane_f32(r2p0, 1);
+                p20x  = vget_lane_f32(p2p0, 0);
+                p21xy = vget_lane_f32(vdiv_f32(p2p1, vrev64_f32(p2p1)), 0);
+                p10xy = vget_lane_f32(vdiv_f32(p1p0, vrev64_f32(p1p0)), 0);
+
+            #else
+                const float32x2_t p2p0 = vsub_f32(p2, p0);
+                const float32x2_t p2p1 = vsub_f32(p2, p1);
+                const float32x2_t p1p0 = vsub_f32(p1, p0);
+                float32x2_t r2p0 = vrecpe_f32(p2p0);
+                float32x2_t r2p1 = vrecpe_f32(p2p1);
+                float32x2_t r1p0 = vrecpe_f32(p1p0);
+
+                r2p0 = vmul_f32(vrecps_f32(p2p0, r2p0), r2p0);
+                r2p1 = vmul_f32(vrecps_f32(p2p1, r2p1), r2p1);
+                r1p0 = vmul_f32(vrecps_f32(p1p0, r1p0), r1p0);
+
+                p20y  = vget_lane_f32(r2p0, 1);
+                p20x  = vget_lane_f32(p2p0, 0);
+                p21xy = vget_lane_f32(vmul_f32(p2p1, vrev64_f32(r2p1)), 0);
+                p10xy = vget_lane_f32(vmul_f32(p1p0, vrev64_f32(r1p0)), 0);
+            #endif
+        }
+    #endif
 
     inline LS_INLINE void step(const float yf, int32_t& xMin, int32_t& xMax) const noexcept
     {
@@ -283,6 +344,32 @@ struct alignas(sizeof(float)*4) SL_ScanlineBounds
 
             xMin = _mm_cvtps_epi32(_mm_broadcastss_ps(_mm_min_ps(lo, hi)));
             xMax = _mm_cvtps_epi32(_mm_broadcastss_ps(_mm_max_ps(lo, hi)));
+        }
+
+    #elif defined(LS_ARM_NEON)
+        inline LS_INLINE void step(const float32x4_t& y, int32x4_t& xMin, int32x4_t& xMax) const noexcept
+        {
+            const float32x2_t yv         = vget_low_f32(y);
+            const float32x2_t v01        = vdup_n_f32(v0y);
+            const float32x2_t v11        = vdup_n_f32(v1y);
+            const float32x2_t p201       = vdup_n_f32(p20y);
+            const float32x2_t d0         = vsub_f32(yv, v01);
+            const float32x2_t d1         = vsub_f32(yv, v11);
+            const float32x2_t alpha      = vmul_f32(d0, p201);
+            const uint32x2_t  secondHalf = vreinterpret_u32_s32(vshr_n_s32(vreinterpret_s32_f32(d1), 31));
+
+            const float32x2_t v00   = vdup_n_f32(v0x);
+            const float32x2_t v10   = vdup_n_f32(v1x);
+            const float32x2_t p1001 = vdup_n_f32(p10xy);
+            const float32x2_t p200  = vdup_n_f32(p20x);
+            const float32x2_t p2101 = vdup_n_f32(p21xy);
+            const float32x2_t lo    = vmla_f32(v00, p200,  alpha);
+            const float32x2_t pdv0  = vmla_f32(v00, p1001, d0);
+            const float32x2_t pdv1  = vmla_f32(v10, p2101, d1);
+            const float32x2_t hi    = vbsl_f32(secondHalf, pdv1, pdv0);
+
+            xMin = vdupq_lane_f32(vcvt_s32_f32(vmin_f32(lo, hi)), 0);
+            xMax = vdupq_lane_f32(vcvt_s32_f32(vmax_f32(lo, hi)), 0);
         }
     #endif
 };
