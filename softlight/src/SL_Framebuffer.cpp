@@ -133,7 +133,7 @@ inline void assign_pixel<SL_ColorRGB1010102>(
 /*-------------------------------------
  * Place a single pixel onto a texture
 -------------------------------------*/
-#if defined(LS_ARCH_X86)
+#if defined(LS_X86_SSE2)
 template <>
 inline void assign_pixel<SL_ColorRGBA8>(
     uint16_t x,
