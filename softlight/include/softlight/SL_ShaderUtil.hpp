@@ -540,9 +540,9 @@ template <typename data_t>
 union alignas(16) SL_BinCounter
 {
     alignas(16) typename ls::setup::EnableIf<ls::setup::IsIntegral<data_t>::value, data_t>::type count;
-    unsigned char padding[16-sizeof(data_t)];
+    unsigned char padding[16];
 
-    static_assert(sizeof(count)+sizeof(padding) == 16, "Invalid structure alignment.");
+    static_assert(sizeof(padding) == 16, "Invalid structure alignment.");
 
     ~SL_BinCounter() noexcept {}
 
@@ -583,9 +583,9 @@ template <typename data_t>
 union alignas(64) SL_BinCounterAtomic
 {
     alignas(64) std::atomic<typename ls::setup::EnableIf<ls::setup::IsIntegral<data_t>::value, data_t>::type> count;
-    unsigned char padding[64-sizeof(data_t)];
+    unsigned char padding[64];
 
-    static_assert(sizeof(count)+sizeof(padding) == 64, "Invalid structure alignment.");
+    static_assert(sizeof(padding) == 64, "Invalid structure alignment.");
 
     ~SL_BinCounterAtomic() noexcept {}
 
@@ -655,8 +655,11 @@ struct alignas(sizeof(ls::math::vec4)*2) SL_FragmentBin
     // 8 bytes
     uint_fast64_t primIndex;
 
-    // 12 bytes of padding to reduce false-sharing
-    char padding[sizeof(ls::math::vec4)];
+    // 8 bytes
+    uint_fast64_t pad0;
+
+    // 16 bytes of padding to reduce false-sharing
+    ls::math::vec4 pad1;
 
     // 304 bytes = 2432 bits
 };
