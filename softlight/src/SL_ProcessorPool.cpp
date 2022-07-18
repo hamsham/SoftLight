@@ -215,16 +215,20 @@ void SL_ProcessorPool::wait() noexcept
                     ls::setup::cpu_yield();
                     ls::setup::cpu_yield();
                     ls::setup::cpu_yield();
+
                 case 8:
                     ls::setup::cpu_yield();
                     ls::setup::cpu_yield();
                     ls::setup::cpu_yield();
                     ls::setup::cpu_yield();
+
                 case 4:
                     ls::setup::cpu_yield();
                     ls::setup::cpu_yield();
+
                 case 2:
                     ls::setup::cpu_yield();
+
                 default:
                     ls::setup::cpu_yield();
             }
