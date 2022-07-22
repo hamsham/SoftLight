@@ -265,13 +265,21 @@ bool SL_SceneFilePreload::load(const std::string& filename, SL_SceneLoadOpts opt
     unsigned defaultFlags = SCENE_FILE_IMPORT_FLAGS;
     if (opts.genTangents)
     {
-        opts.genSmoothNormals = !(opts.genFlatNormals || opts.genSmoothNormals);
+        opts.genFlatNormals = false;
+        opts.genSmoothNormals = true;
         defaultFlags |= aiProcess_CalcTangentSpace;
     }
 
     if (opts.genFlatNormals)
     {
-        defaultFlags |= aiProcess_GenNormals;
+        if (!opts.genSmoothNormals)
+        {
+            defaultFlags |= aiProcess_GenNormals;
+        }
+        else
+        {
+            opts.genFlatNormals = false;
+        }
     }
 
     if (opts.genSmoothNormals)
@@ -1200,24 +1208,24 @@ bool SL_SceneFileLoader::import_bone_data(const aiMesh* const pMesh, unsigned ba
                 SL_BoneData newBone;
                 if (opts.packBoneIds)
                 {
-                    newBone.ids16    = math::vec4_t<uint16_t>{0, 0, 0, 0};
-                    newBone.ids16[0] = (int16_t)boneId;
+                    newBone.ids16 = math::vec4_t<uint16_t>{0, 0, 0, 0};
+                    newBone.ids16 = (int16_t)boneId;
                 }
                 else
                 {
-                    newBone.ids32    = math::vec4_t<uint32_t>{0, 0, 0, 0};
-                    newBone.ids32[0] = (int32_t)boneId;
+                    newBone.ids32 = math::vec4_t<uint32_t>{0, 0, 0, 0};
+                    newBone.ids32 = (int32_t)boneId;
                 }
 
                 if (opts.packBoneWeights)
                 {
                     newBone.weights16 = math::vec4_t<math::half>{math::half{0x00, 0x00}};
-                    newBone.weights16[0] = weight;
+                    newBone.weights16 = weight;
                 }
                 else
                 {
                     newBone.weights32 = math::vec4_t<float>{0.f, 0.f, 0.f, 0.f};
-                    newBone.weights32[0] = weight;
+                    newBone.weights32 = weight;
                 }
 
                 boneData[vertId] = newBone;
