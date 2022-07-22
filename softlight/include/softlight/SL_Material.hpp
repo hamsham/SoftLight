@@ -52,7 +52,7 @@ enum SL_MaterialStatus
 /**----------------------------------------------------------------------------
  * Material Type
 -----------------------------------------------------------------------------*/
-struct alignas(alignof(SL_ColorRGBAf)) SL_Material
+struct alignas(alignof(float)*4) SL_Material
 {
     const SL_Texture* pTextures[SL_MaterialProperty::SL_MATERIAL_MAX_TEXTURES];
 
