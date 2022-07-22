@@ -38,22 +38,11 @@ struct SL_ClearProcessor
 
 
 
-#if defined(LS_ARCH_X86)
-
-template <> void SL_ClearProcessor::clear_texture<SL_ColorRType<float>>(const SL_ColorRType<float>&) noexcept;
-
-template <> void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint8_t>>(const SL_ColorRGBAType<uint8_t>&) noexcept;
-template <> void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint32_t>>(const SL_ColorRGBAType<uint32_t>&) noexcept;
-template <> void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<float>>(const SL_ColorRGBAType<float>&) noexcept;
-
-#endif
-
-
-
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRType<uint8_t>>(const SL_ColorRType<uint8_t>&) noexcept;
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRType<uint16_t>>(const SL_ColorRType<uint16_t>&) noexcept;
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRType<uint32_t>>(const SL_ColorRType<uint32_t>&) noexcept;
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRType<uint64_t>>(const SL_ColorRType<uint64_t>&) noexcept;
+extern template void SL_ClearProcessor::clear_texture<SL_ColorRType<float>>(const SL_ColorRType<float>&) noexcept;
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRType<double>>(const SL_ColorRType<double>&) noexcept;
 
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRGType<uint8_t>>(const SL_ColorRGType<uint8_t>&) noexcept;
@@ -70,8 +59,11 @@ extern template void SL_ClearProcessor::clear_texture<SL_ColorRGBType<uint64_t>>
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRGBType<float>>(const SL_ColorRGBType<float>&) noexcept;
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRGBType<double>>(const SL_ColorRGBType<double>&) noexcept;
 
+extern template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint8_t>>(const SL_ColorRGBAType<uint8_t>&) noexcept;
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint16_t>>(const SL_ColorRGBAType<uint16_t>&) noexcept;
+extern template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint32_t>>(const SL_ColorRGBAType<uint32_t>&) noexcept;
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint64_t>>(const SL_ColorRGBAType<uint64_t>&) noexcept;
+extern template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<float>>(const SL_ColorRGBAType<float>&) noexcept;
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<double>>(const SL_ColorRGBAType<double>&) noexcept;
 
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRGB332>(const SL_ColorRGB332&) noexcept;
@@ -79,18 +71,6 @@ extern template void SL_ClearProcessor::clear_texture<SL_ColorRGB565>(const SL_C
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRGB5551>(const SL_ColorRGB5551&) noexcept;
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRGB4444>(const SL_ColorRGB4444&) noexcept;
 extern template void SL_ClearProcessor::clear_texture<SL_ColorRGB1010102>(const SL_ColorRGB1010102&) noexcept;
-
-
-
-#if !defined(LS_ARCH_X86)
-
-extern template void SL_ClearProcessor::clear_texture<SL_ColorRType<float>>(const SL_ColorRType<float>&) noexcept;
-
-extern template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint8_t>>(const SL_ColorRGBAType<uint8_t>&) noexcept;
-extern template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint32_t>>(const SL_ColorRGBAType<uint32_t>&) noexcept;
-extern template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<float>>(const SL_ColorRGBAType<float>&) noexcept;
-
-#endif
 
 
 

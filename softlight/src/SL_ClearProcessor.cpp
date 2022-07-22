@@ -1,6 +1,5 @@
 
-#include "lightsky/math/scalar_utils.h"
-#include "lightsky/math/fixed.h"
+#include "lightsky/utils/Copy.h"
 
 #include "softlight/SL_ClearProcesor.hpp"
 #include "softlight/SL_ShaderUtil.hpp"
@@ -24,99 +23,44 @@ namespace math = ls::math;
 template<class color_type>
 void SL_ClearProcessor::clear_texture(const color_type& inColor) noexcept
 {
+    size_t w = (size_t)mBackBuffer->width();
+    size_t h = (size_t)mBackBuffer->height();
+    size_t numBytes = w * h;
     size_t begin;
     size_t end;
 
-    sl_calc_indexed_parition<1, true>((size_t)mBackBuffer->width()*(size_t)mBackBuffer->height(), (size_t)mNumThreads, (size_t)mThreadId, begin, end);
-    color_type* pOutBuf = mBackBuffer->texel_pointer<color_type>(0, 0) + begin;
-    const color_type* pEnd = mBackBuffer->texel_pointer<color_type>(0, 0) + end;
+    sl_calc_indexed_parition2<1>(numBytes, (size_t)mNumThreads, (size_t)mThreadId, begin, end);
+    color_type* pOutBuf = (color_type*)mBackBuffer->data() + begin;
+    size_t count = end - begin;
 
-    while (LS_LIKELY(pOutBuf != pEnd))
+    LS_PREFETCH(pOutBuf, LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_NONTEMPORAL);
+
+    switch (sizeof(inColor))
     {
-        *pOutBuf++ = inColor;
+        case sizeof(uint8_t):
+            ls::utils::fast_memset(pOutBuf, *reinterpret_cast<const uint8_t*>(&inColor), count*sizeof(uint8_t));
+            break;
+
+        case sizeof(uint16_t):
+            ls::utils::fast_memset_2(pOutBuf, *reinterpret_cast<const uint16_t*>(&inColor), count*sizeof(uint16_t));
+            break;
+
+        case sizeof(uint32_t):
+            ls::utils::fast_memset_4(pOutBuf, *reinterpret_cast<const uint32_t*>(&inColor), count*sizeof(uint32_t));
+            break;
+
+        case sizeof(uint64_t):
+            ls::utils::fast_memset_8(pOutBuf, *reinterpret_cast<const uint64_t*>(&inColor), count*sizeof(uint64_t));
+            break;
+
+        default:
+            while (LS_LIKELY(count--))
+            {
+                *pOutBuf++ = inColor;
+            }
+            break;
     }
 }
-
-
-
-#if defined(LS_ARCH_X86)
-template <>
-void SL_ClearProcessor::clear_texture<SL_ColorRType<float>>(const SL_ColorRType<float>& c) noexcept
-{
-    const int32_t inColor = reinterpret_cast<const int32_t&>(c);
-    size_t begin;
-    size_t end;
-
-    sl_calc_indexed_parition<1, true>((size_t)mBackBuffer->width()*(size_t)mBackBuffer->height(), (size_t)mNumThreads, (size_t)mThreadId, begin, end);
-    int32_t* pOutBuf = mBackBuffer->texel_pointer<int32_t>(0, 0) + begin;
-    const int32_t* pEnd = mBackBuffer->texel_pointer<int32_t>(0, 0) + end;
-
-    while (LS_LIKELY(pOutBuf != pEnd))
-    {
-        _mm_stream_si32(pOutBuf++, inColor);
-    }
-}
-
-
-
-template <>
-void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint8_t>>(const SL_ColorRGBAType<uint8_t>& c) noexcept
-{
-    const int32_t inColor = reinterpret_cast<const int32_t&>(c);
-    size_t begin;
-    size_t end;
-
-    sl_calc_indexed_parition<1, true>((size_t)mBackBuffer->width()*(size_t)mBackBuffer->height(), (size_t)mNumThreads, (size_t)mThreadId, begin, end);
-    int32_t* pOutBuf = mBackBuffer->texel_pointer<int32_t>(0, 0) + begin;
-    const int32_t* pEnd = mBackBuffer->texel_pointer<int32_t>(0, 0) + end;
-
-    while (LS_LIKELY(pOutBuf != pEnd))
-    {
-        _mm_stream_si32(pOutBuf++, inColor);
-    }
-}
-
-
-
-
-template <>
-void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint32_t>>(const SL_ColorRGBAType<uint32_t>& c) noexcept
-{
-    const __m128i inColor = reinterpret_cast<const __m128i&>(c);
-    size_t begin;
-    size_t end;
-
-    sl_calc_indexed_parition<1, true>((size_t)mBackBuffer->width()*(size_t)mBackBuffer->height(), (size_t)mNumThreads, (size_t)mThreadId, begin, end);
-    __m128i* pOutBuf = mBackBuffer->texel_pointer<__m128i>(0, 0) + begin;
-    const __m128i* pEnd = mBackBuffer->texel_pointer<__m128i>(0, 0) + end;
-
-    while (LS_LIKELY(pOutBuf != pEnd))
-    {
-        _mm_stream_si128(pOutBuf++, inColor);
-    }
-}
-
-
-
-
-template <>
-void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<float>>(const SL_ColorRGBAType<float>& c) noexcept
-{
-    const __m128i inColor = reinterpret_cast<const __m128i&>(c);
-    size_t begin;
-    size_t end;
-
-    sl_calc_indexed_parition<1, true>((size_t)mBackBuffer->width()*(size_t)mBackBuffer->height(), (size_t)mNumThreads, (size_t)mThreadId, begin, end);
-    __m128i* pOutBuf = mBackBuffer->texel_pointer<__m128i>(0, 0) + begin;
-    const __m128i* pEnd = mBackBuffer->texel_pointer<__m128i>(0, 0) + end;
-
-    while (LS_LIKELY(pOutBuf != pEnd))
-    {
-        _mm_stream_si128(pOutBuf++, inColor);
-    }
-}
-
-#endif
 
 
 
@@ -124,6 +68,7 @@ template void SL_ClearProcessor::clear_texture<SL_ColorRType<uint8_t>>(const SL_
 template void SL_ClearProcessor::clear_texture<SL_ColorRType<uint16_t>>(const SL_ColorRType<uint16_t>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRType<uint32_t>>(const SL_ColorRType<uint32_t>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRType<uint64_t>>(const SL_ColorRType<uint64_t>&) noexcept;
+template void SL_ClearProcessor::clear_texture<SL_ColorRType<float>>(const SL_ColorRType<float>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRType<double>>(const SL_ColorRType<double>&) noexcept;
 
 template void SL_ClearProcessor::clear_texture<SL_ColorRGType<uint8_t>>(const SL_ColorRGType<uint8_t>&) noexcept;
@@ -140,8 +85,11 @@ template void SL_ClearProcessor::clear_texture<SL_ColorRGBType<uint64_t>>(const 
 template void SL_ClearProcessor::clear_texture<SL_ColorRGBType<float>>(const SL_ColorRGBType<float>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRGBType<double>>(const SL_ColorRGBType<double>&) noexcept;
 
+template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint8_t>>(const SL_ColorRGBAType<uint8_t>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint16_t>>(const SL_ColorRGBAType<uint16_t>&) noexcept;
+template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint32_t>>(const SL_ColorRGBAType<uint32_t>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint64_t>>(const SL_ColorRGBAType<uint64_t>&) noexcept;
+template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<float>>(const SL_ColorRGBAType<float>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<double>>(const SL_ColorRGBAType<double>&) noexcept;
 
 template void SL_ClearProcessor::clear_texture<SL_ColorRGB332>(const SL_ColorRGB332&) noexcept;
@@ -150,13 +98,6 @@ template void SL_ClearProcessor::clear_texture<SL_ColorRGB5551>(const SL_ColorRG
 template void SL_ClearProcessor::clear_texture<SL_ColorRGB4444>(const SL_ColorRGB4444&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRGB1010102>(const SL_ColorRGB1010102&) noexcept;
 
-#if !defined(LS_ARCH_X86)
-    template void SL_ClearProcessor::clear_texture<SL_ColorRType<float>>(const SL_ColorRType<float>&) noexcept;
-
-    template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint8_t>>(const SL_ColorRGBAType<uint8_t>&) noexcept;
-    template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint32_t>>(const SL_ColorRGBAType<uint32_t>&) noexcept;
-    template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<float>>(const SL_ColorRGBAType<float>&) noexcept;
-#endif
 
 
 /*-------------------------------------
