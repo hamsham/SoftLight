@@ -425,27 +425,31 @@ inline LS_INLINE SL_ClipStatus face_visible(
 --------------------------------------*/
 inline LS_INLINE math::vec4_t<size_t> get_next_vertex3(const SL_IndexBuffer* LS_RESTRICT_PTR pIbo, size_t vId) noexcept
 {
-    #if defined(LS_X86_SSE)
+    // IBO's are padded so we are always aligned to size()+sizeof(int)*4. This
+    // lets us avoid invalid reads at the end of a buffer.
+    #if defined(LS_X86_SSE2)
         union
         {
-            __m128 asNative;
+            __m128i asNative;
             math::vec4_t<unsigned char> asBytes;
             math::vec4_t<unsigned short> asShorts;
             math::vec4_t<unsigned int> asInts;
         } ids;
 
-        ids.asNative = _mm_loadu_ps(reinterpret_cast<const float*>(pIbo->element(vId)));
+        ids.asNative = _mm_loadu_si128(reinterpret_cast<const __m128i*>(pIbo->element(vId)));
 
-    #elif defined(LS_ARCH_ARM)
+    #elif defined(LS_ARM_NEON)
         union
         {
-            uint32x4_t asNative;
+            uint8x16_t asNative8;
+            uint16x8_t asNative16;
+            uint32x4_t asNative32;
             math::vec4_t<unsigned char> asBytes;
             math::vec4_t<unsigned short> asShorts;
             math::vec4_t<unsigned int> asInts;
         } ids;
 
-        ids.asNative = vld1q_u32(reinterpret_cast<const uint32_t*>(pIbo->element(vId)));
+        ids.asNative8 = vld1q_u8(reinterpret_cast<const uint8_t*>(pIbo->element(vId)));
 
     #else
         union
@@ -458,7 +462,7 @@ inline LS_INLINE math::vec4_t<size_t> get_next_vertex3(const SL_IndexBuffer* LS_
         ids = *reinterpret_cast<const decltype(ids)*>(pIbo->element(vId));
     #endif
 
-    #if defined(LS_X86_AVX2)
+    #if defined(LS_X86_AVX)
         static_assert(sizeof(math::vec4_t<size_t>) == sizeof(__m256i), "No available conversion from math::vec4_t<size_t> to __m256i.");
         union
         {
@@ -468,13 +472,53 @@ inline LS_INLINE math::vec4_t<size_t> get_next_vertex3(const SL_IndexBuffer* LS_
 
         switch (pIbo->type())
         {
-            case VERTEX_DATA_BYTE:  ret.simd = _mm256_cvtepi8_epi64(_mm_castps_si128(ids.asNative));  break;
-            case VERTEX_DATA_SHORT: ret.simd = _mm256_cvtepi16_epi64(_mm_castps_si128(ids.asNative)); break;
-            case VERTEX_DATA_INT:   ret.simd = _mm256_cvtepi32_epi64(_mm_castps_si128(ids.asNative));  break;
-            default:                LS_UNREACHABLE();
+            case VERTEX_DATA_BYTE:
+                ids.asNative = _mm_cvtepu8_epi16(ids.asNative);
+
+            case VERTEX_DATA_SHORT:
+                ids.asNative = _mm_cvtepu16_epi32(ids.asNative);
+
+            case VERTEX_DATA_INT:
+                _mm256_store_si256(&ret.simd, _mm256_cvtepu32_epi64(ids.asNative));
+                break;
+
+            default:
+                LS_UNREACHABLE();
         }
 
         return ret.u64;
+
+    #elif defined(LS_ARM_NEON)
+        static_assert(sizeof(math::vec4_t<size_t>) == sizeof(uint64x2x2_t), "No available conversion from math::vec4_t<size_t> to __m256i.");
+        union
+        {
+            uint64x2x2_t simd;
+            math::vec4_t<size_t> u64;
+        } ret;
+
+        uint64x2_t lo, hi;
+
+        switch (pIbo->type())
+        {
+            case VERTEX_DATA_BYTE:
+                ids.asNative16 = vmovl_u8(vget_low_u8(ids.asNative8));
+
+            case VERTEX_DATA_SHORT:
+                ids.asNative32 = vmovl_u16(vget_low_u16(ids.asNative16));
+
+            case VERTEX_DATA_INT:
+                lo = vmovl_u32(vget_low_u32(ids.asNative32));
+                hi = vmovl_u32(vget_high_u32(ids.asNative32));
+                break;
+
+            default:
+                LS_UNREACHABLE();
+        }
+
+        ret.simd.val[0] = lo;
+        ret.simd.val[1] = hi;
+        return ret.u64;
+
 
     #else
         switch (pIbo->type())
@@ -771,6 +815,7 @@ void SL_TriProcessor::clip_and_process_tris(
         p2.vert = newVerts[k];
         _copy_verts(numVarys, newVarys+(k*SL_SHADER_MAX_VARYING_VECTORS), p2.varyings);
 
+        // clipped Tri's are coplanar so we give them the same sort index.
         push_bin(primIndex, p0, p1, p2);
     }
 }
@@ -780,20 +825,20 @@ void SL_TriProcessor::clip_and_process_tris(
 /*--------------------------------------
  * Process Points
 --------------------------------------*/
+template <bool usingIndices>
 void SL_TriProcessor::process_verts(
     const SL_Mesh& m,
     size_t instanceId,
     const ls::math::mat4_t<float>& scissorMat,
     const ls::math::vec4_t<float>& viewportDims) noexcept
 {
-    SL_TransformedVert     pVert0;
-    SL_TransformedVert     pVert1;
-    SL_TransformedVert     pVert2;
-    const auto             vertShader   = mShader->pVertShader;
-    const SL_CullMode      cullMode     = mShader->pipelineState.cull_mode();
-    const SL_VertexArray&  vao          = mContext->vao(m.vaoId);
-    const SL_IndexBuffer*  pIbo         = vao.has_index_buffer() ? &mContext->ibo(vao.get_index_buffer()) : nullptr;
-    const int              usingIndices = (m.mode == RENDER_MODE_INDEXED_TRIANGLES) || (m.mode == RENDER_MODE_INDEXED_TRI_WIRE);
+    SL_TransformedVert    pVert0;
+    SL_TransformedVert    pVert1;
+    SL_TransformedVert    pVert2;
+    const auto            vertShader = mShader->pVertShader;
+    const SL_CullMode     cullMode   = mShader->pipelineState.cull_mode();
+    const SL_VertexArray& vao        = mContext->vao(m.vaoId);
+    const SL_IndexBuffer* pIbo       = vao.has_index_buffer() ? &mContext->ibo(vao.get_index_buffer()) : nullptr;
 
     SL_VertexParam params;
     params.pUniforms  = mShader->pUniforms;
@@ -801,12 +846,15 @@ void SL_TriProcessor::process_verts(
     params.pVao       = &vao;
     params.pVbo       = &mContext->vbo(vao.get_vertex_buffer());
 
+    const size_t numElements = m.elementEnd - m.elementBegin;
+    const size_t primOffset = numElements * instanceId;
+
     #if SL_VERTEX_CACHING_ENABLED
         size_t begin;
         size_t end;
         constexpr size_t step = 3;
 
-        sl_calc_indexed_parition<3, true>(m.elementEnd-m.elementBegin, mNumThreads, mThreadId, begin, end);
+        sl_calc_indexed_parition<3, true>(numElements, mNumThreads, mThreadId, begin, end);
         begin += m.elementBegin;
         end += m.elementBegin;
 
@@ -837,15 +885,15 @@ void SL_TriProcessor::process_verts(
         #else
             params.vertId    = vertId.v[0];
             params.pVaryings = pVert0.varyings;
-            pVert0.vert      = scissorMat * vertShader(params);
+            pVert0.vert      = vertShader(params);
 
             params.vertId    = vertId.v[1];
             params.pVaryings = pVert1.varyings;
-            pVert1.vert      = scissorMat * vertShader(params);
+            pVert1.vert      = vertShader(params);
 
             params.vertId    = vertId.v[2];
             params.pVaryings = pVert2.varyings;
-            pVert2.vert      = scissorMat * vertShader(params);
+            pVert2.vert      = vertShader(params);
         #endif
 
         if (LS_LIKELY(cullMode != SL_CULL_OFF))
@@ -865,17 +913,23 @@ void SL_TriProcessor::process_verts(
             }
         }
 
+        #if !SL_VERTEX_CACHING_ENABLED
+            pVert0.vert = scissorMat * pVert0.vert;
+            pVert1.vert = scissorMat * pVert1.vert;
+            pVert2.vert = scissorMat * pVert2.vert;
+        #endif
+
         // Clip-space culling
         const SL_ClipStatus visStatus = face_visible(pVert0.vert, pVert1.vert, pVert2.vert);
         if (visStatus == SL_CLIP_STATUS_FULLY_VISIBLE)
         {
             sl_perspective_divide3(pVert0.vert, pVert1.vert, pVert2.vert);
             sl_world_to_screen_coords_divided3(pVert0.vert, pVert1.vert, pVert2.vert, viewportDims);
-            push_bin(i*instanceId+i, pVert0, pVert1, pVert2);
+            push_bin(primOffset+i, pVert0, pVert1, pVert2);
         }
         else if (visStatus == SL_CLIP_STATUS_PARTIALLY_VISIBLE)
         {
-            clip_and_process_tris(i*instanceId+i, viewportDims, pVert0, pVert1, pVert2);
+            clip_and_process_tris(primOffset+i, viewportDims, pVert0, pVert1, pVert2);
         }
 
         #if SL_VERTEX_CACHING_ENABLED
@@ -886,6 +940,24 @@ void SL_TriProcessor::process_verts(
         #endif
     }
 }
+
+
+
+template void SL_TriProcessor::process_verts<true>(
+    const SL_Mesh&,
+    size_t,
+    const ls::math::mat4_t<float>&,
+    const ls::math::vec4_t<float>&
+) noexcept;
+
+
+
+template void SL_TriProcessor::process_verts<false>(
+    const SL_Mesh&,
+    size_t,
+    const ls::math::mat4_t<float>&,
+    const ls::math::vec4_t<float>&
+) noexcept;
 
 
 
@@ -910,14 +982,37 @@ void SL_TriProcessor::execute() noexcept
     {
         for (size_t i = 0; i < mNumMeshes; ++i)
         {
-            process_verts(mMeshes[i], 0, scissorMat, viewportDims);
+            const SL_Mesh& m = mMeshes[i];
+            const bool usingIndices = (m.mode == RENDER_MODE_INDEXED_TRIANGLES) || (m.mode == RENDER_MODE_INDEXED_TRI_WIRE);
+
+            if (usingIndices)
+            {
+                process_verts<true>(m, 0, scissorMat, viewportDims);
+            }
+            else
+            {
+                process_verts<false>(m, 0, scissorMat, viewportDims);
+            }
         }
     }
     else
     {
-        for (size_t i = 0; i < mNumInstances; ++i)
+        const SL_Mesh& m = mMeshes[0];
+        const bool usingIndices = (m.mode == RENDER_MODE_INDEXED_TRIANGLES) || (m.mode == RENDER_MODE_INDEXED_TRI_WIRE);
+
+        if (usingIndices)
         {
-            process_verts(mMeshes[0], i, scissorMat, viewportDims);
+            for (size_t i = 0; i < mNumInstances; ++i)
+            {
+                process_verts<true>(m, i, scissorMat, viewportDims);
+            }
+        }
+        else
+        {
+            for (size_t i = 0; i < mNumInstances; ++i)
+            {
+                process_verts<false>(m, i, scissorMat, viewportDims);
+            }
         }
     }
 
