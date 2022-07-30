@@ -21,26 +21,63 @@ class SL_ImgFile;
 
 
 /**----------------------------------------------------------------------------
+ * @brief Texture data container
+ *
+ * This class contains a basic wrapper of texture data. Memory management of
+ * internal data should be performed by the owner of a structure instance.
+-----------------------------------------------------------------------------*/
+struct alignas(sizeof(uint64_t)) SL_TextureView
+{
+    uint16_t width; // 2 bytes
+
+    uint16_t height; // 2 bytes
+
+    uint16_t depth; // 2 bytes
+
+    uint8_t bytesPerTexel; // 1 byte, NOT bits per texel
+
+    uint8_t numChannels; // 1 byte
+
+    alignas(alignof(uint64_t)) char* pTexels; // 4-8 bytes
+
+    SL_ColorDataType type; // 1 byte
+};
+
+
+
+/*-------------------------------------
+ * Reset a texture view
+-------------------------------------*/
+void sl_reset(SL_TextureView& view) noexcept;
+
+
+
+/*-------------------------------------
+ * Create a Texture view from pre-supplied data
+-------------------------------------*/
+void sl_texture_view_from_buffer(SL_TextureView& outView, uint16_t w, uint16_t h, uint16_t d, SL_ColorDataType type, void* pTexels) noexcept;
+
+
+
+/*-------------------------------------
+ * Create a Texture view from pre-supplied data
+-------------------------------------*/
+inline void sl_texture_view_from_buffer(SL_TextureView& outView, uint16_t w, uint16_t h, SL_ColorDataType type, void* pTexels) noexcept
+{
+    sl_texture_view_from_buffer(outView, w, h, 1, type, pTexels);
+}
+
+
+
+/**----------------------------------------------------------------------------
  * @brief Generic texture Class
  *
- * This class encodes textures using a Z-ordered curve.
+ * This class contains an owning reference to texture view data.
 -----------------------------------------------------------------------------*/
 class alignas(sizeof(uint64_t)) SL_Texture
 {
   private:
-    uint16_t mWidth; // 2 bytes
-
-    uint16_t mHeight; // 2 bytes
-
-    uint16_t mDepth; // 2 bytes
-
-    uint8_t mBytesPerTexel; // 1 byte
-
-    uint8_t mNumChannels; // 1 byte
-
-    alignas(alignof(uint64_t)) char* mTexels; // 4-8 bytes
-
-    SL_ColorDataType mType; // 1 byte
+    SL_TextureView mView;
 
   public:
     ~SL_Texture() noexcept;
@@ -66,6 +103,10 @@ class alignas(sizeof(uint64_t)) SL_Texture
 
     template <SL_TexelOrder order = SL_TexelOrder::ORDERED>
     ls::math::vec4_t<ptrdiff_t> map_coordinates(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept;
+
+    const SL_TextureView& view() const noexcept;
+
+    SL_TextureView& view() noexcept;
 
     uint16_t width() const noexcept;
 
@@ -148,7 +189,7 @@ class alignas(sizeof(uint64_t)) SL_Texture
 template <>
 inline LS_INLINE ptrdiff_t SL_Texture::map_coordinate<SL_TexelOrder::ORDERED>(uint_fast32_t x, uint_fast32_t y) const noexcept
 {
-    return (ptrdiff_t)(x + (uint_fast32_t)mWidth * y);
+    return (ptrdiff_t)(x + (uint_fast32_t)mView.width * y);
 }
 
 
@@ -156,7 +197,7 @@ inline LS_INLINE ptrdiff_t SL_Texture::map_coordinate<SL_TexelOrder::ORDERED>(ui
 template <>
 inline LS_INLINE ptrdiff_t SL_Texture::map_coordinate<SL_TexelOrder::SWIZZLED>(uint_fast32_t x, uint_fast32_t y) const noexcept
 {
-    return (ptrdiff_t)sl_swizzle_2d_index<SL_TEXELS_PER_CHUNK, SL_TEXEL_SHIFTS_PER_CHUNK>(x, y, mWidth);
+    return (ptrdiff_t)sl_swizzle_2d_index<SL_TEXELS_PER_CHUNK, SL_TEXEL_SHIFTS_PER_CHUNK>(x, y, mView.width);
 }
 
 
@@ -178,7 +219,7 @@ inline LS_INLINE ls::math::vec4_t<ptrdiff_t> SL_Texture::map_coordinates(uint_fa
 template <>
 inline LS_INLINE ptrdiff_t SL_Texture::map_coordinate<SL_TexelOrder::ORDERED>(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
 {
-    return (ptrdiff_t)(x + mWidth * (y + mHeight * z));
+    return (ptrdiff_t)(x + mView.width * (y + mView.height * z));
 }
 
 
@@ -186,7 +227,7 @@ inline LS_INLINE ptrdiff_t SL_Texture::map_coordinate<SL_TexelOrder::ORDERED>(ui
 template <>
 inline LS_INLINE ptrdiff_t SL_Texture::map_coordinate<SL_TexelOrder::SWIZZLED>(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
 {
-    return (ptrdiff_t)sl_swizzle_3d_index<SL_TEXELS_PER_CHUNK, SL_TEXEL_SHIFTS_PER_CHUNK>(x, y, z, mWidth, mHeight);
+    return (ptrdiff_t)sl_swizzle_3d_index<SL_TEXELS_PER_CHUNK, SL_TEXEL_SHIFTS_PER_CHUNK>(x, y, z, mView.width, mView.height);
 }
 
 
@@ -197,7 +238,7 @@ inline LS_INLINE ptrdiff_t SL_Texture::map_coordinate<SL_TexelOrder::SWIZZLED>(u
 template <>
 inline LS_INLINE ls::math::vec4_t<ptrdiff_t> SL_Texture::map_coordinates<SL_TexelOrder::ORDERED>(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
 {
-    return ls::math::vec4_t<ptrdiff_t>{0, 1, 2, 3} + x + mWidth * (y + mHeight * z);
+    return ls::math::vec4_t<ptrdiff_t>{0, 1, 2, 3} + x + mView.width * (y + mView.height * z);
 }
 
 
@@ -205,7 +246,7 @@ inline LS_INLINE ls::math::vec4_t<ptrdiff_t> SL_Texture::map_coordinates<SL_Texe
 template <>
 inline LS_INLINE ls::math::vec4_t<ptrdiff_t> SL_Texture::map_coordinates<SL_TexelOrder::SWIZZLED>(uint_fast32_t x, uint_fast32_t y, uint_fast32_t z) const noexcept
 {
-    const uint_fast32_t idsPerBlock = SL_TEXELS_PER_CHUNK * SL_TEXELS_PER_CHUNK * ((mDepth > 1) ? LS_ENUM_VAL(SL_TEXELS_PER_CHUNK) : 1);
+    const uint_fast32_t idsPerBlock = SL_TEXELS_PER_CHUNK * SL_TEXELS_PER_CHUNK * ((mView.depth > 1) ? LS_ENUM_VAL(SL_TEXELS_PER_CHUNK) : 1);
 
     const uint_fast32_t x0          = x+0u;
     const uint_fast32_t x1          = x+1u;
@@ -217,7 +258,7 @@ inline LS_INLINE ls::math::vec4_t<ptrdiff_t> SL_Texture::map_coordinates<SL_Texe
     const uint_fast32_t tileX3      = x3 >> SL_TEXEL_SHIFTS_PER_CHUNK;
     const uint_fast32_t tileY       = y >> SL_TEXEL_SHIFTS_PER_CHUNK;
     const uint_fast32_t tileZ       = z >> SL_TEXEL_SHIFTS_PER_CHUNK;
-    const uint_fast32_t tileShift   = (mWidth >> SL_TEXEL_SHIFTS_PER_CHUNK) * (tileY + ((mHeight >> SL_TEXEL_SHIFTS_PER_CHUNK) * tileZ));
+    const uint_fast32_t tileShift   = (mView.width >> SL_TEXEL_SHIFTS_PER_CHUNK) * (tileY + ((mView.height >> SL_TEXEL_SHIFTS_PER_CHUNK) * tileZ));
     const uint_fast32_t tileId0     = tileX0 + tileShift;
     const uint_fast32_t tileId1     = tileX1 + tileShift;
     const uint_fast32_t tileId2     = tileX2 + tileShift;
@@ -247,7 +288,7 @@ inline LS_INLINE ls::math::vec4_t<ptrdiff_t> SL_Texture::map_coordinates<SL_Texe
 -------------------------------------*/
 inline LS_INLINE uint16_t SL_Texture::width() const noexcept
 {
-    return mWidth;
+    return mView.width;
 }
 
 
@@ -257,7 +298,7 @@ inline LS_INLINE uint16_t SL_Texture::width() const noexcept
 -------------------------------------*/
 inline LS_INLINE uint16_t SL_Texture::height() const noexcept
 {
-    return mHeight;
+    return mView.height;
 }
 
 
@@ -267,7 +308,7 @@ inline LS_INLINE uint16_t SL_Texture::height() const noexcept
 -------------------------------------*/
 inline LS_INLINE uint16_t SL_Texture::depth() const noexcept
 {
-    return mDepth;
+    return mView.depth;
 }
 
 
@@ -277,7 +318,7 @@ inline LS_INLINE uint16_t SL_Texture::depth() const noexcept
 -------------------------------------*/
 inline LS_INLINE uint16_t SL_Texture::bpp() const noexcept
 {
-    return mBytesPerTexel;
+    return mView.bytesPerTexel;
 }
 
 
@@ -287,17 +328,17 @@ inline LS_INLINE uint16_t SL_Texture::bpp() const noexcept
 -------------------------------------*/
 inline LS_INLINE uint32_t SL_Texture::channels() const noexcept
 {
-    return (uint32_t)mNumChannels;
+    return (uint32_t)mView.numChannels;
 }
 
 
 
 /*-------------------------------------
- * Get the texture mType
+ * Get the texture mView.type
 -------------------------------------*/
 inline LS_INLINE SL_ColorDataType SL_Texture::type() const noexcept
 {
-    return mType;
+    return mView.type;
 }
 
 
@@ -307,7 +348,7 @@ inline LS_INLINE SL_ColorDataType SL_Texture::type() const noexcept
 -------------------------------------*/
 inline LS_INLINE const void* SL_Texture::data() const noexcept
 {
-    return mTexels;
+    return mView.pTexels;
 }
 
 
@@ -317,7 +358,7 @@ inline LS_INLINE const void* SL_Texture::data() const noexcept
 -------------------------------------*/
 inline LS_INLINE void* SL_Texture::data() noexcept
 {
-    return mTexels;
+    return mView.pTexels;
 }
 
 
@@ -329,7 +370,7 @@ template <SL_TexelOrder order>
 inline void SL_Texture::set_texel(uint16_t x, uint16_t y, uint16_t z, const void* pData) noexcept
 {
     ptrdiff_t index;
-    if (1 >= mDepth)
+    if (1 >= mView.depth)
     {
         index = map_coordinate<order>(x, y);
     }
@@ -338,9 +379,9 @@ inline void SL_Texture::set_texel(uint16_t x, uint16_t y, uint16_t z, const void
         index = map_coordinate<order>(x, y, z);
     }
 
-    const ptrdiff_t bpp    = mBytesPerTexel;
+    const ptrdiff_t bpp    = mView.bytesPerTexel;
     const ptrdiff_t offset = bpp * index;
-    char* const     pOut   = mTexels + offset;
+    char* const     pOut   = mView.pTexels + offset;
     const char*     pIn    = reinterpret_cast<const char*>(pData);
 
     for (ptrdiff_t i = 0; i < bpp; ++i)
@@ -365,7 +406,7 @@ void SL_Texture::set_texels(
     const void* pData) noexcept
 {
     const char* pSrc = reinterpret_cast<const char*>(pData);
-    const size_t bytesPerColor = mBytesPerTexel;
+    const size_t bytesPerColor = mView.bytesPerTexel;
 
     for (uint16_t k = 0, z0 = z; k < d; ++k, ++z0)
     {
@@ -390,7 +431,7 @@ void SL_Texture::set_texels(
 template <typename color_type>
 inline LS_INLINE const color_type SL_Texture::texel(ptrdiff_t index) const noexcept
 {
-    return reinterpret_cast<const color_type*>(mTexels)[index];
+    return reinterpret_cast<const color_type*>(mView.pTexels)[index];
 }
 
 
@@ -401,7 +442,7 @@ inline LS_INLINE const color_type SL_Texture::texel(ptrdiff_t index) const noexc
 template <typename color_type>
 inline LS_INLINE color_type& SL_Texture::texel(ptrdiff_t index) noexcept
 {
-    return reinterpret_cast<color_type*>(mTexels)[index];
+    return reinterpret_cast<color_type*>(mView.pTexels)[index];
 }
 
 
@@ -413,7 +454,7 @@ template <typename color_type, SL_TexelOrder order>
 inline LS_INLINE const color_type SL_Texture::texel(uint16_t x, uint16_t y) const noexcept
 {
     const ptrdiff_t index = map_coordinate<order>(x, y);
-    return reinterpret_cast<const color_type*>(mTexels)[index];
+    return reinterpret_cast<const color_type*>(mView.pTexels)[index];
 }
 
 
@@ -425,7 +466,7 @@ template <typename color_type, SL_TexelOrder order>
 inline LS_INLINE color_type& SL_Texture::texel(uint16_t x, uint16_t y) noexcept
 {
     const ptrdiff_t index = map_coordinate<order>(x, y);
-    return reinterpret_cast<color_type*>(mTexels)[index];
+    return reinterpret_cast<color_type*>(mView.pTexels)[index];
 }
 
 
@@ -437,7 +478,7 @@ template <typename color_type, SL_TexelOrder order>
 inline LS_INLINE const color_type SL_Texture::texel(uint16_t x, uint16_t y, uint16_t z) const noexcept
 {
     const ptrdiff_t index = map_coordinate<order>(x, y, z);
-    return reinterpret_cast<const color_type*>(mTexels)[index];
+    return reinterpret_cast<const color_type*>(mView.pTexels)[index];
 }
 
 
@@ -449,7 +490,7 @@ template <typename color_type, SL_TexelOrder order>
 inline LS_INLINE color_type& SL_Texture::texel(uint16_t x, uint16_t y, uint16_t z) noexcept
 {
     const ptrdiff_t index = map_coordinate<order>(x, y, z);
-    return reinterpret_cast<color_type*>(mTexels)[index];
+    return reinterpret_cast<color_type*>(mView.pTexels)[index];
 }
 
 
@@ -460,7 +501,7 @@ inline LS_INLINE color_type& SL_Texture::texel(uint16_t x, uint16_t y, uint16_t 
 template <typename color_type>
 inline LS_INLINE const color_type* SL_Texture::texel_pointer(ptrdiff_t index) const noexcept
 {
-    return reinterpret_cast<const color_type*>(mTexels) + index;
+    return reinterpret_cast<const color_type*>(mView.pTexels) + index;
 }
 
 
@@ -471,7 +512,7 @@ inline LS_INLINE const color_type* SL_Texture::texel_pointer(ptrdiff_t index) co
 template <typename color_type>
 inline LS_INLINE color_type* SL_Texture::texel_pointer(ptrdiff_t index) noexcept
 {
-    return reinterpret_cast<color_type*>(mTexels) + index;
+    return reinterpret_cast<color_type*>(mView.pTexels) + index;
 }
 
 
@@ -483,7 +524,7 @@ template <typename color_type, SL_TexelOrder order>
 inline LS_INLINE const color_type* SL_Texture::texel_pointer(uint16_t x, uint16_t y) const noexcept
 {
     const ptrdiff_t index = map_coordinate<order>(x, y);
-    return reinterpret_cast<const color_type*>(mTexels) + index;
+    return reinterpret_cast<const color_type*>(mView.pTexels) + index;
 }
 
 
@@ -495,7 +536,7 @@ template <typename color_type, SL_TexelOrder order>
 inline LS_INLINE color_type* SL_Texture::texel_pointer(uint16_t x, uint16_t y) noexcept
 {
     const ptrdiff_t index = map_coordinate<order>(x, y);
-    return reinterpret_cast<color_type*>(mTexels) + index;
+    return reinterpret_cast<color_type*>(mView.pTexels) + index;
 }
 
 
@@ -507,7 +548,7 @@ template <typename color_type, SL_TexelOrder order>
 inline LS_INLINE const color_type* SL_Texture::texel_pointer(uint16_t x, uint16_t y, uint16_t z) const noexcept
 {
     const ptrdiff_t index = map_coordinate<order>(x, y, z);
-    return reinterpret_cast<const color_type*>(mTexels) + index;
+    return reinterpret_cast<const color_type*>(mView.pTexels) + index;
 }
 
 
@@ -519,7 +560,7 @@ template <typename color_type, SL_TexelOrder order>
 inline LS_INLINE color_type* SL_Texture::texel_pointer(uint16_t x, uint16_t y, uint16_t z) noexcept
 {
     const ptrdiff_t index = map_coordinate<order>(x, y, z);
-    return reinterpret_cast<color_type*>(mTexels) + index;
+    return reinterpret_cast<color_type*>(mView.pTexels) + index;
 }
 
 
