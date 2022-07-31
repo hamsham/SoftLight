@@ -197,7 +197,7 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     retCode = fbo.attach_depth_buffer(texDepth.view());
     LS_ASSERT(retCode == 0);
 
-    constexpr std::array<size_t, 4> attachIds{0, 1, 2, 3};
+    constexpr std::array<unsigned, 4> attachIds{0, 1, 2, 3};
     constexpr std::array<SL_ColorRGBAd, 4> colors{
         SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0},
         SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0},
@@ -434,7 +434,7 @@ int main()
             viewMatrix.rotate(math::vec3{-0.5f*tickTime, 0.f, 0.f});
             viewMatrix.apply_transform();
 
-            constexpr std::array<size_t, 4> attachIds{0, 1, 2, 3};
+            constexpr std::array<unsigned, 4> attachIds{0, 1, 2, 3};
             constexpr std::array<SL_ColorRGBAd, 4> colors{
                 SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0},
                 SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0},

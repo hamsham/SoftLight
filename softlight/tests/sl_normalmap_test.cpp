@@ -348,7 +348,7 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     retCode = fbo.attach_depth_buffer(texDepth.view());
     LS_ASSERT(retCode == 0);
 
-    constexpr std::array<size_t, 2> attachIds{0, 1};
+    constexpr std::array<unsigned, 2> attachIds{0, 1};
     constexpr std::array<SL_ColorRGBAd, 2> colors{
         SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0},
         SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0}
@@ -502,7 +502,7 @@ int main()
             tickTime = timer.tick_time().count();
             secondsCounter += tickTime;
 
-            constexpr std::array<size_t, 2> attachIds{0, 1};
+            constexpr std::array<unsigned, 2> attachIds{0, 1};
             constexpr std::array<SL_ColorRGBAd, 2> colors{
                 SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0},
                 SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0}

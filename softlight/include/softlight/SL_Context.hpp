@@ -267,7 +267,7 @@ class SL_Context
     /*
      *
      */
-    void clear_color_buffer(size_t fboId, size_t attachmentId, const ls::math::vec4_t<double>& color) noexcept;
+    void clear_color_buffer(size_t fboId, unsigned attachmentId, const ls::math::vec4_t<double>& color) noexcept;
 
     /*
      *
@@ -277,22 +277,22 @@ class SL_Context
     /*
      *
      */
-    void clear_framebuffer(size_t fboId, size_t attachmentId, const ls::math::vec4_t<double>& color, double depth) noexcept;
+    void clear_framebuffer(size_t fboId, unsigned attachmentId, const ls::math::vec4_t<double>& color, double depth) noexcept;
 
     /*
      *
      */
-    void clear_framebuffer(size_t fboId, const std::array<size_t, 2>& bufferIndices, const std::array<ls::math::vec4_t<double>, 2>& colors, double depth) noexcept;
+    void clear_framebuffer(size_t fboId, const std::array<unsigned, 2>& bufferIndices, const std::array<ls::math::vec4_t<double>, 2>& colors, double depth) noexcept;
 
     /*
      *
      */
-    void clear_framebuffer(size_t fboId, const std::array<size_t, 3>& bufferIndices, const std::array<ls::math::vec4_t<double>, 3>& colors, double depth) noexcept;
+    void clear_framebuffer(size_t fboId, const std::array<unsigned, 3>& bufferIndices, const std::array<ls::math::vec4_t<double>, 3>& colors, double depth) noexcept;
 
     /*
      *
      */
-    void clear_framebuffer(size_t fboId, const std::array<size_t, 4>& bufferIndices, const std::array<ls::math::vec4_t<double>, 4>& colors, double depth) noexcept;
+    void clear_framebuffer(size_t fboId, const std::array<unsigned, 4>& bufferIndices, const std::array<ls::math::vec4_t<double>, 4>& colors, double depth) noexcept;
 
     /*
      *
