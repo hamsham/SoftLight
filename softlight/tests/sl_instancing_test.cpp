@@ -391,7 +391,7 @@ int main()
     utils::Pointer<SL_SceneGraph>   pGraph{std::move(create_context())};
     utils::Pointer<bool[]>          pKeySyms{new bool[65536]};
 
-    std::fill_n(pKeySyms.get(), 1024, false);
+    std::fill_n(pKeySyms.get(), 65536, false);
 
     SL_Context& context = pGraph->mContext;
 
