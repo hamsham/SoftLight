@@ -491,31 +491,33 @@ void SL_TriRasterizer::render_triangle_simd(const SL_TextureView& LS_RESTRICT_PT
 
                 if (LS_LIKELY(depthTest))
                 {
-                    const unsigned storeMask1  = (unsigned)_mm_popcnt_u32((unsigned)depthTest & 0x01u) + numQueuedFrags;
-                    const unsigned storeMask2  = (unsigned)_mm_popcnt_u32((unsigned)depthTest & 0x03u) + numQueuedFrags;
-                    const unsigned storeMask3  = (unsigned)_mm_popcnt_u32((unsigned)depthTest & 0x07u) + numQueuedFrags;
-                    const unsigned rasterCount = (unsigned)_mm_popcnt_u32((unsigned)depthTest & 0x0Fu);
+                    _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + numQueuedFrags), bc[0]);
 
-                    {
-                        _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + numQueuedFrags), bc[0]);
-                        _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + storeMask1),     bc[1]);
-                        _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + storeMask2),     bc[2]);
-                        _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + storeMask3),     bc[3]);
-                    }
+                    const unsigned storeMask1 = ((unsigned)depthTest & 0x01u) + numQueuedFrags;
+                    _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + storeMask1), bc[1]);
+
+                    const unsigned storeMask2 = (unsigned)_mm_popcnt_u32((unsigned)depthTest & 0x03u) + numQueuedFrags;
+                    _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + storeMask2), bc[2]);
+
+                    const unsigned storeMask3 = (unsigned)_mm_popcnt_u32((unsigned)depthTest & 0x07u) + numQueuedFrags;
+                    _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + storeMask3), bc[3]);
 
                     {
                         //const __m128 xy = _mm_castsi128_ps(_mm_or_si128(_mm_and_si128(x4, _mm_set1_epi32(0x0000FFFF)), _mm_slli_epi32(_mm_set1_epi32(y), 16)));
                         const __m128i xy   = _mm_or_si128(x4, _mm_set1_epi32(y16));
-                        const __m128i xyz0 = _mm_unpacklo_epi32(xy, _mm_castps_si128(z));
-                        const __m128i xyz1 = _mm_unpackhi_epi32(xy, _mm_castps_si128(z));
 
+                        const __m128i xyz0 = _mm_unpacklo_epi32(xy, _mm_castps_si128(z));
                         _mm_storel_pi(reinterpret_cast<__m64*>(outCoords->coord + numQueuedFrags), _mm_castsi128_ps(xyz0));
                         _mm_storeh_pi(reinterpret_cast<__m64*>(outCoords->coord + storeMask1),     _mm_castsi128_ps(xyz0));
+
+                        const __m128i xyz1 = _mm_unpackhi_epi32(xy, _mm_castps_si128(z));
                         _mm_storel_pi(reinterpret_cast<__m64*>(outCoords->coord + storeMask2),     _mm_castsi128_ps(xyz1));
                         _mm_storeh_pi(reinterpret_cast<__m64*>(outCoords->coord + storeMask3),     _mm_castsi128_ps(xyz1));
                     }
 
+                    const unsigned rasterCount = (unsigned)_mm_popcnt_u32((unsigned)depthTest & 0x0Fu);
                     numQueuedFrags += rasterCount;
+                    
                     if (LS_UNLIKELY(numQueuedFrags > SL_SHADER_MAX_QUEUED_FRAGS - 4))
                     {
                         flush_tri_fragments<depth_type>(bin, numQueuedFrags, outCoords);
