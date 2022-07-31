@@ -58,19 +58,19 @@
 #endif /* SL_BENCHMARK_SCENE */
 
 #ifndef SL_COMPRESSED_RGB565
-    #define SL_COMPRESSED_RGB565 1
+    #define SL_COMPRESSED_RGB565 0
 #endif /* SL_COMPRESSED_RGB565 */
 
 #ifndef SL_COMPRESSED_RGB5551
-    #define SL_COMPRESSED_RGB5551 1
+    #define SL_COMPRESSED_RGB5551 0
 #endif /* SL_COMPRESSED_RGB5551 */
 
 #ifndef SL_COMPRESSED_RGB4444
-    #define SL_COMPRESSED_RGB4444 1
+    #define SL_COMPRESSED_RGB4444 0
 #endif /* SL_COMPRESSED_RGB4444 */
 
 #ifndef SL_COMPRESSED_RGB1010102
-    #define SL_COMPRESSED_RGB1010102 1
+    #define SL_COMPRESSED_RGB1010102 0
 #endif /* SL_COMPRESSED_RGB1010102 */
 
 namespace math = ls::math;
@@ -656,6 +656,7 @@ void render_scene(SL_SceneGraph* pGraph, unsigned w, unsigned h, const math::mat
     }
 
     SDL_UnlockTexture(pBackbuffer);
+    context.framebuffer(0).attach_color_buffer(0, context.texture(0).view());
 }
 
 
