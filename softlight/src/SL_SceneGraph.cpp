@@ -999,8 +999,6 @@ size_t SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
     const std::size_t baseNodeId = mNodes.size();
     SL_Context&       inContext  = inGraph.mContext;
 
-    SL_AlignedVector<SL_Mesh>& inMeshes = inGraph.mMeshes;
-
     for (size_t& parentId : inGraph.mNodeParentIds)
     {
         parentId += parentId == SCENE_NODE_ROOT_ID ? 0 : baseNodeId;
@@ -1027,14 +1025,9 @@ size_t SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
             n.dataId += mNumNodeMeshes.size();
         }
     }
+
     std::move(inGraph.mNodes.begin(), inGraph.mNodes.end(), std::back_inserter(mNodes));
     inGraph.mNodes.clear();
-
-    for (SL_Mesh& inMesh : inMeshes)
-    {
-        inMesh.vaoId += baseVaoId;
-        inMesh.materialId += (uint32_t)baseMatId;
-    }
 
     std::move(inGraph.mNodeNames.begin(), inGraph.mNodeNames.end(), std::back_inserter(mNodeNames));
     inGraph.mNodeNames.clear();
@@ -1048,8 +1041,14 @@ size_t SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
     std::move(inGraph.mModelMatrices.begin(), inGraph.mModelMatrices.end(), std::back_inserter(mModelMatrices));
     inGraph.mModelMatrices.clear();
 
-    std::move(inMeshes.begin(), inMeshes.end(), std::back_inserter(mMeshes));
-    inMeshes.clear();
+    for (SL_Mesh& inMesh : inGraph.mMeshes)
+    {
+        inMesh.vaoId += baseVaoId;
+        inMesh.materialId += (uint32_t)baseMatId;
+    }
+
+    std::move(inGraph.mMeshes.begin(), inGraph.mMeshes.end(), std::back_inserter(mMeshes));
+    inGraph.mMeshes.clear();
 
     std::move(inGraph.mMaterials.begin(), inGraph.mMaterials.end(), std::back_inserter(mMaterials));
     inGraph.mMaterials.clear();
