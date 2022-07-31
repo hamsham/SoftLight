@@ -25,11 +25,11 @@ class SL_IndexBuffer;
 struct SL_Mesh;
 struct SL_Shader;
 class SL_Texture;
+struct SL_TextureView;
 class SL_UniformBuffer;
 class SL_VertexArray;
 class SL_VertexBuffer;
 struct SL_VertexShader;
-class SL_WindowBuffer;
 
 
 
@@ -247,13 +247,13 @@ class SL_Context
     /*
      *
      */
-    void blit(SL_WindowBuffer& buffer, size_t textureId) noexcept;
+    void blit(SL_TextureView& buffer, size_t textureId) noexcept;
 
     /*
      *
      */
     void blit(
-        SL_WindowBuffer& buffer,
+        SL_TextureView& buffer,
         size_t textureId,
         uint16_t srcX0,
         uint16_t srcY0,

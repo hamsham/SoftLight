@@ -163,10 +163,10 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     retCode = fbo.reserve_color_buffers(1);
     LS_ASSERT(retCode == 0);
 
-    retCode = fbo.attach_color_buffer(0, tex);
+    retCode = fbo.attach_color_buffer(0, tex.view());
     LS_ASSERT(retCode == 0);
 
-    retCode = fbo.attach_depth_buffer(depth);
+    retCode = fbo.attach_depth_buffer(depth.view());
     LS_ASSERT(retCode == 0);
 
     fbo.clear_color_buffers();

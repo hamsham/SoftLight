@@ -34,12 +34,11 @@ void SL_LineRasterizer::render_line(const SL_FragmentBin& bin, SL_Framebuffer* f
     const float        z1            = screenCoord1[2];
     const math::vec2&& sc0           = math::vec2_cast(screenCoord0);
     const math::vec2&& sc1           = math::vec2_cast(screenCoord1);
-
     const math::vec4&& p0            = math::vec4_cast(sc0, 0.f, 0.f);
     math::vec2         clipCoords[2] = {sc0, sc1};
     const float        dist          = math::inversesqrt(math::length_squared(sc1-sc0));
-    const SL_Texture*  depthBuf      = fbo->get_depth_buffer();
 
+    const SL_TextureView& depthBuf = fbo->get_depth_buffer();
     constexpr DepthCmpFunc depthCmp = {};
 
     SL_FragCoord* outCoords = mQueues;
@@ -62,7 +61,8 @@ void SL_LineRasterizer::render_line(const SL_FragmentBin& bin, SL_Framebuffer* f
             const float interp   = currLen * dist;
             const float z        = math::mix(z0, z1, interp);
 
-            if (!depthCmp(z, (float)depthBuf->texel<depth_type>(x, y)))
+            const depth_type d = ((depth_type*)depthBuf.pTexels)[x + depthBuf.width * y];
+            if (!depthCmp(z, (float)d))
             {
                 return;
             }
@@ -127,7 +127,7 @@ template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, double>(const SL_F
 template <class DepthCmpFunc>
 void SL_LineRasterizer::dispatch_bins() noexcept
 {
-    const uint16_t depthBpp = mFbo->get_depth_buffer()->bpp();
+    const uint16_t depthBpp = mFbo->get_depth_buffer().bytesPerTexel;
 
     if (depthBpp == sizeof(math::half))
     {

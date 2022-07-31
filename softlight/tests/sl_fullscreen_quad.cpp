@@ -423,10 +423,10 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
         retCode = fboYcocg.reserve_color_buffers(1);
         LS_ASSERT(retCode == 0);
 
-        retCode = fboYcocg.attach_color_buffer(0, tex);
+        retCode = fboYcocg.attach_color_buffer(0, tex.view());
         LS_ASSERT(retCode == 0);
 
-        retCode = fboYcocg.attach_depth_buffer(depth);
+        retCode = fboYcocg.attach_depth_buffer(depth.view());
         LS_ASSERT(retCode == 0);
 
         fboYcocg.clear_color_buffers();
@@ -454,10 +454,10 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
         retCode = fboRgb.reserve_color_buffers(1);
         LS_ASSERT(retCode == 0);
 
-        retCode = fboRgb.attach_color_buffer(0, tex);
+        retCode = fboRgb.attach_color_buffer(0, tex.view());
         LS_ASSERT(retCode == 0);
 
-        retCode = fboRgb.attach_depth_buffer(depth);
+        retCode = fboRgb.attach_depth_buffer(depth.view());
         LS_ASSERT(retCode == 0);
 
         fboRgb.clear_color_buffers();
@@ -704,7 +704,7 @@ int main()
 
             mesh_test_render(pGraph.get(), projMatrix, viewMatrix.transform(), useEdgeFilter);
 
-            context.blit(*pRenderBuf, 3);
+            context.blit(pRenderBuf->texture().view(), 3);
             pWindow->render(*pRenderBuf);
 
             ++numFrames;

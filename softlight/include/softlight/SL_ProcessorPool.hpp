@@ -36,7 +36,7 @@ class SL_Framebuffer;
 struct SL_Mesh;
 struct SL_Shader;
 struct SL_ShaderProcessor;
-class SL_Texture;
+struct SL_TextureView;
 
 
 
@@ -100,8 +100,8 @@ class SL_ProcessorPool
     void clear_fragment_bins() noexcept;
 
     void run_blit_processors(
-        const SL_Texture* inTex,
-        SL_Texture* outTex,
+        const SL_TextureView* inTex,
+        SL_TextureView* outTex,
         uint16_t srcX0,
         uint16_t srcY0,
         uint16_t srcX1,
@@ -113,8 +113,8 @@ class SL_ProcessorPool
     ) noexcept;
 
     void run_blit_compressed_processors(
-        const SL_Texture* inTex,
-        SL_Texture* outTex,
+        const SL_TextureView* inTex,
+        SL_TextureView* outTex,
         uint16_t srcX0,
         uint16_t srcY0,
         uint16_t srcX1,
@@ -125,15 +125,15 @@ class SL_ProcessorPool
         uint16_t dstY1
     ) noexcept;
 
-    void run_clear_processors(const void* inColor, SL_Texture* outTex) noexcept;
+    void run_clear_processors(const void* inColor, SL_TextureView* outTex) noexcept;
 
-    void run_clear_processors(const void* inColor, const void* depth, SL_Texture* colorBuf, SL_Texture* depthBuf) noexcept;
+    void run_clear_processors(const void* inColor, const void* depth, SL_TextureView* colorBuf, SL_TextureView* depthBuf) noexcept;
 
-    void run_clear_processors(const std::array<const void*, 2>& inColors, const void* depth, const std::array<SL_Texture*, 2>& colorBufs, SL_Texture* depthBuf) noexcept;
+    void run_clear_processors(const std::array<const void*, 2>& inColors, const void* depth, const std::array<SL_TextureView*, 2>& colorBufs, SL_TextureView* depthBuf) noexcept;
 
-    void run_clear_processors(const std::array<const void*, 3>& inColors, const void* depth, const std::array<SL_Texture*, 3>& colorBufs, SL_Texture* depthBuf) noexcept;
+    void run_clear_processors(const std::array<const void*, 3>& inColors, const void* depth, const std::array<SL_TextureView*, 3>& colorBufs, SL_TextureView* depthBuf) noexcept;
 
-    void run_clear_processors(const std::array<const void*, 4>& inColors, const void* depth, const std::array<SL_Texture*, 4>& colorBufs, SL_Texture* depthBuf) noexcept;
+    void run_clear_processors(const std::array<const void*, 4>& inColors, const void* depth, const std::array<SL_TextureView*, 4>& colorBufs, SL_TextureView* depthBuf) noexcept;
 };
 
 

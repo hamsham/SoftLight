@@ -23,14 +23,14 @@ namespace math = ls::math;
 template<class color_type>
 void SL_ClearProcessor::clear_texture(const color_type& inColor) noexcept
 {
-    size_t w = (size_t)mBackBuffer->width();
-    size_t h = (size_t)mBackBuffer->height();
+    size_t w = (size_t)mBackBuffer->width;
+    size_t h = (size_t)mBackBuffer->height;
     size_t numBytes = w * h;
     size_t begin;
     size_t end;
 
     sl_calc_indexed_parition2<1>(numBytes, (size_t)mNumThreads, (size_t)mThreadId, begin, end);
-    color_type* pOutBuf = (color_type*)mBackBuffer->data() + begin;
+    color_type* pOutBuf = (color_type*)mBackBuffer->pTexels + begin;
     size_t count = end - begin;
 
     LS_PREFETCH(pOutBuf, LS_PREFETCH_ACCESS_RW, LS_PREFETCH_LEVEL_NONTEMPORAL);
@@ -105,7 +105,7 @@ template void SL_ClearProcessor::clear_texture<SL_ColorRGB1010102>(const SL_Colo
 -------------------------------------*/
 void SL_ClearProcessor::execute() noexcept
 {
-    switch (mBackBuffer->type())
+    switch (mBackBuffer->type)
     {
         case SL_COLOR_R_8U:       clear_texture<SL_ColorRType<uint8_t>>(*reinterpret_cast<const SL_ColorRType<uint8_t>*>(mTexture));     break;
         case SL_COLOR_R_16U:      clear_texture<SL_ColorRType<uint16_t>>(*reinterpret_cast<const SL_ColorRType<uint16_t>*>(mTexture));    break;

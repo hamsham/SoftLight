@@ -9,7 +9,7 @@
 
 
 
-class SL_Texture;
+struct SL_TextureView;
 
 
 
@@ -25,7 +25,7 @@ struct SL_ClearProcessor
 
     // 64-128 bits
     const void* mTexture;
-    SL_Texture* mBackBuffer;
+    SL_TextureView* mBackBuffer;
 
     // 96-160 bits total, 12-20 bytes
 

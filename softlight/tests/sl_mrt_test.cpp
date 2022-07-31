@@ -182,19 +182,19 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     retCode = fbo.reserve_color_buffers(4);
     LS_ASSERT(retCode == 0);
 
-    retCode = fbo.attach_color_buffer(0, texRgb);
+    retCode = fbo.attach_color_buffer(0, texRgb.view());
     LS_ASSERT(retCode == 0);
 
-    retCode = fbo.attach_color_buffer(1, texPos);
+    retCode = fbo.attach_color_buffer(1, texPos.view());
     LS_ASSERT(retCode == 0);
 
-    retCode = fbo.attach_color_buffer(2, texUv);
+    retCode = fbo.attach_color_buffer(2, texUv.view());
     LS_ASSERT(retCode == 0);
 
-    retCode = fbo.attach_color_buffer(3, texNorm);
+    retCode = fbo.attach_color_buffer(3, texNorm.view());
     LS_ASSERT(retCode == 0);
 
-    retCode = fbo.attach_depth_buffer(texDepth);
+    retCode = fbo.attach_depth_buffer(texDepth.view());
     LS_ASSERT(retCode == 0);
 
     constexpr std::array<size_t, 4> attachIds{0, 1, 2, 3};
@@ -288,39 +288,39 @@ void mesh_test_render(SL_SceneGraph* pGraph, const math::mat4& projectionMat, co
 /*-----------------------------------------------------------------------------
  * Handle blitting to the backbuffer
 -----------------------------------------------------------------------------*/
-void blit_backbuffer(SL_WindowBuffer* backBuffer, SL_Context& context, unsigned colorId) noexcept
+void blit_backbuffer(SL_TextureView& backBuffer, SL_Context& context, unsigned colorId) noexcept
 {
     if (colorId < 5)
     {
-        context.blit(*backBuffer, colorId);
+        context.blit(backBuffer, colorId);
         return;
     }
 
-    const uint16_t w = (uint16_t)backBuffer->width();
-    const uint16_t h = (uint16_t)backBuffer->height();
-    const uint16_t w2 = (uint16_t)(backBuffer->width() / 2);
-    const uint16_t h2 = (uint16_t)(backBuffer->height() / 2);
+    const uint16_t w = (uint16_t)backBuffer.width;
+    const uint16_t h = (uint16_t)backBuffer.height;
+    const uint16_t w2 = (uint16_t)(backBuffer.width / 2);
+    const uint16_t h2 = (uint16_t)(backBuffer.height / 2);
 
     context.blit(
-        *backBuffer, 1,
+        backBuffer, 1,
         0, 0, w,  h,
         0, 0, w2, h2
     );
 
     context.blit(
-        *backBuffer, 2,
+        backBuffer, 2,
         0,  0, w, h,
         w2, 0, w, h2
     );
 
     context.blit(
-        *backBuffer, 3,
+        backBuffer, 3,
         0, 0,  w,  h,
         0, h2, w2, h
     );
 
     context.blit(
-        *backBuffer, 4,
+        backBuffer, 4,
         0,  0,  w, h,
         w2, h2, w, h
     );
@@ -445,7 +445,7 @@ int main()
 
             mesh_test_render(pGraph.get(), projMatrix, viewMatrix.transform());
 
-            blit_backbuffer(pRenderBuf, context, activeColor);
+            blit_backbuffer(pRenderBuf->texture().view(), context, activeColor);
             pWindow->render(*pRenderBuf);
 
             ++numFrames;

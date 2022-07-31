@@ -23,6 +23,18 @@ namespace
 
 
 /*-------------------------------------
+ * Extract a pointer to a texel
+-------------------------------------*/
+template <typename color_type>
+inline LS_INLINE color_type* _sl_fbo_view_pointer(SL_TextureView& view, uint16_t x, uint16_t y) noexcept
+{
+    color_type* pData = reinterpret_cast<color_type*>(view.pTexels);
+    return (color_type*)&pData[x + view.width * y];
+}
+
+
+
+/*-------------------------------------
  * Place a single pixel onto a texture
 -------------------------------------*/
 template <typename color_type>
@@ -30,13 +42,13 @@ inline void assign_pixel(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* LS_RESTRICT_PTR pTexture) noexcept
+    SL_TextureView& pTexture) noexcept
 {
     // texture objects will truncate excess color components
     typedef typename color_type::value_type ConvertedType;
 
     // Get a reference to the source texel
-    void* const outTexel = pTexture->texel_pointer<color_type>(x, y);
+    void* const outTexel = _sl_fbo_view_pointer<color_type>(pTexture, x, y);
     const ls::math::vec4_t<ConvertedType>&& c = color_cast<ConvertedType, float>(rgba);
 
     // Should be optimized by the compiler
@@ -73,10 +85,10 @@ inline void assign_pixel<SL_ColorRGB332>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* LS_RESTRICT_PTR pTexture) noexcept
+    SL_TextureView& pTexture) noexcept
 {
     // Get a reference to the source texel
-    SL_ColorRGB332* const outTexel = pTexture->texel_pointer<SL_ColorRGB332>(x, y);
+    SL_ColorRGB332* const outTexel = _sl_fbo_view_pointer<SL_ColorRGB332>(pTexture, x, y);
     *outTexel = rgba_cast<SL_ColorRGB332, float>(rgba);
 }
 
@@ -85,10 +97,10 @@ inline void assign_pixel<SL_ColorRGB565>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* LS_RESTRICT_PTR pTexture) noexcept
+    SL_TextureView& pTexture) noexcept
 {
     // Get a reference to the source texel
-    SL_ColorRGB565* const outTexel = pTexture->texel_pointer<SL_ColorRGB565>(x, y);
+    SL_ColorRGB565* const outTexel = _sl_fbo_view_pointer<SL_ColorRGB565>(pTexture, x, y);
     *outTexel = rgba_cast<SL_ColorRGB565, float>(rgba);
 }
 
@@ -97,10 +109,10 @@ inline void assign_pixel<SL_ColorRGB5551>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* LS_RESTRICT_PTR pTexture) noexcept
+    SL_TextureView& pTexture) noexcept
 {
     // Get a reference to the source texel
-    SL_ColorRGB5551* const outTexel = pTexture->texel_pointer<SL_ColorRGB5551>(x, y);
+    SL_ColorRGB5551* const outTexel = _sl_fbo_view_pointer<SL_ColorRGB5551>(pTexture, x, y);
     *outTexel = rgba_cast<SL_ColorRGB5551, float>(rgba);
 }
 
@@ -109,10 +121,10 @@ inline void assign_pixel<SL_ColorRGB4444>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* LS_RESTRICT_PTR pTexture) noexcept
+    SL_TextureView& pTexture) noexcept
 {
     // Get a reference to the source texel
-    SL_ColorRGB4444* const outTexel = pTexture->texel_pointer<SL_ColorRGB4444>(x, y);
+    SL_ColorRGB4444* const outTexel = _sl_fbo_view_pointer<SL_ColorRGB4444>(pTexture, x, y);
     *outTexel = rgba_cast<SL_ColorRGB4444, float>(rgba);
 }
 
@@ -121,10 +133,10 @@ inline void assign_pixel<SL_ColorRGB1010102>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* LS_RESTRICT_PTR pTexture) noexcept
+    SL_TextureView& pTexture) noexcept
 {
     // Get a reference to the source texel
-    SL_ColorRGB1010102* const outTexel = pTexture->texel_pointer<SL_ColorRGB1010102>(x, y);
+    SL_ColorRGB1010102* const outTexel = _sl_fbo_view_pointer<SL_ColorRGB1010102>(pTexture, x, y);
     *outTexel = rgba_cast<SL_ColorRGB1010102, float>(rgba);
 }
 
@@ -139,10 +151,10 @@ inline void assign_pixel<SL_ColorRGBA8>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* LS_RESTRICT_PTR pTexture) noexcept
+    SL_TextureView& pTexture) noexcept
 {
     // Get a reference to the source texel
-    int32_t* const  outTexel = pTexture->texel_pointer<int32_t>(x, y);
+    int32_t* const  outTexel = _sl_fbo_view_pointer<int32_t>(pTexture, x, y);
     SL_ColorRGBA8&& inTexel  = color_cast<uint8_t, float>(rgba);
 
     _mm_stream_si32(outTexel, reinterpret_cast<int32_t&>(inTexel));
@@ -156,13 +168,13 @@ inline void assign_pixel<SL_ColorRGBA16>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* LS_RESTRICT_PTR pTexture) noexcept
+    SL_TextureView& pTexture) noexcept
 {
     // Get a reference to the source texel
 
     // MSVConly supports __m64 on 32-bit builds
     #if defined(LS_COMPILER_MSC) && LS_ARCH_X86 >= 64
-        __int64* const outTexel = pTexture->texel_pointer<__int64>(x, y);
+        __int64* const outTexel = _sl_fbo_view_pointer<__int64>(pTexture, x, y);
 
         union
         {
@@ -172,7 +184,7 @@ inline void assign_pixel<SL_ColorRGBA16>(
     
         _mm_stream_si64(outTexel, inTexel.scalar);
     #else
-        __m64* const outTexel = pTexture->texel_pointer<__m64>(x, y);
+        __m64* const outTexel = _sl_fbo_view_pointer<__m64>(pTexture, x, y);
     
         union
         {
@@ -192,10 +204,10 @@ inline void assign_pixel<SL_ColorRGBAf>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* LS_RESTRICT_PTR pTexture) noexcept
+    SL_TextureView& pTexture) noexcept
 {
     // Get a reference to the source texel
-    SL_ColorRGBAf* const outTexel = pTexture->texel_pointer<SL_ColorRGBAf>(x, y);
+    SL_ColorRGBAf* const outTexel = _sl_fbo_view_pointer<SL_ColorRGBAf>(pTexture, x, y);
 
     _mm_stream_ps(reinterpret_cast<float*>(outTexel), _mm_load_ps(&rgba));
 }
@@ -208,10 +220,10 @@ inline void assign_pixel<SL_ColorRGBA8>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* LS_RESTRICT_PTR pTexture) noexcept
+    SL_TextureView& pTexture) noexcept
 {
     // Get a reference to the source texel
-    uint32_t* const outTexel = pTexture->texel_pointer<uint32_t>(x, y);
+    uint32_t* const outTexel = _sl_fbo_view_pointer<uint32_t>(pTexture, x, y);
 
     #if defined(LS_ARCH_AARCH64)
         const uint32x4_t color32 = vcvtq_u32_f32(vmulq_n_f32(rgba.simd, 255.f));
@@ -230,10 +242,10 @@ inline void assign_pixel<SL_ColorRGBA16>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* LS_RESTRICT_PTR pTexture) noexcept
+    SL_TextureView& pTexture) noexcept
 {
     // Get a reference to the source texel
-    int64_t* const outTexel = pTexture->texel_pointer<int64_t>(x, y);
+    int64_t* const outTexel = _sl_fbo_view_pointer<int64_t>(pTexture, x, y);
 
     #if defined(LS_ARCH_AARCH64)
         const uint32x4_t color32 = vcvtq_u32_f32(vmulq_n_f32(rgba.simd, 65536.f));
@@ -256,7 +268,7 @@ inline void assign_alpha_pixel(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* LS_RESTRICT_PTR pTexture,
+    SL_TextureView& pTexture,
     const SL_BlendMode blendMode) noexcept
 {
     typedef typename color_type::value_type ConvertedType;
@@ -265,7 +277,7 @@ inline void assign_alpha_pixel(
     const SL_ColorRGBAType<ConvertedType>&& maxRGBA = SL_ColorLimits<ConvertedType, SL_ColorRGBAType>::max();
 
     // Get a reference to the source texel
-    color_type* const outTexel = pTexture->texel_pointer<color_type>(x, y);
+    color_type* const outTexel = _sl_fbo_view_pointer<color_type>(pTexture, x, y);
 
     // sample the source texel
     union DestColor
@@ -356,11 +368,11 @@ inline void assign_alpha_pixel<SL_ColorRGB332>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* LS_RESTRICT_PTR pTexture,
+    SL_TextureView& pTexture,
     const SL_BlendMode blendMode) noexcept
 {
     // Get a reference to the source texel
-    SL_ColorRGB332* const outTexel = pTexture->texel_pointer<SL_ColorRGB332>(x, y);
+    SL_ColorRGB332* const outTexel = _sl_fbo_view_pointer<SL_ColorRGB332>(pTexture, x, y);
 
     // sample the source texel
     SL_ColorRGBAType<float> s = rgba;
@@ -400,11 +412,11 @@ inline void assign_alpha_pixel<SL_ColorRGB565>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* LS_RESTRICT_PTR pTexture,
+    SL_TextureView& pTexture,
     const SL_BlendMode blendMode) noexcept
 {
     // Get a reference to the source texel
-    SL_ColorRGB565* const outTexel = pTexture->texel_pointer<SL_ColorRGB565>(x, y);
+    SL_ColorRGB565* const outTexel = _sl_fbo_view_pointer<SL_ColorRGB565>(pTexture, x, y);
 
     // sample the source texel
     SL_ColorRGBAType<float> s = rgba;
@@ -444,11 +456,11 @@ inline void assign_alpha_pixel<SL_ColorRGB5551>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* LS_RESTRICT_PTR pTexture,
+    SL_TextureView& pTexture,
     const SL_BlendMode blendMode) noexcept
 {
     // Get a reference to the source texel
-    SL_ColorRGB5551* const outTexel = pTexture->texel_pointer<SL_ColorRGB5551>(x, y);
+    SL_ColorRGB5551* const outTexel = _sl_fbo_view_pointer<SL_ColorRGB5551>(pTexture, x, y);
 
     // sample the source texel
     SL_ColorRGBAType<float> s = rgba;
@@ -488,11 +500,11 @@ inline void assign_alpha_pixel<SL_ColorRGB4444>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* LS_RESTRICT_PTR pTexture,
+    SL_TextureView& pTexture,
     const SL_BlendMode blendMode) noexcept
 {
     // Get a reference to the source texel
-    SL_ColorRGB4444* const outTexel = pTexture->texel_pointer<SL_ColorRGB4444>(x, y);
+    SL_ColorRGB4444* const outTexel = _sl_fbo_view_pointer<SL_ColorRGB4444>(pTexture, x, y);
 
     // sample the source texel
     SL_ColorRGBAType<float> s = rgba;
@@ -532,11 +544,11 @@ inline void assign_alpha_pixel<SL_ColorRGB1010102>(
     uint16_t x,
     uint16_t y,
     const math::vec4& rgba,
-    SL_Texture* LS_RESTRICT_PTR pTexture,
+    SL_TextureView& pTexture,
     const SL_BlendMode blendMode) noexcept
 {
     // Get a reference to the source texel
-    SL_ColorRGB1010102* const outTexel = pTexture->texel_pointer<SL_ColorRGB1010102>(x, y);
+    SL_ColorRGB1010102* const outTexel = _sl_fbo_view_pointer<SL_ColorRGB1010102>(pTexture, x, y);
 
     // sample the source texel
     SL_ColorRGBAType<float> s = rgba;
@@ -586,7 +598,6 @@ inline void assign_alpha_pixel<SL_ColorRGB1010102>(
 SL_Framebuffer::~SL_Framebuffer() noexcept
 {
     terminate();
-    delete [] mColors;
 }
 
 
@@ -596,19 +607,10 @@ SL_Framebuffer::~SL_Framebuffer() noexcept
 -------------------------------------*/
 SL_Framebuffer::SL_Framebuffer() noexcept :
     mNumColors{0},
-    mColors{nullptr},
-    mDepth{nullptr}
-{}
-
-
-
-/*-------------------------------------
- *
--------------------------------------*/
-SL_Framebuffer::SL_Framebuffer(const SL_Framebuffer& r) noexcept :
-    SL_Framebuffer{}
+    mColors{},
+    mDepth{}
 {
-    *this = r;
+    terminate();
 }
 
 
@@ -616,15 +618,36 @@ SL_Framebuffer::SL_Framebuffer(const SL_Framebuffer& r) noexcept :
 /*-------------------------------------
  *
 -------------------------------------*/
-SL_Framebuffer::SL_Framebuffer(SL_Framebuffer&& f) noexcept :
-    mNumColors{f.mNumColors},
-    mColors{f.mColors},
-    mDepth{f.mDepth}
+SL_Framebuffer::SL_Framebuffer(const SL_Framebuffer& f) noexcept
 {
-    f.mNumColors = 0;
-    f.mColors = nullptr;
-    f.mDepth = nullptr;
+    mNumColors = f.mNumColors;
 
+    for (unsigned i = 0; i < (unsigned)SL_FboLimits::SL_FBO_MAX_COLOR_ATTACHMENTS; ++i)
+    {
+        mColors[i] = f.mColors[i];
+    }
+
+    mDepth = f.mDepth;
+}
+
+
+
+/*-------------------------------------
+ *
+-------------------------------------*/
+SL_Framebuffer::SL_Framebuffer(SL_Framebuffer&& f) noexcept
+{
+    mNumColors = f.mNumColors;
+    f.mNumColors = 0;
+
+    for (unsigned i = 0; i < mNumColors; ++i)
+    {
+        mColors[i] = f.mColors[i];
+        sl_reset(f.mColors[i]);
+    }
+
+    mDepth = f.mDepth;
+    sl_reset(f.mDepth);
 }
 
 
@@ -643,22 +666,15 @@ SL_Framebuffer& SL_Framebuffer::operator=(const SL_Framebuffer& f) noexcept
 
     if (f.mNumColors)
     {
-        SL_Texture** pTextures = new SL_Texture*[f.mNumColors];
-
-        if (!*pTextures)
-        {
-            return *this;
-        }
-
-        for (uint64_t i = 0; i < f.mNumColors; ++i)
-        {
-            pTextures[i] = f.mColors[i];
-        }
-
         mNumColors = f.mNumColors;
-        mColors = pTextures;
-        mDepth = f.mDepth;
+
+        for (unsigned i = 0; i < (unsigned)SL_FboLimits::SL_FBO_MAX_COLOR_ATTACHMENTS; ++i)
+        {
+            mColors[i] = f.mColors[i];
+        }
     }
+
+    mDepth = f.mDepth;
 
     return *this;
 }
@@ -680,11 +696,17 @@ SL_Framebuffer& SL_Framebuffer::operator=(SL_Framebuffer&& f) noexcept
     mNumColors = f.mNumColors;
     f.mNumColors = 0;
 
-    mColors = f.mColors;
-    f.mColors = nullptr;
+    if (mNumColors)
+    {
+        for (unsigned i = 0; i < mNumColors; ++i)
+        {
+            mColors[i] = f.mColors[i];
+            sl_reset(f.mColors[i]);
+        }
+    }
 
     mDepth = f.mDepth;
-    f.mDepth = nullptr;
+    sl_reset(f.mDepth);
 
     return *this;
 }
@@ -694,45 +716,26 @@ SL_Framebuffer& SL_Framebuffer::operator=(SL_Framebuffer&& f) noexcept
 /*-------------------------------------
  *
 -------------------------------------*/
-int SL_Framebuffer::reserve_color_buffers(uint64_t numColorBuffers) noexcept
+int SL_Framebuffer::reserve_color_buffers(unsigned numColorBuffers) noexcept
 {
     if (numColorBuffers == mNumColors)
     {
         return 0;
     }
 
-    if (numColorBuffers > 0)
+    if (numColorBuffers < (unsigned)SL_FboLimits::SL_FBO_MIN_COLOR_ATTACHMENTS)
     {
-        const uint64_t numNewColors = math::min(mNumColors, numColorBuffers);
-        SL_Texture** pNewBuffer = new SL_Texture*[numColorBuffers];
-
-        if (!pNewBuffer)
-        {
-            return -1;
-        }
-
-        for (uint64_t i = 0; i < numColorBuffers; ++i)
-        {
-            pNewBuffer[i] = nullptr;
-        }
-
-        // keep old textures
-        if (mColors)
-        {
-            for (uint64_t i = 0; i < numNewColors; ++i)
-            {
-                pNewBuffer[i] = mColors[i];
-            }
-
-            delete [] mColors;
-        }
-
-        mColors = pNewBuffer;
+        return -1;
     }
-    else
+
+    if (numColorBuffers > (unsigned)SL_FboLimits::SL_FBO_MAX_COLOR_ATTACHMENTS)
     {
-        delete [] mColors;
-        mColors = nullptr;
+        return -2;
+    }
+
+    for (unsigned i = 0; i < (unsigned)SL_FboLimits::SL_FBO_MAX_COLOR_ATTACHMENTS; ++i)
+    {
+        sl_reset(mColors[i]);
     }
 
     mNumColors = numColorBuffers;
@@ -745,24 +748,14 @@ int SL_Framebuffer::reserve_color_buffers(uint64_t numColorBuffers) noexcept
 /*-------------------------------------
  *
 -------------------------------------*/
-int SL_Framebuffer::attach_color_buffer(uint64_t index, SL_Texture& t) noexcept
+int SL_Framebuffer::attach_color_buffer(unsigned index, SL_TextureView& t) noexcept
 {
     if (index >= mNumColors)
     {
         return -1;
     }
 
-    if (mColors == nullptr)
-    {
-        return -2;
-    }
-
-    if (mColors[index] != nullptr)
-    {
-        return -3;
-    }
-
-    mColors[index] = &t;
+    mColors[index] = t;
 
     return 0;
 }
@@ -772,17 +765,16 @@ int SL_Framebuffer::attach_color_buffer(uint64_t index, SL_Texture& t) noexcept
 /*-------------------------------------
  *
 -------------------------------------*/
-SL_Texture* SL_Framebuffer::detach_color_buffer(uint64_t index) noexcept
+int SL_Framebuffer::detach_color_buffer(unsigned index) noexcept
 {
-    SL_Texture* pTexture = nullptr;
-
-    if (index < mNumColors)
+    if (index >= mNumColors)
     {
-        pTexture = mColors[index];
-        mColors[index] = nullptr;
+        return -1;
     }
 
-    return pTexture;
+    sl_reset(mColors[index]);
+
+    return 0;
 }
 
 
@@ -794,12 +786,12 @@ void SL_Framebuffer::clear_color_buffers() noexcept
 {
     for (uint64_t i = 0; i < mNumColors; ++i)
     {
-        SL_Texture* const pTex = mColors[i];
+        SL_TextureView& pTex = mColors[i];
 
-        if (pTex->data())
+        if (pTex.pTexels)
         {
-            const uint64_t numBytes = pTex->bpp() * pTex->width() * pTex->height() * pTex->depth();
-            ls::utils::fast_memset(pTex->data(), 0, numBytes);
+            const uint64_t numBytes = pTex.bytesPerTexel * pTex.width * pTex.height * pTex.depth;
+            ls::utils::fast_memset(pTex.pTexels, 0, numBytes);
         }
     }
 }
@@ -809,26 +801,9 @@ void SL_Framebuffer::clear_color_buffers() noexcept
 /*-------------------------------------
  *
 -------------------------------------*/
-int SL_Framebuffer::attach_depth_buffer(SL_Texture& d) noexcept
+int SL_Framebuffer::attach_depth_buffer(SL_TextureView& d) noexcept
 {
-    if (mDepth != nullptr)
-    {
-        return -1;
-    }
-
-    switch (d.type())
-    {
-        case SL_ColorDataType::SL_COLOR_R_16U:
-        case SL_ColorDataType::SL_COLOR_R_FLOAT:
-        case SL_ColorDataType::SL_COLOR_R_DOUBLE:
-            break;
-
-        default:
-            return -2;
-    }
-
-    mDepth = &d;
-
+    mDepth = d;
     return 0;
 }
 
@@ -837,11 +812,10 @@ int SL_Framebuffer::attach_depth_buffer(SL_Texture& d) noexcept
 /*-------------------------------------
  *
 -------------------------------------*/
-SL_Texture* SL_Framebuffer::detach_depth_buffer() noexcept
+int SL_Framebuffer::detach_depth_buffer() noexcept
 {
-    SL_Texture* pTexture = mDepth;
-    mDepth = nullptr;
-    return pTexture;
+    sl_reset(mDepth);
+    return 0;
 }
 
 
@@ -856,66 +830,56 @@ int SL_Framebuffer::valid() const noexcept
         return -1;
     }
 
-    uint16_t width = mColors[0]->width();
-    uint16_t height = mColors[0]->height();
-    uint16_t depth = mColors[0]->depth();
+    uint16_t width = mColors[0].width;
+    uint16_t height = mColors[0].height;
+    uint16_t depth = mColors[0].depth;
 
-    for (uint64_t i = 0; i < mNumColors; ++i)
+    for (unsigned i = 0; i < mNumColors; ++i)
     {
-        if (mColors[i] == nullptr)
+        if (mColors[i].pTexels == nullptr)
         {
             return -2;
         }
 
-        if (mColors[i]->data() == nullptr)
+        if (mColors[i].width != width)
         {
             return -3;
         }
 
-        if (mColors[i]->width() != width)
+        if (mColors[i].height != height)
         {
             return -4;
         }
 
-        if (mColors[i]->height() != height)
+        if (mColors[i].depth != depth)
         {
             return -5;
         }
-
-        if (mColors[i]->depth() != depth)
-        {
-            return -6;
-        }
     }
 
-    if (!mDepth)
+    if (mDepth.pTexels == nullptr)
+    {
+        return -6;
+    }
+
+    if (mDepth.width != width)
     {
         return -7;
     }
 
-    if (mDepth->data() == nullptr)
+    if (mDepth.height != height)
     {
         return -8;
     }
 
-    if (mDepth->width() != width)
+    if (mDepth.depth > 1)
     {
         return -9;
     }
 
-    if (mDepth->height() != height)
+    if (mDepth.type != SL_COLOR_R_16U && mDepth.type != SL_COLOR_R_FLOAT && mDepth.type != SL_COLOR_R_DOUBLE)
     {
         return -10;
-    }
-
-    if (mDepth->depth() > 1)
-    {
-        return -11;
-    }
-
-    if (mDepth->type() != SL_COLOR_R_16U && mDepth->type() != SL_COLOR_R_FLOAT && mDepth->type() != SL_COLOR_R_DOUBLE)
-    {
-        return -12;
     }
 
     return 0;
@@ -928,15 +892,12 @@ int SL_Framebuffer::valid() const noexcept
 -------------------------------------*/
 void SL_Framebuffer::terminate() noexcept
 {
-
-    for (uint64_t i = 0; i < mNumColors; ++i)
+    for (SL_TextureView& view : mColors)
     {
-        mColors[i] = nullptr;
+        sl_reset(view);
     }
 
-    mNumColors = 0;
-
-    mDepth = nullptr;
+    sl_reset(mDepth);
 }
 
 
@@ -950,8 +911,8 @@ void SL_Framebuffer::put_pixel(
     uint16_t y,
     const math::vec4& rgba) noexcept
 {
-    SL_Texture* const      pTexture = mColors[targetId];
-    const SL_ColorDataType type     = pTexture->type();
+    SL_TextureView&        pTexture = mColors[targetId];
+    const SL_ColorDataType type     = pTexture.type;
 
     switch (type)
     {
@@ -1033,8 +994,8 @@ void SL_Framebuffer::put_alpha_pixel(
     const math::vec4& colors,
     const SL_BlendMode blendMode) noexcept
 {
-    SL_Texture* const      pTexture = mColors[targetId];
-    const SL_ColorDataType type     = pTexture->type();
+    SL_TextureView&        pTexture = mColors[targetId];
+    const SL_ColorDataType type     = pTexture.type;
 
     switch (type)
     {
@@ -1086,14 +1047,9 @@ void SL_Framebuffer::put_alpha_pixel(
 -------------------------------------*/
 uint16_t SL_Framebuffer::width() const noexcept
 {
-    if (mColors)
+    if (mDepth.pTexels)
     {
-        return mColors[0]->width();
-    }
-
-    if (mDepth)
-    {
-        return mDepth->width();
+        return mDepth.width;
     }
 
     return 0;
@@ -1106,14 +1062,9 @@ uint16_t SL_Framebuffer::width() const noexcept
 -------------------------------------*/
 uint16_t SL_Framebuffer::height() const noexcept
 {
-    if (mColors)
+    if (mDepth.pTexels)
     {
-        return mColors[0]->height();
-    }
-
-    if (mDepth)
-    {
-        return mDepth->height();
+        return mDepth.height;
     }
 
     return 0;
@@ -1126,9 +1077,9 @@ uint16_t SL_Framebuffer::height() const noexcept
 -------------------------------------*/
 uint16_t SL_Framebuffer::depth() const noexcept
 {
-    if (mColors)
+    if (mColors[0].pTexels)
     {
-        return mColors[0]->depth();
+        return mColors[0].depth;
     }
 
     return 0;

@@ -33,6 +33,14 @@ enum SL_BlendMode : uint8_t;
 /*-----------------------------------------------------------------------------
  * Framebuffer Utilities
 -----------------------------------------------------------------------------*/
+enum SL_FboLimits
+{
+    SL_FBO_MIN_COLOR_ATTACHMENTS = 1,
+    SL_FBO_MAX_COLOR_ATTACHMENTS = 4,
+};
+
+
+
 enum SL_FboOutputMask
 {
     SL_FBO_OUTPUT_NONE,
@@ -65,9 +73,9 @@ class SL_Framebuffer
   private:
     uint64_t mNumColors;
 
-    SL_Texture** mColors;
+    SL_TextureView mColors[(unsigned)SL_FboLimits::SL_FBO_MAX_COLOR_ATTACHMENTS];
 
-    SL_Texture* mDepth;
+    SL_TextureView mDepth;
 
   public:
     ~SL_Framebuffer() noexcept;
@@ -82,30 +90,30 @@ class SL_Framebuffer
 
     SL_Framebuffer& operator=(SL_Framebuffer&& f) noexcept;
 
-    int reserve_color_buffers(uint64_t numColorBuffers) noexcept;
+    int reserve_color_buffers(unsigned numColorBuffers) noexcept;
 
-    int attach_color_buffer(uint64_t index, SL_Texture& t) noexcept;
+    int attach_color_buffer(unsigned index, SL_TextureView& t) noexcept;
 
-    SL_Texture* detach_color_buffer(uint64_t index) noexcept;
+    int detach_color_buffer(unsigned index) noexcept;
 
-    const SL_Texture* get_color_buffer(uint64_t index) const noexcept;
+    const SL_TextureView& get_color_buffer(unsigned index) const noexcept;
 
-    SL_Texture* get_color_buffer(uint64_t index) noexcept;
+    SL_TextureView& get_color_buffer(unsigned index) noexcept;
 
-    uint64_t num_color_buffers() const noexcept;
+    unsigned num_color_buffers() const noexcept;
 
     template <typename index_type, typename color_type>
     void clear_color_buffer(const index_type index, const color_type& color) noexcept;
 
     void clear_color_buffers() noexcept;
 
-    int attach_depth_buffer(SL_Texture& d) noexcept;
+    int attach_depth_buffer(SL_TextureView& d) noexcept;
 
-    SL_Texture* detach_depth_buffer() noexcept;
+    int detach_depth_buffer() noexcept;
 
-    const SL_Texture* get_depth_buffer() const noexcept;
+    const SL_TextureView& get_depth_buffer() const noexcept;
 
-    SL_Texture* get_depth_buffer() noexcept;
+    SL_TextureView& get_depth_buffer() noexcept;
 
     template <typename float_type>
     void clear_depth_buffer(const float_type depthVal) noexcept;
@@ -149,7 +157,7 @@ class SL_Framebuffer
 /*-------------------------------------
  * Retrieve an internal color buffer, or NULL if it doesn't exist.
 -------------------------------------*/
-inline const SL_Texture* SL_Framebuffer::get_color_buffer(uint64_t index) const noexcept
+inline const SL_TextureView& SL_Framebuffer::get_color_buffer(unsigned index) const noexcept
 {
     return mColors[index];
 }
@@ -159,7 +167,7 @@ inline const SL_Texture* SL_Framebuffer::get_color_buffer(uint64_t index) const 
 /*-------------------------------------
  * Retrieve an internal color buffer, or NULL if it doesn't exist.
 -------------------------------------*/
-inline SL_Texture* SL_Framebuffer::get_color_buffer(uint64_t index) noexcept
+inline SL_TextureView& SL_Framebuffer::get_color_buffer(unsigned index) noexcept
 {
     return mColors[index];
 }
@@ -169,7 +177,7 @@ inline SL_Texture* SL_Framebuffer::get_color_buffer(uint64_t index) noexcept
 /*-------------------------------------
  * Retrieve the number of active color buffers.
 -------------------------------------*/
-inline uint64_t SL_Framebuffer::num_color_buffers() const noexcept
+inline unsigned SL_Framebuffer::num_color_buffers() const noexcept
 {
     return mNumColors;
 }
@@ -184,21 +192,21 @@ void SL_Framebuffer::clear_color_buffer(const index_type i, const color_type& c)
 {
     static_assert(std::is_integral<index_type>::value, "Error: Data type cannot be used for indexing.");
 
-    SL_Texture* const pTex = mColors[i];
+    SL_TextureView& pTex = mColors[i];
 
-    if (pTex->data())
+    if (pTex.pTexels)
     {
-        LS_DEBUG_ASSERT(pTex->bpp() == sizeof(color_type)); // insurance
-        const size_t numItems = pTex->width() * pTex->height() * pTex->depth();
+        LS_DEBUG_ASSERT(pTex.bytesPerTexel == sizeof(color_type)); // insurance
+        const size_t numItems = pTex.width * pTex.height * pTex.depth;
 
         if (sizeof(color_type) == sizeof(uint32_t))
         {
-            const size_t numBytes = numItems * pTex->bpp();
-            ls::utils::fast_memset_4(reinterpret_cast<void*>(pTex->data()), *reinterpret_cast<const uint32_t*>(&c), numBytes);
+            const size_t numBytes = numItems * pTex.bytesPerTexel;
+            ls::utils::fast_memset_4(reinterpret_cast<void*>(pTex.pTexels), *reinterpret_cast<const uint32_t*>(&c), numBytes);
         }
         else
         {
-            ls::utils::fast_fill<color_type>(reinterpret_cast<color_type*>(pTex->data()), c, numItems);
+            ls::utils::fast_fill<color_type>(reinterpret_cast<color_type*>(pTex.pTexels), c, numItems);
         }
     }
 }
@@ -213,36 +221,36 @@ void SL_Framebuffer::clear_depth_buffer(const float_type depthVal) noexcept
 {
     static_assert(std::is_floating_point<float_type>::value, "Error: Data type cannot be used for clearing a depth buffer.");
 
-    if (!mDepth->data())
+    if (mDepth.pTexels == nullptr)
     {
         return;
     }
 
-    LS_DEBUG_ASSERT(mDepth->bpp() == sizeof(float_type)); // insurance
+    LS_DEBUG_ASSERT(mDepth.bytesPerTexel == sizeof(float_type)); // insurance
 
     if (sizeof(float_type) == sizeof(uint32_t))
     {
-        const size_t numBytes = mDepth->width()*mDepth->height()* sizeof(float_type);
+        const size_t numBytes = mDepth.width*mDepth.height* sizeof(float_type);
         union
         {
             float_type f;
             uint32_t i;
         } outVal{depthVal};
-        ls::utils::fast_memset_4(reinterpret_cast<void*>(mDepth->data()), outVal.i, numBytes);
+        ls::utils::fast_memset_4(reinterpret_cast<void*>(mDepth.pTexels), outVal.i, numBytes);
     }
     else if (sizeof(float_type) == sizeof(uint64_t))
     {
-        const size_t numBytes = mDepth->width()*mDepth->height()* sizeof(float_type);
+        const size_t numBytes = mDepth.width*mDepth.height* sizeof(float_type);
         union
         {
             float_type f;
             uint64_t i;
         } outVal{depthVal};
-        ls::utils::fast_memset_8(reinterpret_cast<void*>(mDepth->data()), outVal.i, numBytes);
+        ls::utils::fast_memset_8(reinterpret_cast<void*>(mDepth.pTexels), outVal.i, numBytes);
     }
     else
     {
-        ls::utils::fast_fill<float_type>(reinterpret_cast<float_type*>(mDepth->data()), depthVal, mDepth->width()*mDepth->height());
+        ls::utils::fast_fill<float_type>(reinterpret_cast<float_type*>(mDepth.pTexels), depthVal, mDepth.width*mDepth.height);
     }
 }
 
@@ -253,10 +261,10 @@ void SL_Framebuffer::clear_depth_buffer(const float_type depthVal) noexcept
 -------------------------------------*/
 inline void SL_Framebuffer::clear_depth_buffer() noexcept
 {
-    if (mDepth->data())
+    if (mDepth.pTexels)
     {
-        const uint64_t numBytes = mDepth->bpp() * mDepth->width() * mDepth->height() * mDepth->depth();
-        ls::utils::fast_memset(mDepth->data(), 0, numBytes);
+        const uint64_t numBytes = mDepth.bytesPerTexel * mDepth.width * mDepth.height * mDepth.depth;
+        ls::utils::fast_memset(mDepth.pTexels, 0, numBytes);
     }
 }
 
@@ -265,7 +273,7 @@ inline void SL_Framebuffer::clear_depth_buffer() noexcept
 /*-------------------------------------
  * Retrieve the depth buffer
 -------------------------------------*/
-inline const SL_Texture* SL_Framebuffer::get_depth_buffer() const noexcept
+inline const SL_TextureView& SL_Framebuffer::get_depth_buffer() const noexcept
 {
     return mDepth;
 }
@@ -275,7 +283,7 @@ inline const SL_Texture* SL_Framebuffer::get_depth_buffer() const noexcept
 /*-------------------------------------
  * Retrieve the depth buffer
 -------------------------------------*/
-inline SL_Texture* SL_Framebuffer::get_depth_buffer() noexcept
+inline SL_TextureView& SL_Framebuffer::get_depth_buffer() noexcept
 {
     return mDepth;
 }
@@ -288,7 +296,7 @@ inline SL_Texture* SL_Framebuffer::get_depth_buffer() noexcept
 template <>
 inline void SL_Framebuffer::put_depth_pixel<ls::math::half>(uint16_t x, uint16_t y, ls::math::half depth) noexcept
 {
-    mDepth->texel<ls::math::half>(x, y) = depth;
+    ((ls::math::half*)mDepth.pTexels)[x + mDepth.width * y] = depth;
 }
 
 
@@ -296,7 +304,7 @@ inline void SL_Framebuffer::put_depth_pixel<ls::math::half>(uint16_t x, uint16_t
 template <>
 inline void SL_Framebuffer::put_depth_pixel<float>(uint16_t x, uint16_t y, float depth) noexcept
 {
-    mDepth->texel<float>(x, y) = depth;
+    ((float*)mDepth.pTexels)[x + mDepth.width * y] = depth;
 }
 
 
@@ -304,7 +312,7 @@ inline void SL_Framebuffer::put_depth_pixel<float>(uint16_t x, uint16_t y, float
 template <>
 inline void SL_Framebuffer::put_depth_pixel<double>(uint16_t x, uint16_t y, double depth) noexcept
 {
-    mDepth->texel<double>(x, y) = depth;
+    ((double*)mDepth.pTexels)[x + mDepth.width * y] = depth;
 }
 
 

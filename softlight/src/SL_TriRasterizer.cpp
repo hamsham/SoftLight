@@ -114,7 +114,7 @@ inline LS_INLINE math::vec4 _sl_get_depth_texel4(const depth_type* LS_RESTRICT_P
  * Wireframe Rasterization
 --------------------------------------*/
 template <class DepthCmpFunc, typename depth_type>
-void SL_TriRasterizer::render_wireframe(const SL_Texture* depthBuffer) const noexcept
+void SL_TriRasterizer::render_wireframe(const SL_TextureView& depthBuffer) const noexcept
 {
     constexpr DepthCmpFunc depthCmpFunc;
     const SL_BinCounter<uint32_t>* pBinIds = mBinIds;
@@ -157,7 +157,7 @@ void SL_TriRasterizer::render_wireframe(const SL_Texture* depthBuffer) const noe
             const int32_t d0 = math::max(math::abs(xMinMax0[0]-xMinMax1[0]), 1);
             const int32_t d1 = math::max(math::abs(xMinMax0[1]-xMinMax1[1]), 1);
 
-            const depth_type* const pDepth = depthBuffer->texel_pointer<depth_type>(0, (uint16_t)y);
+            const depth_type* const pDepth = (depth_type*)depthBuffer.pTexels + (depthBuffer.width * y);
 
             for (int32_t ix = 0, x = xMinMax0[0]; (uint32_t)x < (uint32_t)xMinMax0[1]; ++ix, ++x)
             {
@@ -203,33 +203,33 @@ void SL_TriRasterizer::render_wireframe(const SL_Texture* depthBuffer) const noe
 
 
 
- template void SL_TriRasterizer::render_wireframe<SL_DepthFuncLT, ls::math::half>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_wireframe<SL_DepthFuncLT, float>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_wireframe<SL_DepthFuncLT, double>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncLT, ls::math::half>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncLT, float>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncLT, double>(const SL_TextureView&) const noexcept;
 
- template void SL_TriRasterizer::render_wireframe<SL_DepthFuncLE, ls::math::half>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_wireframe<SL_DepthFuncLE, float>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_wireframe<SL_DepthFuncLE, double>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncLE, ls::math::half>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncLE, float>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncLE, double>(const SL_TextureView&) const noexcept;
 
- template void SL_TriRasterizer::render_wireframe<SL_DepthFuncGT, ls::math::half>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_wireframe<SL_DepthFuncGT, float>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_wireframe<SL_DepthFuncGT, double>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncGT, ls::math::half>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncGT, float>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncGT, double>(const SL_TextureView&) const noexcept;
 
- template void SL_TriRasterizer::render_wireframe<SL_DepthFuncGE, ls::math::half>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_wireframe<SL_DepthFuncGE, float>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_wireframe<SL_DepthFuncGE, double>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncGE, ls::math::half>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncGE, float>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncGE, double>(const SL_TextureView&) const noexcept;
 
- template void SL_TriRasterizer::render_wireframe<SL_DepthFuncEQ, ls::math::half>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_wireframe<SL_DepthFuncEQ, float>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_wireframe<SL_DepthFuncEQ, double>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncEQ, ls::math::half>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncEQ, float>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncEQ, double>(const SL_TextureView&) const noexcept;
 
- template void SL_TriRasterizer::render_wireframe<SL_DepthFuncNE, ls::math::half>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_wireframe<SL_DepthFuncNE, float>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_wireframe<SL_DepthFuncNE, double>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncNE, ls::math::half>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncNE, float>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncNE, double>(const SL_TextureView&) const noexcept;
 
- template void SL_TriRasterizer::render_wireframe<SL_DepthFuncOFF, ls::math::half>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_wireframe<SL_DepthFuncOFF, float>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_wireframe<SL_DepthFuncOFF, double>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncOFF, ls::math::half>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncOFF, float>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_wireframe<SL_DepthFuncOFF, double>(const SL_TextureView&) const noexcept;
 
 
 
@@ -237,7 +237,7 @@ void SL_TriRasterizer::render_wireframe(const SL_Texture* depthBuffer) const noe
  * Triangle Rasterization, scalar
 --------------------------------------*/
 template <class DepthCmpFunc, typename depth_type>
-void SL_TriRasterizer::render_triangle(const SL_Texture* depthBuffer) const noexcept
+void SL_TriRasterizer::render_triangle(const SL_TextureView& depthBuffer) const noexcept
 {
     constexpr DepthCmpFunc depthCmpFunc;
     const SL_BinCounter<uint32_t>* pBinIds = mBinIds;
@@ -293,7 +293,7 @@ void SL_TriRasterizer::render_triangle(const SL_Texture* depthBuffer) const noex
             math::vec4&& xf{(float)x};
             const math::vec4&& bcY = math::fmadd(bcClipSpace[1], math::vec4{yf}, bcClipSpace[2]);
             math::vec4&& bcX = math::fmadd(bcClipSpace[0], xf, bcY);
-            const depth_type* pDepth = depthBuffer->texel_pointer<depth_type>((uint16_t)x, (uint16_t)y);
+            const depth_type* pDepth = (depth_type*)depthBuffer.pTexels + (x + (int32_t)depthBuffer.width * y);
 
             do
             {
@@ -336,33 +336,33 @@ void SL_TriRasterizer::render_triangle(const SL_Texture* depthBuffer) const noex
 
 
 
- template void SL_TriRasterizer::render_triangle<SL_DepthFuncLT, ls::math::half>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle<SL_DepthFuncLT, float>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle<SL_DepthFuncLT, double>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncLT, ls::math::half>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncLT, float>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncLT, double>(const SL_TextureView&) const noexcept;
 
- template void SL_TriRasterizer::render_triangle<SL_DepthFuncLE, ls::math::half>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle<SL_DepthFuncLE, float>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle<SL_DepthFuncLE, double>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncLE, ls::math::half>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncLE, float>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncLE, double>(const SL_TextureView&) const noexcept;
 
- template void SL_TriRasterizer::render_triangle<SL_DepthFuncGT, ls::math::half>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle<SL_DepthFuncGT, float>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle<SL_DepthFuncGT, double>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncGT, ls::math::half>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncGT, float>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncGT, double>(const SL_TextureView&) const noexcept;
 
- template void SL_TriRasterizer::render_triangle<SL_DepthFuncGE, ls::math::half>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle<SL_DepthFuncGE, float>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle<SL_DepthFuncGE, double>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncGE, ls::math::half>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncGE, float>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncGE, double>(const SL_TextureView&) const noexcept;
 
- template void SL_TriRasterizer::render_triangle<SL_DepthFuncEQ, ls::math::half>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle<SL_DepthFuncEQ, float>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle<SL_DepthFuncEQ, double>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncEQ, ls::math::half>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncEQ, float>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncEQ, double>(const SL_TextureView&) const noexcept;
 
- template void SL_TriRasterizer::render_triangle<SL_DepthFuncNE, ls::math::half>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle<SL_DepthFuncNE, float>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle<SL_DepthFuncNE, double>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncNE, ls::math::half>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncNE, float>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncNE, double>(const SL_TextureView&) const noexcept;
 
- template void SL_TriRasterizer::render_triangle<SL_DepthFuncOFF, ls::math::half>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle<SL_DepthFuncOFF, float>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle<SL_DepthFuncOFF, double>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncOFF, ls::math::half>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncOFF, float>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle<SL_DepthFuncOFF, double>(const SL_TextureView&) const noexcept;
 
 
 
@@ -410,7 +410,7 @@ inline LS_INLINE void _sl_vec4_outer_ps(const __m128 v1, const __m128 v2, __m128
 
 
 template <class DepthCmpFunc, typename depth_type>
-void SL_TriRasterizer::render_triangle_simd(const SL_Texture* LS_RESTRICT_PTR depthBuffer) const noexcept
+void SL_TriRasterizer::render_triangle_simd(const SL_TextureView& LS_RESTRICT_PTR depthBuffer) const noexcept
 {
     constexpr DepthCmpFunc         depthCmpFunc;
     const SL_BinCounter<uint32_t>* pBinIds = mBinIds;
@@ -469,7 +469,7 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* LS_RESTRICT_PTR de
             }
 
             const int32_t     y16    = y << 16;
-            const depth_type* pDepth = depthBuffer->texel_pointer<depth_type>((uint16_t)_mm_cvtsi128_si32(xMin), (uint16_t)y);
+            const depth_type* pDepth = (depth_type*)depthBuffer.pTexels + (_mm_cvtsi128_si32(xMin) + (int32_t)depthBuffer.width * y);
             const __m128      bcY    = _mm_fmadd_ps(bcClipSpace1, yf, bcClipSpace2);
             __m128i           x4     = _mm_add_epi32(_mm_set_epi32(3, 2, 1, 0), xMin);
 
@@ -631,7 +631,7 @@ inline LS_INLINE void _sl_vec4_outer_ps(const float32x4_t& v1, const float32x4_t
 
 
 template <class DepthCmpFunc, typename depth_type>
-void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const noexcept
+void SL_TriRasterizer::render_triangle_simd(const SL_TextureView& depthBuffer) const noexcept
 {
     constexpr DepthCmpFunc         depthCmpFunc;
     const SL_BinCounter<uint32_t>* pBinIds = mBinIds;
@@ -686,7 +686,7 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
             if (LS_LIKELY(vgetq_lane_s32(vcltq_s32(xMin, xMax), 0)))
             {
                 constexpr int32_t indices[4] = {0, 1, 2, 3};
-                const depth_type* pDepth = depthBuffer->texel_pointer<depth_type>((uint16_t)vgetq_lane_s32(xMin, 0), (uint16_t)y);
+                const depth_type* pDepth = (depth_type*)depthBuffer.pTexels + (vgetq_lane_s32(xMin, 0) + (int32_t)depthBuffer.width * y);
                 const float32x4_t bcY    = vmlaq_f32(bcClipSpace.val[2], bcClipSpace.val[1], yf);
                 int32x4_t         x4     = vaddq_s32(vld1q_s32(indices), xMin);
                 const int32x4_t   xMax4  = xMax;
@@ -791,7 +791,7 @@ inline LS_INLINE ls::math::vec4_t<int> _sl_cmp_vec4_lt(const ls::math::vec4_t<in
 
 
 template <class DepthCmpFunc, typename depth_type>
-void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const noexcept
+void SL_TriRasterizer::render_triangle_simd(const SL_TextureView& depthBuffer) const noexcept
 {
     constexpr DepthCmpFunc         depthCmpFunc;
     const SL_BinCounter<uint32_t>* pBinIds = mBinIds;
@@ -840,7 +840,7 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
 
             if (LS_LIKELY((uint32_t)xMin < (uint32_t)xMax))
             {
-                const depth_type* pDepth = depthBuffer->texel_pointer<depth_type>((uint16_t)xMin, (uint16_t)y);
+                const depth_type*  pDepth = (depth_type*)depthBuffer.pTexels + (xMin + (int32_t)depthBuffer.width * y);
                 const math::vec4&& bcY    = math::fmadd(bcClipSpace[1], math::vec4{yf}, bcClipSpace[2]);
                 math::vec4i&&      x4     = math::vec4i{0, 1, 2, 3} + xMin;
                 const math::vec4i  xMax4  {xMax};
@@ -915,33 +915,33 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
 
 
 
- template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncLT, ls::math::half>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncLT, float>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncLT, double>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncLT, ls::math::half>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncLT, float>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncLT, double>(const SL_TextureView&) const noexcept;
 
- template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncLE, ls::math::half>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncLE, float>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncLE, double>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncLE, ls::math::half>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncLE, float>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncLE, double>(const SL_TextureView&) const noexcept;
 
- template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncGT, ls::math::half>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncGT, float>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncGT, double>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncGT, ls::math::half>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncGT, float>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncGT, double>(const SL_TextureView&) const noexcept;
 
- template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncGE, ls::math::half>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncGE, float>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncGE, double>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncGE, ls::math::half>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncGE, float>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncGE, double>(const SL_TextureView&) const noexcept;
 
- template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncEQ, ls::math::half>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncEQ, float>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncEQ, double>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncEQ, ls::math::half>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncEQ, float>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncEQ, double>(const SL_TextureView&) const noexcept;
 
- template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncNE, ls::math::half>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncNE, float>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncNE, double>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncNE, ls::math::half>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncNE, float>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncNE, double>(const SL_TextureView&) const noexcept;
 
- template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncOFF, ls::math::half>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncOFF, float>(const SL_Texture*) const noexcept;
- template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncOFF, double>(const SL_Texture*) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncOFF, ls::math::half>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncOFF, float>(const SL_TextureView&) const noexcept;
+ template void SL_TriRasterizer::render_triangle_simd<SL_DepthFuncOFF, double>(const SL_TextureView&) const noexcept;
 
 
 
@@ -951,7 +951,7 @@ void SL_TriRasterizer::render_triangle_simd(const SL_Texture* depthBuffer) const
 template <class DepthCmpFunc>
 void SL_TriRasterizer::dispatch_bins() noexcept
 {
-    const uint16_t depthBpp = mFbo->get_depth_buffer()->bpp();
+    const uint16_t depthBpp = mFbo->get_depth_buffer().bytesPerTexel;
 
     switch(mMode)
     {

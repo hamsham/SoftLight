@@ -786,10 +786,10 @@ utils::Pointer<SL_SceneGraph> create_context()
     retCode = fbo.reserve_color_buffers(1);
     LS_ASSERT(retCode == 0);
 
-    retCode = fbo.attach_color_buffer(0, tex);
+    retCode = fbo.attach_color_buffer(0, tex.view());
     LS_ASSERT(retCode == 0);
 
-    retCode = fbo.attach_depth_buffer(depth);
+    retCode = fbo.attach_depth_buffer(depth.view());
     LS_ASSERT(retCode == 0);
 
     fbo.clear_color_buffers();
@@ -1074,7 +1074,7 @@ int main()
 
             render_scene(pGraph.get(), pWindow->width(), pWindow->height(), projMatrix, camTrans, usePbr);
 
-            context.blit(*pRenderBuf, texIndex);
+            context.blit(pRenderBuf->texture().view(), texIndex);
             pWindow->render(*pRenderBuf);
         }
 

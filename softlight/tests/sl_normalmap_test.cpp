@@ -339,13 +339,13 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     retCode = fbo.reserve_color_buffers(2);
     LS_ASSERT(retCode == 0);
 
-    retCode = fbo.attach_color_buffer(0, texUv);
+    retCode = fbo.attach_color_buffer(0, texUv.view());
     LS_ASSERT(retCode == 0);
 
-    retCode = fbo.attach_color_buffer(1, texNorm);
+    retCode = fbo.attach_color_buffer(1, texNorm.view());
     LS_ASSERT(retCode == 0);
 
-    retCode = fbo.attach_depth_buffer(texDepth);
+    retCode = fbo.attach_depth_buffer(texDepth.view());
     LS_ASSERT(retCode == 0);
 
     constexpr std::array<size_t, 2> attachIds{0, 1};
@@ -511,7 +511,7 @@ int main()
 
             mesh_test_render(pGraph.get());
 
-            context.blit(*pRenderBuf, activeColor);
+            context.blit(pRenderBuf->texture().view(), activeColor);
             pWindow->render(*pRenderBuf);
 
             ++numFrames;

@@ -417,8 +417,8 @@ void SL_ProcessorPool::clear_fragment_bins() noexcept
  * Execute a texture blit across threads
 -------------------------------------*/
 void SL_ProcessorPool::run_blit_processors(
-    const SL_Texture* inTex,
-    SL_Texture* outTex,
+    const SL_TextureView* inTex,
+    SL_TextureView* outTex,
     uint16_t srcX0,
     uint16_t srcY0,
     uint16_t srcX1,
@@ -429,7 +429,7 @@ void SL_ProcessorPool::run_blit_processors(
     uint16_t dstY1) noexcept
 {
     SL_ShaderProcessor processor;
-    LS_ASSERT(!sl_is_compressed_color(inTex->type()) && !sl_is_compressed_color(outTex->type()));
+    LS_ASSERT(!sl_is_compressed_color(inTex->type) && !sl_is_compressed_color(outTex->type));
     processor.mType = SL_BLIT_PROCESSOR;
 
     SL_BlitProcessor& blitter = processor.mBlitter;
@@ -469,8 +469,8 @@ void SL_ProcessorPool::run_blit_processors(
  * Execute a texture blit across threads
 -------------------------------------*/
 void SL_ProcessorPool::run_blit_compressed_processors(
-    const SL_Texture* inTex,
-    SL_Texture* outTex,
+    const SL_TextureView* inTex,
+    SL_TextureView* outTex,
     uint16_t srcX0,
     uint16_t srcY0,
     uint16_t srcX1,
@@ -481,7 +481,7 @@ void SL_ProcessorPool::run_blit_compressed_processors(
     uint16_t dstY1) noexcept
 {
     SL_ShaderProcessor processor;
-    LS_ASSERT(sl_is_compressed_color(inTex->type()) || sl_is_compressed_color(outTex->type()));
+    LS_ASSERT(sl_is_compressed_color(inTex->type) || sl_is_compressed_color(outTex->type));
     processor.mType = SL_BLIT_COMPRESSED_PROCESSOR;
 
     SL_BlitCompressedProcessor& blitter = processor.mBlitterCompressed;
@@ -521,7 +521,7 @@ void SL_ProcessorPool::run_blit_compressed_processors(
 /*-------------------------------------
  * Clear a framebuffer's attachment across threads
 -------------------------------------*/
-void SL_ProcessorPool::run_clear_processors(const void* inColor, SL_Texture* outTex) noexcept
+void SL_ProcessorPool::run_clear_processors(const void* inColor, SL_TextureView* outTex) noexcept
 {
     SL_ShaderProcessor processor;
     processor.mType = SL_CLEAR_PROCESSOR;
@@ -555,7 +555,7 @@ void SL_ProcessorPool::run_clear_processors(const void* inColor, SL_Texture* out
 /*-------------------------------------
  * Clear a framebuffer across threads
 -------------------------------------*/
-void SL_ProcessorPool::run_clear_processors(const void* inColor, const void* depth, SL_Texture* colorBuf, SL_Texture* depthBuf) noexcept
+void SL_ProcessorPool::run_clear_processors(const void* inColor, const void* depth, SL_TextureView* colorBuf, SL_TextureView* depthBuf) noexcept
 {
     SL_ShaderProcessor processor;
     processor.mType = SL_CLEAR_PROCESSOR;
@@ -601,7 +601,7 @@ void SL_ProcessorPool::run_clear_processors(const void* inColor, const void* dep
 /*-------------------------------------
  * Clear a framebuffer across threads (2 attachments)
 -------------------------------------*/
-void SL_ProcessorPool::run_clear_processors(const std::array<const void*, 2>& inColors, const void* depth, const std::array<SL_Texture*, 2>& colorBufs, SL_Texture* depthBuf) noexcept
+void SL_ProcessorPool::run_clear_processors(const std::array<const void*, 2>& inColors, const void* depth, const std::array<SL_TextureView*, 2>& colorBufs, SL_TextureView* depthBuf) noexcept
 {
     SL_ShaderProcessor processor;
     processor.mType = SL_CLEAR_PROCESSOR;
@@ -655,7 +655,7 @@ void SL_ProcessorPool::run_clear_processors(const std::array<const void*, 2>& in
 /*-------------------------------------
  * Clear a framebuffer across threads (3 attachments)
 -------------------------------------*/
-void SL_ProcessorPool::run_clear_processors(const std::array<const void*, 3>& inColors, const void* depth, const std::array<SL_Texture*, 3>& colorBufs, SL_Texture* depthBuf) noexcept
+void SL_ProcessorPool::run_clear_processors(const std::array<const void*, 3>& inColors, const void* depth, const std::array<SL_TextureView*, 3>& colorBufs, SL_TextureView* depthBuf) noexcept
 {
     SL_ShaderProcessor processor;
     processor.mType = SL_CLEAR_PROCESSOR;
@@ -717,7 +717,7 @@ void SL_ProcessorPool::run_clear_processors(const std::array<const void*, 3>& in
 /*-------------------------------------
  * Clear a framebuffer across threads (4 attachments)
 -------------------------------------*/
-void SL_ProcessorPool::run_clear_processors(const std::array<const void*, 4>& inColors, const void* depth, const std::array<SL_Texture*, 4>& colorBufs, SL_Texture* depthBuf) noexcept
+void SL_ProcessorPool::run_clear_processors(const std::array<const void*, 4>& inColors, const void* depth, const std::array<SL_TextureView*, 4>& colorBufs, SL_TextureView* depthBuf) noexcept
 {
     SL_ShaderProcessor processor;
     processor.mType = SL_CLEAR_PROCESSOR;

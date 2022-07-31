@@ -27,7 +27,7 @@ template <class DepthCmpFunc, typename depth_type>
 void SL_PointRasterizer::render_point(SL_Framebuffer* const fbo) noexcept
 {
     constexpr DepthCmpFunc  depthCmp    {};
-    const SL_Texture*       pDepthBuf   = fbo->get_depth_buffer();
+    const SL_TextureView&   pDepthBuf   = fbo->get_depth_buffer();
     const SL_PipelineState  pipeline    = mShader->pipelineState;
     const SL_BlendMode      blendMode   = pipeline.blend_mode();
     const SL_FboOutputMask  fboOutMask  = sl_calc_fbo_out_mask((unsigned)pipeline.num_render_targets(), (blendMode != SL_BLEND_OFF));
@@ -52,7 +52,8 @@ void SL_PointRasterizer::render_point(SL_Framebuffer* const fbo) noexcept
             continue;
         }
 
-        if (LS_UNLIKELY(!depthCmp(fragParams.coord.depth, (float)pDepthBuf->texel<depth_type>(fragParams.coord.x, fragParams.coord.y))))
+        const depth_type d = ((depth_type*)pDepthBuf.pTexels)[fragParams.coord.x + pDepthBuf.width * fragParams.coord.y];
+        if (LS_UNLIKELY(!depthCmp(fragParams.coord.depth, (float)d)))
         {
             continue;
         }
@@ -113,7 +114,7 @@ template void SL_PointRasterizer::render_point<SL_DepthFuncOFF, double>(SL_Frame
 template <class DepthCmpFunc>
 void SL_PointRasterizer::dispatch_bins() noexcept
 {
-    const uint16_t depthBpp = mFbo->get_depth_buffer()->bpp();
+    const uint16_t depthBpp = mFbo->get_depth_buffer().bytesPerTexel;
 
     if (depthBpp == sizeof(math::half))
     {

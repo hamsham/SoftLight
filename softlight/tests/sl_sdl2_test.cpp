@@ -399,72 +399,6 @@ void update_cam_position(SL_Transform& camTrans, float tickTime, utils::Pointer<
 
 
 
-/*-------------------------------------
- * Render the Scene
--------------------------------------*/
-void render_scene(SL_SceneGraph* pGraph, unsigned w, unsigned h, const math::mat4& projection, const SL_Transform& camTrans)
-{
-    SL_Context&    context   = pGraph->mContext;
-    MeshUniforms*  pUniforms = context.ubo(0).as<MeshUniforms>();
-    SL_Plane       planes[6];
-
-    const math::mat4&& p  = math::perspective(math::radians(60.f), (float)w/(float)h, 0.1f, 100.f);
-    const math::mat4&& vp = projection * camTrans.transform();
-
-    sl_extract_frustum_planes(p, planes);
-
-    for (size_t nodeId = 0; nodeId < pGraph->mNodes.size(); ++nodeId)
-    {
-        const SL_SceneNode& n = pGraph->mNodes[nodeId];
-        if (n.type != NODE_TYPE_MESH)
-        {
-            continue;
-        }
-
-        const math::mat4&  modelMat      = pGraph->mModelMatrices[nodeId];
-        const math::mat4&& mv            = camTrans.transform() * modelMat;
-        const size_t       numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
-
-        pUniforms->modelMatrix = modelMat;
-        pUniforms->mvpMatrix   = vp * modelMat;
-
-        const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
-        for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
-        {
-            const size_t          nodeMeshId = meshIds[meshId];
-            const SL_Mesh&        m          = pGraph->mMeshes[nodeMeshId];
-            const SL_BoundingBox& box        = pGraph->mMeshBounds[nodeMeshId];
-            const SL_Material&    material   = pGraph->mMaterials[m.materialId];
-
-            if (!sl_is_visible(box, mv, planes))
-            {
-                continue;
-            }
-
-            if (!(m.mode & SL_RenderMode::RENDER_MODE_TRIANGLES))
-            {
-                continue;
-            }
-
-            pUniforms->pTexture = material.pTextures[SL_MATERIAL_TEXTURE_AMBIENT];
-
-            #if SL_TEST_BUMP_MAPS
-                pUniforms->pBump = material.pTextures[SL_MATERIAL_TEXTURE_HEIGHT];
-            #endif
-
-            // Use the textureless shader if needed
-            size_t shaderId = (size_t)(material.pTextures[SL_MATERIAL_TEXTURE_AMBIENT] == nullptr);
-
-            pUniforms->light.ambient = material.ambient;
-            pUniforms->light.diffuse = material.diffuse;
-
-            context.draw(m, shaderId, 0);
-        }
-    }
-}
-
-
-
 /*-----------------------------------------------------------------------------
  * Create the context for a demo scene
 -----------------------------------------------------------------------------*/
@@ -503,10 +437,10 @@ utils::Pointer<SL_SceneGraph> create_context()
     retCode = fbo.reserve_color_buffers(1);
     LS_ASSERT(retCode == 0);
 
-    retCode = fbo.attach_color_buffer(0, tex);
+    retCode = fbo.attach_color_buffer(0, tex.view());
     LS_ASSERT(retCode == 0);
 
-    retCode = fbo.attach_depth_buffer(depth);
+    retCode = fbo.attach_depth_buffer(depth.view());
     LS_ASSERT(retCode == 0);
 
     fbo.clear_color_buffers();
@@ -640,6 +574,88 @@ inline void update_sdl_backbuffer(SL_Texture& tex, SDL_Texture* pBackbuffer) noe
     #else
         SDL_UpdateTexture(pBackbuffer, nullptr, tex.data(), sl_get_texture_pitch(tex));
     #endif
+}
+
+
+
+/*-------------------------------------
+ * Render the Scene
+-------------------------------------*/
+void render_scene(SL_SceneGraph* pGraph, unsigned w, unsigned h, const math::mat4& projection, const SL_Transform& camTrans, SDL_Texture* pBackbuffer)
+{
+    SL_Context&    context   = pGraph->mContext;
+    MeshUniforms*  pUniforms = context.ubo(0).as<MeshUniforms>();
+
+
+    void* pTexData = nullptr;
+    int pitch = 0;
+
+    SDL_LockTexture(pBackbuffer, nullptr, &pTexData, &pitch);
+    if (!pTexData || pitch != sl_get_texture_pitch(context.texture(0)))
+    {
+        LS_ASSERT(false);
+    }
+
+    SL_TextureView view;
+
+    sl_texture_view_from_buffer(view, context.texture(0).width(), context.texture(0).height(), context.texture(0).type(), pTexData);
+    context.framebuffer(0).attach_color_buffer(0, view);
+
+    SL_Plane planes[6];
+    const math::mat4&& p  = math::perspective(math::radians(60.f), (float)w/(float)h, 0.1f, 100.f);
+    const math::mat4&& vp = projection * camTrans.transform();
+    sl_extract_frustum_planes(p, planes);
+
+    for (size_t nodeId = 0; nodeId < pGraph->mNodes.size(); ++nodeId)
+    {
+        const SL_SceneNode& n = pGraph->mNodes[nodeId];
+        if (n.type != NODE_TYPE_MESH)
+        {
+            continue;
+        }
+
+        const math::mat4&  modelMat      = pGraph->mModelMatrices[nodeId];
+        const math::mat4&& mv            = camTrans.transform() * modelMat;
+        const size_t       numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
+
+        pUniforms->modelMatrix = modelMat;
+        pUniforms->mvpMatrix   = vp * modelMat;
+
+        const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
+        for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
+        {
+            const size_t          nodeMeshId = meshIds[meshId];
+            const SL_Mesh&        m          = pGraph->mMeshes[nodeMeshId];
+            const SL_BoundingBox& box        = pGraph->mMeshBounds[nodeMeshId];
+            const SL_Material&    material   = pGraph->mMaterials[m.materialId];
+
+            if (!sl_is_visible(box, mv, planes))
+            {
+                continue;
+            }
+
+            if (!(m.mode & SL_RenderMode::RENDER_MODE_TRIANGLES))
+            {
+                continue;
+            }
+
+            pUniforms->pTexture = material.pTextures[SL_MATERIAL_TEXTURE_AMBIENT];
+
+            #if SL_TEST_BUMP_MAPS
+            pUniforms->pBump = material.pTextures[SL_MATERIAL_TEXTURE_HEIGHT];
+            #endif
+
+            // Use the textureless shader if needed
+            size_t shaderId = (size_t)(material.pTextures[SL_MATERIAL_TEXTURE_AMBIENT] == nullptr);
+
+            pUniforms->light.ambient = material.ambient;
+            pUniforms->light.diffuse = material.diffuse;
+
+            context.draw(m, shaderId, 0);
+        }
+    }
+
+    SDL_UnlockTexture(pBackbuffer);
 }
 
 
@@ -911,8 +927,8 @@ extern "C" SDLMAIN_DECLSPEC int main(int argc, char* argv[])
 
             SL_Texture& frontBuffer = context.texture(0);
             context.clear_framebuffer(0, 0, SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0}, 0.0);
-            render_scene(pGraph.get(), (unsigned)frontBuffer.width(), (unsigned)frontBuffer.height(), projMatrix, camTrans);
-            update_sdl_backbuffer(frontBuffer, pBackBuffer);
+            render_scene(pGraph.get(), (unsigned)frontBuffer.width(), (unsigned)frontBuffer.height(), projMatrix, camTrans, pBackBuffer);
+            //update_sdl_backbuffer(frontBuffer, pBackBuffer);
 
             SDL_RenderCopyEx(pRenderer, pBackBuffer, nullptr, nullptr, 0.0, nullptr, SDL_FLIP_VERTICAL);
             SDL_RenderPresent(pRenderer);

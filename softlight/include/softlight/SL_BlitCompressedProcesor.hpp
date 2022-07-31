@@ -9,7 +9,7 @@
 /*-----------------------------------------------------------------------------
  * Forward Declarations
 -----------------------------------------------------------------------------*/
-class SL_Texture;
+struct SL_TextureView;
 
 
 
@@ -49,8 +49,8 @@ struct SL_BlitCompressedProcessor
     uint16_t dstY1;
 
     // 64-128 bits
-    const SL_Texture* mSrcTex;
-    SL_Texture* mDstTex;
+    const SL_TextureView* mSrcTex;
+    SL_TextureView* mDstTex;
 
     // 224-288 bits total, 28-36 bytes
 

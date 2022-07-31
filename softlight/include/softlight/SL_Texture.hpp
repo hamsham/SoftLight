@@ -284,6 +284,26 @@ inline LS_INLINE ls::math::vec4_t<ptrdiff_t> SL_Texture::map_coordinates<SL_Texe
 
 
 /*-------------------------------------
+ * Get the texture data (const)
+-------------------------------------*/
+inline LS_INLINE const SL_TextureView& SL_Texture::view() const noexcept
+{
+    return mView;
+}
+
+
+
+/*-------------------------------------
+ * Get the texture data
+-------------------------------------*/
+inline LS_INLINE SL_TextureView& SL_Texture::view() noexcept
+{
+    return mView;
+}
+
+
+
+/*-------------------------------------
  * Get the texture width
 -------------------------------------*/
 inline LS_INLINE uint16_t SL_Texture::width() const noexcept

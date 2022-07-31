@@ -149,7 +149,7 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     retCode = texRgb.init(SL_ColorDataType::SL_COLOR_R_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     LS_ASSERT(retCode == 0);
 
-    retCode = fbo.attach_color_buffer(0, texRgb);
+    retCode = fbo.attach_color_buffer(0, texRgb.view());
     LS_ASSERT(retCode == 0);
 
     size_t depthId  = context.create_texture();
@@ -157,7 +157,7 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     retCode = texDepth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     LS_ASSERT(retCode == 0);
 
-    retCode = fbo.attach_depth_buffer(texDepth);
+    retCode = fbo.attach_depth_buffer(texDepth.view());
     LS_ASSERT(retCode == 0);
 
     context.clear_framebuffer(0, 0, SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0}, 0.0);
@@ -352,7 +352,7 @@ int main()
             mesh_test_render(pGraph.get(), projMatrix, viewMatrix.transform());
 
             sl_create_sdf(context.texture(0), context.texture(2), context.texture(3));
-            context.blit(*pRenderBuf, 2);
+            context.blit(pRenderBuf->texture().view(), 2);
             pWindow->render(*pRenderBuf);
 
             ++numFrames;

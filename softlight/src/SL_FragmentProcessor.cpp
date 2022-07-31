@@ -355,7 +355,7 @@ void SL_FragmentProcessor::flush_line_fragments(
     const int_fast32_t      haveDepthMask = pipeline.depth_mask() == SL_DEPTH_MASK_ON;
     const SL_UniformBuffer* pUniforms     = mShader->pUniforms;
     const auto              fragShader    = mShader->pFragShader;
-    SL_Texture* const       pDepthBuf     = mFbo->get_depth_buffer();
+    SL_TextureView&         pDepthBuf     = mFbo->get_depth_buffer();
 
     SL_FragmentParam fragParams;
     fragParams.pUniforms = pUniforms;
@@ -378,7 +378,7 @@ void SL_FragmentProcessor::flush_line_fragments(
 
             if (LS_LIKELY(haveDepthMask))
             {
-                pDepthBuf->texel<depth_type>(fragParams.coord.x, fragParams.coord.y) = (depth_type)fragParams.coord.depth;
+                ((depth_type*)pDepthBuf.pTexels)[fragParams.coord.x + pDepthBuf.width * fragParams.coord.y] = (depth_type)fragParams.coord.depth;
             }
         }
     }
@@ -408,7 +408,7 @@ void SL_FragmentProcessor::flush_tri_fragments(
     const int_fast32_t      haveDepthMask = pipeline.depth_mask() == SL_DEPTH_MASK_ON;
     const SL_UniformBuffer* pUniforms     = mShader->pUniforms;
     const auto              fragShader    = mShader->pFragShader;
-    SL_Texture* const       pDepthBuf     = mFbo->get_depth_buffer();
+    SL_TextureView&         pDepthBuf     = mFbo->get_depth_buffer();
 
     SL_FragmentParam fragParams;
     fragParams.pUniforms = pUniforms;
@@ -488,7 +488,7 @@ void SL_FragmentProcessor::flush_tri_fragments(
 
             if (LS_LIKELY(haveDepthMask))
             {
-                pDepthBuf->texel<depth_type>(fragParams.coord.x, fragParams.coord.y) = (depth_type)fragParams.coord.depth;
+                ((depth_type*)pDepthBuf.pTexels)[fragParams.coord.x + pDepthBuf.width * fragParams.coord.y] = (depth_type)fragParams.coord.depth;
             }
         }
     }

@@ -12,7 +12,6 @@
 #include "softlight/SL_UniformBuffer.hpp"
 #include "softlight/SL_VertexArray.hpp"
 #include "softlight/SL_VertexBuffer.hpp"
-#include "softlight/SL_WindowBuffer.hpp"
 
 
 
@@ -768,11 +767,14 @@ void SL_Context::blit(
     uint16_t dstX1,
     uint16_t dstY1) noexcept
 {
+    SL_TextureView& i = mTextures[inTextureId]->view();
+    SL_TextureView& o = mTextures[outTextureId]->view();
+
     if (sl_is_compressed_color(mTextures[outTextureId]->type()) || sl_is_compressed_color(mTextures[inTextureId]->type()))
     {
         mProcessors.run_blit_compressed_processors(
-            mTextures[inTextureId],
-            mTextures[outTextureId],
+            &i,
+            &o,
             srcX0, srcY0,
             srcX1, srcY1,
             dstX0, dstY0,
@@ -781,8 +783,8 @@ void SL_Context::blit(
     else
     {
         mProcessors.run_blit_processors(
-            mTextures[inTextureId],
-            mTextures[outTextureId],
+            &i,
+            &o,
             srcX0, srcY0,
             srcX1, srcY1,
             dstX0, dstY0,
@@ -795,7 +797,7 @@ void SL_Context::blit(
 /*-------------------------------------
  * Blit to a window
 -------------------------------------*/
-void SL_Context::blit(SL_WindowBuffer& buffer, size_t textureId) noexcept
+void SL_Context::blit(SL_TextureView& buffer, size_t textureId) noexcept
 {
     SL_Texture*    pTex  = mTextures[textureId];
     const uint16_t srcX0 = 0;
@@ -804,8 +806,8 @@ void SL_Context::blit(SL_WindowBuffer& buffer, size_t textureId) noexcept
     const uint16_t srcY1 = pTex->height();
     const uint16_t dstX0 = 0;
     const uint16_t dstY0 = 0;
-    const uint16_t dstX1 = (uint16_t)buffer.width();
-    const uint16_t dstY1 = (uint16_t)buffer.height();
+    const uint16_t dstX1 = (uint16_t)buffer.width;
+    const uint16_t dstY1 = (uint16_t)buffer.height;
 
     this->blit(
         buffer,
@@ -822,7 +824,7 @@ void SL_Context::blit(SL_WindowBuffer& buffer, size_t textureId) noexcept
  * Blit to a window
 -------------------------------------*/
 void SL_Context::blit(
-    SL_WindowBuffer& buffer,
+    SL_TextureView& buffer,
     size_t textureId,
     uint16_t srcX0,
     uint16_t srcY0,
@@ -833,11 +835,12 @@ void SL_Context::blit(
     uint16_t dstX1,
     uint16_t dstY1) noexcept
 {
-    if (sl_is_compressed_color(mTextures[textureId]->type()) || sl_is_compressed_color(buffer.mTexture.type()))
+    SL_TextureView& t = mTextures[textureId]->view();
+
+    if (sl_is_compressed_color(mTextures[textureId]->type()) || sl_is_compressed_color(buffer.type))
     {
         mProcessors.run_blit_compressed_processors(
-            mTextures[textureId],
-            &(buffer.mTexture),
+            &t,    &buffer,
             srcX0, srcY0,
             srcX1, srcY1,
             dstX0, dstY0,
@@ -846,8 +849,7 @@ void SL_Context::blit(
     else
     {
         mProcessors.run_blit_processors(
-            mTextures[textureId],
-            &(buffer.mTexture),
+            &t,    &buffer,
             srcX0, srcY0,
             srcX1, srcY1,
             dstX0, dstY0,
@@ -862,10 +864,10 @@ void SL_Context::blit(
 --------------------------------------*/
 void SL_Context::clear_color_buffer(size_t fboId, size_t attachmentId, const ls::math::vec4_t<double>& color) noexcept
 {
-    SL_Texture* pTex = mFbos[fboId].get_color_buffer(attachmentId);
-    SL_GeneralColor outColor = sl_match_color_for_type(pTex->type(), color);
+    SL_TextureView& pTex = mFbos[fboId].get_color_buffer(attachmentId);
+    SL_GeneralColor outColor = sl_match_color_for_type(pTex.type, color);
 
-    mProcessors.run_clear_processors(&outColor.color, pTex);
+    mProcessors.run_clear_processors(&outColor.color, &pTex);
 }
 
 
@@ -875,7 +877,7 @@ void SL_Context::clear_color_buffer(size_t fboId, size_t attachmentId, const ls:
 --------------------------------------*/
 void SL_Context::clear_depth_buffer(size_t fboId, double depth) noexcept
 {
-    SL_Texture* pTex = mFbos[fboId].get_depth_buffer();
+    SL_TextureView& pTex = mFbos[fboId].get_depth_buffer();
     union
     {
         double d;
@@ -883,7 +885,7 @@ void SL_Context::clear_depth_buffer(size_t fboId, double depth) noexcept
         ls::math::half h;
     } depthVal;
 
-    switch (pTex->bpp())
+    switch (pTex.bytesPerTexel)
     {
         case sizeof(ls::math::half):
             depthVal.h = (ls::math::half)(float)depth;
@@ -901,7 +903,7 @@ void SL_Context::clear_depth_buffer(size_t fboId, double depth) noexcept
             return;
     }
 
-    mProcessors.run_clear_processors(&depthVal, pTex);
+    mProcessors.run_clear_processors(&depthVal, &pTex);
 
 }
 
@@ -912,9 +914,9 @@ void SL_Context::clear_depth_buffer(size_t fboId, double depth) noexcept
 --------------------------------------*/
 void SL_Context::clear_framebuffer(size_t fboId, size_t attachmentId, const ls::math::vec4_t<double>& color, double depth) noexcept
 {
-    SL_Texture* pColorBuf = mFbos[fboId].get_color_buffer(attachmentId);
-    SL_Texture* pDepth = mFbos[fboId].get_depth_buffer();
-    SL_GeneralColor outColor = sl_match_color_for_type(pColorBuf->type(), color);
+    SL_TextureView& pColorBuf = mFbos[fboId].get_color_buffer(attachmentId);
+    SL_TextureView& pDepth = mFbos[fboId].get_depth_buffer();
+    SL_GeneralColor outColor = sl_match_color_for_type(pColorBuf.type, color);
 
     union
     {
@@ -923,7 +925,7 @@ void SL_Context::clear_framebuffer(size_t fboId, size_t attachmentId, const ls::
         ls::math::half h;
     } depthVal;
 
-    switch (pDepth->bpp())
+    switch (pDepth.bytesPerTexel)
     {
         case sizeof(ls::math::half):
             depthVal.h = (ls::math::half)(float)depth;
@@ -941,7 +943,7 @@ void SL_Context::clear_framebuffer(size_t fboId, size_t attachmentId, const ls::
             return;
     }
 
-    mProcessors.run_clear_processors(&outColor.color, &depthVal, pColorBuf, pDepth);
+    mProcessors.run_clear_processors(&outColor.color, &depthVal, &pColorBuf, &pDepth);
 }
 
 
@@ -951,16 +953,16 @@ void SL_Context::clear_framebuffer(size_t fboId, size_t attachmentId, const ls::
 --------------------------------------*/
 void SL_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 2>& bufferIndices, const std::array<ls::math::vec4_t<double>, 2>& colors, double depth) noexcept
 {
-    SL_Texture* pDepth = mFbos[fboId].get_depth_buffer();
+    SL_TextureView& pDepth = mFbos[fboId].get_depth_buffer();
 
-    std::array<SL_Texture*, 2> buffers{
-        mFbos[fboId].get_color_buffer(bufferIndices[0]),
-        mFbos[fboId].get_color_buffer(bufferIndices[1])
+    std::array<SL_TextureView*, 2> buffers{
+        &mFbos[fboId].get_color_buffer(bufferIndices[0]),
+        &mFbos[fboId].get_color_buffer(bufferIndices[1])
     };
 
     SL_GeneralColor tempColors[2] = {
-        sl_match_color_for_type(buffers[0]->type(), colors[0]),
-        sl_match_color_for_type(buffers[1]->type(), colors[1])
+        sl_match_color_for_type(buffers[0]->type, colors[0]),
+        sl_match_color_for_type(buffers[1]->type, colors[1])
     };
 
     std::array<const void*, 2> outColors{
@@ -975,7 +977,7 @@ void SL_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 2>& bu
         ls::math::half h;
     } depthVal;
 
-    switch (pDepth->bpp())
+    switch (pDepth.bytesPerTexel)
     {
         case sizeof(ls::math::half):
             depthVal.h = (ls::math::half)(float)depth;
@@ -993,28 +995,28 @@ void SL_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 2>& bu
             return;
     }
 
-    mProcessors.run_clear_processors(outColors, &depthVal, buffers, pDepth);
+    mProcessors.run_clear_processors(outColors, &depthVal, buffers, &pDepth);
 }
 
 
 
 /*--------------------------------------
- * Clear a framebuffer (3 attachments)
+ * Clear a framebuffer (&3 attachments)
 --------------------------------------*/
 void SL_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 3>& bufferIndices, const std::array<ls::math::vec4_t<double>, 3>& colors, double depth) noexcept
 {
-    SL_Texture* pDepth = mFbos[fboId].get_depth_buffer();
+    SL_TextureView& pDepth = mFbos[fboId].get_depth_buffer();
 
-    std::array<SL_Texture*, 3> buffers{
-        mFbos[fboId].get_color_buffer(bufferIndices[0]),
-        mFbos[fboId].get_color_buffer(bufferIndices[1]),
-        mFbos[fboId].get_color_buffer(bufferIndices[2])
+    std::array<SL_TextureView*, 3> buffers{
+        &mFbos[fboId].get_color_buffer(bufferIndices[0]),
+        &mFbos[fboId].get_color_buffer(bufferIndices[1]),
+        &mFbos[fboId].get_color_buffer(bufferIndices[2])
     };
 
     SL_GeneralColor tempColors[3] = {
-        sl_match_color_for_type(buffers[0]->type(), colors[0]),
-        sl_match_color_for_type(buffers[1]->type(), colors[1]),
-        sl_match_color_for_type(buffers[2]->type(), colors[2])
+        sl_match_color_for_type(buffers[0]->type, colors[0]),
+        sl_match_color_for_type(buffers[1]->type, colors[1]),
+        sl_match_color_for_type(buffers[2]->type, colors[2])
     };
 
     std::array<const void*, 3> outColors{
@@ -1030,7 +1032,7 @@ void SL_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 3>& bu
         ls::math::half h;
     } depthVal;
 
-    switch (pDepth->bpp())
+    switch (pDepth.bytesPerTexel)
     {
         case sizeof(ls::math::half):
             depthVal.h = (ls::math::half)(float)depth;
@@ -1048,7 +1050,7 @@ void SL_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 3>& bu
             return;
     }
 
-    mProcessors.run_clear_processors(outColors, &depthVal, buffers, pDepth);
+    mProcessors.run_clear_processors(outColors, &depthVal, buffers, &pDepth);
 }
 
 
@@ -1058,20 +1060,20 @@ void SL_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 3>& bu
 --------------------------------------*/
 void SL_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 4>& bufferIndices, const std::array<ls::math::vec4_t<double>, 4>& colors, double depth) noexcept
 {
-    SL_Texture* pDepth = mFbos[fboId].get_depth_buffer();
+    SL_TextureView& pDepth = mFbos[fboId].get_depth_buffer();
 
-    std::array<SL_Texture*, 4> buffers{
-        mFbos[fboId].get_color_buffer(bufferIndices[0]),
-        mFbos[fboId].get_color_buffer(bufferIndices[1]),
-        mFbos[fboId].get_color_buffer(bufferIndices[2]),
-        mFbos[fboId].get_color_buffer(bufferIndices[3])
+    std::array<SL_TextureView*, 4> buffers{
+        &mFbos[fboId].get_color_buffer(bufferIndices[0]),
+        &mFbos[fboId].get_color_buffer(bufferIndices[1]),
+        &mFbos[fboId].get_color_buffer(bufferIndices[2]),
+        &mFbos[fboId].get_color_buffer(bufferIndices[3])
     };
 
     SL_GeneralColor tempColors[4] = {
-        sl_match_color_for_type(buffers[0]->type(), colors[0]),
-        sl_match_color_for_type(buffers[1]->type(), colors[1]),
-        sl_match_color_for_type(buffers[2]->type(), colors[2]),
-        sl_match_color_for_type(buffers[3]->type(), colors[3])
+        sl_match_color_for_type(buffers[0]->type, colors[0]),
+        sl_match_color_for_type(buffers[1]->type, colors[1]),
+        sl_match_color_for_type(buffers[2]->type, colors[2]),
+        sl_match_color_for_type(buffers[3]->type, colors[3])
     };
 
     std::array<const void*, 4> outColors{
@@ -1088,7 +1090,7 @@ void SL_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 4>& bu
         ls::math::half h;
     } depthVal;
 
-    switch (pDepth->bpp())
+    switch (pDepth.bytesPerTexel)
     {
         case sizeof(ls::math::half):
             depthVal.h = (ls::math::half)(float)depth;
@@ -1106,7 +1108,7 @@ void SL_Context::clear_framebuffer(size_t fboId, const std::array<size_t, 4>& bu
             return;
     }
 
-    mProcessors.run_clear_processors(outColors, &depthVal, buffers, pDepth);
+    mProcessors.run_clear_processors(outColors, &depthVal, buffers, &pDepth);
 }
 
 

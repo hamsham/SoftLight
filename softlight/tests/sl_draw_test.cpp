@@ -166,7 +166,7 @@ int main()
         abort();
     }
 
-    retCode = fbo.attach_color_buffer(0, tex);
+    retCode = fbo.attach_color_buffer(0, tex.view());
     if (retCode != 0)
     {
         std::cerr << "Error while attaching a color buffer to an FBO: " << retCode << std::endl;
@@ -174,7 +174,7 @@ int main()
     }
     fbo.clear_color_buffer(0, math::vec3_t<uint8_t>{255, 0, 255});
 
-    retCode = fbo.attach_depth_buffer(depth);
+    retCode = fbo.attach_depth_buffer(depth.view());
     if (retCode != 0)
     {
         std::cerr << "Error while attaching a depth buffer to an FBO: " << retCode << std::endl;
