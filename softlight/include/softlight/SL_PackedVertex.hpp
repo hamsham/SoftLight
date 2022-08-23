@@ -47,7 +47,7 @@ struct alignas(sizeof(int32_t)) SL_PackedVertex_2_10_10_10
         z{(int32_t)(v[2] * 511.f)},
         w{0}
     {}
-    
+
     explicit inline LS_INLINE operator int32_t() const noexcept
     {
         return *reinterpret_cast<const int32_t*>(this);
@@ -94,6 +94,8 @@ struct alignas(sizeof(int32_t)) SL_PackedVertex_2_10_10_10
     }
 };
 
+static_assert(sizeof(SL_PackedVertex_2_10_10_10) == sizeof(int32_t), "Unable to store a SL_PackedVertex_2_10_10_10 type within an int32.");
+
 
 
 /**------------------------------------
@@ -128,7 +130,17 @@ inline int32_t sl_pack_vertex_2_10_10_10(const ls::math::vec3& norm) noexcept
 -------------------------------------*/
 inline LS_INLINE int32_t sl_pack_vertex_2_10_10_10(const ls::math::vec4& norm) noexcept
 {
-    return (int32_t)SL_PackedVertex_2_10_10_10{norm};
+    #if defined(LS_X86_AVX2)
+        const __m128i i = _mm_cvtps_epi32(_mm_mul_ps(norm.simd, _mm_set1_ps(511.f)));
+        const __m128i l = _mm_sllv_epi32(i, _mm_set_epi32(32, 20, 10, 0));
+        const __m128i r = _mm_and_si128(l, _mm_set_epi32(0, 0x3FF00000, 0x000FFC00, 0x000003FF));
+        const __m128i i0 = _mm_or_si128(r, _mm_shuffle_epi32(r, 0xB1));
+        const __m128i i1 = _mm_or_si128(i0, _mm_unpackhi_epi32(i0, i0));
+        return _mm_cvtsi128_si32(i1);
+
+    #else
+        return (int32_t)SL_PackedVertex_2_10_10_10{norm};
+    #endif
 }
 
 
