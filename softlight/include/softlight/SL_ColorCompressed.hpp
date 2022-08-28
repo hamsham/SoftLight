@@ -845,6 +845,40 @@ rgba_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value, SL_Co
     };
 }
 
+template <>
+inline LS_INLINE SL_ColorRGB1010102 rgba_cast<SL_ColorRGB1010102, uint8_t>(const SL_ColorRGBAType<uint8_t>& c)
+{
+    return SL_ColorRGB1010102Type<uint16_t>{
+        (uint16_t)(c[0] * ((uint16_t)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().r / (uint16_t)SL_ColorLimits<uint8_t, SL_ColorRGBAType>::max()[0])),
+        (uint16_t)(c[1] * ((uint16_t)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().g / (uint16_t)SL_ColorLimits<uint8_t, SL_ColorRGBAType>::max()[1])),
+        (uint16_t)(c[2] * ((uint16_t)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().b / (uint16_t)SL_ColorLimits<uint8_t, SL_ColorRGBAType>::max()[2])),
+        (uint16_t)(c[3] / ((uint16_t)SL_ColorLimits<uint8_t, SL_ColorRGBAType>::max()[3] / (uint16_t)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().a))
+    };
+}
+
+#if defined(LS_X86_AVX2)
+template <>
+inline LS_INLINE SL_ColorRGB1010102 rgba_cast<SL_ColorRGB1010102, float>(const SL_ColorRGBAType<float>& c)
+{
+    constexpr SL_ColorRGB1010102 max1010102 = SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max();
+
+    const __m128 valsf = _mm_mul_ps(c.simd, _mm_set_ps((float)max1010102.a, (float)max1010102.b, (float)max1010102.g, (float)max1010102.r));
+    const __m128i valsi = _mm_cvtps_epi32(valsf);
+    const __m128i vals0123 = _mm_sllv_epi32(valsi, _mm_set_epi32(30, 20, 10, 0));
+    const __m128i masked = _mm_and_si128(vals0123, _mm_set_epi32(0xC0000000, 0x3FF00000, 0x000FFC00, 0x000003FF));
+    const __m128i vals1032 = _mm_or_si128(masked, _mm_shuffle_epi32(masked, 0xB1));
+    const __m128i vals3210 = _mm_or_si128(vals1032, _mm_shuffle_epi32(vals1032, 0x0F));
+
+    union
+    {
+        const int i;
+        const SL_ColorRGB1010102 v;
+    } ret{_mm_cvtsi128_si32(vals3210)};
+
+    return ret.v;
+}
+#endif
+
 
 
 /*-----------------------------------------------------------------------------
@@ -896,6 +930,44 @@ constexpr SL_ColorRGBAType<T> rgba_cast(const typename ls::setup::EnableIf<ls::s
         (T)c.a / (T)SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max().a
     };
 }
+
+#if defined(LS_X86_AVX2)
+template <>
+inline LS_INLINE SL_ColorRGBAType<float> rgba_cast<float, SL_ColorRGB1010102>(const SL_ColorRGB1010102& c) noexcept
+{
+    constexpr SL_ColorRGB1010102 max1010102 = SL_ColorLimits<uint16_t, SL_ColorRGB1010102Type>::max();
+
+    const __m128i elems    = _mm_set1_epi32(*reinterpret_cast<const int32_t*>(&c));
+    const __m128i shifted  = _mm_sllv_epi32(elems, _mm_set_epi32(0, 2, 12, 22));
+    const __m128i extended = _mm_srav_epi32(shifted, _mm_set_epi32(30, 22, 22, 22));
+    const __m128i absolute = _mm_abs_epi32(extended);
+
+    return SL_ColorRGBAType<float>{
+        _mm_mul_ps(_mm_cvtepi32_ps(absolute), _mm_set_ps(1.f/(float)max1010102.a, 1.f/(float)max1010102.b, 1.f/(float)max1010102.g, 1.f/(float)max1010102.r))
+    };
+}
+
+template <>
+inline LS_INLINE SL_ColorRGBAType<uint8_t> rgba_cast<uint8_t, SL_ColorRGB1010102>(const SL_ColorRGB1010102& c) noexcept
+{
+    const __m128i elems    = _mm_set1_epi32(*reinterpret_cast<const int32_t*>(&c));
+    const int32_t a        = c.a;
+    const __m128i shifted  = _mm_sllv_epi32(elems, _mm_set_epi32(32, 2, 12, 22));
+    const int32_t a255     = a * 85;
+    const __m128i extended = _mm_srav_epi32(shifted, _mm_set_epi32(0, 24, 24, 24));
+    const int32_t aPacked  = a255 << 24;
+    const __m128i packed   = _mm_packs_epi16(_mm_packs_epi32(extended, extended), extended);
+
+    union
+    {
+        const int32_t i;
+        const SL_ColorRGBAType<uint8_t> v;
+    } result{_mm_cvtsi128_si32(packed) | aPacked};
+
+    return result.v;
+}
+
+#endif
 
 
 
