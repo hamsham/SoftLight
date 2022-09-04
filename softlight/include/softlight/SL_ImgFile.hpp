@@ -164,18 +164,44 @@ class SL_ImgFile final {
         ImgStatus load(const char* filename);
 
         /**
-         * @brief Load an image from memory
+         * @brief Load a raw image from memory
          *
          * @param pImgBits
-         * A pointer to raw image data located in memory.
+         * A pointer to image data located in memory.
          *
-         * @type
+         * @param type
          * The color type of the image in memory.
+         *
+         * @param w
+         * The width of the image.
+         *
+         * @param h
+         * The raw image's height.
          *
          * @return FILE_LOAD_SUCCESS if the file was successfully loaded or an
          * error code from ImgStatus if not.
          */
-        ImgStatus load_memory_stream(const void* pImgBits, SL_ColorDataType type, unsigned w, unsigned h);
+        ImgStatus load_memory_raw(const void* pImgBits, SL_ColorDataType type, unsigned w, unsigned h);
+
+        /**
+         * @brief Load an image file from memory (such as PNG, JPEG, etc).
+         *
+         * @param pImgBits
+         * A pointer to raw file data located in memory.
+         *
+         * @param numBytes
+         * The maximum number of bytes used by the in-memory image. This should
+         * not be zero.
+         *
+         * @param pFilenameHint
+         * A pointer to the in-memory image's filename who's extension can be
+         * used to deduce the file type. Can be NULL to prevent file-type
+         * deduction.
+         *
+         * @return FILE_LOAD_SUCCESS if the file was successfully loaded or an
+         * error code from ImgStatus if not.
+         */
+        ImgStatus load_memory_file(const void* pImgBits, size_t numBytes, const char* pFilenameHint = nullptr);
 
         /**
          * @brief Save an image file in a specific format

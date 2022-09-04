@@ -86,7 +86,7 @@ int get_img_flags(FREE_IMAGE_FORMAT inFormat)
 -------------------------------------*/
 SL_DataType get_bitmap_size(FIBITMAP* pImg)
 {
-    // Get the data mType of the image. Convert to an internal format
+    // Get the data type of the image. Convert to an internal format
     const int storageType = FreeImage_GetImageType(pImg);
     SL_DataType dataType = VERTEX_DATA_BYTE;
 
@@ -101,30 +101,30 @@ SL_DataType get_bitmap_size(FIBITMAP* pImg)
     {
         // n-bit char
         case FIT_BITMAP:
-            LS_LOG_MSG("\tImage pixel mType: BYTE");
+            LS_LOG_MSG("\tImage pixel type: BYTE");
             dataType = VERTEX_DATA_BYTE;
             break;
 
             // 16-bit short
         case FIT_INT16:
             dataType = VERTEX_DATA_SHORT;
-            LS_LOG_MSG("\tImage pixel mType: SHORT");
+            LS_LOG_MSG("\tImage pixel type: SHORT");
             break;
 
         case FIT_UINT16:
             dataType = VERTEX_DATA_SHORT;
-            LS_LOG_MSG("\tImage pixel mType: UNSIGNED SHORT");
+            LS_LOG_MSG("\tImage pixel type: UNSIGNED SHORT");
             break;
 
             // 32-bit int
         case FIT_INT32:
             dataType = VERTEX_DATA_INT;
-            LS_LOG_MSG("\tImage pixel mType: INT");
+            LS_LOG_MSG("\tImage pixel type: INT");
             break;
 
         case FIT_UINT32:
             dataType = VERTEX_DATA_INT;
-            LS_LOG_MSG("\tImage pixel mType: UNSIGNED INT");
+            LS_LOG_MSG("\tImage pixel type: UNSIGNED INT");
             break;
 
             // 96-bit float
@@ -132,13 +132,13 @@ SL_DataType get_bitmap_size(FIBITMAP* pImg)
             // 128-bit float
         case FIT_RGBAF:
             dataType = VERTEX_DATA_FLOAT;
-            LS_LOG_MSG("\tImage pixel mType: FLOAT");
+            LS_LOG_MSG("\tImage pixel type: FLOAT");
             break;
 
             // unknown
         default:
             dataType = VERTEX_DATA_INVALID;
-            LS_LOG_MSG("\tImage pixel mType: INVALID");
+            LS_LOG_MSG("\tImage pixel type: INVALID");
             break;
     }
 
@@ -152,7 +152,7 @@ SL_ColorDataType get_pixel_format(FIBITMAP* pImg, unsigned bpp, bool* success)
     LS_LOG_MSG("\tImage Bits Per Pixel: ", bpp);
     *success = true;
 
-    // Get the data mType of the image. Convert to an internal format
+    // Get the data type of the image. Convert to an internal format
     const FREE_IMAGE_TYPE dataType = FreeImage_GetImageType(pImg);
 
     if (dataType == FIT_BITMAP)
@@ -499,19 +499,19 @@ SL_ImgFile::ImgStatus SL_ImgFile::load(const char* filename)
     // Set FreeImage's error function
     FreeImage_SetOutputMessage(&print_img_load_error);
 
-    // Determine the file mType that should be loaded
+    // Determine the file type that should be loaded
     FREE_IMAGE_FORMAT fileFormat = deduce_img_format(filename);
 
     if (fileFormat == FIF_UNKNOWN)
     {
-        LS_LOG_ERR("\tUnable to determine the file mType for ", filename, ".\n");
+        LS_LOG_ERR("\tUnable to determine the file type for ", filename, ".\n");
         return ImgStatus::INVALID_FILE_TYPE;
     }
 
     if (FreeImage_FIFSupportsReading(fileFormat) == false)
     {
         LS_LOG_ERR(
-            "\tSupport for the mType of file used by ", filename,
+            "\tSupport for the type of file used by ", filename,
             " is not currently implemented.\n");
         return ImgStatus::UNSUPPORTED_FILE_TYPE;
     }
@@ -560,11 +560,11 @@ SL_ImgFile::ImgStatus SL_ImgFile::load(const char* filename)
 
 
 /*-------------------------------------
- * Loading
+ * Loading raw bytes
 -------------------------------------*/
-SL_ImgFile::ImgStatus SL_ImgFile::load_memory_stream(const void* pImgBits, SL_ColorDataType type, unsigned w, unsigned h)
+SL_ImgFile::ImgStatus SL_ImgFile::load_memory_raw(const void* pImgBits, SL_ColorDataType type, unsigned w, unsigned h)
 {
-    LS_LOG_MSG("Importing image from memory.");
+    LS_LOG_MSG("Importing raw image from memory.");
     unload();
 
     if (!pImgBits)
@@ -576,7 +576,7 @@ SL_ImgFile::ImgStatus SL_ImgFile::load_memory_stream(const void* pImgBits, SL_Co
     // Set FreeImage's error function
     FreeImage_SetOutputMessage(&print_img_load_error);
 
-    // Determine the file mType that should be loaded
+    // Determine the file type that should be loaded
     FREE_IMAGE_TYPE fiType = sl_color_to_freeimage(type);
 
     if (fiType == FIT_UNKNOWN)
@@ -619,6 +619,97 @@ SL_ImgFile::ImgStatus SL_ImgFile::load_memory_stream(const void* pImgBits, SL_Co
     FreeImage_Unload(fileData);
     return ImgStatus::UNSUPPORTED_FORMAT;
 }
+
+
+
+/*-------------------------------------
+ * Loading raw bytes
+-------------------------------------*/
+SL_ImgFile::ImgStatus SL_ImgFile::load_memory_file(const void* pImgBits, size_t numBytes, const char* pFilenameHint)
+{
+    LS_LOG_MSG("Importing image file from memory.");
+    unload();
+
+    if (!pImgBits)
+    {
+        LS_LOG_ERR("\tFailed to load an image as no valid image data was provided.\n");
+        return ImgStatus::INVALID_FILE_TYPE;
+    }
+
+    // Set FreeImage's error function
+    FreeImage_SetOutputMessage(&print_img_load_error);
+
+    FIMEMORY* pHandle = FreeImage_OpenMemory((BYTE*)pImgBits, (DWORD)numBytes);
+    if (!pHandle)
+    {
+        LS_LOG_ERR("\tUnable to open the input memory file.");
+        return ImgStatus::INTERNAL_ERROR;
+    }
+
+    // Determine the file type that should be loaded
+    FREE_IMAGE_FORMAT fileFormat = FreeImage_GetFileTypeFromMemory(pHandle);
+    if (fileFormat == FIF_UNKNOWN)
+    {
+        // try again
+        fileFormat = pFilenameHint ? deduce_img_format(pFilenameHint) : FIF_UNKNOWN;
+
+        if (fileFormat == FIF_UNKNOWN)
+        {
+            LS_LOG_ERR("\tUnable to determine the image file type for a memory buffer.\n");
+            FreeImage_CloseMemory(pHandle);
+            return ImgStatus::INVALID_FILE_TYPE;
+        }
+    }
+
+    if (FreeImage_FIFSupportsReading(fileFormat) == false)
+    {
+        LS_LOG_ERR("\tSupport for the type of file used by an in-memory buffer is not currently implemented.\n");
+        FreeImage_CloseMemory(pHandle);
+        return ImgStatus::UNSUPPORTED_FILE_TYPE;
+    }
+
+    // Preliminary setup passed. Attempt to load the file data
+
+    // Use some predefined image flags
+    const int fileFlags = get_img_flags(fileFormat);
+    FIBITMAP* const fileData = FreeImage_LoadFromMemory(fileFormat, pHandle, fileFlags);
+
+    // The file should be in memory now. Unlock the external stream.
+    FreeImage_CloseMemory(pHandle);
+
+    if (!fileData)
+    {
+        LS_LOG_ERR("\tUnable to load an in-memory image due to an internal library error.\n");
+        return ImgStatus::INTERNAL_ERROR;
+    }
+
+    const SL_DataType dataType = get_bitmap_size(fileData);
+    if (dataType == VERTEX_DATA_INVALID)
+    {
+        LS_LOG_ERR("\tIn-memory contains an unsupported pixel format.\n");
+        FreeImage_Unload(fileData);
+        return ImgStatus::UNSUPPORTED_FORMAT;
+    }
+
+    bool success = true;
+    this->mImgData = fileData;
+    this->mDimens[0] = (int)FreeImage_GetWidth(fileData);
+    this->mDimens[1] = (int)FreeImage_GetHeight(fileData);
+    this->mDimens[2] = 1; // TODO
+    this->mBpp = (unsigned)FreeImage_GetBPP(fileData);
+    this->mFormat = get_pixel_format(fileData, this->mBpp, &success);
+
+    if (success)
+    {
+        LS_LOG_MSG("\tSuccessfully loaded an im-memory image file.\n");
+        return ImgStatus::FILE_LOAD_SUCCESS;
+    }
+
+    LS_LOG_ERR("\tIn-memory image file contains an unsupported pixel format.\n");
+    FreeImage_Unload(fileData);
+    return ImgStatus::UNSUPPORTED_FORMAT;
+}
+
 
 
 /*-------------------------------------

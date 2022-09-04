@@ -52,6 +52,8 @@ enum SL_BoneInfo : unsigned
 
 struct SL_BoneData
 {
+    uint32_t numWeights;
+
     union
     {
         ls::math::vec4_t<uint32_t> ids32;

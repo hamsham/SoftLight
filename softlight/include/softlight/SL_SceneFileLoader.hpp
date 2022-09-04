@@ -23,6 +23,7 @@ struct aiMesh;
 struct aiNode;
 struct aiNodeAnim;
 struct aiScene;
+struct aiTexture;
 
 
 namespace Assimp
@@ -282,14 +283,14 @@ class SL_SceneFileLoader
     int import_materials(const aiScene* const pScene) noexcept;
 
     void import_texture_path(
-        const aiMaterial* const pMaterial,
+        const aiScene* const pScene,
+        const unsigned materialIndex,
         const int slotType,
-        const SL_Texture* pTextures[SL_MaterialProperty::SL_MATERIAL_MAX_TEXTURES],
         SL_ImgFile& imgLoader,
         std::unordered_map<std::string, const SL_Texture*>& loadedTextures
     ) noexcept;
 
-    SL_Texture* load_texture_at_path(const std::string& path, SL_ImgFile& imgLoader) noexcept;
+    SL_Texture* load_texture_at_path(const std::string& path, SL_ImgFile& imgLoader, const aiTexture* pEmbeddedTex = nullptr) noexcept;
 
     bool import_mesh_data(const aiScene* const pScene, const SL_SceneLoadOpts& opts) noexcept;
 

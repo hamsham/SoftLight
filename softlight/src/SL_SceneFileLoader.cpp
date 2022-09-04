@@ -768,7 +768,7 @@ bool SL_SceneFileLoader::allocate_gpu_data() noexcept
             LS_LOG_MSG("\t\tAllocated ", numBindings, " bindings for VAO ", i, '.');
         }
 
-        for (unsigned k = 0; k < SL_NUM_COMMON_VERTEX_FLAGS; ++k)
+        for (unsigned j = 0, k = 0; k < SL_NUM_COMMON_VERTEX_FLAGS; ++k)
         {
             const SL_CommonVertType currentVertType = SL_COMMON_VERTEX_FLAGS[k];
             if (0 != (inAttribs & currentVertType))
@@ -782,6 +782,10 @@ bool SL_SceneFileLoader::allocate_gpu_data() noexcept
                     sl_dimens_of_vertex(currentVertType),
                     sl_type_of_vertex(currentVertType)
                 );
+
+                LS_LOG_MSG("\t\t\tBinding ", j, ": ", sl_common_vertex_names()[k], " @ ", offset, " bytes.");
+                ++j;
+
                 currentVaoAttribId++;
             }
         }
@@ -839,7 +843,7 @@ int SL_SceneFileLoader::import_materials(const aiScene* const pScene) noexcept
 
         for (unsigned j = 0; j < LS_ARRAY_SIZE(texTypes); ++j)
         {
-            import_texture_path(pMaterial, texTypes[j], newMaterial.pTextures, *imgLoader, mLoadedTextures);
+            import_texture_path(pScene, i, texTypes[j], *imgLoader, mLoadedTextures);
         }
 
         aiColor3D inMatColor;
@@ -896,13 +900,17 @@ int SL_SceneFileLoader::import_materials(const aiScene* const pScene) noexcept
     Read and import a single texture path
 -------------------------------------*/
 void SL_SceneFileLoader::import_texture_path(
-    const aiMaterial* const pMaterial,
+    const aiScene* const pScene,
+    const unsigned materialIndex,
     const int slotType,
-    const SL_Texture* pTextures[SL_MaterialProperty::SL_MATERIAL_MAX_TEXTURES],
     SL_ImgFile& imgLoader,
     std::unordered_map<std::string, const SL_Texture*>& loadedTextures
 ) noexcept
 {
+    const aiMaterial* const pMaterial = pScene->mMaterials[materialIndex];
+    SL_Material& newMaterial = mPreloader.mSceneData.mMaterials[materialIndex];
+    const SL_Texture** const pTextures = newMaterial.pTextures;
+
     imgLoader.unload();
 
     const unsigned maxTexCount = math::min<unsigned>(SL_MATERIAL_MAX_TEXTURES, pMaterial->GetTextureCount((aiTextureType)slotType));
@@ -955,7 +963,7 @@ void SL_SceneFileLoader::import_texture_path(
     aiTextureMapMode inWrapMode[3] = {aiTextureMapMode::aiTextureMapMode_Wrap};
     const SL_Texture* pTexture = nullptr;
 
-    for (unsigned i = 0, j = 0; i < maxTexCount; ++i)
+    for (unsigned i = 0; i < maxTexCount; ++i)
     {
         if (materialTexOffset != SL_MATERIAL_TEXTURE_MISC0 && pTextures[materialTexOffset])
         {
@@ -990,11 +998,14 @@ void SL_SceneFileLoader::import_texture_path(
             continue;
         }
 
+        // Determine if we're loading an embedded texture
+        const aiTexture* pEmbeddedTex = pScene->GetEmbeddedTexture(inPath.C_Str());
+
         // add the imported texture to the appropriate array in textureSet.
         std::string&& texPath = mPreloader.mBaseFileDir + inPath.C_Str();
 
         #ifndef LS_OS_WINDOWS
-        std::replace(texPath.begin(), texPath.end(), '\\', '/');
+            std::replace(texPath.begin(), texPath.end(), '\\', '/');
         #endif
 
         if (loadedTextures.count(texPath) > 0)
@@ -1004,7 +1015,7 @@ void SL_SceneFileLoader::import_texture_path(
         }
         else
         {
-            pTexture = load_texture_at_path(texPath, imgLoader);
+            pTexture = load_texture_at_path(texPath, imgLoader, pEmbeddedTex);
 
             if (pTexture != nullptr)
             {
@@ -1018,8 +1029,6 @@ void SL_SceneFileLoader::import_texture_path(
                 continue;
             }
         }
-
-        ++j;
     }
 }
 
@@ -1028,11 +1037,36 @@ void SL_SceneFileLoader::import_texture_path(
 /*-------------------------------------
  * Attempt to load a texture from the local filesystem
 -------------------------------------*/
-SL_Texture* SL_SceneFileLoader::load_texture_at_path(const std::string& path, SL_ImgFile& imgLoader) noexcept
+SL_Texture* SL_SceneFileLoader::load_texture_at_path(const std::string& path, SL_ImgFile& imgLoader, const aiTexture* pEmbeddedTex) noexcept
 {
-    if (imgLoader.load(path.c_str()) != SL_ImgFile::ImgStatus::FILE_LOAD_SUCCESS)
+    if (!pEmbeddedTex)
     {
-        return nullptr;
+        if (imgLoader.load(path.c_str()) != SL_ImgFile::ImgStatus::FILE_LOAD_SUCCESS)
+        {
+            return nullptr;
+        }
+    }
+    else if (pEmbeddedTex->mHeight != 0)
+    {
+        SL_ColorDataType dataType = SL_ColorDataType::SL_COLOR_RGBA_8U;
+        if (std::strcmp("rgb8888", pEmbeddedTex->achFormatHint) || std::strcmp("bgr8888", pEmbeddedTex->achFormatHint))
+        {
+            dataType = SL_ColorDataType::SL_COLOR_RGB_8U;
+        }
+
+        if (imgLoader.load_memory_raw(pEmbeddedTex->pcData, dataType, pEmbeddedTex->mWidth, pEmbeddedTex->mHeight) != SL_ImgFile::ImgStatus::FILE_LOAD_SUCCESS)
+        {
+            LS_LOG_ERR("\t\tUnknown texture format, \"", pEmbeddedTex->achFormatHint, ",\" for embedded texture: ", pEmbeddedTex->mFilename.C_Str());
+            return nullptr;
+        }
+    }
+    else
+    {
+        if (imgLoader.load_memory_file(pEmbeddedTex->pcData, pEmbeddedTex->mWidth, pEmbeddedTex->mFilename.C_Str()) != SL_ImgFile::ImgStatus::FILE_LOAD_SUCCESS)
+        {
+            LS_LOG_ERR("\t\tInternal error while loading embedded texture: ", pEmbeddedTex->mFilename.C_Str());
+            return nullptr;
+        }
     }
 
     SL_SceneGraph& graph = mPreloader.mSceneData;
@@ -1134,16 +1168,17 @@ bool SL_SceneFileLoader::import_bone_data(const aiMesh* const pMesh, unsigned ba
 
     for (unsigned i = 0; i < pMesh->mNumBones; ++i)
     {
-        const aiBone*     pBone      = pMesh->mBones[i];
-        const std::string boneName   = {pBone->mName.C_Str()};
-        const uint32_t    numWeights = pBone->mNumWeights;
-        size_t            boneId     = 0;
+        const aiBone*     pBone    = pMesh->mBones[i];
+        const std::string boneName = {pBone->mName.C_Str()};
 
-        SL_AlignedVector<std::string>::iterator&& nameIter = std::find(nodeNames.begin(), nodeNames.end(), boneName);
-        if (nameIter != nodeNames.end())
+        const SL_AlignedVector<std::string>::iterator&& nameIter = std::find(nodeNames.begin(), nodeNames.end(), boneName);
+        if (nameIter == nodeNames.end())
         {
-            boneId = std::distance(nodeNames.begin(), nameIter);
+            continue;
         }
+
+        const size_t   boneId     = std::distance(nodeNames.begin(), nameIter);
+        const uint32_t numWeights = pBone->mNumWeights;
 
         // gather all weights from this bone
         for (uint32_t j = 0; j < numWeights; ++j)
@@ -1151,84 +1186,60 @@ bool SL_SceneFileLoader::import_bone_data(const aiMesh* const pMesh, unsigned ba
             const uint32_t vertId = (uint32_t)(baseVert+pBone->mWeights[j].mVertexId);
             const float    weight = pBone->mWeights[j].mWeight;
 
-            // Apply up to SL_BONE_MAX_WEIGHTS weights for a single vertex
-            std::unordered_map<uint32_t, SL_BoneData>::iterator&& iter = boneData.find(vertId);
-
-            // If we have already accounted for a vertex, apply this weight to
-            // the first non-zero value available for that vertex
-            if (iter != boneData.end())
+            // The vertex we're checking does not have any weights associated
+            // with it, add an empty weight here.
+            if (!boneData.count(vertId))
             {
-                if (opts.packBoneIds)
-                {
-                    for (uint32_t k = 1; k < SL_BONE_MAX_WEIGHTS; ++k)
-                    {
-                        if (iter->second.ids16[k] == 0)
-                        {
-                            iter->second.ids16[k] = (uint16_t)boneId;
-
-                            if (opts.packBoneIds)
-                            {
-                                iter->second.weights16[k] = ls::math::half{weight};
-                            }
-                            else
-                            {
-                                iter->second.weights32[k] = weight;
-                            }
-
-                            break;
-                        }
-                    }
-                }
-                else
-                {
-                    for (uint32_t k = 1; k < SL_BONE_MAX_WEIGHTS; ++k)
-                    {
-                        if (iter->second.ids32[k] == 0)
-                        {
-                            iter->second.ids32[k] = (uint32_t)boneId;
-
-                            if (opts.packBoneIds)
-                            {
-                                iter->second.weights16[k] = ls::math::half{weight};
-                            }
-                            else
-                            {
-                                iter->second.weights32[k] = weight;
-                            }
-
-                            break;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                // The vertex we're checking does not have any weights
-                // currently associated with it, add one.
                 SL_BoneData newBone;
+                newBone.numWeights = 0;
+
                 if (opts.packBoneIds)
                 {
                     newBone.ids16 = math::vec4_t<uint16_t>{0, 0, 0, 0};
-                    newBone.ids16 = (int16_t)boneId;
                 }
                 else
                 {
                     newBone.ids32 = math::vec4_t<uint32_t>{0, 0, 0, 0};
-                    newBone.ids32 = (int32_t)boneId;
                 }
 
                 if (opts.packBoneWeights)
                 {
-                    newBone.weights16 = math::vec4_t<math::half>{math::half{0x00, 0x00}};
-                    newBone.weights16 = weight;
+                    newBone.weights16 = math::vec4_t<math::half>{math::half{0x00, 0x00}, math::half{0x00, 0x00}, math::half{0x00, 0x00}, math::half{0x00, 0x00}};
                 }
                 else
                 {
                     newBone.weights32 = math::vec4_t<float>{0.f, 0.f, 0.f, 0.f};
-                    newBone.weights32 = weight;
                 }
 
-                boneData[vertId] = newBone;
+                boneData.insert({vertId, newBone});
+            }
+
+            // Apply up to SL_BONE_MAX_WEIGHTS weights for a single vertex
+            SL_BoneData& currentBone = boneData[vertId];
+            if (currentBone.numWeights >= SL_BONE_MAX_WEIGHTS)
+            {
+                continue;
+            }
+
+            uint32_t k = currentBone.numWeights;
+            currentBone.numWeights += 1;
+
+            if (opts.packBoneIds)
+            {
+                currentBone.ids16[k] = (uint16_t)boneId;
+            }
+            else
+            {
+                currentBone.ids32[k] = (uint32_t)boneId;
+            }
+
+            if (opts.packBoneWeights)
+            {
+                currentBone.weights16[k] = ls::math::half{weight};
+            }
+            else
+            {
+                currentBone.weights32[k] = weight;
             }
         }
     }

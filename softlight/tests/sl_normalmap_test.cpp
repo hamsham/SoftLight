@@ -280,7 +280,7 @@ int read_input_texture(SL_SceneGraph& graph, const std::string& texFile)
     tex.set_texels(0, 0, 0, (uint16_t)w, (uint16_t)h, 1, loader.data());
 
     SL_ImgFile outImg;
-    outImg.load_memory_stream(tex.data(), tex.type(), tex.width(), tex.height()*tex.depth());
+    outImg.load_memory_raw(tex.data(), tex.type(), tex.width(), tex.height()*tex.depth());
     outImg.save("normal_map.png", SL_ImgFileType::IMG_FILE_PNG);
 
     //sl_img_save_ppm((uint16_t)w, (uint16_t)h*6, (const SL_ColorRGB8*)tex.data(), "skybox.ppm");
