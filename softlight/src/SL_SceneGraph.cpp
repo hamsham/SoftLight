@@ -2,6 +2,8 @@
 #include <algorithm> // std::rotate()
 #include <iterator> // std::iterator_traits
 
+#include "lightsky/math/mat_utils.h"
+
 #include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Copy.h"
 #include "lightsky/utils/Log.h"
@@ -1023,6 +1025,10 @@ size_t SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
             }
 
             n.dataId += mNumNodeMeshes.size();
+        }
+        else if (n.type == NODE_TYPE_BONE)
+        {
+            n.dataId += mBoneOffsets.size();
         }
     }
 
