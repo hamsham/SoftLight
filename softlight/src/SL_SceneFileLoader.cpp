@@ -252,9 +252,10 @@ bool SL_SceneFilePreload::load(const std::string& filename, SL_SceneLoadOpts opt
 
     Assimp::Importer& fileImporter = *mImporter;
     fileImporter.SetPropertyInteger(AI_CONFIG_PP_LBW_MAX_WEIGHTS, (int)SL_BONE_MAX_WEIGHTS);
-    fileImporter.SetPropertyInteger(AI_CONFIG_FAVOUR_SPEED, 1);
+    fileImporter.SetPropertyFloat(AI_CONFIG_PP_DB_THRESHOLD, 0.f);
+    fileImporter.SetPropertyInteger(AI_CONFIG_FAVOUR_SPEED, 0);
     fileImporter.SetPropertyBool(AI_CONFIG_IMPORT_NO_SKELETON_MESHES, AI_TRUE);
-    fileImporter.SetPropertyInteger(AI_CONFIG_PP_FD_REMOVE, 1); // remove degenerate triangles
+    fileImporter.SetPropertyBool(AI_CONFIG_PP_FD_REMOVE, AI_TRUE); // remove degenerate triangles
     fileImporter.SetPropertyBool(AI_CONFIG_PP_FD_CHECKAREA, AI_FALSE); // During degenerate removal, don't remove small triangles
     //fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, AI_SLM_DEFAULT_MAX_TRIANGLES);
     fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, std::numeric_limits<int32_t>::max());
@@ -635,6 +636,11 @@ bool SL_SceneFileLoader::load_scene(const aiScene* const pScene, SL_SceneLoadOpt
     }
 
     math::mat4 invGlobalTransform{1.f};
+    if (pScene->mRootNode)
+    {
+        invGlobalTransform = math::inverse(sl_convert_assimp_matrix(pScene->mRootNode->mTransformation));
+    }
+
     read_node_hierarchy(pScene, pScene->mRootNode, SCENE_NODE_ROOT_ID, invGlobalTransform);
 
     /*
@@ -1183,63 +1189,67 @@ bool SL_SceneFileLoader::import_bone_data(const aiMesh* const pMesh, unsigned ba
         // gather all weights from this bone
         for (uint32_t j = 0; j < numWeights; ++j)
         {
-            const uint32_t vertId = (uint32_t)(baseVert+pBone->mWeights[j].mVertexId);
-            const float    weight = pBone->mWeights[j].mWeight;
+            const aiVertexWeight& inWeight = pBone->mWeights[j];
+            const uint32_t vertId = (uint32_t)(baseVert+inWeight.mVertexId);
+            const float    weight = inWeight.mWeight;
 
             // The vertex we're checking does not have any weights associated
             // with it, add an empty weight here.
             if (!boneData.count(vertId))
             {
                 SL_BoneData newBone;
-                newBone.numWeights = 0;
+                newBone.numWeights = 1;
 
                 if (opts.packBoneIds)
                 {
-                    newBone.ids16 = math::vec4_t<uint16_t>{0, 0, 0, 0};
+                    newBone.ids16 = math::vec4_t<uint16_t>{(uint16_t)boneId, 0, 0, 0};
                 }
                 else
                 {
-                    newBone.ids32 = math::vec4_t<uint32_t>{0, 0, 0, 0};
+                    newBone.ids32 = math::vec4_t<uint32_t>{(uint32_t)boneId, 0, 0, 0};
                 }
 
                 if (opts.packBoneWeights)
                 {
-                    newBone.weights16 = math::vec4_t<math::half>{math::half{0x00, 0x00}, math::half{0x00, 0x00}, math::half{0x00, 0x00}, math::half{0x00, 0x00}};
+                    newBone.weights16 = math::vec4_t<math::half>{math::half{weight}, math::half{0x00, 0x00}, math::half{0x00, 0x00}, math::half{0x00, 0x00}};
                 }
                 else
                 {
-                    newBone.weights32 = math::vec4_t<float>{0.f, 0.f, 0.f, 0.f};
+                    newBone.weights32 = math::vec4_t<float>{weight, 0.f, 0.f, 0.f};
                 }
 
                 boneData.insert({vertId, newBone});
             }
-
-            // Apply up to SL_BONE_MAX_WEIGHTS weights for a single vertex
-            SL_BoneData& currentBone = boneData[vertId];
-            if (currentBone.numWeights >= SL_BONE_MAX_WEIGHTS)
-            {
-                continue;
-            }
-
-            uint32_t k = currentBone.numWeights;
-            currentBone.numWeights += 1;
-
-            if (opts.packBoneIds)
-            {
-                currentBone.ids16[k] = (uint16_t)boneId;
-            }
             else
             {
-                currentBone.ids32[k] = (uint32_t)boneId;
-            }
+                // Apply up to SL_BONE_MAX_WEIGHTS weights for a single vertex
+                SL_BoneData& currentBone = boneData[vertId];
+                uint32_t k = currentBone.numWeights;
 
-            if (opts.packBoneWeights)
-            {
-                currentBone.weights16[k] = ls::math::half{weight};
-            }
-            else
-            {
-                currentBone.weights32[k] = weight;
+                if (currentBone.numWeights >= SL_BONE_MAX_WEIGHTS)
+                {
+                    continue;
+                }
+
+                currentBone.numWeights += 1;
+
+                if (opts.packBoneIds)
+                {
+                    currentBone.ids16[k] = (uint16_t)boneId;
+                }
+                else
+                {
+                    currentBone.ids32[k] = (uint32_t)boneId;
+                }
+
+                if (opts.packBoneWeights)
+                {
+                    currentBone.weights16[k] = ls::math::half{weight};
+                }
+                else
+                {
+                    currentBone.weights32[k] = weight;
+                }
             }
         }
     }
@@ -1338,7 +1348,7 @@ void SL_SceneFileLoader::read_node_hierarchy(
     const aiScene* const pScene,
     const aiNode* const  pInNode,
     const size_t         parentId,
-    math::mat4&          invGlobalTransform
+    const math::mat4&    invGlobalTransform
 ) noexcept
 {
     // use the size of the node list as an index which should be returned to
@@ -1394,12 +1404,6 @@ void SL_SceneFileLoader::read_node_hierarchy(
     }
     else if (mPreloader.mBoneOffsets.find(nodeName) != mPreloader.mBoneOffsets.end())
     {
-        if (pInNode->mParent == pScene->mRootNode)
-        {
-            invGlobalTransform = sl_convert_assimp_matrix(pScene->mRootNode->mTransformation);
-            invGlobalTransform = math::inverse(invGlobalTransform);
-        }
-
         currentNode.type = NODE_TYPE_BONE;
         currentNode.dataId = mPreloader.mSceneData.mBoneOffsets.size();
         mPreloader.mSceneData.mInvBoneTransforms.push_back(invGlobalTransform);

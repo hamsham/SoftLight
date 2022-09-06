@@ -320,10 +320,10 @@ class SL_SceneFileLoader
      * the scene node list.
      */
     void read_node_hierarchy(
-        const aiScene* const     pScene,
-        const aiNode* const      pNode,
-        const size_t             parentId,
-        ls::math::mat4_t<float>& invGlobalTransform
+        const aiScene* const pScene,
+        const aiNode* const pNode,
+        const size_t parentId,
+        const ls::math::mat4_t<float>& invGlobalTransform
     ) noexcept;
 
     /**
