@@ -640,8 +640,13 @@ void SL_Context::terminate()
     mIbos.clear();
     mIbos.shrink_to_fit();
 
+    mUniforms.clear();
+    mUniforms.shrink_to_fit();
+
     mShaders.clear();
     mShaders.shrink_to_fit();
+
+    mViewState.reset();
 
     mViewState.reset();
 
@@ -655,20 +660,28 @@ void SL_Context::terminate()
 -------------------------------------*/
 void SL_Context::import(SL_Context&& inContext) noexcept
 {
-    SL_AlignedVector<SL_VertexArray>&  inVaos     = inContext.mVaos;
-    SL_AlignedVector<SL_Texture*>&     inTextures = inContext.mTextures;
-    SL_AlignedVector<SL_Framebuffer>&  inFbos     = inContext.mFbos;
-    SL_AlignedVector<SL_VertexBuffer>& inVbos     = inContext.mVbos;
-    SL_AlignedVector<SL_IndexBuffer>&  inIbos     = inContext.mIbos;
-    SL_AlignedVector<SL_Shader>&       inShaders  = inContext.mShaders;
+    SL_AlignedVector<SL_VertexArray>&   inVaos     = inContext.mVaos;
+    SL_AlignedVector<SL_Texture*>&      inTextures = inContext.mTextures;
+    SL_AlignedVector<SL_Framebuffer>&   inFbos     = inContext.mFbos;
+    SL_AlignedVector<SL_VertexBuffer>&  inVbos     = inContext.mVbos;
+    SL_AlignedVector<SL_IndexBuffer>&   inIbos     = inContext.mIbos;
+    SL_AlignedVector<SL_UniformBuffer>& inUniforms = inContext.mUniforms;
+    SL_AlignedVector<SL_Shader>&        inShaders  = inContext.mShaders;
 
     const std::size_t baseVboId  = mVbos.size();
     const std::size_t baseIboId  = mIbos.size();
 
     for (SL_VertexArray& inVao : inVaos)
     {
-        inVao.set_vertex_buffer(inVao.get_vertex_buffer() + baseVboId);
-        inVao.set_index_buffer(inVao.get_index_buffer() + baseIboId);
+        if (inVao.has_vertex_buffer())
+        {
+            inVao.set_vertex_buffer(inVao.get_vertex_buffer() + baseVboId);
+        }
+
+        if (inVao.has_index_buffer())
+        {
+            inVao.set_index_buffer(inVao.get_index_buffer() + baseIboId);
+        }
     }
 
     std::move(inVaos.begin(), inVaos.end(), std::back_inserter(mVaos));
@@ -685,6 +698,9 @@ void SL_Context::import(SL_Context&& inContext) noexcept
 
     std::move(inIbos.begin(), inIbos.end(), std::back_inserter(mIbos));
     inIbos.clear();
+
+    std::move(inUniforms.begin(), inUniforms.end(), std::back_inserter(mUniforms));
+    inUniforms.clear();
 
     std::move(inShaders.begin(), inShaders.end(), std::back_inserter(mShaders));
     inShaders.clear();
