@@ -8,7 +8,7 @@
 
 
 /*--------------------------------------
- *
+ * Primitive types for rendering a mesh.
 --------------------------------------*/
 enum SL_RenderMode : uint32_t
 {
@@ -25,7 +25,7 @@ enum SL_RenderMode : uint32_t
 
 
 /*--------------------------------------
- *
+ * Compact data structure for mesh information on the GPU.
 --------------------------------------*/
 struct SL_Mesh
 {
