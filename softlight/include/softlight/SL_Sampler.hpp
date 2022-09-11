@@ -110,7 +110,7 @@ struct SL_WrapModeRepeat
 
     inline LS_INLINE float operator()(float uvw) const noexcept
     {
-        return (uvw < 0.f ? 1.f : 0.f) + ls::math::fmod_1(uvw);
+        return (uvw < 0.f ? 1.f : 0.f) + ls::math::fmod_1(ls::math::abs(uvw));
     }
 };
 
