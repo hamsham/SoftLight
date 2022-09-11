@@ -232,6 +232,10 @@ void SL_SceneFilePreload::unload() noexcept
     mVaoGroups.clear();
 
     mTexPaths.clear();
+
+    mBones.clear();
+
+    mBoneOffsets.clear();
 }
 
 
@@ -257,9 +261,16 @@ bool SL_SceneFilePreload::load(const std::string& filename, SL_SceneLoadOpts opt
     fileImporter.SetPropertyBool(AI_CONFIG_IMPORT_NO_SKELETON_MESHES, AI_TRUE);
     fileImporter.SetPropertyBool(AI_CONFIG_PP_FD_REMOVE, AI_TRUE); // remove degenerate triangles
     fileImporter.SetPropertyBool(AI_CONFIG_PP_FD_CHECKAREA, AI_FALSE); // During degenerate removal, don't remove small triangles
-    //fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, AI_SLM_DEFAULT_MAX_TRIANGLES);
-    fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, std::numeric_limits<int32_t>::max());
-    //fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_VERTEX_LIMIT, std::numeric_limits<uint16_t>::max());
+
+    // packed bone IDs are contained within a 16-bit index
+    if (opts.packBoneIds)
+    {
+        fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, (int)std::numeric_limits<uint16_t>::max());
+    }
+    else
+    {
+        fileImporter.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, std::numeric_limits<int32_t>::max()-1);
+    }
 
     fileImporter.SetPropertyInteger(AI_CONFIG_PP_ICL_PTCACHE_SIZE, SL_VERTEX_CACHE_SIZE);
 
@@ -487,18 +498,19 @@ bool SL_SceneFilePreload::allocate_cpu_data(const aiScene* const pScene) noexcep
     // Reserve data here. There's no telling whether all nodes can be imported
     // or not while Assimp's bones and lights remain unsupported.
     const unsigned numSceneNodes = sl_count_assimp_nodes(pScene->mRootNode);
-    mSceneData.mNodeParentIds.reserve(numSceneNodes);
-    mSceneData.mMeshBounds.resize(pScene->mNumMeshes);
-    mSceneData.mNodes.reserve(numSceneNodes);
-    mSceneData.mBaseTransforms.reserve(numSceneNodes);
-    mSceneData.mCurrentTransforms.reserve(numSceneNodes);
-    mSceneData.mInvBoneTransforms.reserve(numBones);
-    mSceneData.mBoneOffsets.reserve(numBones);
-    mSceneData.mNodeNames.reserve(numSceneNodes);
-    mSceneData.mAnimations.reserve(pScene->mNumAnimations);
-    mSceneData.mCameras.reserve(pScene->mNumCameras);
-    mSceneData.mNumNodeMeshes.reserve(pScene->mNumMeshes);
-    mSceneData.mNodeMeshes.reserve(pScene->mNumMeshes);
+    mSceneData.mNodeParentIds.reserve(numSceneNodes); // populated in "read_node_hierarchy()"
+    mSceneData.mNodes.reserve(numSceneNodes); // populated in "read_node_hierarchy()"
+    mSceneData.mBaseTransforms.reserve(numSceneNodes); // populated in "read_node_hierarchy()"
+    mSceneData.mCurrentTransforms.reserve(numSceneNodes); // populated in "read_node_hierarchy()"
+    mSceneData.mInvBoneTransforms.reserve(numBones); // populated in "read_node_hierarchy()"
+    mSceneData.mBoneOffsets.reserve(numBones); // populated in "read_node_hierarchy()"
+    mSceneData.mNodeNames.reserve(numSceneNodes); // populated in "read_node_hierarchy()"
+    mSceneData.mAnimations.reserve(pScene->mNumAnimations); // populated in "import_animations()"
+    mSceneData.mCameras.reserve(pScene->mNumCameras); // populated in "import_camera_node()"
+    mSceneData.mNumNodeMeshes.reserve(pScene->mNumMeshes); // populated in "import_mesh_node()"
+    mSceneData.mNodeMeshes.reserve(pScene->mNumMeshes); // populated in "import_mesh_node()"
+    mSceneData.mMeshBounds.resize(pScene->mNumMeshes); // populated in "import_mesh_data()"
+    mSceneData.mMeshSkeletons.resize(pScene->mNumMeshes); // populated in "import_bone_data()"
 
     return true;
 }
@@ -661,7 +673,7 @@ bool SL_SceneFileLoader::load_scene(const aiScene* const pScene, SL_SceneLoadOpt
             const SL_CommonVertType inVertType = sl_convert_assimp_verts(pMesh, opts);
             SL_VaoGroup* outMeshMarker = sl_get_matching_marker(inVertType, tempVaoGroups);
 
-            if (!import_bone_data(pMesh, outMeshMarker->baseVert, opts))
+            if (!import_bone_data(i, pMesh, outMeshMarker->baseVert, opts))
             {
                 LS_LOG_ERR("\t\tUnable to import bone data for the mesh ", pMesh->mName.C_Str());
                 return false;
@@ -1161,8 +1173,12 @@ bool SL_SceneFileLoader::import_mesh_data(const aiScene* const pScene, const SL_
  * Use all information from the preprocess step to allocate and import bone
  * information.
 -------------------------------------*/
-bool SL_SceneFileLoader::import_bone_data(const aiMesh* const pMesh, unsigned baseVert, const SL_SceneLoadOpts& opts) noexcept
+bool SL_SceneFileLoader::import_bone_data(const size_t meshIndex, const aiMesh* const pMesh, unsigned baseVert, const SL_SceneLoadOpts& opts) noexcept
 {
+    SL_AlignedVector<SL_SkeletonIndex>& skeletonIndices = mPreloader.mSceneData.mMeshSkeletons;
+    LS_DEBUG_ASSERT(skeletonIndices.size() > meshIndex);
+    skeletonIndices[meshIndex] = SL_SkeletonIndex{SCENE_NODE_ROOT_ID, 0};
+
     if (!pMesh->mNumBones)
     {
         return true;
@@ -1172,10 +1188,40 @@ bool SL_SceneFileLoader::import_bone_data(const aiMesh* const pMesh, unsigned ba
     SL_AlignedVector<std::string>&             nodeNames = mPreloader.mSceneData.mNodeNames;
     std::unordered_map<uint32_t, SL_BoneData>& boneData  = mPreloader.mBones;
 
+    size_t firstBone = SCENE_NODE_ROOT_ID;
+    size_t lastBone = 0;
+
+    // Prepass to gather the bone indices. This way we never need to update the
+    // bone IDs of each mesh after it's on the GPU.
     for (unsigned i = 0; i < pMesh->mNumBones; ++i)
     {
-        const aiBone*     pBone    = pMesh->mBones[i];
-        const std::string boneName = {pBone->mName.C_Str()};
+        const aiBone* const pBone    = pMesh->mBones[i];
+        const std::string   boneName = {pBone->mName.C_Str()};
+
+        const SL_AlignedVector<std::string>::iterator&& nameIter = std::find(nodeNames.begin(), nodeNames.end(), boneName);
+
+        LS_DEBUG_ASSERT(nameIter != nodeNames.end());
+        if (nameIter == nodeNames.end())
+        {
+            continue;
+        }
+
+        const size_t boneId = std::distance(nodeNames.begin(), nameIter);
+        firstBone = math::min<size_t>(boneId, firstBone);
+        lastBone = math::max<size_t>(boneId, lastBone);
+    }
+
+    // capture the range of transformations for the current skeleton
+    {
+        const size_t boneCount = lastBone - firstBone + 1;
+        skeletonIndices[meshIndex].index = firstBone;
+        skeletonIndices[meshIndex].count = boneCount;
+    }
+
+    for (unsigned i = 0; i < pMesh->mNumBones; ++i)
+    {
+        const aiBone* const pBone    = pMesh->mBones[i];
+        const std::string   boneName = {pBone->mName.C_Str()};
 
         const SL_AlignedVector<std::string>::iterator&& nameIter = std::find(nodeNames.begin(), nodeNames.end(), boneName);
         if (nameIter == nodeNames.end())
@@ -1183,7 +1229,7 @@ bool SL_SceneFileLoader::import_bone_data(const aiMesh* const pMesh, unsigned ba
             continue;
         }
 
-        const size_t   boneId     = std::distance(nodeNames.begin(), nameIter);
+        const size_t   boneId     = std::distance(nodeNames.begin(), nameIter) - firstBone;
         const uint32_t numWeights = pBone->mNumWeights;
 
         // gather all weights from this bone

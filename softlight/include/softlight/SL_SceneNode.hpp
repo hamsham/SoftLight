@@ -70,4 +70,23 @@ void sl_reset(SL_SceneNode& n) noexcept;
 
 
 
+/**----------------------------------------------------------------------------
+ * Bone index information for associating skinning data with a SL_Mesh.
+-----------------------------------------------------------------------------*/
+struct SL_SkeletonIndex
+{
+    size_t index;
+    size_t count;
+};
+
+
+
+/**------------------------------------
+ * @brief sl_reset() assigns a default value of 'SCENE_NODE_ROOT_ID' to all
+ * internal members.
+-------------------------------------*/
+void sl_reset(SL_SkeletonIndex& n) noexcept;
+
+
+
 #endif /* SL_SCENE_NODE_HPP */

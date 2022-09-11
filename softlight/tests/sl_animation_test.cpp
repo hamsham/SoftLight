@@ -325,7 +325,7 @@ void setup_animations(SL_SceneGraph& graph, SL_AnimationPlayer& animPlayer)
 /*-------------------------------------
  * Animation updating
 -------------------------------------*/
-void update_animations(SL_SceneGraph& graph, SL_AnimationPlayer& animPlayer, unsigned& currentAnimId, float tickTime)
+void update_animations(SL_SceneGraph& graph, SL_AnimationPlayer& animPlayer, unsigned& currentAnimId, int64_t tickTime)
 {
     if (graph.mAnimations.empty())
     {
@@ -349,7 +349,7 @@ void update_animations(SL_SceneGraph& graph, SL_AnimationPlayer& animPlayer, uns
         std::cout << "Now playing animation " << currentAnimId << '.' << std::endl;
     }
 
-    animPlayer.tick(graph, currentAnimId, 1000u*tickTime);
+    animPlayer.tick(graph, currentAnimId, tickTime);
 }
 
 
@@ -403,7 +403,6 @@ void render_scene(SL_SceneGraph* pGraph, const math::mat4& vpMatrix)
     AnimUniforms* pUniforms = context.ubo(0).as<AnimUniforms>();
 
     pUniforms->vpMatrix = vpMatrix;
-    pUniforms->pBones = pGraph->mModelMatrices.data();
 
     for (size_t nodeId = 0; nodeId < pGraph->mNodes.size(); ++nodeId)
     {
@@ -433,17 +432,27 @@ void render_scene(SL_SceneGraph* pGraph, const math::mat4& vpMatrix)
 
             pUniforms->pTexture = material.pTextures[SL_MATERIAL_TEXTURE_DIFFUSE];
 
-            if (vao.num_bindings() == 5) // pos, uv, norm, bone weight, bone ID
+            const size_t skeletonIndex = pGraph->mMeshSkeletons[nodeMeshId].index;
+            const size_t skeletonCount = pGraph->mMeshSkeletons[nodeMeshId].count;
+
+            if (skeletonCount > 0)
             {
-                context.draw(m, 2, 0);
+                pUniforms->pBones = pGraph->mModelMatrices.data() + skeletonIndex;
+                context.draw(m, 2, 0); // pos, uv, norm, bone IDs, bone weights
             }
-            else if (vao.num_bindings() == 3) // pos, uv, norm
+            else
             {
-                context.draw(m, 1, 0);
-            }
-            else // pos, norm
-            {
-                context.draw(m, 0, 0);
+                pUniforms->pBones = nullptr;
+                if (vao.num_bindings() == 3)
+                {
+                    // pos, uv, norm
+                    context.draw(m, 1, 0);
+                }
+                else
+                {
+                    // pos, norm
+                    context.draw(m, 0, 0);
+                }
             }
         }
     }
@@ -502,8 +511,8 @@ utils::Pointer<SL_SceneGraph> create_context()
     retCode = meshLoader.load("testdata/bob/Bob.md5mesh", opts);
     LS_ASSERT(retCode != 0);
 
-    meshLoader.data().mCurrentTransforms[1].rotate(math::vec3{LS_PI_OVER_4, LS_PI_OVER_3, 0.f});
-    meshLoader.data().mCurrentTransforms[0].position(math::vec3{-20.f, 0.f, 20.f});
+    meshLoader.data().mCurrentTransforms[1].rotate(math::vec3{0.f, 0.f, LS_PI_OVER_4});
+    meshLoader.data().mCurrentTransforms[1].position(math::vec3{-30.f, -30.f, 0.f});
     retCode = (int)pGraph->import(meshLoader.data());
     LS_ASSERT(retCode == 0);
 
@@ -567,7 +576,7 @@ int main()
 
     int shouldQuit = pWindow->init(IMAGE_WIDTH, IMAGE_HEIGHT);
 
-    utils::Clock<float> timer;
+    utils::Clock<int64_t, std::milli> timer;
     unsigned currFrames = 0;
     unsigned totalFrames = 0;
     float currSeconds = 0.f;
@@ -623,6 +632,11 @@ int main()
                 pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
                 context.texture(0).init(context.texture(0).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
                 context.texture(1).init(context.texture(1).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
+
+                SL_Framebuffer& fbo = context.framebuffer(0);
+                fbo.attach_color_buffer(0, context.texture(0).view());
+                fbo.attach_depth_buffer(context.texture(1).view());
+
                 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
             }
 
@@ -704,12 +718,14 @@ int main()
         else
         {
             timer.tick();
-            const float tickTime = timer.tick_time().count();
+            const int64_t tickTime = timer.tick_time().count();
 
             ++currFrames;
             ++totalFrames;
-            currSeconds += tickTime;
-            totalSeconds += tickTime;
+
+            float tickTimef = (float)tickTime / 1000.f;
+            currSeconds += tickTimef;
+            totalSeconds += tickTimef;
 
             if (currSeconds >= 0.5f)
             {
@@ -719,7 +735,7 @@ int main()
                 currSeconds = 0.f;
             }
 
-            update_cam_position(camTrans, tickTime, pKeySyms);
+            update_cam_position(camTrans, tickTimef, pKeySyms);
 
             if (camTrans.is_dirty())
             {

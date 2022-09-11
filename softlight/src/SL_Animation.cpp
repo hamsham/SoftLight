@@ -372,7 +372,7 @@ void SL_Animation::animate(SL_SceneGraph& graph, const SL_AnimPrecision percentD
 
     size_t rootIndex = !mTransformIds.empty() ? mTransformIds[0] : 0;
 
-    for (size_t i = mTransformIds.size(); i --> 0;)
+    for (size_t i = mTransformIds.size(); i--;)
     {
         const size_t animChannelId       = mChannelIds[i];   // maps to SL_SceneGraph.mNodeAnims[i]
         const size_t nodeTrackId         = mTrackIds[i];     // maps to SL_SceneGraph.mNodeAnims[i][nodeTrackId]

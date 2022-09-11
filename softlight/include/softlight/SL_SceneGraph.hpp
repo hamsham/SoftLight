@@ -318,6 +318,20 @@ class SL_SceneGraph
     SL_AlignedVector<SL_BoundingBox> mMeshBounds;
 
     /**
+     * @brief Indices to the location of skeleton nodes used by skinned meshes.
+     * This member essentially associates mesh nodes with bone node
+     * transformations. This member should be updated if any node's
+     * transformation within the scene graph is added, removed, or reparented.
+     *
+     * If a mesh is skinned, these indices will point to the first and last
+     * bones in a skeleton. Non-skinned meshes will have indices pointing to
+     * the root node ID.
+     *
+     * This member is unique to all mesh objects.
+     */
+    SL_AlignedVector<SL_SkeletonIndex> mMeshSkeletons;
+
+    /**
      * @brief Referenced by all bone nodes using the "SL_SceneNode::dataId"
      * member. This contains inverse transform matrices.
      *

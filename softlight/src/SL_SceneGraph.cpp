@@ -85,6 +85,7 @@ SL_SceneGraph::SL_SceneGraph() noexcept :
     mMeshes(),
     mMaterials(),
     mMeshBounds(),
+    mMeshSkeletons(),
     mInvBoneTransforms(),
     mBoneOffsets(),
     mCameras(),
@@ -148,6 +149,7 @@ SL_SceneGraph& SL_SceneGraph::operator=(const SL_SceneGraph& s) noexcept
     mMeshes = s.mMeshes;
     mMaterials = s.mMaterials;
     mMeshBounds = s.mMeshBounds;
+    mMeshSkeletons = s.mMeshSkeletons;
     mInvBoneTransforms = s.mInvBoneTransforms;
     mBoneOffsets = s.mBoneOffsets;
     mCameras = s.mCameras;
@@ -176,6 +178,7 @@ SL_SceneGraph& SL_SceneGraph::operator=(SL_SceneGraph&& s) noexcept
     mMeshes = std::move(s.mMeshes);
     mMaterials = std::move(s.mMaterials);
     mMeshBounds = std::move(s.mMeshBounds);
+    mMeshSkeletons = std::move(s.mMeshSkeletons);
     mInvBoneTransforms = std::move(s.mInvBoneTransforms);
     mBoneOffsets = std::move(s.mBoneOffsets);
     mCameras = std::move(s.mCameras);
@@ -204,6 +207,7 @@ void SL_SceneGraph::terminate() noexcept
     mMeshes.clear();
     mMaterials.clear();
     mMeshBounds.clear();
+    mMeshSkeletons.clear();
     mInvBoneTransforms.clear();
     mBoneOffsets.clear();
     mCameras.clear();
@@ -301,13 +305,18 @@ void SL_SceneGraph::update() noexcept
 -------------------------------------*/
 void SL_SceneGraph::delete_mesh_node_data(const size_t nodeDataId) noexcept
 {
-    LS_DEBUG_ASSERT(mNumNodeMeshes.size() == mNodeMeshes.size());
+    LS_DEBUG_ASSERT(mMeshes.size() == mNumNodeMeshes.size());
+    LS_DEBUG_ASSERT(mMeshes.size() == mNodeMeshes.size());
+    LS_DEBUG_ASSERT(mMeshes.size() == mMeshBounds.size());
+    LS_DEBUG_ASSERT(mMeshes.size() == mMeshSkeletons.size());
 
     if (mNumNodeMeshes.size() > 1)
     {
-        size_t lastDataIndex = mNumNodeMeshes.size()-1;
+        size_t lastDataIndex       = mNumNodeMeshes.size()-1;
         mNumNodeMeshes[nodeDataId] = mNumNodeMeshes.back();
-        mNodeMeshes[nodeDataId] = std::move(mNodeMeshes.back());
+        mNodeMeshes[nodeDataId]    = std::move(mNodeMeshes.back());
+        mMeshBounds[nodeDataId]    = std::move(mMeshBounds.back());
+        mMeshSkeletons[nodeDataId] = std::move(mMeshSkeletons.back());
 
         for (SL_SceneNode& node : mNodes)
         {
@@ -321,6 +330,8 @@ void SL_SceneGraph::delete_mesh_node_data(const size_t nodeDataId) noexcept
 
     mNumNodeMeshes.pop_back();
     mNodeMeshes.pop_back();
+    mMeshBounds.pop_back();
+    mMeshSkeletons.pop_back();
 }
 
 
@@ -438,6 +449,8 @@ void SL_SceneGraph::clear_node_data() noexcept
 
     mNumNodeMeshes.clear();
     mNodeMeshes.clear();
+    mMeshBounds.clear();
+    mMeshSkeletons.clear();
 
     mInvBoneTransforms.clear();
     mBoneOffsets.clear();
@@ -517,6 +530,14 @@ size_t SL_SceneGraph::delete_node(const size_t nodeIndex) noexcept
         {
             // decrement the next node's parent ID if necessary
             mNodeParentIds[i] -=  numDeleted;
+        }
+    }
+
+    for (SL_SkeletonIndex& skeleton : mMeshSkeletons)
+    {
+        if (skeleton.index >= nodeIndex)
+        {
+            skeleton.index -= numDeleted;
         }
     }
 
@@ -654,6 +675,35 @@ bool SL_SceneGraph::reparent_node(const size_t nodeIndex, const size_t newParent
     rotate_right(mBaseTransforms.data()    + effectStart, numAffected, numRotations);
     rotate_right(mCurrentTransforms.data() + effectStart, numAffected, numRotations);
     rotate_right(mModelMatrices.data()     + effectStart, numAffected, numRotations);
+
+    // Deal with the mesh skeletons
+    for (SL_SkeletonIndex& skeleton : mMeshSkeletons)
+    {
+        size_t& transformId = skeleton.index;
+
+        if (movingUp)
+        {
+            if (transformId < nodeIndex)
+            {
+                transformId += displacement;
+            }
+            else
+            {
+                transformId -= amountToMove;
+            }
+        }
+        else
+        {
+            if (transformId >= nodeIndex+numChildren)
+            {
+                transformId -= displacement;
+            }
+            else
+            {
+                transformId += amountToMove-displacement;
+            }
+        }
+    }
 
     // Animations need love too
     for (SL_Animation& anim : mAnimations)
@@ -800,6 +850,8 @@ bool SL_SceneGraph::copy_node(const size_t nodeIndex) noexcept
         const size_t lastMesh = meshOffset+numMeshNodes;
         mNodeMeshes.reserve(mNodeMeshes.size()+numMeshNodes);
         mNumNodeMeshes.insert(mNumNodeMeshes.begin()+lastMesh, mNumNodeMeshes.begin()+meshOffset, mNumNodeMeshes.begin()+lastMesh);
+        mMeshBounds.insert(mMeshBounds.begin()+lastMesh, mMeshBounds.begin()+meshOffset, mMeshBounds.begin()+lastMesh);
+        mMeshSkeletons.insert(mMeshSkeletons.begin()+lastMesh, mMeshSkeletons.begin()+meshOffset, mMeshSkeletons.begin()+lastMesh);
 
         for (size_t i = 0; i < numMeshNodes; ++i)
         {
@@ -812,6 +864,15 @@ bool SL_SceneGraph::copy_node(const size_t nodeIndex) noexcept
             {
                 mNodeMeshes[dupe][j] = mNodeMeshes[orig][j];
                 //LS_LOG_MSG("Copied mesh index ", orig, '-', j, " to ", dupe, '-', j);
+            }
+        }
+
+        for (size_t i = 0; i < numMeshNodes; ++i)
+        {
+            SL_SkeletonIndex& skeleton = mMeshSkeletons[lastMesh+i];
+            if (skeleton.index != SCENE_NODE_ROOT_ID)
+            {
+                skeleton.index += displacement;
             }
         }
     }
@@ -996,10 +1057,14 @@ bool SL_SceneGraph::node_is_child(const size_t nodeIndex, const size_t parentId)
 -------------------------------------*/
 size_t SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
 {
-    const std::size_t baseVaoId  = mContext.vaos().size();
-    const std::size_t baseMatId  = mMaterials.size();
-    const std::size_t baseNodeId = mNodes.size();
-    SL_Context&       inContext  = inGraph.mContext;
+    const std::size_t baseVaoId     = mContext.vaos().size();
+    const std::size_t baseMatId     = mMaterials.size();
+    const std::size_t baseCamId     = mCameras.size();
+    const std::size_t baseMeshId    = mMeshes.size();
+    const std::size_t baseSubMeshId = mNumNodeMeshes.size();
+    const std::size_t baseBoneId    = mBoneOffsets.size();
+    const std::size_t baseNodeId    = mNodes.size();
+    SL_Context&       inContext     = inGraph.mContext;
 
     for (size_t& parentId : inGraph.mNodeParentIds)
     {
@@ -1012,7 +1077,7 @@ size_t SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
     {
         if (n.type == NODE_TYPE_CAMERA)
         {
-            n.dataId += mCameras.size();
+            n.dataId += baseCamId;
         }
         else if (n.type == NODE_TYPE_MESH)
         {
@@ -1021,14 +1086,14 @@ size_t SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
 
             for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
             {
-                meshIds[meshId] += mMeshes.size();
+                meshIds[meshId] += baseMeshId;
             }
 
-            n.dataId += mNumNodeMeshes.size();
+            n.dataId += baseSubMeshId;
         }
         else if (n.type == NODE_TYPE_BONE)
         {
-            n.dataId += mBoneOffsets.size();
+            n.dataId += baseBoneId;
         }
     }
 
@@ -1052,6 +1117,11 @@ size_t SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
         inMesh.vaoId += baseVaoId;
         inMesh.materialId += (uint32_t)baseMatId;
     }
+    std::move(inGraph.mNumNodeMeshes.begin(), inGraph.mNumNodeMeshes.end(), std::back_inserter(mNumNodeMeshes));
+    inGraph.mNumNodeMeshes.clear();
+
+    std::move(inGraph.mNodeMeshes.begin(), inGraph.mNodeMeshes.end(), std::back_inserter(mNodeMeshes));
+    inGraph.mNodeMeshes.clear();
 
     std::move(inGraph.mMeshes.begin(), inGraph.mMeshes.end(), std::back_inserter(mMeshes));
     inGraph.mMeshes.clear();
@@ -1062,11 +1132,12 @@ size_t SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
     std::move(inGraph.mMeshBounds.begin(), inGraph.mMeshBounds.end(), std::back_inserter(mMeshBounds));
     inGraph.mMeshBounds.clear();
 
-    std::move(inGraph.mNumNodeMeshes.begin(), inGraph.mNumNodeMeshes.end(), std::back_inserter(mNumNodeMeshes));
-    inGraph.mNumNodeMeshes.clear();
-
-    std::move(inGraph.mNodeMeshes.begin(), inGraph.mNodeMeshes.end(), std::back_inserter(mNodeMeshes));
-    inGraph.mNodeMeshes.clear();
+    for (SL_SkeletonIndex& skeleton : inGraph.mMeshSkeletons)
+    {
+        skeleton.index += (skeleton.index == SCENE_NODE_ROOT_ID) ? 0 : baseNodeId;
+    }
+    std::move(inGraph.mMeshSkeletons.begin(), inGraph.mMeshSkeletons.end(), std::back_inserter(mMeshSkeletons));
+    inGraph.mMeshSkeletons.clear();
 
     std::move(inGraph.mInvBoneTransforms.begin(), inGraph.mInvBoneTransforms.end(), std::back_inserter(mInvBoneTransforms));
     inGraph.mInvBoneTransforms.clear();
@@ -1077,11 +1148,12 @@ size_t SL_SceneGraph::import(SL_SceneGraph& inGraph) noexcept
     std::move(inGraph.mCameras.begin(), inGraph.mCameras.end(), std::back_inserter(mCameras));
     inGraph.mCameras.clear();
 
+    const std::size_t baseAnimId = mNodeAnims.size();
     for (SL_Animation& a : inGraph.mAnimations)
     {
         for (size_t& channelId : a.mChannelIds)
         {
-            channelId += mNodeAnims.size();
+            channelId += baseAnimId;
         }
 
         for (size_t& t : a.mTransformIds)
@@ -1141,10 +1213,12 @@ size_t SL_SceneGraph::insert_empty_node(
 size_t SL_SceneGraph::insert_mesh(const SL_Mesh& m, const SL_BoundingBox& meshBounds) noexcept
 {
     LS_DEBUG_ASSERT(mMeshes.size() == mMeshBounds.size());
+    LS_DEBUG_ASSERT(mMeshes.size() == mMeshSkeletons.size());
     //LS_DEBUG_ASSERT(m.materialId <= mMeshBounds.size() || m.materialId == ~(uint32_t)0);
 
     mMeshes.push_back(m);
     mMeshBounds.push_back(meshBounds);
+    mMeshSkeletons.push_back(SL_SkeletonIndex{SCENE_NODE_ROOT_ID, 0});
 
     return mMeshes.size()-1;
 }
@@ -1178,6 +1252,8 @@ size_t SL_SceneGraph::insert_mesh_node(
     }
 
     mNumNodeMeshes.push_back(numSubMeshes);
+    mMeshBounds.push_back(SL_BoundingBox{});
+    mMeshSkeletons.push_back(SL_SkeletonIndex{SCENE_NODE_ROOT_ID, 0});
 
     return mNodes.size()-1;
 }

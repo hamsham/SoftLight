@@ -294,7 +294,7 @@ class SL_SceneFileLoader
 
     bool import_mesh_data(const aiScene* const pScene, const SL_SceneLoadOpts& opts) noexcept;
 
-    bool import_bone_data(const aiMesh* const pMesh, unsigned baseVertex, const SL_SceneLoadOpts& opts) noexcept;
+    bool import_bone_data(const size_t meshIndex, const aiMesh* const pMesh, unsigned baseVertex, const SL_SceneLoadOpts& opts) noexcept;
 
     char* upload_mesh_indices(const aiMesh* const pMesh, char* pIbo, const size_t baseIndex, const size_t baseVertex, SL_Mesh& outMesh, size_t& outNumIndices) noexcept;
 
