@@ -930,6 +930,10 @@ int main()
                 context.texture(0).init(context.texture(0).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
                 context.texture(1).init(context.texture(1).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
 
+                SL_Framebuffer& fbo = context.framebuffer(0);
+                fbo.attach_color_buffer(0, context.texture(0).view());
+                fbo.attach_depth_buffer(context.texture(1).view());
+
                 #if TEST_REVERSED_DEPTH
                     projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
                 #else
