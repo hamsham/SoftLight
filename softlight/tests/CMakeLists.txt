@@ -182,6 +182,7 @@ endfunction(sl_add_test)
 
 sl_add_test(sl_animation_test          sl_animation_test.cpp)
 sl_add_test(sl_color_convert           sl_color_convert.cpp)
+sl_add_test(sl_color_rgb9e5            sl_color_rgb9e5.cpp)
 sl_add_test(sl_draw_test               sl_draw_test.cpp)
 sl_add_test(sl_fullscreen_quad         sl_fullscreen_quad.cpp)
 sl_add_test(sl_instancing_test         sl_instancing_test.cpp)
