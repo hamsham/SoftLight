@@ -79,7 +79,7 @@ inline SL_PlaneType<data_t> sl_plane_from_point_and_normal(const ls::math::vec4_
 template <typename data_t>
 inline SL_PlaneType<data_t> sl_plane_from_points(const ls::math::vec3_t<data_t>& p0, const ls::math::vec3_t<data_t>& p1, const ls::math::vec3_t<data_t>& p2) noexcept
 {
-    const ls::math::vec3&& normal = ls::math::normalize(ls::math::cross(p1-p0, p2-p0));
+    const ls::math::vec3_t<data_t>&& normal = ls::math::normalize(ls::math::cross(p1-p0, p2-p0));
     return sl_plane_from_point_and_normal<data_t>(p0, normal);
 }
 
@@ -88,7 +88,7 @@ inline SL_PlaneType<data_t> sl_plane_from_points(const ls::math::vec3_t<data_t>&
 template <typename data_t>
 inline SL_PlaneType<data_t> sl_plane_from_points(const ls::math::vec4_t<data_t>& p0, const ls::math::vec4_t<data_t>& p1, const ls::math::vec4_t<data_t>& p2) noexcept
 {
-    const ls::math::vec4&& normal = ls::math::normalize(ls::math::cross(p1-p0, p2-p0));
+    const ls::math::vec4_t<data_t>&& normal = ls::math::normalize(ls::math::cross(p1-p0, p2-p0));
     return sl_plane_from_point_and_normal<data_t>(p0, normal);
 }
 
@@ -97,14 +97,14 @@ inline SL_PlaneType<data_t> sl_plane_from_points(const ls::math::vec4_t<data_t>&
 template <typename data_t>
 inline bool sl_plane_intersect_line(const SL_PlaneType<data_t>& p, const ls::math::vec3_t<data_t>& l0, const ls::math::vec3_t<data_t>& l1, ls::math::vec3_t<data_t>& outIntersection) noexcept
 {
-    const data_t denom = ls::math::dot(p, l1-l0);
+    const data_t denom = ls::math::dot(ls::math::vec3_cast(p), l1-l0);
     if (denom == data_t{0})
     {
         outIntersection = l0;
         return false;
     }
 
-    const data_t u = ls::math::dot(p, l0) / denom;
+    const data_t u = ls::math::dot(ls::math::vec3_cast(p), l0) / denom;
     outIntersection = l0 + u * (l1-l0);
 
     return true;
