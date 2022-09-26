@@ -297,9 +297,9 @@ inline float xyz_to_index(const SL_ColorRGBf& xyz) noexcept
     constexpr unsigned h = 256;
     constexpr unsigned d = 256;
 
-    const unsigned a = (unsigned)(xyz[0] * (float)w);
-    const unsigned b = (unsigned)(xyz[1] * (float)h);
-    const unsigned c = (unsigned)(xyz[2] * (float)d);
+    const unsigned a = (unsigned)(xyz[0] * (float)(w-1));
+    const unsigned b = (unsigned)(xyz[1] * (float)(h-1));
+    const unsigned c = (unsigned)(xyz[2] * (float)(d-1));
 
     unsigned index = a + w * (b + (h * c));
     //std::cout << "INDEX IN: " << index << std::endl;
@@ -317,7 +317,7 @@ inline SL_ColorRGBf index_to_xyz(float index) noexcept
 
     // Using 1-fmod_1(index) helps to serve as a "fudge-factor" to make outputs
     // more accurate by adjusting the rounding.
-    unsigned i = (unsigned)(index * (float)(w * h * d - 1) + (1.f-math::fmod_1(index)));
+    unsigned i = (unsigned)(index * (float)(w * h * d - 1));
 
     //std::cout << "INDEX OUT: " << i << std::endl;
 
@@ -325,7 +325,7 @@ inline SL_ColorRGBf index_to_xyz(float index) noexcept
     const float y = (float)((i / w) % d);
     const float z = (float)(i / (w * h));
 
-    return SL_ColorRGBf{(float)x, (float)y, (float)z} / math::vec3{(float)w, (float)h, (float)d};
+    return SL_ColorRGBf{(float)x, (float)y, (float)z} / math::vec3{(float)(w-1), (float)(h-1), (float)(d-1)};
 }
 
 
