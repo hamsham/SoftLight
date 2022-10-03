@@ -97,15 +97,18 @@ inline SL_PlaneType<data_t> sl_plane_from_points(const ls::math::vec4_t<data_t>&
 template <typename data_t>
 inline bool sl_plane_intersect_line(const SL_PlaneType<data_t>& p, const ls::math::vec3_t<data_t>& l0, const ls::math::vec3_t<data_t>& l1, ls::math::vec3_t<data_t>& outIntersection) noexcept
 {
-    const data_t denom = ls::math::dot(ls::math::vec3_cast(p), l1-l0);
+    const ls::math::vec3_t<data_t>&& u = l1 - l0;
+    const data_t denom = ls::math::dot(ls::math::vec3_cast(p), u);
     if (denom == data_t{0})
     {
         outIntersection = l0;
         return false;
     }
 
-    const data_t u = ls::math::dot(ls::math::vec3_cast(p), l0) / denom;
-    outIntersection = l0 + u * (l1-l0);
+    const ls::math::vec3_t<data_t>&& pco = ls::math::vec3_cast(p) * (-p[3] / ls::math::length_squared(ls::math::vec3_cast(p)));
+    const ls::math::vec3_t<data_t>&& w = l0 - pco;
+    const float fac = -ls::math::dot(ls::math::vec3_cast(p), w) / denom;
+    outIntersection = l0 + (u * fac);
 
     return true;
 }
@@ -115,18 +118,19 @@ inline bool sl_plane_intersect_line(const SL_PlaneType<data_t>& p, const ls::mat
 template <typename data_t>
 inline bool sl_plane_intersect_line(const SL_PlaneType<data_t>& p, const ls::math::vec4_t<data_t>& l0, const ls::math::vec4_t<data_t>& l1, ls::math::vec4_t<data_t>& outIntersection) noexcept
 {
-    const ls::math::vec3_t<data_t>&& p3  = ls::math::vec3_cast(p);
-    const ls::math::vec3_t<data_t>&& l30 = ls::math::vec3_cast(l0);
-    const ls::math::vec3_t<data_t>&& l31 = ls::math::vec3_cast(l1);
-    const data_t denom = ls::math::dot(p3, l31-l30);
+    const ls::math::vec3_t<data_t>&& u = ls::math::vec3_cast<data_t>(l1 - l0);
+    const data_t denom = ls::math::dot(ls::math::vec3_cast<data_t>(p), u);
     if (denom == data_t{0})
     {
         outIntersection = l0;
         return false;
     }
 
-    const data_t u = ls::math::dot(p3, ls::math::vec3_cast(l0)) / denom;
-    outIntersection = ls::math::vec4_cast(l30+u*(l31-l30), data_t{1});
+    const ls::math::vec4_t<data_t>&& pco = p * (-p[3] / ls::math::length_squared(ls::math::vec3_cast<data_t>(p)));
+    const ls::math::vec4_t<data_t>&& w = l0 - pco;
+    const float fac = -ls::math::dot(ls::math::vec3_cast<data_t>(p), ls::math::vec3_cast<data_t>(w)) / denom;
+
+    outIntersection = ls::math::vec4_cast<data_t>(ls::math::vec3_cast(l0) + (u * fac), data_t{0});
 
     return true;
 }
