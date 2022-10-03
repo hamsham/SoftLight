@@ -196,10 +196,10 @@ rgb9e5 float3_to_rgb9e5(const SL_ColorRGBf& rgb) noexcept
         LS_ASSERT(exp_shared >= 0);
 
         // This pow function could be replaced by a table.
-        float denom = math::exp2<float>((float)(exp_shared - SL_RGB9e5Properties::RGB9E5_EXP_BIAS - SL_RGB9e5Properties::RGB9E5_MANTISSA_BITS));
+        float denom = std::exp2((float)(exp_shared - SL_RGB9e5Properties::RGB9E5_EXP_BIAS - SL_RGB9e5Properties::RGB9E5_MANTISSA_BITS));
 
         float rDenom = math::rcp(denom);
-        const int maxm = (int)math::floor(math::fmadd(maxrgb, rDenom, 0.5f));
+        const int maxm = (int)std::floor(math::fmadd(maxrgb, rDenom, 0.5f));
         if (maxm == SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA + 1)
         {
             //denom *= 2.f;
@@ -213,9 +213,9 @@ rgb9e5 float3_to_rgb9e5(const SL_ColorRGBf& rgb) noexcept
         }
 
         rDenom = math::rcp(denom);
-        const int rm = (int)math::floor(math::fmadd(rc, rDenom, 0.5f));
-        const int gm = (int)math::floor(math::fmadd(gc, rDenom, 0.5f));
-        const int bm = (int)math::floor(math::fmadd(bc, rDenom, 0.5f));
+        const int rm = (int)std::floor(math::fmadd(rc, rDenom, 0.5f));
+        const int gm = (int)std::floor(math::fmadd(gc, rDenom, 0.5f));
+        const int bm = (int)std::floor(math::fmadd(bc, rDenom, 0.5f));
 
         LS_ASSERT(rm <= SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA);
         LS_ASSERT(gm <= SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA);
@@ -256,7 +256,7 @@ inline SL_ColorRGBf rgb9e5_to_float3(rgb9e5 v) noexcept
 
     #else
         const float exponent = (float)(v.field.biasedexponent - SL_RGB9e5Properties::RGB9E5_EXP_BIAS - SL_RGB9e5Properties::RGB9E5_MANTISSA_BITS);
-        const float scale = math::exp2(exponent);
+        const float scale = std::exp2(exponent);
 
         return SL_ColorRGBf
         {
@@ -438,7 +438,7 @@ inline float xyz_to_index(const SL_ColorRGBf& xyz) noexcept
     ret.i = IndexScheme::encode_index3d(a, b, c);
 
     // encode the bits needed for normalization between (0.0, 1.0)
-    ret.i |= 0x3E000000u;
+    ret.i |= 0x3F000000u;
 
     //std::cout << "INDEX IN: " << ret.i << std::endl;
 
@@ -491,6 +491,39 @@ inline math::vec3 octahedral_norm_decode(const math::vec2& n) noexcept
     m[0] -= std::copysign(t, m[0]);
     m[1] -= std::copysign(t, m[1]);
     return math::normalize(m);
+}
+
+
+
+inline math::vec2 octahedral_norm_encode2(const math::vec3& n) noexcept
+{
+    math::vec3&& m = n / (math::abs(n[0]) + math::abs(n[1]) + math::abs(n[2]));
+    return math::vec2{m[0] + m[1], m[0] - m[1]};
+}
+
+
+
+inline math::vec3 octahedral_norm_decode2(const math::vec2& n) noexcept
+{
+    const math::vec2 f{n[0] + n[1], n[0] - n[1]};
+    return math::normalize(math::vec3{f[0], f[1], 2.f - math::abs(f[0]) - math::abs(f[1])});
+}
+
+
+
+inline math::vec2 hemimax_norm_encode(const math::vec3& n) noexcept
+{
+    const float d = math::max(math::abs(n[0]), math::abs(n[1]));
+    const float sz = math::abs(n[2]) + d;   //could drop the abs(z)
+    return math::vec2_cast(n) / sz;
+}
+
+
+
+inline math::vec3 hemimax_norm_decode(const math::vec2& n) noexcept
+{
+    const float z = 1.f - math::max(math::abs(n[0]), math::abs(n[1]));
+    return math::normalize(math::vec3_cast(n, z));
 }
 
 
@@ -579,6 +612,21 @@ struct Rgb9e5Compression
 
 
 
+// OpenVDB quantization
+int16_t float_compress16(float f) noexcept
+{
+    //return (int16_t)std::round(f * (float)(1 << 16) + 0.5f);
+    return (int16_t)std::round((f * 0.5f + 0.5f) * (float)(1 << 16));
+}
+
+float float_decompress16(int16_t i) noexcept
+{
+    //return (float)i / (float)(1 << 16);
+    return ((float)i / (float)(1 << 16)) * 2.f - 1.f;
+}
+
+
+
 template <typename IndexScheme>
 struct PlaneCompression
 {
@@ -605,8 +653,27 @@ struct PlaneCompression
 
         //const math::vec4&& p = (math::vec4)((math::vec4h)plane);
 
-        //math::vec4&& p = (math::vec4)SL_PackedVertex_2_10_10_10{plane};
-        //p[3] = plane[3];
+        //const rgb9e5&& rgb9 = float3_to_rgb9e5(math::vec3_cast(plane));
+        //const math::vec4&& p = math::vec4_cast(rgb9e5_to_float3(rgb9), plane[3]);
+
+        //SL_PackedVertex_2_10_10_10&& rgb10 = SL_PackedVertex_2_10_10_10{math::vec3_cast(plane)};
+        //const math::vec4&& p = math::vec4_cast((math::vec3)rgb10, plane[3]);
+
+        /*
+        math::vec4_t<int16_t> pi{
+            float_compress16(plane[0]),
+            float_compress16(plane[1]),
+            float_compress16(plane[2]),
+            float_compress16(plane[3])
+        };
+
+        math::vec4 p{
+            float_decompress16(pi[0]),
+            float_decompress16(pi[1]),
+            float_decompress16(pi[2]),
+            float_decompress16(pi[3])
+        };
+        */
 
         plane_to_colors<IndexScheme>(p, a, b, c);
 
@@ -729,15 +796,41 @@ int main()
     test_compression<PlaneCompressionUint24>("Plane Compression (uint24 encoding)");
     test_compression<PlaneCompressionMorton>("Plane Compression (morton encoding)");
 
-    math::vec3&& planeNorm = math::normalize(rgbf);
-    std::cout << "Plane Norm: " << planeNorm[0] << ", " << planeNorm[1] << ", " << planeNorm[2] << std::endl;
-    math::vec2 octahedral = octahedral_norm_encode(planeNorm);
-    OctNormFp fp = {math::fixed_cast<OctNormFp::FpType, float>(octahedral[0]), math::fixed_cast<OctNormFp::FpType, float>(octahedral[1])};
-    octahedral[0] = math::float_cast<float>(fp.x);
-    octahedral[1] = math::float_cast<float>(fp.y);
-    planeNorm = octahedral_norm_decode(octahedral);
-    std::cout << "Oct-Decoded: " << planeNorm[0] << ", " << planeNorm[1] << ", " << planeNorm[2] << std::endl;
-    std::cout << std::endl;
+    {
+        math::vec3&& planeNorm = math::normalize(rgbf);
+        std::cout << "Plane Norm: " << planeNorm[0] << ", " << planeNorm[1] << ", " << planeNorm[2] << std::endl;
+        math::vec2 octahedral = octahedral_norm_encode(planeNorm);
+        OctNormFp fp = {math::fixed_cast<OctNormFp::FpType, float>(octahedral[0]), math::fixed_cast<OctNormFp::FpType, float>(octahedral[1])};
+        octahedral[0] = math::float_cast<float>(fp.x);
+        octahedral[1] = math::float_cast<float>(fp.y);
+        planeNorm = octahedral_norm_decode(octahedral);
+        std::cout << "Oct-Decoded: " << planeNorm[0] << ", " << planeNorm[1] << ", " << planeNorm[2] << std::endl;
+        std::cout << std::endl;
+    }
+
+    {
+        math::vec3&& planeNorm = math::normalize(rgbf);
+        std::cout << "Plane Norm: " << planeNorm[0] << ", " << planeNorm[1] << ", " << planeNorm[2] << std::endl;
+        math::vec2 octahedral = octahedral_norm_encode2(planeNorm);
+        OctNormFp fp = {math::fixed_cast<OctNormFp::FpType, float>(octahedral[0]), math::fixed_cast<OctNormFp::FpType, float>(octahedral[1])};
+        octahedral[0] = math::float_cast<float>(fp.x);
+        octahedral[1] = math::float_cast<float>(fp.y);
+        planeNorm = octahedral_norm_decode2(octahedral);
+        std::cout << "Oct-Decoded: " << planeNorm[0] << ", " << planeNorm[1] << ", " << planeNorm[2] << std::endl;
+        std::cout << std::endl;
+    }
+
+    {
+        math::vec3&& planeNorm = math::normalize(rgbf);
+        std::cout << "Plane Norm: " << planeNorm[0] << ", " << planeNorm[1] << ", " << planeNorm[2] << std::endl;
+        math::vec2 octahedral = hemimax_norm_encode(planeNorm);
+        OctNormFp fp = {math::fixed_cast<OctNormFp::FpType, float>(octahedral[0]), math::fixed_cast<OctNormFp::FpType, float>(octahedral[1])};
+        octahedral[0] = math::float_cast<float>(fp.x);
+        octahedral[1] = math::float_cast<float>(fp.y);
+        planeNorm = hemimax_norm_decode(octahedral);
+        std::cout << "Oct-Decoded: " << planeNorm[0] << ", " << planeNorm[1] << ", " << planeNorm[2] << std::endl;
+        std::cout << std::endl;
+    }
 
     return 0;
 }
