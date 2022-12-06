@@ -28,32 +28,32 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            name: ubuntu
-            generator: "Ninja"
-            shell: bash
-            dependencies: ninja-build x11-utils libx11-dev libx11-xcb-dev libxext-dev libxcb1-dev libxcb-image0-dev libxcb-shm0-dev subversion libassimp-dev libfreeimage-dev libfreetype6-dev libglm-dev libenet-dev
-            cmakeopts: -DLIGHTSKY_ENABLE_PCH=ON
-
-          - os: macos-latest
-            name: macos
-            generator: "Ninja"
-            shell: bash
-            dependencies: ninja assimp freeimage libxkbcommon subversion freetype enet glm
-            cmakeopts: -DLIGHTSKY_ENABLE_PCH=OFF
-
-          - os: windows-latest
-            name: mingw
-            generator: "Ninja"
-            shell: msys2 {0}
-            dependencies: base-devel git subversion mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-toolchain mingw-w64-x86_64-freeimage
-            cmakeopts: -DLIGHTSKY_ENABLE_PCH=ON
-
+          #- os: ubuntu-latest
+          #  name: ubuntu
+          #  generator: "Ninja"
+          #  shell: bash
+          #  dependencies: ninja-build x11-utils libx11-dev libx11-xcb-dev libxext-dev libxcb1-dev libxcb-image0-dev libxcb-shm0-dev subversion libassimp-dev libfreeimage-dev libfreetype6-dev libglm-dev libenet-dev
+          #  cmakeopts: -DLIGHTSKY_ENABLE_PCH=ON
+          #
+          #- os: macos-latest
+          #  name: macos
+          #  generator: "Ninja"
+          #  shell: bash
+          #  dependencies: ninja assimp freeimage libxkbcommon subversion freetype enet glm
+          #  cmakeopts: -DLIGHTSKY_ENABLE_PCH=OFF
+          #
+          #- os: windows-latest
+          #  name: mingw
+          #  generator: "Ninja"
+          #  shell: msys2 {0}
+          #  dependencies: base-devel git subversion mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-toolchain mingw-w64-x86_64-freeimage
+          #  cmakeopts: -DLIGHTSKY_ENABLE_PCH=ON
+          #
           - os: windows-latest
             name: msvc
             generator: "Visual Studio 17 2022"
             shell: pwsh
-            dependencies: tortoisesvn
+            dependencies: assimp freetype freeimage glm enet
             cmakeopts: -DLIGHTSKY_ENABLE_PCH=ON
 
     steps:
@@ -67,14 +67,6 @@ jobs:
         path: ${{ github.workspace }}/${{ matrix.name }}-build
         key: ${{ matrix.os }}-${{ matrix.name }}
         restore-keys: ${{ matrix.os }}-${{ matrix.name }}
-        
-    - uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW64
-        update: true
-        release: true
-        install: ${{ matrix.dependencies }}
-      if: matrix.os == 'windows-latest' && matrix.shell != 'pwsh'
 
     - name: Install Linux dependencies
       if: matrix.os == 'ubuntu-latest'
@@ -84,13 +76,21 @@ jobs:
       if: matrix.os == 'macos-latest'
       run: brew install ${{ matrix.dependencies }}
 
+    - name: Install Msys2 Dependencies
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        release: true
+        install: ${{ matrix.dependencies }}
+      if: matrix.os == 'windows-latest' && matrix.shell != 'pwsh'
+
     - name: Install Windows dependencies
       if: matrix.os == 'windows-latest' && matrix.shell == 'pwsh'
-      run: choco install ${{ matrix.dependencies }}
+      run: vcpkg install ${{ matrix.dependencies }}
 
     - name: Configure CMake
       run: cmake -B "${{ github.workspace }}/${{ matrix.name }}-build" -G"${{ matrix.generator }}" -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} ${{ matrix.cmakeopts }}
-
-    - name: Build
-      run: cmake --build "${{ github.workspace }}/${{ matrix.name }}-build" --config ${{ env.BUILD_TYPE }} --parallel
-      
+    #
+    #- name: Build
+    #  run: cmake --build "${{ github.workspace }}/${{ matrix.name }}-build" --config ${{ env.BUILD_TYPE }} --parallel
