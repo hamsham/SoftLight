@@ -36,7 +36,7 @@ jobs:
             cmakeopts: -DLIGHTSKY_ENABLE_PCH=ON
 
           - os: macos-latest
-            name: ubuntu
+            name: macos
             generator: "Ninja"
             shell: bash
             dependencies: ninja assimp freeimage libxkbcommon subversion freetype enet glm
@@ -57,12 +57,12 @@ jobs:
             cmakeopts: -DLIGHTSKY_ENABLE_PCH=ON
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
         
     - name: Cache Build
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       env:
         cache-name: cache-build
       with:
