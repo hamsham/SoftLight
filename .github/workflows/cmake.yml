@@ -69,6 +69,7 @@ jobs:
         path: |
           ${{ github.workspace }}/${{ matrix.name }}-build
           !${{ github.workspace }}/${{ matrix.name }}-build/**/cmake_pch.hxx.pch
+          !${{ github.workspace }}/${{ matrix.name }}-build/**/cmake_pch.hxx.gch
         key: ${{ matrix.os }}-${{ matrix.name }}
         restore-keys: ${{ matrix.os }}-${{ matrix.name }}
         
