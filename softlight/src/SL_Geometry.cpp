@@ -626,7 +626,8 @@ bool sl_clip_line(
             return num < 0;
         }
 
-        const float t = num / denom;
+        //const float t = num / denom;
+        const int32_t t = num / denom;
 
         if (denom > 0)
         {
@@ -660,7 +661,8 @@ bool sl_clip_line(
     const int32_t dx = x1 - x0;
     const int32_t dy = y1 - y0;
 
-    if (math::abs(dx) < LS_EPSILON && math::abs(dy) < LS_EPSILON)
+    //if (math::abs<int32_t>(dx) < LS_EPSILON && math::abs<int32_t>(dy) < LS_EPSILON)
+    if (math::abs<int32_t>(dx) < 1 && math::abs<int32_t>(dy) < 1)
     {
         if (x0 >= xMin && x0 <= xMax && y0 >= yMin && y0 <= yMax)
         {
@@ -668,21 +670,21 @@ bool sl_clip_line(
         }
     }
 
-    tE = 0.f;
-    tL = 1.f;
+    tE = 0;
+    tL = 1;
 
     if (_clip_segment(xMin - x0, dx, tE, tL) &&
         _clip_segment(x0 - xMax, -dx, tE, tL) &&
         _clip_segment(yMin - y0, dy, tE, tL) &&
         _clip_segment(y0 - yMax, -dy, tE, tL))
     {
-        if (tL < 1.f)
+        if (tL < 1)
         {
             x1 = x0 + tL * dx;
             y1 = y0 + tL * dy;
         }
 
-        if (tE > 0.f)
+        if (tE > 0)
         {
             x0 += tE * dx;
             y0 += tE * dy;

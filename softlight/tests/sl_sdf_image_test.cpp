@@ -295,6 +295,8 @@ int main()
     float              secondsCounter = 0.f;
     float              tickTime       = 0.f;
 
+    (void)totalFrames;
+
     viewMatrix.type(SL_TransformType::SL_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
     viewMatrix.look_at(math::vec3{0.f, 40.f, 70.f}, math::vec3{0.f, 40.f, 0.f}, math::vec3{0.f, 1.f, 0.f});
     viewMatrix.apply_transform();

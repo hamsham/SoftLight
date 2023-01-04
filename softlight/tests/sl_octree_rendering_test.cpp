@@ -416,6 +416,8 @@ int main()
     bool autorotate = true;
     unsigned numThreads = context.num_threads();
 
+    (void)totalFrames;
+
     const size_t maxDepth = octree.depth();
     size_t currDepth = maxDepth;
 

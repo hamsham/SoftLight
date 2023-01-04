@@ -383,6 +383,8 @@ int main()
     bool autorotate = true;
     unsigned numThreads = context.num_threads();
 
+    (void)totalFrames;
+
     math::mat4 vpMatrix;
     SL_Transform camTrans;
     camTrans.type(SL_TransformType::SL_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);

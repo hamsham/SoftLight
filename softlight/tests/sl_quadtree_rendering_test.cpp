@@ -350,6 +350,8 @@ int main()
     float prevSeconds = 0.f;
     unsigned numThreads = context.num_threads();
 
+    (void)totalFrames;
+
     size_t maxDepth = quadtree.depth();
     size_t currDepth = maxDepth;
 

@@ -486,7 +486,7 @@ void sl_draw_line_fixed(sl_lowp_t x1, sl_lowp_t y1, sl_lowp_t x2, sl_lowp_t y2, 
         for (sl_highp_t x = x1; x <= x2; ++x, f.i += m)
         {
             g.i = f.i + COORD_SHORT_MAX;
-            lineCallback(x, g.fx.hi);
+            lineCallback((sl_lowp_t)x, g.fx.hi);
         }
     }
     else
@@ -498,7 +498,7 @@ void sl_draw_line_fixed(sl_lowp_t x1, sl_lowp_t y1, sl_lowp_t x2, sl_lowp_t y2, 
         for (sl_highp_t y = y1; y <= y2; ++y, f.i += m)
         {
             g.i = f.i + COORD_SHORT_MAX;
-            lineCallback(g.fx.hi, y);
+            lineCallback(g.fx.hi, (sl_lowp_t)y);
         }
     }
 }

@@ -451,6 +451,8 @@ int main()
     float              tickTime       = 0.f;
     unsigned           activeColor    = 1;
 
+    (void)totalFrames;
+
     timer.start();
 
     context.num_threads(SL_TEST_MAX_THREADS);
