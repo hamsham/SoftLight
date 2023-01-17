@@ -26,9 +26,10 @@ struct SL_RGB9e5Properties
         RGB9E5_MAX_VALID_BIASED_EXP = 31
     };
 
-    static constexpr int32_t MAX_RGB9E5_EXP         = RGB9E5_MAX_VALID_BIASED_EXP - RGB9E5_EXP_BIAS;
-    static constexpr int32_t RGB9E5_MANTISSA_VALUES = 1 << RGB9E5_MANTISSA_BITS;
-    static constexpr int32_t MAX_RGB9E5_MANTISSA    = RGB9E5_MANTISSA_VALUES - 1;
+    static constexpr float MAX_RGB9E5_EXP         = (float)(1 << (RGB9E5_MAX_VALID_BIASED_EXP - RGB9E5_EXP_BIAS));
+    static constexpr float RGB9E5_MANTISSA_VALUES = (float)(1 << RGB9E5_MANTISSA_BITS);
+    static constexpr float MAX_RGB9E5_MANTISSA    = (float)(RGB9E5_MANTISSA_VALUES - 1);
+    static constexpr float MAX_RGB9E5             = MAX_RGB9E5_MANTISSA / RGB9E5_MANTISSA_VALUES * MAX_RGB9E5_EXP;
 };
 
 
@@ -61,7 +62,7 @@ struct BitsOfRGB9E5
 
 
 
-union rgb9e5
+union sl_rgb9e5f
 {
     unsigned int raw;
     BitsOfRGB9E5 field;
@@ -71,21 +72,8 @@ union rgb9e5
 
 inline float rgb9e5_clamp(float x) noexcept
 {
-    constexpr float MAX_RGB9E5 = (float)SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA / (float)SL_RGB9e5Properties::RGB9E5_MANTISSA_VALUES * (float)(1 << SL_RGB9e5Properties::MAX_RGB9E5_EXP);
-    return math::clamp(x, 0.f, MAX_RGB9E5);
+    return math::clamp(x, 0.f, SL_RGB9e5Properties::MAX_RGB9E5);
 }
-
-#if 0//defined(LS_X86_SSE)
-inline __m128 rgb9e5_clamp(__m128 x) noexcept
-{
-    constexpr float MAX_RGB9E5 = (float)SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA / (float)SL_RGB9e5Properties::RGB9E5_MANTISSA_VALUES * (float)(1 << SL_RGB9e5Properties::MAX_RGB9E5_EXP);
-
-    const __m128 maxRgbe5 = _mm_set1_ps(MAX_RGB9E5);
-    const __m128 zero = _mm_xor_ps(maxRgbe5, maxRgbe5);
-    const __m128 clampHi = _mm_min_ps(x, maxRgbe5);
-    return _mm_max_ps(clampHi, zero);
-}
-#endif
 
 
 
@@ -94,177 +82,79 @@ inline __m128 rgb9e5_clamp(__m128 x) noexcept
 // problem cases.
 inline int rgb9e5_floor_log2(float x) noexcept
 {
-    #if 0//defined(LS_X86_SSE)
-        const __m128i xi = _mm_castps_si128(_mm_set1_ps(x));
-        const __m128i exponent = _mm_slli_epi32(xi, 1);
-        const __m128i biased = _mm_srli_epi32(exponent, 24);
-        return _mm_cvtsi128_si32(_mm_sub_epi32(biased, _mm_set1_epi32(127)));
+    float754 f;
+    f.value = x;
 
-    #else
-        float754 f;
-        f.value = x;
-
-        return (f.field.biasedexponent - 127);
-    #endif
+    return (f.field.biasedexponent - 127);
 }
 
-#if 0//defined(LS_X86_SSE)
-inline __m128i rgb9e5_floor_log2(__m128 x) noexcept
+
+sl_rgb9e5f float3_to_rgb9e5(const SL_ColorRGBf& rgb) noexcept
 {
-    const __m128i xi = _mm_castps_si128(x);
-    const __m128i exponent = _mm_slli_epi32(xi, 1);
-    const __m128i biased = _mm_srli_epi32(exponent, 24);
-    return _mm_sub_epi32(biased, _mm_set1_epi32(127));
-}
-#endif
+    const float rc = rgb9e5_clamp(rgb[0]);
+    const float gc = rgb9e5_clamp(rgb[1]);
+    const float bc = rgb9e5_clamp(rgb[2]);
 
+    const float maxrgb = math::max<float>(rc, gc, bc);
+    int exp_shared = math::max<int>(-SL_RGB9e5Properties::RGB9E5_EXP_BIAS-1, (int)rgb9e5_floor_log2(maxrgb));
+    exp_shared = exp_shared + 1 + SL_RGB9e5Properties::RGB9E5_EXP_BIAS;
 
-#if 0//defined(LS_X86_SSE2)
-inline __m128 max_rgb(__m128 x) noexcept
-{
-    const __m128 r = _mm_permute_ps(x, 0x00);
-    const __m128 g = _mm_permute_ps(x, 0x55);
-    const __m128 b = _mm_permute_ps(x, 0xAA);
+    LS_ASSERT(exp_shared <= SL_RGB9e5Properties::RGB9E5_MAX_VALID_BIASED_EXP);
+    LS_ASSERT(exp_shared >= 0);
 
-    return _mm_max_ps(_mm_max_ps(g, r), b);
-}
-#endif
+    // This pow function could be replaced by a table.
+    float denom = std::exp2((float)(exp_shared - SL_RGB9e5Properties::RGB9E5_EXP_BIAS - SL_RGB9e5Properties::RGB9E5_MANTISSA_BITS));
 
-
-
-#if 0//defined(LS_X86_SSE)
-inline __m128 rgb_exp2(__m128 x) noexcept
-{
-    const __m128 s126   = _mm_set1_ps(-126.f);
-    const __m128 clipp  = _mm_max_ps(x, s126);
-    const __m128 clipp2 = _mm_add_ps(clipp, _mm_set1_ps(126.94269504f));
-    const __m128i v     = _mm_cvtps_epi32(_mm_mul_ps(_mm_set1_ps((float)(1 << 23)), clipp2));
-
-    return _mm_castsi128_ps(v);
-}
-#endif
-
-
-rgb9e5 float3_to_rgb9e5(const SL_ColorRGBf& rgb) noexcept
-{
-    #if 0//defined(LS_X86_AVX2)
-        const __m128 rgbc = rgb9e5_clamp(_mm_maskload_ps(rgb.v, _mm_set_epi32(0, -1, -1, -1))); // AVX2
-
-        const __m128 maxrgb = max_rgb(rgbc);
-        __m128i exp_shared = _mm_max_epi32(_mm_set1_epi32(-SL_RGB9e5Properties::RGB9E5_EXP_BIAS-1), rgb9e5_floor_log2(maxrgb));
-        exp_shared = _mm_add_epi32(exp_shared, _mm_set1_epi32(1 + SL_RGB9e5Properties::RGB9E5_EXP_BIAS));
-
-        // This pow function could be replaced by a table.
-        const __m128i expBiased = _mm_sub_epi32(_mm_sub_epi32(exp_shared, _mm_set1_epi32(SL_RGB9e5Properties::RGB9E5_EXP_BIAS)), _mm_set1_epi32(SL_RGB9e5Properties::RGB9E5_MANTISSA_BITS));
-        __m128 denom = rgb_exp2(_mm_cvtepi32_ps(expBiased));
-
-        __m128 rDenom = _mm_rcp_ps(denom);
-        const __m128i maxm = _mm_cvtps_epi32(_mm_floor_ps(_mm_fmadd_ps(maxrgb, rDenom, _mm_set1_ps(0.5f)))); // SSE4.1
-        const __m128i cmpMantissa = _mm_cmpeq_epi32(maxm, _mm_set1_epi32(SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA + 1));
-        denom = _mm_add_ps(denom, _mm_and_ps(denom, _mm_castsi128_ps(cmpMantissa)));
-        exp_shared = _mm_add_epi32(exp_shared, _mm_and_si128(_mm_set1_epi32(1), cmpMantissa));
-
-        rDenom = _mm_rcp_ps(denom);
-        const __m128i rgbam = _mm_cvtps_epi32(_mm_floor_ps(_mm_fmadd_ps(rgbc, rDenom, _mm_set1_ps(0.5f)))); // FMA
-
-        const __m128i retR = _mm_slli_epi32(_mm_shuffle_epi32(rgbam, 0x00), 0);
-        const __m128i retG = _mm_slli_epi32(_mm_shuffle_epi32(rgbam, 0x55), 9);
-        const __m128i retB = _mm_slli_epi32(_mm_shuffle_epi32(rgbam, 0xAA), 18);
-        const __m128i retA = _mm_slli_epi32(exp_shared, 27);
-
-        const __m128i retVal0 = _mm_or_si128(retG, retR);
-        const __m128i retVal1 = _mm_or_si128(retA, retB);
-        const __m128i retVal = _mm_or_si128(retVal1, retVal0);
-
-        union
-        {
-            const int32_t i;
-            const rgb9e5 rgb95;
-        } ret{_mm_cvtsi128_si32(retVal)};
-        return ret.rgb95;
-
-    #else
-        const float rc = rgb9e5_clamp(rgb[0]);
-        const float gc = rgb9e5_clamp(rgb[1]);
-        const float bc = rgb9e5_clamp(rgb[2]);
-
-        const float maxrgb = math::max<float>(rc, gc, bc);
-        int exp_shared = math::max<int>(-SL_RGB9e5Properties::RGB9E5_EXP_BIAS-1, (int)rgb9e5_floor_log2(maxrgb));
-        exp_shared = exp_shared + 1 + SL_RGB9e5Properties::RGB9E5_EXP_BIAS;
-
+    float rDenom = 1.f / denom;
+    const int maxm = (int)std::floor(math::fmadd(maxrgb, rDenom, 0.5f));
+    if (maxm == SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA + 1)
+    {
+        //denom *= 2.f;
+        denom += denom;
+        exp_shared += 1;
         LS_ASSERT(exp_shared <= SL_RGB9e5Properties::RGB9E5_MAX_VALID_BIASED_EXP);
-        LS_ASSERT(exp_shared >= 0);
+    }
+    else
+    {
+        LS_ASSERT(maxm <= SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA);
+    }
 
-        // This pow function could be replaced by a table.
-        float denom = std::exp2((float)(exp_shared - SL_RGB9e5Properties::RGB9E5_EXP_BIAS - SL_RGB9e5Properties::RGB9E5_MANTISSA_BITS));
+    rDenom = 1.f / denom;
+    const int rm = (int)std::floor(math::fmadd(rc, rDenom, 0.5f));
+    const int gm = (int)std::floor(math::fmadd(gc, rDenom, 0.5f));
+    const int bm = (int)std::floor(math::fmadd(bc, rDenom, 0.5f));
 
-        float rDenom = math::rcp(denom);
-        const int maxm = (int)std::floor(math::fmadd(maxrgb, rDenom, 0.5f));
-        if (maxm == SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA + 1)
-        {
-            //denom *= 2.f;
-            denom += denom;
-            exp_shared += 1;
-            LS_ASSERT(exp_shared <= SL_RGB9e5Properties::RGB9E5_MAX_VALID_BIASED_EXP);
-        }
-        else
-        {
-            LS_ASSERT(maxm <= SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA);
-        }
+    LS_ASSERT(rm <= SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA);
+    LS_ASSERT(gm <= SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA);
+    LS_ASSERT(bm <= SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA);
+    LS_ASSERT(rm >= 0);
+    LS_ASSERT(gm >= 0);
+    LS_ASSERT(bm >= 0);
 
-        rDenom = math::rcp(denom);
-        const int rm = (int)std::floor(math::fmadd(rc, rDenom, 0.5f));
-        const int gm = (int)std::floor(math::fmadd(gc, rDenom, 0.5f));
-        const int bm = (int)std::floor(math::fmadd(bc, rDenom, 0.5f));
+    //std::cout << rm << ", " << gm << ", " << bm << ", " << exp_shared << std::endl;
 
-        LS_ASSERT(rm <= SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA);
-        LS_ASSERT(gm <= SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA);
-        LS_ASSERT(bm <= SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA);
-        LS_ASSERT(rm >= 0);
-        LS_ASSERT(gm >= 0);
-        LS_ASSERT(bm >= 0);
+    sl_rgb9e5f retval;
+    retval.field.r = rm;
+    retval.field.g = gm;
+    retval.field.b = bm;
+    retval.field.biasedexponent = exp_shared;
 
-        //std::cout << rm << ", " << gm << ", " << bm << ", " << exp_shared << std::endl;
-
-        rgb9e5 retval;
-        retval.field.r = rm;
-        retval.field.g = gm;
-        retval.field.b = bm;
-        retval.field.biasedexponent = exp_shared;
-
-        return retval;
-
-    #endif
+    return retval;
 }
 
 
 
-inline SL_ColorRGBf rgb9e5_to_float3(rgb9e5 v) noexcept
+inline SL_ColorRGBf rgb9e5_to_float3(sl_rgb9e5f v) noexcept
 {
-    #if 0//defined(LS_X86_AVX2)
-        const __m128i rgb = _mm_set1_epi32((int)v.raw);
-        const __m128i biasedExponent = _mm_srli_epi32(rgb, 27);
-        const __m128i exponenti = _mm_sub_epi32(_mm_sub_epi32(biasedExponent, _mm_set1_epi32(SL_RGB9e5Properties::RGB9E5_EXP_BIAS)), _mm_set1_epi32(SL_RGB9e5Properties::RGB9E5_MANTISSA_BITS));
-        const __m128 exponent = _mm_cvtepi32_ps(exponenti);
-        const __m128 scale = rgb_exp2(exponent);
-        const __m128i rgbi = _mm_srli_epi32(_mm_sllv_epi32(rgb, _mm_set_epi32(0, 5, 14, 23)), 23);
-        const __m128 rgbf = _mm_mul_ps(_mm_cvtepi32_ps(rgbi), scale);
+    const float exponent = (float)(v.field.biasedexponent - SL_RGB9e5Properties::RGB9E5_EXP_BIAS - SL_RGB9e5Properties::RGB9E5_MANTISSA_BITS);
+    const float scale = std::exp2(exponent);
 
-        SL_ColorRGBf ret;
-        _mm_maskstore_ps(ret.v, _mm_set_epi32(0, -1, -1, -1), rgbf);
-        return ret;
-
-    #else
-        const float exponent = (float)(v.field.biasedexponent - SL_RGB9e5Properties::RGB9E5_EXP_BIAS - SL_RGB9e5Properties::RGB9E5_MANTISSA_BITS);
-        const float scale = std::exp2(exponent);
-
-        return SL_ColorRGBf
-        {
-            (float)v.field.r * scale,
-            (float)v.field.g * scale,
-            (float)v.field.b * scale
-        };
-    #endif
+    return SL_ColorRGBf
+    {
+        (float)v.field.r * scale,
+        (float)v.field.g * scale,
+        (float)v.field.b * scale
+    };
 }
 
 
@@ -567,7 +457,7 @@ struct Rgb9e5Compression
     union Rgb9e5Vec4
     {
         math::vec4 f;
-        rgb9e5 i[4];
+        sl_rgb9e5f i[4];
     };
 
     static inline math::vec4 encode(const SL_ColorRGB8& a0, const SL_ColorRGB8& b0, const SL_ColorRGB8& c0) noexcept
@@ -775,7 +665,7 @@ int main()
     SL_ColorRGB8 rgb8 = {42, 77, 193};
     SL_ColorRGBf rgbf = color_cast<float, uint8_t>(rgb8);
 
-    rgb9e5 rgb9 = float3_to_rgb9e5(rgbf);
+    sl_rgb9e5f rgb9 = float3_to_rgb9e5(rgbf);
     std::cout << "RGB8:   " << (unsigned)rgb8[0] << ", " << (unsigned)rgb8[1] << ", " << (unsigned)rgb8[2] << std::endl;
     std::cout << "RGBf:   " << rgbf[0] << ", " << rgbf[1] << ", " << rgbf[2] << std::endl;
     std::cout << "RGB9e5: " << rgb9.field.r << ", " << rgb9.field.g << ", " << rgb9.field.b << std::endl;
