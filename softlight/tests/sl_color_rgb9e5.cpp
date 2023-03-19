@@ -107,7 +107,7 @@ sl_rgb9e5f float3_to_rgb9e5(const SL_ColorRGBf& rgb) noexcept
 
     float rDenom = 1.f / denom;
     const int maxm = (int)std::floor(math::fmadd(maxrgb, rDenom, 0.5f));
-    if (maxm == SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA + 1)
+    if (maxm == (1 << (int)SL_RGB9e5Properties::RGB9E5_MANTISSA_BITS))
     {
         //denom *= 2.f;
         denom += denom;
@@ -116,7 +116,7 @@ sl_rgb9e5f float3_to_rgb9e5(const SL_ColorRGBf& rgb) noexcept
     }
     else
     {
-        LS_ASSERT(maxm <= SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA);
+        LS_ASSERT(maxm <= (int)SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA);
     }
 
     rDenom = 1.f / denom;
@@ -124,9 +124,9 @@ sl_rgb9e5f float3_to_rgb9e5(const SL_ColorRGBf& rgb) noexcept
     const int gm = (int)std::floor(math::fmadd(gc, rDenom, 0.5f));
     const int bm = (int)std::floor(math::fmadd(bc, rDenom, 0.5f));
 
-    LS_ASSERT(rm <= SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA);
-    LS_ASSERT(gm <= SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA);
-    LS_ASSERT(bm <= SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA);
+    LS_ASSERT(rm <= (int)SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA);
+    LS_ASSERT(gm <= (int)SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA);
+    LS_ASSERT(bm <= (int)SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA);
     LS_ASSERT(rm >= 0);
     LS_ASSERT(gm >= 0);
     LS_ASSERT(bm >= 0);
