@@ -3,6 +3,11 @@
     #define WIN32_LEAN_AND_MEAN
 #endif
 
+// Typycal windows bullshit
+#ifndef NOMINMAX
+    #define NOMINMAX
+#endif /* NOMINMAX */
+
 #include <windows.h>
 #include <wingdi.h>
 
