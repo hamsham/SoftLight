@@ -485,7 +485,6 @@ size_t SL_SceneGraph::delete_node(const size_t nodeIndex) noexcept
     numDeleted = 1 + numChildren;
 
     // find all child nodes and gather their types
-    // FIXME: O(n^2)
     for (size_t i = nodeIndex; i < mNodes.size(); ++i)
     {
         if (i <= nodeIndex+numChildren)
