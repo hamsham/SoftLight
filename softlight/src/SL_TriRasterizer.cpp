@@ -695,7 +695,7 @@ void SL_TriRasterizer::render_triangle_simd(const SL_TextureView& depthBuffer) c
             int32x4_t xMax;
             scanline.step(yf, xMin, xMax);
 
-            if (LS_LIKELY(vgetq_lane_s32(vcltq_s32(xMin, xMax), 0)))
+            if (LS_LIKELY(vgetq_lane_u32(vcltq_s32(xMin, xMax), 0)))
             {
                 constexpr int32_t indices[4] = {0, 1, 2, 3};
                 const depth_type* pDepth = (depth_type*)depthBuffer.pTexels + (vgetq_lane_s32(xMin, 0) + (int32_t)depthBuffer.width * y);
@@ -770,7 +770,7 @@ void SL_TriRasterizer::render_triangle_simd(const SL_TextureView& depthBuffer) c
                     bc.val[3] = vaddq_f32(bc.val[3], bcX);
                     x4 = vaddq_s32(x4, vdupq_n_s32(4));
                 }
-                while (vgetq_lane_s32(vcltq_s32(x4, xMax4), 0));
+                while (vgetq_lane_u32(vcltq_s32(x4, xMax4), 0));
             }
 
             y += increment;

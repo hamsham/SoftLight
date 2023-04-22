@@ -368,8 +368,8 @@ struct alignas(sizeof(float)*4) SL_ScanlineBounds
             const float32x2_t pdv1  = vmla_f32(v10, p2101, d1);
             const float32x2_t hi    = vbsl_f32(secondHalf, pdv1, pdv0);
 
-            xMin = vdupq_lane_f32(vcvt_s32_f32(vmin_f32(lo, hi)), 0);
-            xMax = vdupq_lane_f32(vcvt_s32_f32(vmax_f32(lo, hi)), 0);
+            xMin = vdupq_lane_s32(vcvt_s32_f32(vmin_f32(lo, hi)), 0);
+            xMax = vdupq_lane_s32(vcvt_s32_f32(vmax_f32(lo, hi)), 0);
         }
     #endif
 };
