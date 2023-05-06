@@ -75,8 +75,11 @@ if (BUILD_ASSIMP OR NOT ASSIMP_INCLUDE_DIR OR NOT ASSIMP_LIBRARIES)
             ${ASSIMP_BUILD_FLAGS}
         INSTALL_DIR
             ${EXTERNAL_PROJECT_PREFIX}
+        LOG_BUILD
+            TRUE
         STEP_TARGETS
             lib
+            utf8cpp
     )
 
     # Add the imported library target
@@ -121,7 +124,6 @@ if (BUILD_ASSIMP OR NOT ASSIMP_INCLUDE_DIR OR NOT ASSIMP_LIBRARIES)
                 set(ASSIMP_LIB_SUFFIX "d")
             endif()
 
-
             set(ASSIMP_LIB "assimp-${MSVC_PREFIX}-mt${ASSIMP_LIB_SUFFIX}")
             add_library(assimp STATIC IMPORTED)
             set_target_properties(assimp PROPERTIES IMPORTED_LOCATION ${EXTERNAL_PROJECT_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${ASSIMP_LIB}${CMAKE_STATIC_LIBRARY_SUFFIX})
@@ -139,6 +141,30 @@ if (BUILD_ASSIMP OR NOT ASSIMP_INCLUDE_DIR OR NOT ASSIMP_LIBRARIES)
         set_target_properties(assimp PROPERTIES IMPORTED_LOCATION ${EXTERNAL_PROJECT_PREFIX}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}${ASSIMP_LIB}${CMAKE_SHARED_LIBRARY_SUFFIX})
         ExternalProject_Add_Step(Assimp lib BYPRODUCTS ${EXTERNAL_PROJECT_PREFIX}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}${ASSIMP_LIB}${CMAKE_SHARED_LIBRARY_SUFFIX})
     endif()
+
+    # Assimp needs its own 3rd-party dependency installed
+    ExternalProject_Add_Step(
+        Assimp
+        utf8cpp
+        COMMAND
+            ${CMAKE_COMMAND} -E remove_directory ${EXTERNAL_PROJECT_PREFIX}/include/contrib
+        COMMAND
+            ${CMAKE_COMMAND} -E make_directory ${EXTERNAL_PROJECT_PREFIX}/include/contrib/utf8cpp/source
+        COMMAND
+            ${CMAKE_COMMAND} -E copy_directory ${EXTERNAL_PROJECT_PREFIX}/src/Assimp/contrib/utf8cpp/source ${EXTERNAL_PROJECT_PREFIX}/include/contrib/utf8cpp/source
+        BYPRODUCTS
+            ${EXTERNAL_PROJECT_PREFIX}/include/contrib/utf8cpp/source/utf8/unchecked.h
+            ${EXTERNAL_PROJECT_PREFIX}/include/contrib/utf8cpp/source/utf8/cpp11.h
+            ${EXTERNAL_PROJECT_PREFIX}/include/contrib/utf8cpp/source/utf8/core.h
+            ${EXTERNAL_PROJECT_PREFIX}/include/contrib/utf8cpp/source/utf8/checked.h
+            ${EXTERNAL_PROJECT_PREFIX}/include/contrib/utf8cpp/source/utf8.h
+            ${EXTERNAL_PROJECT_PREFIX}/include/contrib/utf8cpp/source/utf8
+            ${EXTERNAL_PROJECT_PREFIX}/include/contrib/utf8cpp/source
+            ${EXTERNAL_PROJECT_PREFIX}/include/contrib/utf8cpp
+            ${EXTERNAL_PROJECT_PREFIX}/include/contrib
+        LOG
+            TRUE
+    )
 
     add_dependencies(assimp IrrXML)
     set(ASSIMP_LIBRARIES assimp)
