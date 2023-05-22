@@ -320,7 +320,7 @@ endif()
 
 add_library(${PROJECT_NAME} ${SL_LIB_TYPE} ${SL_LIB_SOURCES} ${SL_PLATFORM_SOURCES} ${SL_LIB_HEADERS} ${SL_PLATFORM_HEADERS})
 
-ls_configure_target(${PROJECT_NAME})
+ls_configure_cxx_target(${PROJECT_NAME})
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC

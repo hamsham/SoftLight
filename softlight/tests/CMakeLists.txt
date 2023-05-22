@@ -170,7 +170,7 @@ endif()
 function(sl_add_test target sources)
     add_executable(${target} ${sources} ${ARGN})
     target_link_libraries(${target} softlight LightSky::Math LightSky::Game LightSky::Utils LightSky::Setup ${SL_EXTERNAL_LIBS})
-	ls_configure_target(${target})
+	ls_configure_cxx_target(${target})
 
 	# Precompiled Headers
 	if (LS_MATH_USE_PCH AND LS_UTILS_USE_PCH)
