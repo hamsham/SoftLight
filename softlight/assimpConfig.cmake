@@ -147,11 +147,9 @@ if (BUILD_ASSIMP OR NOT ASSIMP_INCLUDE_DIR OR NOT ASSIMP_LIBRARIES)
         Assimp
         utf8cpp
         COMMAND
-            ${CMAKE_COMMAND} -E remove_directory ${EXTERNAL_PROJECT_PREFIX}/include/contrib
+            ${CMAKE_COMMAND} -E make_directory "${EXTERNAL_PROJECT_PREFIX}/include/contrib/utf8cpp/source"
         COMMAND
-            ${CMAKE_COMMAND} -E make_directory ${EXTERNAL_PROJECT_PREFIX}/include/contrib/utf8cpp/source
-        COMMAND
-            ${CMAKE_COMMAND} -E copy_directory ${EXTERNAL_PROJECT_PREFIX}/src/Assimp/contrib/utf8cpp/source ${EXTERNAL_PROJECT_PREFIX}/include/contrib/utf8cpp/source
+            ${CMAKE_COMMAND} -E copy_if_different "${EXTERNAL_PROJECT_PREFIX}/src/Assimp/contrib/utf8cpp/source/" "${EXTERNAL_PROJECT_PREFIX}/include/contrib/utf8cpp/source/"
         BYPRODUCTS
             ${EXTERNAL_PROJECT_PREFIX}/include/contrib/utf8cpp/source/utf8/unchecked.h
             ${EXTERNAL_PROJECT_PREFIX}/include/contrib/utf8cpp/source/utf8/cpp11.h
