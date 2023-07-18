@@ -460,6 +460,7 @@ SL_OctreeNode<T, Allocator>& SL_OctreeNode<T, Allocator>::operator=(const SL_Oct
 
     for (unsigned i = 0; i < 8; ++i)
     {
+        delete mNodes[i];
         mNodes[i] = tempNodes[i];
     }
 

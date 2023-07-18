@@ -403,6 +403,7 @@ SL_QuadtreeNode<T, Allocator>& SL_QuadtreeNode<T, Allocator>::operator=(const SL
 
     for (unsigned i = 0; i < 4; ++i)
     {
+        delete mNodes[i];
         mNodes[i] = tempNodes[i];
     }
 
