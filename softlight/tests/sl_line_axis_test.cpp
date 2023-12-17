@@ -215,10 +215,10 @@ utils::Pointer<SL_SceneGraph> init_context()
     size_t                        texId   = context.create_texture();
     size_t                        depthId = context.create_texture();
 
-    context.num_threads(1);//SL_TEST_MAX_THREADS);
+    context.num_threads(SL_TEST_MAX_THREADS);
 
     SL_Texture& tex = context.texture(texId);
-    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGB_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     LS_ASSERT(retCode == 0);
 
     SL_Texture& depth = context.texture(depthId);
