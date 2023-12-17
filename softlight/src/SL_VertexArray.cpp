@@ -19,8 +19,8 @@ SL_VertexArray::~SL_VertexArray() noexcept
  * Constructor
 --------------------------------------*/
 SL_VertexArray::SL_VertexArray() noexcept :
-    mVboId{SL_VertexArray::MAX_BINDINGS},
-    mIboId{SL_VertexArray::MAX_BINDINGS},
+    mVboId{SL_VertexArray::INVALID_BUFFER_ID},
+    mIboId{SL_VertexArray::INVALID_BUFFER_ID},
     mNumBindings{0}
 {
     for (SL_VertexArray::BindInfo& info : mBindings)
@@ -264,8 +264,8 @@ void SL_VertexArray::terminate() noexcept
 {
     if (mNumBindings > 0)
     {
-        mVboId = SL_VertexArray::MAX_BINDINGS;
-        mIboId = SL_VertexArray::MAX_BINDINGS;
+        mVboId = SL_VertexArray::INVALID_BUFFER_ID;
+        mIboId = SL_VertexArray::INVALID_BUFFER_ID;
         mNumBindings = 0;
 
         for (SL_VertexArray::BindInfo& info: mBindings)
