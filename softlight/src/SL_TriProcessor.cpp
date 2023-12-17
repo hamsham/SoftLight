@@ -581,7 +581,7 @@ void SL_TriProcessor::push_bin(size_t primIndex, const SL_TransformedVert& a, co
         });
 
         // A 2D cross product is simply the determinant of a 2x2 matrix
-        const math::vec4&& denom = {math::rcp(math::cross(zy, xy))};
+        const float denom = math::rcp(math::cross(zy, xy));
         //const float denom = math::rcp(math::determinant(math::mat2{zy, xy}));
 
         // cross-products
@@ -611,9 +611,9 @@ void SL_TriProcessor::push_bin(size_t primIndex, const SL_TransformedVert& a, co
         bin.mScreenCoords[1] = p1;
         bin.mScreenCoords[2] = p2;
 
-        bin.mBarycentricCoords[0] = denom * ddx;
-        bin.mBarycentricCoords[1] = denom * ddy;
-        bin.mBarycentricCoords[2] = denom * ddz;
+        bin.mBarycentricCoords[0] = ddx * denom;
+        bin.mBarycentricCoords[1] = ddy * denom;
+        bin.mBarycentricCoords[2] = ddz * denom;
     //}
 
     switch (numVaryings)
