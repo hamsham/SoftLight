@@ -3,8 +3,8 @@
 #include <memory> // std::move()
 #include <thread>
 
-#include "lightsky/math/vec_utils.h"
 #include "lightsky/math/mat_utils.h"
+#include "lightsky/math/quat_utils.h"
 
 #include "lightsky/utils/Pointer.h"
 #include "lightsky/utils/Time.hpp"
@@ -12,9 +12,7 @@
 
 #include "softlight/SL_BoundingBox.hpp"
 #include "softlight/SL_Camera.hpp"
-#include "softlight/SL_ColorHSX.hpp"
 #include "softlight/SL_Context.hpp"
-#include "softlight/SL_IndexBuffer.hpp"
 #include "softlight/SL_Framebuffer.hpp"
 #include "softlight/SL_KeySym.hpp"
 #include "softlight/SL_Material.hpp"
@@ -62,6 +60,9 @@ using Tuple = utils::Tuple<data_t...>;
 --------------------------------------*/
 struct AxesUniforms
 {
+    math::vec4 xAxis;
+    math::vec4 yAxis;
+    math::vec4 zAxis;
     math::mat4 mvpMatrix;
 };
 
@@ -74,10 +75,19 @@ math::vec4 _line_vert_shader(SL_VertexParam& param)
 {
     const AxesUniforms* pUniforms = param.pUniforms->as<AxesUniforms>();
     const math::vec4&   vert      = *param.pVbo->element<const math::vec4>(param.pVao->offset(0, param.vertId));
+    const unsigned      vertId    = param.vertId;
 
-    param.pVaryings[0] = vert; // axis color is bound to the position
+    const math::vec4 points[6] = {
+        math::vec4{0.f, 0.f, 0.f, 1.f},
+        pUniforms->xAxis,
+        math::vec4{0.f, 0.f, 0.f, 1.f},
+        pUniforms->yAxis,
+        math::vec4{0.f, 0.f, 0.f, 1.f},
+        pUniforms->zAxis,
+    };
 
-    return pUniforms->mvpMatrix * vert;
+    param.pVaryings[0] = vert;
+    return pUniforms->mvpMatrix * points[vertId];
 }
 
 
@@ -128,16 +138,14 @@ int scene_load_axes(SL_SceneGraph& graph)
 {
     int retCode = 0;
     SL_Context& context = graph.mContext;
-    constexpr unsigned numVerts = 4;
+    constexpr unsigned numVerts = 6;
     constexpr size_t stride = sizeof(math::vec4);
     size_t numVboBytes = 0;
 
     size_t           vaoId = context.create_vao();
     size_t           vboId = context.create_vbo();
-    size_t           iboId = context.create_ibo();
     SL_VertexArray&  vao   = context.vao(vaoId);
     SL_VertexBuffer& vbo   = context.vbo(vboId);
-    SL_IndexBuffer&  ibo   = context.ibo(iboId);
 
     retCode = vbo.init(numVerts*stride);
     if (retCode != 0)
@@ -157,8 +165,10 @@ int scene_load_axes(SL_SceneGraph& graph)
     math::vec4 verts[numVerts];
     verts[0]  = math::vec4{0.f, 0.f, 0.f, 1.f};
     verts[1]  = math::vec4{1.f, 0.f, 0.f, 1.f};
-    verts[2]  = math::vec4{0.f, 1.f, 0.f, 1.f};
-    verts[3]  = math::vec4{0.f, 0.f, 1.f, 1.f};
+    verts[2]  = math::vec4{0.f, 0.f, 0.f, 1.f};
+    verts[3]  = math::vec4{0.f, 1.f, 0.f, 1.f};
+    verts[4]  = math::vec4{0.f, 0.f, 0.f, 1.f};
+    verts[5]  = math::vec4{0.f, 0.f, 1.f, 1.f};
 
     // Create the vertex buffer
     vbo.assign(verts, numVboBytes, sizeof(verts));
@@ -167,35 +177,12 @@ int scene_load_axes(SL_SceneGraph& graph)
 
     LS_ASSERT(numVboBytes == (numVerts*stride));
 
-    constexpr bool debug = false;
-    if (debug)
-    {
-        constexpr unsigned numIndices = 9;
-        const int indices[numIndices] = {
-            0, 1, 2,
-            0, 2, 3,
-            0, 3, 1
-        };
-        ibo.init(numIndices, SL_DataType::VERTEX_DATA_INT, indices);
-    }
-    else
-    {
-        constexpr unsigned numIndices = 6;
-        const int indices[numIndices] = {
-            0, 1,
-            0, 2,
-            0, 3
-        };
-        ibo.init(numIndices, SL_DataType::VERTEX_DATA_INT, indices);
-    }
-    vao.set_index_buffer(0);
-
     {
         SL_Mesh mesh;
         mesh.vaoId = vaoId;
         mesh.elementBegin = 0;
-        mesh.elementEnd = ibo.count();
-        mesh.mode = debug ? SL_RenderMode::RENDER_MODE_INDEXED_TRI_WIRE : SL_RenderMode::RENDER_MODE_INDEXED_LINES;
+        mesh.elementEnd = numVerts;
+        mesh.mode = SL_RenderMode::RENDER_MODE_LINES;
         mesh.materialId = (uint32_t)-1;
 
         SL_BoundingBox box;
@@ -228,7 +215,7 @@ utils::Pointer<SL_SceneGraph> init_context()
     size_t                        texId   = context.create_texture();
     size_t                        depthId = context.create_texture();
 
-    context.num_threads(SL_TEST_MAX_THREADS);
+    context.num_threads(1);//SL_TEST_MAX_THREADS);
 
     SL_Texture& tex = context.texture(texId);
     retCode = tex.init(SL_ColorDataType::SL_COLOR_RGB_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
@@ -301,6 +288,11 @@ void render_scene(SL_SceneGraph* pGraph, const math::mat4& vpMatrix)
         const size_t numNodeMeshes = pGraph->mNumNodeMeshes[n.dataId];
         const utils::Pointer<size_t[]>& meshIds = pGraph->mNodeMeshes[n.dataId];
 
+        // Demonstrate the axes of a quaternion rotation are orthogonal
+        const SL_Transform& transform = pGraph->mCurrentTransforms[i];
+        pUniforms->xAxis = math::vec4_cast(math::get_x_axis(transform.orientation()), 1.f);
+        pUniforms->yAxis = math::vec4_cast(math::get_y_axis(transform.orientation()), 1.f);
+        pUniforms->zAxis = math::vec4_cast(math::get_z_axis(transform.orientation()), 1.f);
         pUniforms->mvpMatrix = vpMatrix * modelMat;
 
         for (size_t meshId = 0; meshId < numNodeMeshes; ++meshId)
@@ -434,7 +426,7 @@ int main()
                 SL_MousePosEvent& mouse = evt.mousePos;
                 dx = (float)mouse.dx / (float)pWindow->width();
                 dy = (float)mouse.dy / (float)pWindow->height();
-                camTrans.rotate(math::vec3{-2.f*dx, -2.f*dy, 0.f});
+                pGraph->mCurrentTransforms[0].rotate(math::vec3{-2.f*dx, -2.f*dy, 0.f});
             }
             else if (evt.type == SL_WinEventType::WIN_EVENT_KEY_DOWN)
             {
