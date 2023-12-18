@@ -546,10 +546,8 @@ inline LS_INLINE math::vec4_t<size_t> get_next_vertex3(const SL_IndexBuffer* LS_
 /*--------------------------------------
  * Publish a vertex to a fragment thread
 --------------------------------------*/
-void SL_TriProcessor::push_bin(size_t primIndex, const SL_TransformedVert& a, const SL_TransformedVert& b, const SL_TransformedVert& c) const noexcept
+void SL_TriProcessor::push_bin(size_t primIndex, const SL_TransformedVert& a, const SL_TransformedVert& b, const SL_TransformedVert& c) noexcept
 {
-    SL_BinCounterAtomic<uint32_t>* const pLocks = mBinsUsed;
-    SL_FragmentBin* const pFragBins = mFragBins;
     const uint_fast32_t numVaryings = mShader->pipelineState.num_varyings();
 
     const math::vec4& p0 = a.vert;
@@ -595,7 +593,7 @@ void SL_TriProcessor::push_bin(size_t primIndex, const SL_TransformedVert& a, co
         // Attempt to grab a bin index. Flush the bins if they've filled up.
         do
         {
-            binId = pLocks->count.fetch_add(1, std::memory_order_acq_rel);
+            binId = active_num_bins_used().count.fetch_add(1, std::memory_order_acq_rel);
             if (LS_LIKELY(binId < SL_SHADER_MAX_BINNED_PRIMS))
             {
                 break;
@@ -606,6 +604,7 @@ void SL_TriProcessor::push_bin(size_t primIndex, const SL_TransformedVert& a, co
         while (true);
 
         // place a triangle into the next available bin
+        SL_FragmentBin* const pFragBins = active_frag_bins();
         SL_FragmentBin& bin = pFragBins[binId];
         bin.mScreenCoords[0] = p0;
         bin.mScreenCoords[1] = p1;
@@ -640,7 +639,7 @@ void SL_TriProcessor::push_bin(size_t primIndex, const SL_TransformedVert& a, co
     }
 
     bin.primIndex = primIndex;
-    mBinIds[binId].count = binId;
+    active_bin_index(binId).count = binId;
 }
 
 
@@ -859,7 +858,7 @@ void SL_TriProcessor::process_verts(
         end += m.elementBegin;
 
         SL_PTVCache ptvCache{};
-        const auto&& vertTransform = [&](size_t key, SL_TransformedVert& tv)noexcept ->void
+        const auto&& vertTransform = [&](size_t key, SL_TransformedVert& tv) noexcept -> void
         {
             params.vertId = key;
             params.pVaryings = tv.varyings;
@@ -966,9 +965,7 @@ template void SL_TriProcessor::process_verts<false>(
 --------------------------------------*/
 void SL_TriProcessor::execute() noexcept
 {
-    mAmDone = 0;
-
-    if (mFragProcessors->count.load(std::memory_order_consume))
+    if (active_frag_processors().count.load(std::memory_order_consume))
     {
         flush_rasterizer<SL_TriRasterizer>();
     }
@@ -1015,8 +1012,6 @@ void SL_TriProcessor::execute() noexcept
             }
         }
     }
-
-    mAmDone = 1;
 
     this->cleanup<SL_TriRasterizer>();
 }

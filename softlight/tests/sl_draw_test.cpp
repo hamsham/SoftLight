@@ -143,7 +143,7 @@ int main()
     vao.set_binding(1, sizeof(math::vec4),  sizeof(ColoredVertex), SL_Dimension::VERTEX_DIMENSION_4, SL_DataType::VERTEX_DATA_FLOAT);
 
     SL_Texture& tex = context.texture(texId);
-    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGB_8U, 640, 480, 1);
+    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_8U, 640, 480, 1);
     if (retCode != 0)
     {
         std::cerr << "Error while creating a color texture: " << retCode << std::endl;

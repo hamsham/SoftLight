@@ -142,10 +142,8 @@ inline LS_INLINE void sl_world_to_screen_coords_divided1(math::vec4& LS_RESTRICT
 /*--------------------------------------
  * Publish a vertex to a fragment thread
 --------------------------------------*/
-void SL_PointProcessor::push_bin(size_t primIndex, const ls::math::vec4& viewportDims, const SL_TransformedVert& a) const noexcept
+void SL_PointProcessor::push_bin(size_t primIndex, const ls::math::vec4& viewportDims, const SL_TransformedVert& a) noexcept
 {
-    SL_BinCounterAtomic<uint32_t>* const pLocks = mBinsUsed;
-    SL_FragmentBin* const pFragBins = mFragBins;
     const uint_fast32_t numVaryings = (uint_fast32_t)mShader->pipelineState.num_varyings();
 
     const math::vec4& p0 = a.vert;
@@ -169,7 +167,7 @@ void SL_PointProcessor::push_bin(size_t primIndex, const ls::math::vec4& viewpor
     // Attempt to grab a bin index. Flush the bins if they've filled up.
     while (true)
     {
-        binId = pLocks->count.fetch_add(1, std::memory_order_acq_rel);
+        binId = active_num_bins_used().count.fetch_add(1, std::memory_order_acq_rel);
         if (LS_UNLIKELY(binId < SL_SHADER_MAX_BINNED_PRIMS))
         {
             break;
@@ -179,6 +177,7 @@ void SL_PointProcessor::push_bin(size_t primIndex, const ls::math::vec4& viewpor
     }
 
     // place a triangle into the next available bin
+    SL_FragmentBin* const pFragBins = active_frag_bins();
     SL_FragmentBin& bin = pFragBins[binId];
     bin.mScreenCoords[0] = p0;
 
@@ -188,7 +187,7 @@ void SL_PointProcessor::push_bin(size_t primIndex, const ls::math::vec4& viewpor
     }
 
     bin.primIndex = primIndex;
-    mBinIds[binId].count = binId;
+    active_bin_index(binId).count = binId;
 }
 
 
@@ -202,7 +201,7 @@ void SL_PointProcessor::process_verts(
     const ls::math::mat4_t<float>& scissorMat,
     const ls::math::vec4_t<float>& viewportDims) noexcept
 {
-    if (mFragProcessors->count.load(std::memory_order_consume))
+    if (active_frag_processors().count.load(std::memory_order_consume))
     {
         flush_rasterizer<SL_PointRasterizer>();
     }
@@ -255,8 +254,6 @@ void SL_PointProcessor::process_verts(
 --------------------------------------*/
 void SL_PointProcessor::execute() noexcept
 {
-    mAmDone = 0;
-
     const math::vec4&&      fboDims      = (math::vec4)math::vec4_t<int>{0, 0, mFbo->width(), mFbo->height()};
     const SL_ViewportState& viewState    = mContext->viewport_state();
     const math::mat4&&      scissorMat   = viewState.scissor_matrix(fboDims[2], fboDims[3]);
@@ -276,8 +273,6 @@ void SL_PointProcessor::execute() noexcept
             process_verts(mMeshes[0], i, scissorMat, viewportDims);
         }
     }
-
-    mAmDone = 1;
 
     this->cleanup<SL_PointRasterizer>();
 }

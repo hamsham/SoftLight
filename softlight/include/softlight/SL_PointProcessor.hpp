@@ -12,7 +12,7 @@
 class SL_PointProcessor final : public SL_VertexProcessor
 {
   private:
-    void push_bin(size_t primIndex, const ls::math::vec4_t<float>& viewportDims, const SL_TransformedVert& v) const noexcept;
+    void push_bin(size_t primIndex, const ls::math::vec4_t<float>& viewportDims, const SL_TransformedVert& v) noexcept;
 
     void process_verts(
         const SL_Mesh& m,

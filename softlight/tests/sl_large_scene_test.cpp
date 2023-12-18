@@ -49,7 +49,7 @@
 #endif /* SL_TEST_MAX_THREADS */
 
 #ifndef SL_BENCHMARK_SCENE
-    #define SL_BENCHMARK_SCENE 0
+    #define SL_BENCHMARK_SCENE 1
 #endif /* SL_BENCHMARK_SCENE */
 
 #ifndef SL_TEST_BUMP_MAPS
@@ -222,7 +222,7 @@ SL_FragmentShader normal_frag_shader()
     shader.numOutputs  = 1;
     shader.blend       = SL_BLEND_OFF;
 
-    #ifdef TEST_REVERSED_DEPTH
+    #if TEST_REVERSED_DEPTH
     shader.depthTest = SL_DEPTH_TEST_GREATER_EQUAL;
     #else
     shader.depthTest = SL_DEPTH_TEST_LESS_EQUAL;
@@ -231,7 +231,7 @@ SL_FragmentShader normal_frag_shader()
     shader.depthMask   = SL_DEPTH_MASK_ON;
     shader.shader      = [](SL_FragmentParam& fragParams)->bool
     {
-        const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
+        const MeshUniforms*  pUniforms = fragParams.pUniforms->as<MeshUniforms>();
         const math::vec4&    pos       = fragParams.pVaryings[0];
         math::vec4&&         norm      = math::normalize(fragParams.pVaryings[1]);
         float                attenuation;
@@ -295,7 +295,7 @@ SL_FragmentShader normal_frag_shader_pbr()
     shader.numOutputs  = 1;
     shader.blend       = SL_BLEND_OFF;
 
-    #ifdef TEST_REVERSED_DEPTH
+    #if TEST_REVERSED_DEPTH
     shader.depthTest = SL_DEPTH_TEST_GREATER_EQUAL;
     #else
     shader.depthTest = SL_DEPTH_TEST_LESS_EQUAL;
@@ -304,15 +304,15 @@ SL_FragmentShader normal_frag_shader_pbr()
     shader.depthMask   = SL_DEPTH_MASK_ON;
     shader.shader      = [](SL_FragmentParam& fragParams)->bool
     {
-        const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
         const math::vec4     pos       = fragParams.pVaryings[0];
         const math::vec4     norm      = math::normalize(fragParams.pVaryings[1]);
         math::vec4&          output    = fragParams.pOutputs[0];
+        const MeshUniforms*  pUniforms = fragParams.pUniforms->as<MeshUniforms>();
 
         // surface model
         const math::vec4     camPos           = pUniforms->camPos;
-        const math::vec4     viewDir          = math::normalize(camPos - pos);
         const math::vec4     lightPos         = pUniforms->light.pos;
+        const math::vec4     viewDir          = math::normalize(camPos - pos);
         const math::vec4     albedo           = math::vec4{1.f};
         constexpr float      metallic         = 0.8f;
         constexpr float      roughness        = 0.025f;
@@ -388,7 +388,7 @@ SL_VertexShader texture_vert_shader()
     shader.cullMode = SL_CULL_BACK_FACE;
     shader.shader = [](SL_VertexParam& param)->math::vec4
     {
-        // Used to retrieve packed verex data in a single call
+        // Used to retrieve packed vertex data in a single call
         typedef Tuple<math::vec3, math::vec2, int32_t> Vertex;
 
         const MeshUniforms* pUniforms = param.pUniforms->as<MeshUniforms>();
@@ -420,7 +420,7 @@ SL_FragmentShader texture_frag_shader()
     shader.numOutputs  = 1;
     shader.blend       = SL_BLEND_OFF;
 
-    #ifdef TEST_REVERSED_DEPTH
+    #if TEST_REVERSED_DEPTH
     shader.depthTest = SL_DEPTH_TEST_GREATER_EQUAL;
     #else
     shader.depthTest = SL_DEPTH_TEST_LESS_EQUAL;
@@ -429,11 +429,11 @@ SL_FragmentShader texture_frag_shader()
     shader.depthMask   = SL_DEPTH_MASK_ON;
     shader.shader      = [](SL_FragmentParam& fragParams)->bool
     {
-        const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
+        const MeshUniforms*  pUniforms = fragParams.pUniforms->as<MeshUniforms>();
+        const SL_Texture*    albedo    = pUniforms->pTexture;
         const math::vec4&    pos       = fragParams.pVaryings[0];
         const math::vec4&    uv        = fragParams.pVaryings[1];
         math::vec4&&         norm      = math::normalize(fragParams.pVaryings[2]);
-        const SL_Texture*    albedo    = pUniforms->pTexture;
         float                attenuation;
         math::vec4           pixel;
         math::vec4           diffuse;
@@ -522,7 +522,7 @@ SL_FragmentShader texture_frag_shader_pbr()
     shader.numOutputs  = 1;
     shader.blend       = SL_BLEND_OFF;
 
-    #ifdef TEST_REVERSED_DEPTH
+    #if TEST_REVERSED_DEPTH
     shader.depthTest = SL_DEPTH_TEST_GREATER_EQUAL;
     #else
     shader.depthTest = SL_DEPTH_TEST_LESS_EQUAL;
@@ -775,7 +775,7 @@ utils::Pointer<SL_SceneGraph> create_context()
     LS_ASSERT(retCode == (int)SL_TEST_MAX_THREADS);
 
     SL_Texture& tex = context.texture(texId);
-    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGB_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGB_565, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     LS_ASSERT(retCode == 0);
 
     SL_Texture& depth = context.texture(depthId);

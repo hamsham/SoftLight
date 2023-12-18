@@ -152,7 +152,7 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     LS_ASSERT(retCode == (int)SL_TEST_MAX_THREADS);
 
     SL_Texture& tex = context.texture(texId);
-    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGB_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     LS_ASSERT(retCode == 0);
 
     SL_Texture& depth = context.texture(depthId);

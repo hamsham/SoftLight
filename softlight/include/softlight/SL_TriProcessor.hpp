@@ -12,7 +12,7 @@
 class SL_TriProcessor final : public SL_VertexProcessor
 {
   private:
-    void push_bin(size_t primIndex, const SL_TransformedVert& v0, const SL_TransformedVert& v1, const SL_TransformedVert& v2) const noexcept;
+    void push_bin(size_t primIndex, const SL_TransformedVert& v0, const SL_TransformedVert& v1, const SL_TransformedVert& v2) noexcept;
 
     void clip_and_process_tris(
         size_t primIndex,

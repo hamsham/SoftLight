@@ -528,7 +528,11 @@ enum SL_ShaderLimits
 
     // Maximum number of vertex groups which get binned before being sent to a
     // fragment processor.
-    SL_SHADER_MAX_BINNED_PRIMS    = 8192,
+    SL_SHADER_MAX_BINNED_PRIMS    = 2048,
+
+    // there's a deadlock in the vertex processor's cleanup() function when
+    // this number goes past 2
+    SL_VERT_PROCESSOR_MAX_BUFFERS = 4
 };
 
 
@@ -545,6 +549,10 @@ union alignas(16) SL_BinCounter
     static_assert(sizeof(padding) == 16, "Invalid structure alignment.");
 
     ~SL_BinCounter() noexcept {}
+
+    constexpr LS_INLINE SL_BinCounter() noexcept :
+        count{0}
+    {}
 
     constexpr LS_INLINE SL_BinCounter(const data_t& n) noexcept :
         count{n}
@@ -588,6 +596,10 @@ union alignas(64) SL_BinCounterAtomic
     static_assert(sizeof(padding) == 64, "Invalid structure alignment.");
 
     ~SL_BinCounterAtomic() noexcept {}
+
+    constexpr LS_INLINE SL_BinCounterAtomic() noexcept :
+        count{0}
+    {}
 
     constexpr LS_INLINE SL_BinCounterAtomic(const data_t& n) noexcept :
         count{n}
@@ -665,6 +677,20 @@ struct alignas(sizeof(ls::math::vec4)*2) SL_FragmentBin
 };
 
 static_assert(sizeof(SL_FragmentBin) == sizeof(ls::math::vec4)*20, "Unexpected size of SL_FragmentBin. Please update all varying memcpy routines.");
+
+
+
+/*-----------------------------------------------------------------------------
+ * Vertex Processor data used for double-buffering fragment bins.
+-----------------------------------------------------------------------------*/
+struct SL_VertProcessBuffer
+{
+    SL_BinCounterAtomic<int_fast64_t> mFragProcessors;               // shared number of threads performing rasterization
+    SL_BinCounterAtomic<uint32_t> mBinsUsed;                         // number of filled fragment bins
+    SL_BinCounter<uint32_t> mBinIds[SL_SHADER_MAX_BINNED_PRIMS];     // shared array of fragment bin IDs
+    SL_BinCounter<uint32_t> mTempBinIds[SL_SHADER_MAX_BINNED_PRIMS]; // pre-allocated storage for a radix sort
+    SL_FragmentBin mFragBins[SL_SHADER_MAX_BINNED_PRIMS];            // shared array of bins (indexed using mBinIds)
+};
 
 
 

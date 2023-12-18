@@ -222,10 +222,8 @@ inline LS_INLINE SL_ClipStatus line_visible(
 /*--------------------------------------
  * Publish a vertex to a fragment thread
 --------------------------------------*/
-void SL_LineProcessor::push_bin(size_t primIndex, const math::vec4& viewportDims, const SL_TransformedVert& a, const SL_TransformedVert& b) const noexcept
+void SL_LineProcessor::push_bin(size_t primIndex, const math::vec4& viewportDims, const SL_TransformedVert& a, const SL_TransformedVert& b) noexcept
 {
-    SL_BinCounterAtomic<uint32_t>* const pLocks = mBinsUsed;
-    SL_FragmentBin* const pFragBins = mFragBins;
     const uint_fast32_t numVaryings = (uint_fast32_t)mShader->pipelineState.num_varyings();
 
     const math::vec4& p0 = a.vert;
@@ -250,12 +248,13 @@ void SL_LineProcessor::push_bin(size_t primIndex, const math::vec4& viewportDims
     uint_fast64_t binId;
 
     // Attempt to grab a bin index. Flush the bins if they've filled up.
-    while ((binId = pLocks->count.fetch_add(1, std::memory_order_acq_rel)) >= SL_SHADER_MAX_BINNED_PRIMS)
+    while ((binId = active_num_bins_used().count.fetch_add(1, std::memory_order_acq_rel)) >= SL_SHADER_MAX_BINNED_PRIMS)
     {
         flush_rasterizer<SL_LineRasterizer>();
     }
 
     // place a triangle into the next available bin
+    SL_FragmentBin* const pFragBins = active_frag_bins();
     SL_FragmentBin& bin = pFragBins[binId];
     bin.mScreenCoords[0] = p0;
     bin.mScreenCoords[1] = p1;
@@ -267,7 +266,7 @@ void SL_LineProcessor::push_bin(size_t primIndex, const math::vec4& viewportDims
     }
 
     bin.primIndex = primIndex;
-    mBinIds[binId].count = binId;
+    active_bin_index(binId).count = binId;
 }
 
 
@@ -403,7 +402,7 @@ void SL_LineProcessor::process_verts(
     const ls::math::mat4_t<float>& scissorMat,
     const ls::math::vec4_t<float>& viewportDims) noexcept
 {
-    if (mFragProcessors->count.load(std::memory_order_consume))
+    if (active_frag_processors().count.load(std::memory_order_consume))
     {
         flush_rasterizer<SL_LineRasterizer>();
     }
@@ -498,8 +497,6 @@ void SL_LineProcessor::process_verts(
 --------------------------------------*/
 void SL_LineProcessor::execute() noexcept
 {
-    mAmDone = 0;
-
     const math::vec4&&      fboDims      = (math::vec4)math::vec4_t<int>{0, 0, mFbo->width(), mFbo->height()};
     const SL_ViewportState& viewState    = mContext->viewport_state();
     const math::mat4&&      scissorMat   = viewState.scissor_matrix(fboDims[2], fboDims[3]);
@@ -519,8 +516,6 @@ void SL_LineProcessor::execute() noexcept
             process_verts(mMeshes[0], i, scissorMat, viewportDims);
         }
     }
-
-    mAmDone = 1;
 
     this->cleanup<SL_LineRasterizer>();
 }

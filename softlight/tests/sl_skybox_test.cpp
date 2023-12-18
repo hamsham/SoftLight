@@ -556,6 +556,19 @@ int main()
         {
             pWindow->pop_event(&evt);
 
+            if (evt.type == SL_WinEventType::WIN_EVENT_RESIZED)
+            {
+                context.texture(0).init(context.texture(0).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height(), 1);
+                context.texture(1).init(context.texture(1).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height(), 1);
+
+                SL_Framebuffer& fbo = context.framebuffer(0);
+                fbo.attach_color_buffer(0, context.texture(0).view());
+                fbo.attach_depth_buffer(context.texture(1).view());
+
+                pRenderBuf->terminate();
+                pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
+            }
+
             if (evt.type == SL_WinEventType::WIN_EVENT_KEY_DOWN)
             {
                 const SL_KeySymbol keySym = evt.keyboard.keysym;
@@ -649,15 +662,6 @@ int main()
 
                 // remove the camera's position
                 vpMatrix = projMatrix * math::mat4{math::mat3{camTrans.transform()}};
-            }
-
-            if (pWindow->width() != pRenderBuf->width() || pWindow->height() != pRenderBuf->height())
-            {
-                context.texture(0).init(context.texture(0).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height(), 1);
-                context.texture(1).init(context.texture(1).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height(), 1);
-
-                pRenderBuf->terminate();
-                pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
             }
 
             // RENDER!
