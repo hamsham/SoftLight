@@ -528,11 +528,11 @@ enum SL_ShaderLimits
 
     // Maximum number of vertex groups which get binned before being sent to a
     // fragment processor.
-    SL_SHADER_MAX_BINNED_PRIMS    = 2048,
+    SL_SHADER_MAX_BINNED_PRIMS    = 1024,
 
-    // there's a deadlock in the vertex processor's cleanup() function when
-    // this number goes past 2
-    SL_VERT_PROCESSOR_MAX_BUFFERS = 4
+    // Maximum possible amount of fragment operations running while
+    // simultaneously allowing vertex processing.
+    SL_VERT_PROCESSOR_MAX_BUFFERS = 8
 };
 
 
@@ -669,9 +669,6 @@ struct alignas(sizeof(ls::math::vec4)*2) SL_FragmentBin
 
     // 8 bytes
     uint_fast64_t pad0;
-
-    // 16 bytes of padding to reduce false-sharing
-    ls::math::vec4 pad1;
 
     // 304 bytes = 2432 bits
 };

@@ -516,12 +516,13 @@ void SL_TriRasterizer::render_triangle_simd(const SL_TextureView& LS_RESTRICT_PT
 
                         // Interleaving instructions here to help with pipelining
                         storeMask1 += numQueuedFrags;
-                        _mm_storel_pi(reinterpret_cast<__m64*>(outCoords->coord + numQueuedFrags), _mm_castsi128_ps(xyz0));
                         storeMask2 = (unsigned)_mm_popcnt_u32(storeMask2) + numQueuedFrags;
-                        _mm_storeh_pi(reinterpret_cast<__m64*>(outCoords->coord + storeMask1),     _mm_castsi128_ps(xyz0));
                         storeMask3 = (unsigned)_mm_popcnt_u32(storeMask3) + numQueuedFrags;
-                        _mm_storel_pi(reinterpret_cast<__m64*>(outCoords->coord + storeMask2),     _mm_castsi128_ps(xyz1));
                         storeMask4 = (unsigned)_mm_popcnt_u32(storeMask4);
+
+                        _mm_storel_pi(reinterpret_cast<__m64*>(outCoords->coord + numQueuedFrags), _mm_castsi128_ps(xyz0));
+                        _mm_storeh_pi(reinterpret_cast<__m64*>(outCoords->coord + storeMask1),     _mm_castsi128_ps(xyz0));
+                        _mm_storel_pi(reinterpret_cast<__m64*>(outCoords->coord + storeMask2),     _mm_castsi128_ps(xyz1));
                         _mm_storeh_pi(reinterpret_cast<__m64*>(outCoords->coord + storeMask3),     _mm_castsi128_ps(xyz1));
 
                         numQueuedFrags += storeMask4;

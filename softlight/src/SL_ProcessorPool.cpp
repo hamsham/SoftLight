@@ -380,10 +380,11 @@ void SL_ProcessorPool::run_shader_processors(const SL_Context& c, const SL_Mesh*
 -------------------------------------*/
 void SL_ProcessorPool::clear_fragment_bins() noexcept
 {
-    mVertProcBuffers[0].mBinsUsed.count = 0;
-    mVertProcBuffers[1].mBinsUsed.count = 0;
-    mVertProcBuffers[0].mFragProcessors.count.store(0);
-    mVertProcBuffers[1].mFragProcessors.count.store(0);
+    for (unsigned i = 0; i < SL_VERT_PROCESSOR_MAX_BUFFERS; ++i)
+    {
+        mVertProcBuffers[i].mBinsUsed.count = 0;
+        mVertProcBuffers[i].mFragProcessors.count.store(0);
+    }
 }
 
 

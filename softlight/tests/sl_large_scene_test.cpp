@@ -49,7 +49,7 @@
 #endif /* SL_TEST_MAX_THREADS */
 
 #ifndef SL_BENCHMARK_SCENE
-    #define SL_BENCHMARK_SCENE 1
+    #define SL_BENCHMARK_SCENE 0
 #endif /* SL_BENCHMARK_SCENE */
 
 #ifndef SL_TEST_BUMP_MAPS
@@ -193,7 +193,7 @@ SL_VertexShader normal_vert_shader()
     shader.cullMode    = SL_CULL_BACK_FACE;
     shader.shader      = [](SL_VertexParam& param)->math::vec4
     {
-        // Used to retrieve packed verex data in a single call
+        // Used to retrieve packed vertex data in a single call
         typedef Tuple<math::vec3, int32_t> Vertex;
 
         const MeshUniforms* pUniforms = param.pUniforms->as<MeshUniforms>();
@@ -775,7 +775,7 @@ utils::Pointer<SL_SceneGraph> create_context()
     LS_ASSERT(retCode == (int)SL_TEST_MAX_THREADS);
 
     SL_Texture& tex = context.texture(texId);
-    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGB_565, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = tex.init(SL_ColorDataType::SL_COLOR_RGB_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     LS_ASSERT(retCode == 0);
 
     SL_Texture& depth = context.texture(depthId);

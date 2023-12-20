@@ -83,6 +83,8 @@ inline LS_INLINE void _sl_cpu_yield_loop(const WaitCondition& cond) noexcept
 template <typename RasterizerType>
 void SL_VertexProcessor::flush_rasterizer() noexcept
 {
+    static_assert(ls::setup::IsBaseOf<SL_FragmentProcessor, RasterizerType>::value, "Template parameter 'RasterizerType' must derive from SL_FragmentProcessor.");
+
     // Allow the other threads to know when they're ready for processing
     const int_fast64_t    numThreads   = (int_fast64_t)mNumThreads;
     const int_fast64_t    syncPoint1   = -numThreads - 1;
@@ -96,13 +98,6 @@ void SL_VertexProcessor::flush_rasterizer() noexcept
     {
         maxElements = math::min<uint_fast64_t>(active_num_bins_used().count.load(std::memory_order_consume), SL_SHADER_MAX_BINNED_PRIMS);
 
-        // Try to perform depth sorting once, and only once, per opaque draw
-        // call to reduce depth-buffer access during rasterization. Sorting
-        // primitives multiple times here in the vertex processor will
-        // increase latency before invoking the fragment processor.
-        constexpr bool shouldDepthSort = false;//ls::setup::IsSame<RasterizerType, SL_TriRasterizer>::value;
-        const bool canDepthSort = shouldDepthSort && (maxElements < SL_SHADER_MAX_BINNED_PRIMS);
-
         // Blended fragments get sorted by their primitive index for
         // consistency.
         if (LS_UNLIKELY(mShader->pipelineState.blend_mode() != SL_BLEND_OFF))
@@ -115,38 +110,19 @@ void SL_VertexProcessor::flush_rasterizer() noexcept
                 return (unsigned long long)pBins[val.count].primIndex;
             });
         }
-        else if (canDepthSort)
-        {
-            SL_BinCounter<uint32_t>* const pActiveBinIds = active_bin_indices();
-            SL_BinCounter<uint32_t>* const pTempBinIds = active_temp_bin_indices();
-
-            utils::sort_radix<SL_BinCounter<uint32_t>>(pActiveBinIds, pTempBinIds, (uint64_t)maxElements, [&](const SL_BinCounter<uint32_t>& val) noexcept->unsigned long long
-            {
-                // flip sign, otherwise the sorting goes from back-to-front
-                // due to the sortable nature of floats.
-                static_assert(sizeof(float) == sizeof(int32_t), "Current architecture doesn't have similar float & integer sizes.");
-                union
-                {
-                    float f;
-                    int32_t i;
-                } w{pBins[val.count].mScreenCoords[0][3]};
-                return (unsigned long long) -w.i;
-            });
-        }
 
         // Let all threads know they can process fragments.
         active_frag_processors().count.store(syncPoint1, std::memory_order_release);
     }
     else
     {
-        _sl_cpu_yield_loop([&]()->bool {
+        _sl_cpu_yield_loop([&]() noexcept -> bool
+        {
             return active_frag_processors().count.load(std::memory_order_consume) > 0;
         });
 
         maxElements = math::min<uint_fast64_t>(active_num_bins_used().count.load(std::memory_order_consume), SL_SHADER_MAX_BINNED_PRIMS);
     }
-
-    static_assert(ls::setup::IsBaseOf<SL_FragmentProcessor, RasterizerType>::value, "Template parameter 'RasterizerType' must derive from SL_FragmentProcessor.");
 
     RasterizerType rasterizer;
     rasterizer.mThreadId = (uint16_t)mThreadId;
@@ -169,12 +145,6 @@ void SL_VertexProcessor::flush_rasterizer() noexcept
         active_num_bins_used().count.store(0, std::memory_order_release);
         active_frag_processors().count.store(0, std::memory_order_release);
     }
-    else
-    {
-        _sl_cpu_yield_loop([&]()->bool {
-            return next_frag_processors().count.load(std::memory_order_consume) < 0;
-        });
-    }
 
     flip_process_buffers();
 }
@@ -188,11 +158,13 @@ template <typename RasterizerType>
 void SL_VertexProcessor::cleanup() noexcept
 {
     static_assert(ls::setup::IsBaseOf<SL_FragmentProcessor, RasterizerType>::value, "Template parameter 'RasterizerType' must derive from SL_FragmentProcessor.");
-    uint_fast32_t currentIters = 0;
-    uint_fast32_t prevIters = 0;
 
-    uint_fast64_t numActiveFragProcessors = mBusyProcessors->count.fetch_sub(1, std::memory_order_acq_rel);
-    while (numActiveFragProcessors)
+    uint_fast64_t numActiveFragProcessors;
+    uint_fast32_t currentIters = 0;
+
+    mBusyProcessors->count.fetch_sub(1, std::memory_order_acq_rel);
+
+    do
     {
         if (LS_LIKELY(active_frag_processors().count.load(std::memory_order_acquire) > 0))
         {
@@ -200,26 +172,12 @@ void SL_VertexProcessor::cleanup() noexcept
         }
         else
         {
-            if (prevIters < 3)
-            {
-                prevIters = currentIters;
-                currentIters = _sl_cpu_yield_exponential<uint_fast32_t>(currentIters);
-            }
-            else
-            {
-                if (!LS_LIKELY(active_num_bins_used().count.load(std::memory_order_acquire)))
-                {
-                    std::this_thread::yield();
-                }
-                else
-                {
-                    currentIters = _sl_cpu_yield_exponential<uint_fast32_t>(currentIters);
-                }
-            }
+            currentIters = _sl_cpu_yield_exponential<uint_fast32_t>(currentIters);
         }
 
         numActiveFragProcessors = mBusyProcessors->count.load(std::memory_order_acquire);
     }
+    while (numActiveFragProcessors);
 
     if (LS_LIKELY(active_num_bins_used().count.load(std::memory_order_acquire)))
     {
