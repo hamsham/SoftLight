@@ -13,7 +13,7 @@
 
 class SL_VertexArray
 {
-    enum
+    enum : std::size_t
     {
         MAX_BINDINGS = 8,
         INVALID_BUFFER_ID = std::numeric_limits<std::size_t>::max(),
