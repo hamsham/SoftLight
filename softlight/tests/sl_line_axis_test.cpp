@@ -75,7 +75,7 @@ math::vec4 _line_vert_shader(SL_VertexParam& param)
 {
     const AxesUniforms* pUniforms = param.pUniforms->as<AxesUniforms>();
     const math::vec4&   vert      = *param.pVbo->element<const math::vec4>(param.pVao->offset(0, param.vertId));
-    const unsigned      vertId    = param.vertId;
+    const size_t        vertId    = param.vertId;
 
     const math::vec4 points[6] = {
         math::vec4{0.f, 0.f, 0.f, 1.f},
