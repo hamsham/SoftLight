@@ -46,7 +46,7 @@ jobs:
             name: mingw
             generator: "Ninja"
             shell: msys2 {0}
-            dependencies: base-devel git subversion mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-toolchain mingw-w64-x86_64-freeimage
+            dependencies: cmake:u ninja:u toolchain:u freeimage:u
             cmakeopts: -DLIGHTSKY_ENABLE_PCH:BOOL=ON
 
           - os: windows-latest
@@ -80,10 +80,11 @@ jobs:
       if: matrix.os == 'windows-latest' && matrix.shell != 'pwsh'
       uses: msys2/setup-msys2@v2
       with:
-        msystem: MINGW64
+        msystem: UCRT64
         update: true
         release: true
-        install: ${{ matrix.dependencies }}
+        install: base-devel git subversion
+        pacboy: ${{ matrix.dependencies }}
 
     - name: Install Windows dependencies
       if: matrix.os == 'windows-latest' && matrix.shell == 'pwsh'
