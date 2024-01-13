@@ -90,12 +90,10 @@ class SL_VertexProcessor
 
     virtual void execute() noexcept = 0;
 
+    uint32_t active_buffer_index() const noexcept { return mProcessBufferIndex; }
     uint32_t next_buffer_index() const noexcept { return (mProcessBufferIndex+1) % SL_VERT_PROCESSOR_MAX_BUFFERS; }
-    void flip_process_buffers() { mProcessBufferIndex = next_buffer_index(); }
 
-  private:
-    const SL_BinCounterAtomic<int_fast64_t>& next_frag_processors() const noexcept { return mProcessBuffer[next_buffer_index()].mFragProcessors; }
-    SL_BinCounterAtomic<int_fast64_t>& next_frag_processors() noexcept { return mProcessBuffer[next_buffer_index()].mFragProcessors; }
+    void flip_process_buffers() { mProcessBufferIndex = next_buffer_index(); }
 
   public:
     const SL_BinCounterAtomic<int_fast64_t>& active_frag_processors() const noexcept { return mProcessBuffer[mProcessBufferIndex].mFragProcessors; }

@@ -57,6 +57,7 @@ SL_ProcessorPool::SL_ProcessorPool(unsigned numThreads) noexcept :
     for (unsigned i = 0; i < numThreads-1u; ++i)
     {
         new (&mWorkers[i]) ThreadedWorker{i+1};
+        mWorkers[i].busy_waiting(false);
     }
 
     clear_fragment_bins();
@@ -88,6 +89,7 @@ SL_ProcessorPool::SL_ProcessorPool(const SL_ProcessorPool& p) noexcept :
     for (unsigned i = 0; i < p.mNumThreads-1u; ++i)
     {
         new (&mWorkers[i]) ThreadedWorker{i+1};
+        mWorkers[i].busy_waiting(false);
     }
 
     clear_fragment_bins();
@@ -251,6 +253,7 @@ unsigned SL_ProcessorPool::concurrency(unsigned inNumThreads) noexcept
     for (unsigned i = 0; i < inNumThreads-1u; ++i)
     {
         new (&mWorkers[i]) ThreadedWorker{i+1};
+        mWorkers[i].busy_waiting(false);
     }
 
     mNumThreads = inNumThreads;
@@ -310,7 +313,6 @@ void SL_ProcessorPool::run_shader_processors(const SL_Context& c, const SL_Mesh&
         if (threadId < mNumThreads-1)
         {
             SL_ProcessorPool::ThreadedWorker& worker = mWorkers[threadId];
-            worker.busy_waiting(false);
             worker.push(task);
         }
     }
@@ -361,7 +363,6 @@ void SL_ProcessorPool::run_shader_processors(const SL_Context& c, const SL_Mesh*
         if (threadId < mNumThreads-1)
         {
             SL_ProcessorPool::ThreadedWorker& worker = mWorkers[threadId];
-            worker.busy_waiting(false);
             worker.push(task);
         }
     }
@@ -427,7 +428,6 @@ void SL_ProcessorPool::run_blit_processors(
         blitter.mThreadId = threadId;
 
         SL_ProcessorPool::ThreadedWorker& worker = mWorkers[threadId];
-        worker.busy_waiting(false);
         worker.push(processor);
     }
 
@@ -479,7 +479,6 @@ void SL_ProcessorPool::run_blit_compressed_processors(
         blitter.mThreadId = threadId;
 
         SL_ProcessorPool::ThreadedWorker& worker = mWorkers[threadId];
-        worker.busy_waiting(false);
         worker.push(processor);
     }
 
@@ -513,7 +512,6 @@ void SL_ProcessorPool::run_clear_processors(const void* inColor, SL_TextureView*
         blitter.mThreadId = threadId;
 
         SL_ProcessorPool::ThreadedWorker& worker = mWorkers[threadId];
-        worker.busy_waiting(false);
         worker.push(processor);
     }
 
@@ -552,8 +550,6 @@ void SL_ProcessorPool::run_clear_processors(const void* inColor, const void* dep
         blitter.mBackBuffer = depthBuf;
         blitter.mTexture = depth;
         worker.push(processor);
-
-        worker.busy_waiting(false);
     }
 
     flush();
@@ -602,8 +598,6 @@ void SL_ProcessorPool::run_clear_processors(const std::array<const void*, 2>& in
         blitter.mBackBuffer = depthBuf;
         blitter.mTexture = depth;
         worker.push(processor);
-
-        worker.busy_waiting(false);
     }
 
     flush();
@@ -660,8 +654,6 @@ void SL_ProcessorPool::run_clear_processors(const std::array<const void*, 3>& in
         blitter.mBackBuffer = depthBuf;
         blitter.mTexture = depth;
         worker.push(processor);
-
-        worker.busy_waiting(false);
     }
 
     flush();
@@ -726,8 +718,6 @@ void SL_ProcessorPool::run_clear_processors(const std::array<const void*, 4>& in
         blitter.mBackBuffer = depthBuf;
         blitter.mTexture = depth;
         worker.push(processor);
-
-        worker.busy_waiting(false);
     }
 
     flush();

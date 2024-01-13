@@ -98,6 +98,13 @@ void SL_VertexProcessor::flush_rasterizer() noexcept
     {
         maxElements = math::min<uint_fast64_t>(active_num_bins_used().count.load(std::memory_order_consume), SL_SHADER_MAX_BINNED_PRIMS);
 
+        // Try to perform depth sorting once, and only once, per opaque draw
+        // call to reduce depth-buffer access during rasterization. Sorting
+        // primitives multiple times here in the vertex processor will
+        // increase latency before invoking the fragment processor.
+        const bool shouldDepthSort = ls::setup::IsSame<RasterizerType, SL_TriRasterizer>::value && (active_buffer_index() == next_buffer_index());
+        const bool canDepthSort = shouldDepthSort && (maxElements < SL_SHADER_MAX_BINNED_PRIMS);
+
         // Blended fragments get sorted by their primitive index for
         // consistency.
         if (LS_UNLIKELY(mShader->pipelineState.blend_mode() != SL_BLEND_OFF))
@@ -108,6 +115,24 @@ void SL_VertexProcessor::flush_rasterizer() noexcept
             utils::sort_radix<SL_BinCounter<uint32_t>>(pActiveBinIds, pTempBinIds, (uint64_t)maxElements, [&](const SL_BinCounter<uint32_t>& val) noexcept->unsigned long long
             {
                 return (unsigned long long)pBins[val.count].primIndex;
+            });
+        }
+        else if (canDepthSort)
+        {
+            SL_BinCounter<uint32_t>* const pActiveBinIds = active_bin_indices();
+            SL_BinCounter<uint32_t>* const pTempBinIds = active_temp_bin_indices();
+
+            utils::sort_radix<SL_BinCounter<uint32_t>>(pActiveBinIds, pTempBinIds, (uint64_t)maxElements, [&](const SL_BinCounter<uint32_t>& val) noexcept->unsigned long long
+            {
+                // flip sign, otherwise the sorting goes from back-to-front
+                // due to the sortable nature of floats.
+                static_assert(sizeof(float) == sizeof(int32_t), "Current architecture doesn't have similar float & integer sizes.");
+                union
+                {
+                    float f;
+                    int32_t i;
+                } w{pBins[val.count].mScreenCoords[0][3]};
+                return (unsigned long long) -w.i;
             });
         }
 
@@ -144,6 +169,12 @@ void SL_VertexProcessor::flush_rasterizer() noexcept
     {
         active_num_bins_used().count.store(0, std::memory_order_release);
         active_frag_processors().count.store(0, std::memory_order_release);
+    }
+    else if (active_buffer_index() == next_buffer_index())
+    {
+        _sl_cpu_yield_loop([&]() noexcept -> bool {
+            return active_frag_processors().count.load(std::memory_order_consume) < 0;
+        });
     }
 
     flip_process_buffers();
