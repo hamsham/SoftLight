@@ -177,7 +177,6 @@ void SL_ProcessorPool::flush() noexcept
 void SL_ProcessorPool::wait() noexcept
 {
     // Each thread will pause except for the main thread.
-    constexpr unsigned maxIters = 32;
     unsigned currentIters;
 
     for (unsigned threadId = 0; threadId < mNumThreads - 1u; ++threadId)
@@ -217,9 +216,8 @@ void SL_ProcessorPool::wait() noexcept
 
                 default:
                     ls::setup::cpu_yield();
+                    currentIters = currentIters + currentIters;
             }
-
-            currentIters = ls::math::min(currentIters+currentIters, maxIters);
         }
     }
 }
