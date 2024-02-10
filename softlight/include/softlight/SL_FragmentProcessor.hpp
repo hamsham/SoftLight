@@ -24,7 +24,7 @@ union SL_BinCounter;
 
 struct SL_FragCoord; // SL_ShaderProcessor.hpp
 struct SL_FragmentBin; // SL_ShaderProcessor.hpp
-class SL_Framebuffer;
+struct SL_FboOutputFunctions;
 class SL_ViewportState;
 struct SL_Shader;
 class SL_Texture;
@@ -46,7 +46,7 @@ struct SL_FragmentProcessor
     uint32_t mNumProcessors;
     uint_fast32_t mNumBins;
     const SL_Shader* mShader;
-    SL_Framebuffer* mFbo;
+    SL_FboOutputFunctions* mFragFuncs;
     SL_BinCounter<uint32_t>* mBinIds;
     const SL_FragmentBin* mBins;
     SL_FragCoord* mQueues;

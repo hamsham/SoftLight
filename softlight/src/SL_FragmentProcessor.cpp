@@ -355,12 +355,11 @@ void SL_FragmentProcessor::flush_line_fragments(
     const int_fast32_t      haveDepthMask = pipeline.depth_mask() == SL_DEPTH_MASK_ON;
     const SL_UniformBuffer* pUniforms     = mShader->pUniforms;
     const auto              fragShader    = mShader->pFragShader;
-    SL_FboOutputFunctions   fboOutFuncs;
+    SL_FboOutputFunctions&  fboOutFuncs   = *mFragFuncs;
+    SL_TextureView* const   pColorBufs    = fboOutFuncs.pColorAttachments;
+    SL_TextureView&         pDepthBuf     = *fboOutFuncs.pDepthAttachment;
     SL_FragmentParam        fragParams;
 
-    mFbo->build_output_functions(fboOutFuncs, blendMode != SL_BlendMode::SL_BLEND_OFF);
-    SL_TextureView* pColorBufs = fboOutFuncs.pColorAttachments;
-    SL_TextureView& pDepthBuf = *fboOutFuncs.pDepthAttachment;
     fragParams.pUniforms = pUniforms;
 
     for (uint_fast32_t i = 0; i < numQueuedFrags; ++i)
@@ -424,12 +423,10 @@ void SL_FragmentProcessor::flush_tri_fragments(
     const int_fast32_t      haveDepthMask = pipeline.depth_mask() == SL_DEPTH_MASK_ON;
     const SL_UniformBuffer* pUniforms     = mShader->pUniforms;
     const auto              fragShader    = mShader->pFragShader;
-    SL_FboOutputFunctions   fboOutFuncs;
+    SL_FboOutputFunctions&  fboOutFuncs   = *mFragFuncs;
+    SL_TextureView* const   pColorBufs    = fboOutFuncs.pColorAttachments;
+    SL_TextureView&         pDepthBuf     = *fboOutFuncs.pDepthAttachment;
     SL_FragmentParam        fragParams;
-
-    mFbo->build_output_functions(fboOutFuncs, blendMode != SL_BlendMode::SL_BLEND_OFF);
-    SL_TextureView* pColorBufs = fboOutFuncs.pColorAttachments;
-    SL_TextureView& pDepthBuf = *fboOutFuncs.pDepthAttachment;
 
     fragParams.pUniforms = pUniforms;
     const math::vec4* pPoints = bin.mScreenCoords;

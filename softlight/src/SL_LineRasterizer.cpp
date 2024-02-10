@@ -25,7 +25,7 @@ namespace utils = ls::utils;
  * Enqueue line fragments for shading
 --------------------------------------*/
 template <class DepthCmpFunc, typename depth_type>
-void SL_LineRasterizer::render_line(const SL_FragmentBin& bin, SL_Framebuffer* fbo) noexcept
+void SL_LineRasterizer::render_line(const SL_FragmentBin& bin, const SL_TextureView& depthBuf) noexcept
 {
     const ls::math::vec4* coords     = bin.mScreenCoords;
     const math::vec4&  screenCoord0  = coords[0];
@@ -38,7 +38,6 @@ void SL_LineRasterizer::render_line(const SL_FragmentBin& bin, SL_Framebuffer* f
     math::vec2         clipCoords[2] = {sc0, sc1};
     const float        dist          = math::inversesqrt(math::length_squared(sc1-sc0));
 
-    const SL_TextureView& depthBuf = fbo->get_depth_buffer();
     constexpr DepthCmpFunc depthCmp = {};
 
     SL_FragCoord* outCoords = mQueues;
@@ -91,33 +90,33 @@ void SL_LineRasterizer::render_line(const SL_FragmentBin& bin, SL_Framebuffer* f
 
 
 
-template void SL_LineRasterizer::render_line<SL_DepthFuncLT, ls::math::half>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncLT, float>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncLT, double>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncLT, ls::math::half>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncLT, float>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncLT, double>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
 
-template void SL_LineRasterizer::render_line<SL_DepthFuncLE, ls::math::half>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncLE, float>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncLE, double>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncLE, ls::math::half>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncLE, float>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncLE, double>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
 
-template void SL_LineRasterizer::render_line<SL_DepthFuncGT, ls::math::half>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncGT, float>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncGT, double>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncGT, ls::math::half>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncGT, float>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncGT, double>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
 
-template void SL_LineRasterizer::render_line<SL_DepthFuncGE, ls::math::half>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncGE, float>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncGE, double>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncGE, ls::math::half>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncGE, float>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncGE, double>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
 
-template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, ls::math::half>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, float>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, double>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, ls::math::half>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, float>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, double>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
 
-template void SL_LineRasterizer::render_line<SL_DepthFuncNE, ls::math::half>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncNE, float>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncNE, double>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncNE, ls::math::half>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncNE, float>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncNE, double>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
 
-template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, ls::math::half>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, float>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, double>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, ls::math::half>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, float>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, double>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
 
 
 
@@ -127,27 +126,28 @@ template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, double>(const SL_F
 template <class DepthCmpFunc>
 void SL_LineRasterizer::dispatch_bins() noexcept
 {
-    const uint16_t depthBpp = mFbo->get_depth_buffer().bytesPerTexel;
+    const SL_TextureView& pDepthBuf = *mFragFuncs->pDepthAttachment;
+    const uint16_t depthBpp = pDepthBuf.bytesPerTexel;
 
     if (depthBpp == sizeof(math::half))
     {
         for (uint64_t binId = 0; binId < mNumBins; ++binId)
         {
-            render_line<DepthCmpFunc, math::half>(mBins[binId], mFbo);
+            render_line<DepthCmpFunc, math::half>(mBins[binId], pDepthBuf);
         }
     }
     else if (depthBpp == sizeof(float))
     {
         for (uint64_t binId = 0; binId < mNumBins; ++binId)
         {
-            render_line<DepthCmpFunc, float>(mBins[binId], mFbo);
+            render_line<DepthCmpFunc, float>(mBins[binId], pDepthBuf);
         }
     }
     else if (depthBpp == sizeof(double))
     {
         for (uint64_t binId = 0; binId < mNumBins; ++binId)
         {
-            render_line<DepthCmpFunc, double>(mBins[binId], mFbo);
+            render_line<DepthCmpFunc, double>(mBins[binId], pDepthBuf);
         }
     }
 }

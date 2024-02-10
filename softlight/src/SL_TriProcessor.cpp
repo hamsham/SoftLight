@@ -970,7 +970,7 @@ void SL_TriProcessor::execute() noexcept
         flush_rasterizer<SL_TriRasterizer>();
     }
 
-    const math::vec4&&      fboDims      = (math::vec4)math::vec4_t<int>{0, 0, mFbo->width(), mFbo->height()};
+    const math::vec4&&      fboDims      = (math::vec4)math::vec4_t<int>{0, 0, mFragFuncs->pDepthAttachment->width, mFragFuncs->pDepthAttachment->height};
     const SL_ViewportState& viewState    = mContext->viewport_state();
     const math::mat4&&      scissorMat   = viewState.scissor_matrix(fboDims[2], fboDims[3]);
     const math::vec4&&      viewportDims = viewState.viewport_rect(fboDims[2], fboDims[3]);

@@ -964,7 +964,8 @@ void SL_TriRasterizer::render_triangle_simd(const SL_TextureView& depthBuffer) c
 template <class DepthCmpFunc>
 void SL_TriRasterizer::dispatch_bins() noexcept
 {
-    const uint16_t depthBpp = mFbo->get_depth_buffer().bytesPerTexel;
+    const SL_TextureView& pDepthBuf = *mFragFuncs->pDepthAttachment;
+    const uint16_t depthBpp = pDepthBuf.bytesPerTexel;
 
     switch(mMode)
     {
@@ -972,15 +973,15 @@ void SL_TriRasterizer::dispatch_bins() noexcept
         case RENDER_MODE_INDEXED_TRI_WIRE:
             if (depthBpp == sizeof(math::half))
             {
-                render_wireframe<DepthCmpFunc, math::half>(mFbo->get_depth_buffer());
+                render_wireframe<DepthCmpFunc, math::half>(pDepthBuf);
             }
             else if (depthBpp == sizeof(float))
             {
-                render_wireframe<DepthCmpFunc, float>(mFbo->get_depth_buffer());
+                render_wireframe<DepthCmpFunc, float>(pDepthBuf);
             }
             else if (depthBpp == sizeof(double))
             {
-                render_wireframe<DepthCmpFunc, double>(mFbo->get_depth_buffer());
+                render_wireframe<DepthCmpFunc, double>(pDepthBuf);
             }
             break;
 
@@ -990,18 +991,18 @@ void SL_TriRasterizer::dispatch_bins() noexcept
             // There's No need to subdivide the output framebuffer
             if (depthBpp == sizeof(math::half))
             {
-                //render_triangle<DepthCmpFunc, math::half>(mFbo->get_depth_buffer());
-                render_triangle_simd<DepthCmpFunc, math::half>(mFbo->get_depth_buffer());
+                //render_triangle<DepthCmpFunc, math::half>(pDepthBuf);
+                render_triangle_simd<DepthCmpFunc, math::half>(pDepthBuf);
             }
             else if (depthBpp == sizeof(float))
             {
-                //render_triangle<DepthCmpFunc, float>(mFbo->get_depth_buffer());
-                render_triangle_simd<DepthCmpFunc, float>(mFbo->get_depth_buffer());
+                //render_triangle<DepthCmpFunc, float>(pDepthBuf);
+                render_triangle_simd<DepthCmpFunc, float>(pDepthBuf);
             }
             else if (depthBpp == sizeof(double))
             {
-                //render_triangle<DepthCmpFunc, double>(mFbo->get_depth_buffer());
-                render_triangle_simd<DepthCmpFunc, double>(mFbo->get_depth_buffer());
+                //render_triangle<DepthCmpFunc, double>(pDepthBuf);
+                render_triangle_simd<DepthCmpFunc, double>(pDepthBuf);
             }
             break;
 

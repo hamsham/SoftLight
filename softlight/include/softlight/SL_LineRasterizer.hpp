@@ -22,7 +22,7 @@ union SL_BinCounter;
 
 struct SL_FragCoord; // SL_ShaderProcessor.hpp
 struct SL_FragmentBin; // SL_ShaderProcessor.hpp
-class SL_Framebuffer;
+struct SL_TextureView;
 struct SL_Shader;
 class SL_Texture;
 
@@ -42,7 +42,7 @@ struct SL_DepthFuncOFF;
 struct SL_LineRasterizer final : public SL_FragmentProcessor
 {
     template <class DepthCmpFunc, typename depth_type>
-    void render_line(const SL_FragmentBin& bin, SL_Framebuffer* const fbo) noexcept;
+    void render_line(const SL_FragmentBin& bin, const SL_TextureView& depthBuffer) noexcept;
 
     template <class DepthCmpFunc>
     void dispatch_bins() noexcept;
@@ -62,33 +62,33 @@ extern template void SL_LineRasterizer::dispatch_bins<SL_DepthFuncOFF>() noexcep
 
 
 
-extern template void SL_LineRasterizer::render_line<SL_DepthFuncLT, ls::math::half>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-extern template void SL_LineRasterizer::render_line<SL_DepthFuncLT, float>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-extern template void SL_LineRasterizer::render_line<SL_DepthFuncLT, double>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncLT, ls::math::half>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncLT, float>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncLT, double>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
 
-extern template void SL_LineRasterizer::render_line<SL_DepthFuncLE, ls::math::half>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-extern template void SL_LineRasterizer::render_line<SL_DepthFuncLE, float>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-extern template void SL_LineRasterizer::render_line<SL_DepthFuncLE, double>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncLE, ls::math::half>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncLE, float>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncLE, double>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
 
-extern template void SL_LineRasterizer::render_line<SL_DepthFuncGT, ls::math::half>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-extern template void SL_LineRasterizer::render_line<SL_DepthFuncGT, float>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-extern template void SL_LineRasterizer::render_line<SL_DepthFuncGT, double>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncGT, ls::math::half>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncGT, float>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncGT, double>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
 
-extern template void SL_LineRasterizer::render_line<SL_DepthFuncGE, ls::math::half>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-extern template void SL_LineRasterizer::render_line<SL_DepthFuncGE, float>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-extern template void SL_LineRasterizer::render_line<SL_DepthFuncGE, double>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncGE, ls::math::half>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncGE, float>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncGE, double>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
 
-extern template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, ls::math::half>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-extern template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, float>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-extern template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, double>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, ls::math::half>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, float>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncEQ, double>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
 
-extern template void SL_LineRasterizer::render_line<SL_DepthFuncNE, ls::math::half>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-extern template void SL_LineRasterizer::render_line<SL_DepthFuncNE, float>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-extern template void SL_LineRasterizer::render_line<SL_DepthFuncNE, double>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncNE, ls::math::half>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncNE, float>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncNE, double>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
 
-extern template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, ls::math::half>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-extern template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, float>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
-extern template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, double>(const SL_FragmentBin&, SL_Framebuffer* const) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, ls::math::half>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, float>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
+extern template void SL_LineRasterizer::render_line<SL_DepthFuncOFF, double>(const SL_FragmentBin&, const SL_TextureView&) noexcept;
 
 
 

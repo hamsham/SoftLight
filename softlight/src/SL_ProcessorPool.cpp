@@ -13,6 +13,7 @@
 #include "softlight/SL_Framebuffer.hpp"
 #include "softlight/SL_ProcessorPool.hpp"
 #include "softlight/SL_ShaderProcessor.hpp"
+#include "softlight/SL_Shader.hpp"
 #include "softlight/SL_ShaderUtil.hpp" // SL_FragmentBin
 
 
@@ -286,6 +287,9 @@ void SL_ProcessorPool::run_shader_processors(const SL_Context& c, const SL_Mesh&
     SL_ShaderProcessor task;
     task.mType = sl_processor_type_for_draw_mode(renderMode);
 
+    SL_FboOutputFunctions fboFuncs;
+    fbo.build_output_functions(fboFuncs, s.pipelineState.blend_mode() != SL_BlendMode::SL_BLEND_OFF);
+
     SL_VertexProcessor* vertTask  = task.processor_for_draw_mode(renderMode);
     vertTask->mNumThreads         = (int16_t)mNumThreads;
     vertTask->mProcessBufferIndex = 0;
@@ -293,7 +297,7 @@ void SL_ProcessorPool::run_shader_processors(const SL_Context& c, const SL_Mesh&
     vertTask->mBusyProcessors     = mShadingSemaphore.get();
     vertTask->mShader             = &s;
     vertTask->mContext            = &c;
-    vertTask->mFbo                = &fbo;
+    vertTask->mFragFuncs          = &fboFuncs;
     vertTask->mRenderMode         = m.mode;
     vertTask->mNumMeshes          = 1;
     vertTask->mNumInstances       = numInstances;
@@ -336,6 +340,9 @@ void SL_ProcessorPool::run_shader_processors(const SL_Context& c, const SL_Mesh*
     SL_ShaderProcessor task;
     task.mType = sl_processor_type_for_draw_mode(renderMode);
 
+    SL_FboOutputFunctions fboFuncs;
+    fbo.build_output_functions(fboFuncs, s.pipelineState.blend_mode() != SL_BlendMode::SL_BLEND_OFF);
+
     SL_VertexProcessor* vertTask = task.processor_for_draw_mode(renderMode);
     vertTask->mNumThreads         = (int16_t)mNumThreads;
     vertTask->mProcessBufferIndex = 0;
@@ -343,7 +350,7 @@ void SL_ProcessorPool::run_shader_processors(const SL_Context& c, const SL_Mesh*
     vertTask->mBusyProcessors     = mShadingSemaphore.get();
     vertTask->mShader             = &s;
     vertTask->mContext            = &c;
-    vertTask->mFbo                = &fbo;
+    vertTask->mFragFuncs          = &fboFuncs;
     vertTask->mRenderMode         = meshes->mode;
     vertTask->mNumMeshes          = numMeshes;
     vertTask->mNumInstances       = 1;

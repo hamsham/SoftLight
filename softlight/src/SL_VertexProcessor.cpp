@@ -155,7 +155,7 @@ void SL_VertexProcessor::flush_rasterizer() noexcept
     rasterizer.mNumProcessors = (uint32_t)mNumThreads;
     rasterizer.mNumBins = maxElements;
     rasterizer.mShader = mShader;
-    rasterizer.mFbo = mFbo;
+    rasterizer.mFragFuncs = mFragFuncs;
     rasterizer.mBinIds = active_bin_indices();
     rasterizer.mBins = pBins;
     rasterizer.mQueues = mFragQueues + mThreadId;

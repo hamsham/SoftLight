@@ -35,7 +35,7 @@ union SL_BinCounterAtomic;
 class SL_Context; // SL_Context.hpp
 struct SL_FragmentBin; // SL_ShaderProcessor.hpp
 struct SL_FragCoord;
-class SL_Framebuffer; // SL_Framebuffer.hpp
+struct SL_FboOutputFunctions; // SL_Framebuffer.hpp
 struct SL_PointRasterizer;
 struct SL_LineRasterizer;
 struct SL_Shader; // SL_Shader.hpp
@@ -70,7 +70,7 @@ class SL_VertexProcessor
 
     const SL_Shader*  mShader;
     const SL_Context* mContext;
-    SL_Framebuffer*   mFbo;
+    SL_FboOutputFunctions* mFragFuncs;
 
     size_t mNumMeshes;
     size_t mNumInstances;

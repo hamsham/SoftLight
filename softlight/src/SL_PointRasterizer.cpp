@@ -34,12 +34,11 @@ void SL_PointRasterizer::render_point() noexcept
     const bool              depthMask   = pipeline.depth_mask() == SL_DEPTH_MASK_ON;
     const auto              fragShader  = mShader->pFragShader;
     const SL_UniformBuffer* pUniforms   = mShader->pUniforms;
-    SL_FboOutputFunctions   fboOutFuncs;
+    SL_FboOutputFunctions&  fboOutFuncs = *mFragFuncs;
+    SL_TextureView* const   pColorBufs  = fboOutFuncs.pColorAttachments;
+    SL_TextureView&         pDepthBuf   = *fboOutFuncs.pDepthAttachment;
     SL_FragmentParam        fragParams;
 
-    mFbo->build_output_functions(fboOutFuncs, blendMode != SL_BlendMode::SL_BLEND_OFF);
-    SL_TextureView* pColorBufs = fboOutFuncs.pColorAttachments;
-    SL_TextureView& pDepthBuf = *fboOutFuncs.pDepthAttachment;
     fragParams.pUniforms = pUniforms;
 
     for (uint64_t binId = 0; binId < mNumBins; ++binId)
@@ -133,7 +132,7 @@ template void SL_PointRasterizer::render_point<SL_DepthFuncOFF, double>() noexce
 template <class DepthCmpFunc>
 void SL_PointRasterizer::dispatch_bins() noexcept
 {
-    const uint16_t depthBpp = mFbo->get_depth_buffer().bytesPerTexel;
+    const uint16_t depthBpp = mFragFuncs->pDepthAttachment->bytesPerTexel;
 
     if (depthBpp == sizeof(math::half))
     {
