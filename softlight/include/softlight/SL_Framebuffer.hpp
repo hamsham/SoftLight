@@ -65,6 +65,22 @@ constexpr SL_FboOutputMask sl_calc_fbo_out_mask(unsigned numOutputs, bool blendE
 
 
 
+struct SL_FboOutputFunctions
+{
+    SL_FboOutputMask outputMask;
+
+    union
+    {
+        void (*pOutFunc)(uint16_t, uint16_t, const ls::math::vec4&, SL_TextureView&);
+        void (*pOutBlendedFunc)(uint16_t, uint16_t, const ls::math::vec4&, SL_TextureView&, const SL_BlendMode);
+    } pOutFuncs[4];
+
+
+    void (*pOutDepthFunc)(uint16_t, uint16_t, const ls::math::vec4&, SL_TextureView&);
+};
+
+
+
 /*-----------------------------------------------------------------------------
  * Framebuffer Abstraction
 -----------------------------------------------------------------------------*/
@@ -150,6 +166,8 @@ class SL_Framebuffer
     uint16_t height() const noexcept;
 
     uint16_t depth() const noexcept;
+
+    bool build_output_functions(SL_FboOutputFunctions& result, bool blendEnabled) const noexcept;
 };
 
 

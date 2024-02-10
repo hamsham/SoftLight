@@ -21,6 +21,10 @@ namespace
 {
 
 
+using SL_ColorPlacementFunc = void (*)(uint16_t, uint16_t, const ls::math::vec4&, SL_TextureView&);
+using SL_BlendedColorPlacementFunc = void (*)(uint16_t, uint16_t, const ls::math::vec4&, SL_TextureView&, const SL_BlendMode);
+
+
 
 /*-------------------------------------
  * Extract a pointer to a texel
@@ -585,6 +589,98 @@ inline void assign_alpha_pixel<SL_ColorRGB1010102>(
 
 
 
+/*-------------------------------------
+ * Get a Blended FBO placement function
+-------------------------------------*/
+SL_ColorPlacementFunc _get_placement_func(const SL_ColorDataType type) noexcept
+{
+    switch (type)
+    {
+        case SL_COLOR_R_8U:                           return &assign_pixel<SL_ColorR8>; break;
+        case SL_COLOR_RG_8U:                          return &assign_pixel<SL_ColorRG8>; break;
+        case SL_COLOR_RGB_8U:                         return &assign_pixel<SL_ColorRGB8>; break;
+        case SL_COLOR_RGBA_8U:                        return &assign_pixel<SL_ColorRGBA8>; break;
+        case SL_COLOR_R_16U:                          return &assign_pixel<SL_ColorR16>; break;
+        case SL_COLOR_RG_16U:                         return &assign_pixel<SL_ColorRG16>; break;
+        case SL_COLOR_RGB_16U:                        return &assign_pixel<SL_ColorRGB16>; break;
+        case SL_COLOR_RGBA_16U:                       return &assign_pixel<SL_ColorRGBA16>; break;
+        case SL_COLOR_R_32U:                          return &assign_pixel<SL_ColorR32>; break;
+        case SL_COLOR_RG_32U:                         return &assign_pixel<SL_ColorRG32>; break;
+        case SL_COLOR_RGB_32U:                        return &assign_pixel<SL_ColorRGB32>; break;
+        case SL_COLOR_RGBA_32U:                       return &assign_pixel<SL_ColorRGBA32>; break;
+        case SL_COLOR_R_64U:                          return &assign_pixel<SL_ColorR64>; break;
+        case SL_COLOR_RG_64U:                         return &assign_pixel<SL_ColorRG64>; break;
+        case SL_COLOR_RGB_64U:                        return &assign_pixel<SL_ColorRGB64>; break;
+        case SL_COLOR_RGBA_64U:                       return &assign_pixel<SL_ColorRGBA64>; break;
+        case SL_COLOR_R_FLOAT:                        return &assign_pixel<SL_ColorRf>; break;
+        case SL_COLOR_RG_FLOAT:                       return &assign_pixel<SL_ColorRGf>; break;
+        case SL_COLOR_RGB_FLOAT:                      return &assign_pixel<SL_ColorRGBf>; break;
+        case SL_COLOR_RGBA_FLOAT:                     return &assign_pixel<SL_ColorRGBAf>; break;
+        case SL_COLOR_R_DOUBLE:                       return &assign_pixel<SL_ColorRd>; break;
+        case SL_COLOR_RG_DOUBLE:                      return &assign_pixel<SL_ColorRGd>; break;
+        case SL_COLOR_RGB_DOUBLE:                     return &assign_pixel<SL_ColorRGBd>; break;
+        case SL_COLOR_RGBA_DOUBLE:                    return &assign_pixel<SL_ColorRGBAd>; break;
+        case SL_ColorDataType::SL_COLOR_RGB_332:      return &assign_pixel<SL_ColorRGB332>; break;
+        case SL_ColorDataType::SL_COLOR_RGB_565:      return &assign_pixel<SL_ColorRGB565>; break;
+        case SL_ColorDataType::SL_COLOR_RGBA_5551:    return &assign_pixel<SL_ColorRGB5551>; break;
+        case SL_ColorDataType::SL_COLOR_RGBA_4444:    return &assign_pixel<SL_ColorRGB4444>; break;
+        case SL_ColorDataType::SL_COLOR_RGBA_1010102: return &assign_pixel<SL_ColorRGB1010102>; break;
+
+        default:
+            LS_UNREACHABLE();
+    }
+
+    return nullptr;
+}
+
+
+
+/*-------------------------------------
+ * Get a Blended FBO placement function
+-------------------------------------*/
+SL_BlendedColorPlacementFunc _get_blended_placement_func(const SL_ColorDataType type) noexcept
+{
+    switch (type)
+    {
+        case SL_COLOR_R_8U:                           return &assign_alpha_pixel<SL_ColorR8>;
+        case SL_COLOR_RG_8U:                          return &assign_alpha_pixel<SL_ColorRG8>;
+        case SL_COLOR_RGB_8U:                         return &assign_alpha_pixel<SL_ColorRGB8>;
+        case SL_COLOR_RGBA_8U:                        return &assign_alpha_pixel<SL_ColorRGBA8>;
+        case SL_COLOR_R_16U:                          return &assign_alpha_pixel<SL_ColorR16>;
+        case SL_COLOR_RG_16U:                         return &assign_alpha_pixel<SL_ColorRG16>;
+        case SL_COLOR_RGB_16U:                        return &assign_alpha_pixel<SL_ColorRGB16>;
+        case SL_COLOR_RGBA_16U:                       return &assign_alpha_pixel<SL_ColorRGBA16>;
+        case SL_COLOR_R_32U:                          return &assign_alpha_pixel<SL_ColorR32>;
+        case SL_COLOR_RG_32U:                         return &assign_alpha_pixel<SL_ColorRG32>;
+        case SL_COLOR_RGB_32U:                        return &assign_alpha_pixel<SL_ColorRGB32>;
+        case SL_COLOR_RGBA_32U:                       return &assign_alpha_pixel<SL_ColorRGBA32>;
+        case SL_COLOR_R_64U:                          return &assign_alpha_pixel<SL_ColorR64>;
+        case SL_COLOR_RG_64U:                         return &assign_alpha_pixel<SL_ColorRG64>;
+        case SL_COLOR_RGB_64U:                        return &assign_alpha_pixel<SL_ColorRGB64>;
+        case SL_COLOR_RGBA_64U:                       return &assign_alpha_pixel<SL_ColorRGBA64>;
+        case SL_COLOR_R_FLOAT:                        return &assign_alpha_pixel<SL_ColorRf>;
+        case SL_COLOR_RG_FLOAT:                       return &assign_alpha_pixel<SL_ColorRGf>;
+        case SL_COLOR_RGB_FLOAT:                      return &assign_alpha_pixel<SL_ColorRGBf>;
+        case SL_COLOR_RGBA_FLOAT:                     return &assign_alpha_pixel<SL_ColorRGBAf>;
+        case SL_COLOR_R_DOUBLE:                       return &assign_alpha_pixel<SL_ColorRd>;
+        case SL_COLOR_RG_DOUBLE:                      return &assign_alpha_pixel<SL_ColorRGd>;
+        case SL_COLOR_RGB_DOUBLE:                     return &assign_alpha_pixel<SL_ColorRGBd>;
+        case SL_COLOR_RGBA_DOUBLE:                    return &assign_alpha_pixel<SL_ColorRGBAd>;
+        case SL_ColorDataType::SL_COLOR_RGB_332:      return &assign_alpha_pixel<SL_ColorRGB332>;
+        case SL_ColorDataType::SL_COLOR_RGB_565:      return &assign_alpha_pixel<SL_ColorRGB565>;
+        case SL_ColorDataType::SL_COLOR_RGBA_5551:    return &assign_alpha_pixel<SL_ColorRGB5551>;
+        case SL_ColorDataType::SL_COLOR_RGBA_4444:    return &assign_alpha_pixel<SL_ColorRGB4444>;
+        case SL_ColorDataType::SL_COLOR_RGBA_1010102: return &assign_alpha_pixel<SL_ColorRGB1010102>;
+
+    default:
+        LS_UNREACHABLE();
+    }
+
+    return nullptr;
+}
+
+
+
 } // end anonymous namespace
 
 
@@ -1083,4 +1179,33 @@ uint16_t SL_Framebuffer::depth() const noexcept
     }
 
     return 0;
+}
+
+
+
+/*-------------------------------------
+ *
+-------------------------------------*/
+bool SL_Framebuffer::build_output_functions(SL_FboOutputFunctions& result, bool blendEnabled) const noexcept
+{
+    result.outputMask = (SL_FboOutputMask)(num_color_buffers() + (blendEnabled ? (unsigned)SL_FBO_OUTPUT_ATTACHMENT_0_1_2_3 : 0));
+
+    if (!blendEnabled)
+    {
+        for (unsigned i = 0; i < this->num_color_buffers(); ++i)
+        {
+            result.pOutFuncs[i].pOutFunc = _get_placement_func(get_color_buffer(i).type);
+        }
+    }
+    else
+    {
+        for (unsigned i = 0; i < this->num_color_buffers(); ++i)
+        {
+            result.pOutFuncs[i].pOutBlendedFunc = _get_blended_placement_func(get_color_buffer(i).type);
+        }
+    }
+
+    result.pOutDepthFunc = _get_placement_func(get_depth_buffer().type);
+
+    return true;
 }
