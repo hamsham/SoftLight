@@ -43,7 +43,7 @@ struct SL_DepthFuncOFF;
 struct SL_PointRasterizer final : public SL_FragmentProcessor
 {
     template <class DepthCmpFunc, typename depth_type>
-    void render_point(SL_Framebuffer* const fbo) noexcept;
+    void render_point() noexcept;
 
     template <class DepthCmpFunc>
     void dispatch_bins() noexcept;
@@ -63,33 +63,33 @@ extern template void SL_PointRasterizer::dispatch_bins<SL_DepthFuncOFF>() noexce
 
 
 
-extern template void SL_PointRasterizer::render_point<SL_DepthFuncLT, ls::math::half>(SL_Framebuffer* const) noexcept;
-extern template void SL_PointRasterizer::render_point<SL_DepthFuncLT, float>(SL_Framebuffer* const) noexcept;
-extern template void SL_PointRasterizer::render_point<SL_DepthFuncLT, double>(SL_Framebuffer* const) noexcept;
+extern template void SL_PointRasterizer::render_point<SL_DepthFuncLT, ls::math::half>() noexcept;
+extern template void SL_PointRasterizer::render_point<SL_DepthFuncLT, float>() noexcept;
+extern template void SL_PointRasterizer::render_point<SL_DepthFuncLT, double>() noexcept;
 
-extern template void SL_PointRasterizer::render_point<SL_DepthFuncLE, ls::math::half>(SL_Framebuffer* const) noexcept;
-extern template void SL_PointRasterizer::render_point<SL_DepthFuncLE, float>(SL_Framebuffer* const) noexcept;
-extern template void SL_PointRasterizer::render_point<SL_DepthFuncLE, double>(SL_Framebuffer* const) noexcept;
+extern template void SL_PointRasterizer::render_point<SL_DepthFuncLE, ls::math::half>() noexcept;
+extern template void SL_PointRasterizer::render_point<SL_DepthFuncLE, float>() noexcept;
+extern template void SL_PointRasterizer::render_point<SL_DepthFuncLE, double>() noexcept;
 
-extern template void SL_PointRasterizer::render_point<SL_DepthFuncGT, ls::math::half>(SL_Framebuffer* const) noexcept;
-extern template void SL_PointRasterizer::render_point<SL_DepthFuncGT, float>(SL_Framebuffer* const) noexcept;
-extern template void SL_PointRasterizer::render_point<SL_DepthFuncGT, double>(SL_Framebuffer* const) noexcept;
+extern template void SL_PointRasterizer::render_point<SL_DepthFuncGT, ls::math::half>() noexcept;
+extern template void SL_PointRasterizer::render_point<SL_DepthFuncGT, float>() noexcept;
+extern template void SL_PointRasterizer::render_point<SL_DepthFuncGT, double>() noexcept;
 
-extern template void SL_PointRasterizer::render_point<SL_DepthFuncGE, ls::math::half>(SL_Framebuffer* const) noexcept;
-extern template void SL_PointRasterizer::render_point<SL_DepthFuncGE, float>(SL_Framebuffer* const) noexcept;
-extern template void SL_PointRasterizer::render_point<SL_DepthFuncGE, double>(SL_Framebuffer* const) noexcept;
+extern template void SL_PointRasterizer::render_point<SL_DepthFuncGE, ls::math::half>() noexcept;
+extern template void SL_PointRasterizer::render_point<SL_DepthFuncGE, float>() noexcept;
+extern template void SL_PointRasterizer::render_point<SL_DepthFuncGE, double>() noexcept;
 
-extern template void SL_PointRasterizer::render_point<SL_DepthFuncEQ, ls::math::half>(SL_Framebuffer* const) noexcept;
-extern template void SL_PointRasterizer::render_point<SL_DepthFuncEQ, float>(SL_Framebuffer* const) noexcept;
-extern template void SL_PointRasterizer::render_point<SL_DepthFuncEQ, double>(SL_Framebuffer* const) noexcept;
+extern template void SL_PointRasterizer::render_point<SL_DepthFuncEQ, ls::math::half>() noexcept;
+extern template void SL_PointRasterizer::render_point<SL_DepthFuncEQ, float>() noexcept;
+extern template void SL_PointRasterizer::render_point<SL_DepthFuncEQ, double>() noexcept;
 
-extern template void SL_PointRasterizer::render_point<SL_DepthFuncNE, ls::math::half>(SL_Framebuffer* const) noexcept;
-extern template void SL_PointRasterizer::render_point<SL_DepthFuncNE, float>(SL_Framebuffer* const) noexcept;
-extern template void SL_PointRasterizer::render_point<SL_DepthFuncNE, double>(SL_Framebuffer* const) noexcept;
+extern template void SL_PointRasterizer::render_point<SL_DepthFuncNE, ls::math::half>() noexcept;
+extern template void SL_PointRasterizer::render_point<SL_DepthFuncNE, float>() noexcept;
+extern template void SL_PointRasterizer::render_point<SL_DepthFuncNE, double>() noexcept;
 
-extern template void SL_PointRasterizer::render_point<SL_DepthFuncOFF, ls::math::half>(SL_Framebuffer* const) noexcept;
-extern template void SL_PointRasterizer::render_point<SL_DepthFuncOFF, float>(SL_Framebuffer* const) noexcept;
-extern template void SL_PointRasterizer::render_point<SL_DepthFuncOFF, double>(SL_Framebuffer* const) noexcept;
+extern template void SL_PointRasterizer::render_point<SL_DepthFuncOFF, ls::math::half>() noexcept;
+extern template void SL_PointRasterizer::render_point<SL_DepthFuncOFF, float>() noexcept;
+extern template void SL_PointRasterizer::render_point<SL_DepthFuncOFF, double>() noexcept;
 
 
 

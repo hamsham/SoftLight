@@ -355,11 +355,12 @@ void SL_FragmentProcessor::flush_line_fragments(
     const int_fast32_t      haveDepthMask = pipeline.depth_mask() == SL_DEPTH_MASK_ON;
     const SL_UniformBuffer* pUniforms     = mShader->pUniforms;
     const auto              fragShader    = mShader->pFragShader;
-    SL_TextureView&         pDepthBuf     = mFbo->get_depth_buffer();
     SL_FboOutputFunctions   fboOutFuncs;
     SL_FragmentParam        fragParams;
 
     mFbo->build_output_functions(fboOutFuncs, blendMode != SL_BlendMode::SL_BLEND_OFF);
+    SL_TextureView* pColorBufs = fboOutFuncs.pColorAttachments;
+    SL_TextureView& pDepthBuf = *fboOutFuncs.pDepthAttachment;
     fragParams.pUniforms = pUniforms;
 
     for (uint_fast32_t i = 0; i < numQueuedFrags; ++i)
@@ -375,16 +376,16 @@ void SL_FragmentProcessor::flush_line_fragments(
         {
             switch (fboOutMask)
             {
-                case SL_FBO_OUTPUT_ATTACHMENT_0_1_2_3: (*fboOutFuncs.pOutFuncs[3].pOutFunc)(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3], mFbo->get_color_buffer(3));
-                case SL_FBO_OUTPUT_ATTACHMENT_0_1_2:   (*fboOutFuncs.pOutFuncs[2].pOutFunc)(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], mFbo->get_color_buffer(2));
-                case SL_FBO_OUTPUT_ATTACHMENT_0_1:     (*fboOutFuncs.pOutFuncs[1].pOutFunc)(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], mFbo->get_color_buffer(1));
-                case SL_FBO_OUTPUT_ATTACHMENT_0:       (*fboOutFuncs.pOutFuncs[0].pOutFunc)(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], mFbo->get_color_buffer(0));
+                case SL_FBO_OUTPUT_ATTACHMENT_0_1_2_3: (*fboOutFuncs.pOutFunc[3])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3], pColorBufs[3]);
+                case SL_FBO_OUTPUT_ATTACHMENT_0_1_2:   (*fboOutFuncs.pOutFunc[2])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], pColorBufs[2]);
+                case SL_FBO_OUTPUT_ATTACHMENT_0_1:     (*fboOutFuncs.pOutFunc[1])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], pColorBufs[1]);
+                case SL_FBO_OUTPUT_ATTACHMENT_0:       (*fboOutFuncs.pOutFunc[0])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], pColorBufs[0]);
                     break;
 
-                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1_2_3: (*fboOutFuncs.pOutFuncs[3].pOutBlendedFunc)(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3], mFbo->get_color_buffer(3), blendMode);
-                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1_2:   (*fboOutFuncs.pOutFuncs[2].pOutBlendedFunc)(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], mFbo->get_color_buffer(2), blendMode);
-                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1:     (*fboOutFuncs.pOutFuncs[1].pOutBlendedFunc)(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], mFbo->get_color_buffer(1), blendMode);
-                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0:       (*fboOutFuncs.pOutFuncs[0].pOutBlendedFunc)(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], mFbo->get_color_buffer(0), blendMode);
+                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1_2_3: (*fboOutFuncs.pOutBlendedFunc[3])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3], pColorBufs[3], blendMode);
+                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1_2:   (*fboOutFuncs.pOutBlendedFunc[2])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], pColorBufs[2], blendMode);
+                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1:     (*fboOutFuncs.pOutBlendedFunc[1])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], pColorBufs[1], blendMode);
+                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0:       (*fboOutFuncs.pOutBlendedFunc[0])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], pColorBufs[0], blendMode);
                     break;
 
                 default:
@@ -423,11 +424,13 @@ void SL_FragmentProcessor::flush_tri_fragments(
     const int_fast32_t      haveDepthMask = pipeline.depth_mask() == SL_DEPTH_MASK_ON;
     const SL_UniformBuffer* pUniforms     = mShader->pUniforms;
     const auto              fragShader    = mShader->pFragShader;
-    SL_TextureView&         pDepthBuf     = mFbo->get_depth_buffer();
     SL_FboOutputFunctions   fboOutFuncs;
     SL_FragmentParam        fragParams;
 
     mFbo->build_output_functions(fboOutFuncs, blendMode != SL_BlendMode::SL_BLEND_OFF);
+    SL_TextureView* pColorBufs = fboOutFuncs.pColorAttachments;
+    SL_TextureView& pDepthBuf = *fboOutFuncs.pDepthAttachment;
+
     fragParams.pUniforms = pUniforms;
     const math::vec4* pPoints = bin.mScreenCoords;
 
@@ -500,16 +503,16 @@ void SL_FragmentProcessor::flush_tri_fragments(
         {
             switch (fboOutMask)
             {
-                case SL_FBO_OUTPUT_ATTACHMENT_0_1_2_3: (*fboOutFuncs.pOutFuncs[3].pOutFunc)(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3], mFbo->get_color_buffer(3));
-                case SL_FBO_OUTPUT_ATTACHMENT_0_1_2:   (*fboOutFuncs.pOutFuncs[2].pOutFunc)(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], mFbo->get_color_buffer(2));
-                case SL_FBO_OUTPUT_ATTACHMENT_0_1:     (*fboOutFuncs.pOutFuncs[1].pOutFunc)(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], mFbo->get_color_buffer(1));
-                case SL_FBO_OUTPUT_ATTACHMENT_0:       (*fboOutFuncs.pOutFuncs[0].pOutFunc)(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], mFbo->get_color_buffer(0));
+                case SL_FBO_OUTPUT_ATTACHMENT_0_1_2_3: (*fboOutFuncs.pOutFunc[3])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3], pColorBufs[3]);
+                case SL_FBO_OUTPUT_ATTACHMENT_0_1_2:   (*fboOutFuncs.pOutFunc[2])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], pColorBufs[2]);
+                case SL_FBO_OUTPUT_ATTACHMENT_0_1:     (*fboOutFuncs.pOutFunc[1])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], pColorBufs[1]);
+                case SL_FBO_OUTPUT_ATTACHMENT_0:       (*fboOutFuncs.pOutFunc[0])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], pColorBufs[0]);
                     break;
 
-                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1_2_3: (*fboOutFuncs.pOutFuncs[3].pOutBlendedFunc)(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3], mFbo->get_color_buffer(3), blendMode);
-                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1_2:   (*fboOutFuncs.pOutFuncs[2].pOutBlendedFunc)(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], mFbo->get_color_buffer(2), blendMode);
-                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1:     (*fboOutFuncs.pOutFuncs[1].pOutBlendedFunc)(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], mFbo->get_color_buffer(1), blendMode);
-                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0:       (*fboOutFuncs.pOutFuncs[0].pOutBlendedFunc)(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], mFbo->get_color_buffer(0), blendMode);
+                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1_2_3: (*fboOutFuncs.pOutBlendedFunc[3])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3], pColorBufs[3], blendMode);
+                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1_2:   (*fboOutFuncs.pOutBlendedFunc[2])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], pColorBufs[2], blendMode);
+                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1:     (*fboOutFuncs.pOutBlendedFunc[1])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], pColorBufs[1], blendMode);
+                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0:       (*fboOutFuncs.pOutBlendedFunc[0])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], pColorBufs[0], blendMode);
                     break;
 
                 default:

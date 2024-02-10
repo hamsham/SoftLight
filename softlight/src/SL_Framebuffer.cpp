@@ -1186,26 +1186,28 @@ uint16_t SL_Framebuffer::depth() const noexcept
 /*-------------------------------------
  *
 -------------------------------------*/
-bool SL_Framebuffer::build_output_functions(SL_FboOutputFunctions& result, bool blendEnabled) const noexcept
+bool SL_Framebuffer::build_output_functions(SL_FboOutputFunctions& result, bool blendEnabled) noexcept
 {
     result.outputMask = (SL_FboOutputMask)(num_color_buffers() + (blendEnabled ? (unsigned)SL_FBO_OUTPUT_ATTACHMENT_0_1_2_3 : 0));
+    result.pColorAttachments = mColors;
+    result.pDepthAttachment = &mDepth;
 
     if (!blendEnabled)
     {
         for (unsigned i = 0; i < this->num_color_buffers(); ++i)
         {
-            result.pOutFuncs[i].pOutFunc = _get_placement_func(get_color_buffer(i).type);
+            result.pOutFunc[i] = _get_placement_func(mColors[i].type);
         }
     }
     else
     {
         for (unsigned i = 0; i < this->num_color_buffers(); ++i)
         {
-            result.pOutFuncs[i].pOutBlendedFunc = _get_blended_placement_func(get_color_buffer(i).type);
+            result.pOutBlendedFunc[i] = _get_blended_placement_func(mColors[i].type);
         }
     }
 
-    result.pOutDepthFunc = _get_placement_func(get_depth_buffer().type);
+    result.pOutDepthFunc = _get_placement_func(mDepth.type);
 
     return true;
 }
