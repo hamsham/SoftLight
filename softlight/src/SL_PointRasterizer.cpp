@@ -85,11 +85,11 @@ void SL_PointRasterizer::render_point(SL_Framebuffer* const fbo) noexcept
                 default:
                     LS_UNREACHABLE();
             }
+        }
 
-            if (LS_LIKELY(depthMask))
-            {
-                ((depth_type*)pDepthBuf.pTexels)[fragParams.coord.x + pDepthBuf.width * fragParams.coord.y] = (depth_type)fragParams.coord.depth;
-            }
+        if (LS_LIKELY(depthMask))
+        {
+            ((depth_type*)pDepthBuf.pTexels)[fragParams.coord.x + pDepthBuf.width * fragParams.coord.y] = (depth_type)fragParams.coord.depth;
         }
     }
 }

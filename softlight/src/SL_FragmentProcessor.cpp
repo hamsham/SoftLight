@@ -390,11 +390,11 @@ void SL_FragmentProcessor::flush_line_fragments(
                 default:
                     LS_UNREACHABLE();
             }
+        }
 
-            if (LS_LIKELY(haveDepthMask))
-            {
-                ((depth_type*)pDepthBuf.pTexels)[fragParams.coord.x + pDepthBuf.width * fragParams.coord.y] = (depth_type)fragParams.coord.depth;
-            }
+        if (LS_LIKELY(haveDepthMask))
+        {
+            ((depth_type*)pDepthBuf.pTexels)[fragParams.coord.x + pDepthBuf.width * fragParams.coord.y] = (depth_type)fragParams.coord.depth;
         }
     }
 }
@@ -515,11 +515,11 @@ void SL_FragmentProcessor::flush_tri_fragments(
                 default:
                     LS_UNREACHABLE();
             }
+        }
 
-            if (LS_LIKELY(haveDepthMask))
-            {
-                ((depth_type*)pDepthBuf.pTexels)[fragParams.coord.x + pDepthBuf.width * fragParams.coord.y] = (depth_type)fragParams.coord.depth;
-            }
+        if (LS_LIKELY(haveDepthMask))
+        {
+            ((depth_type*)pDepthBuf.pTexels)[fragParams.coord.x + pDepthBuf.width * fragParams.coord.y] = (depth_type)fragParams.coord.depth;
         }
     }
 }
