@@ -940,8 +940,7 @@ int main()
                     projMatrix = math::perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.1f, 500.f);
                 #endif
             }
-
-            if (evt.type == SL_WinEventType::WIN_EVENT_KEY_DOWN)
+            else if (evt.type == SL_WinEventType::WIN_EVENT_KEY_DOWN)
             {
                 const SL_KeySymbol keySym = evt.keyboard.keysym;
                 pKeySyms[keySym] = true;

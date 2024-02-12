@@ -568,8 +568,7 @@ int main()
                 pRenderBuf->terminate();
                 pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
             }
-
-            if (evt.type == SL_WinEventType::WIN_EVENT_KEY_DOWN)
+            else if (evt.type == SL_WinEventType::WIN_EVENT_KEY_DOWN)
             {
                 const SL_KeySymbol keySym = evt.keyboard.keysym;
                 pKeySyms[keySym] = true;
