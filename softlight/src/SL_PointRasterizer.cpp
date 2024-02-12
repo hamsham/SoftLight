@@ -68,18 +68,21 @@ void SL_PointRasterizer::render_point() noexcept
         const bool haveOutputs = fragShader(fragParams);
         if (LS_LIKELY(haveOutputs))
         {
+            const auto* const pColorFuncs = fboOutFuncs.pOutFunc;
+            const auto* const pBlendFuncs = fboOutFuncs.pOutBlendedFunc;
+
             switch (fboOutMask)
             {
-                case SL_FBO_OUTPUT_ATTACHMENT_0_1_2_3: (*fboOutFuncs.pOutFunc[3])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3], pColorBufs[3]);
-                case SL_FBO_OUTPUT_ATTACHMENT_0_1_2:   (*fboOutFuncs.pOutFunc[2])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], pColorBufs[2]);
-                case SL_FBO_OUTPUT_ATTACHMENT_0_1:     (*fboOutFuncs.pOutFunc[1])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], pColorBufs[1]);
-                case SL_FBO_OUTPUT_ATTACHMENT_0:       (*fboOutFuncs.pOutFunc[0])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], pColorBufs[0]);
+                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1_2_3: (*pBlendFuncs[3])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3], pColorBufs[3], blendMode);
+                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1_2:   (*pBlendFuncs[2])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], pColorBufs[2], blendMode);
+                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1:     (*pBlendFuncs[1])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], pColorBufs[1], blendMode);
+                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0:       (*pBlendFuncs[0])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], pColorBufs[0], blendMode);
                     break;
 
-                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1_2_3: (*fboOutFuncs.pOutBlendedFunc[3])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3], pColorBufs[3], blendMode);
-                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1_2:   (*fboOutFuncs.pOutBlendedFunc[2])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], pColorBufs[2], blendMode);
-                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0_1:     (*fboOutFuncs.pOutBlendedFunc[1])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], pColorBufs[1], blendMode);
-                case SL_FBO_OUTPUT_ALPHA_ATTACHMENT_0:       (*fboOutFuncs.pOutBlendedFunc[0])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], pColorBufs[0], blendMode);
+                case SL_FBO_OUTPUT_ATTACHMENT_0_1_2_3: (*pColorFuncs[3])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[3], pColorBufs[3]);
+                case SL_FBO_OUTPUT_ATTACHMENT_0_1_2:   (*pColorFuncs[2])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[2], pColorBufs[2]);
+                case SL_FBO_OUTPUT_ATTACHMENT_0_1:     (*pColorFuncs[1])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[1], pColorBufs[1]);
+                case SL_FBO_OUTPUT_ATTACHMENT_0:       (*pColorFuncs[0])(fragParams.coord.x, fragParams.coord.y, fragParams.pOutputs[0], pColorBufs[0]);
                     break;
 
                 default:
