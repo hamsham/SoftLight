@@ -1,8 +1,8 @@
 
-#ifndef SL_WINDOW_BUFFER_XCB_HPP
-#define SL_WINDOW_BUFFER_XCB_HPP
+#ifndef SL_SWAPCHAIN_XCB_HPP
+#define SL_SWAPCHAIN_XCB_HPP
 
-#include "softlight/SL_WindowBuffer.hpp"
+#include "softlight/SL_Swapchain.hpp"
 
 
 
@@ -32,7 +32,7 @@ namespace ls
 /*-----------------------------------------------------------------------------
  * Xlib Render Window
 -----------------------------------------------------------------------------*/
-class SL_WindowBufferXCB : public SL_WindowBuffer
+class SL_SwapchainXCB : public SL_Swapchain
 {
   friend class SL_RenderWindowXCB;
 
@@ -44,17 +44,17 @@ class SL_WindowBufferXCB : public SL_WindowBuffer
     #endif
 
   public:
-    virtual ~SL_WindowBufferXCB() noexcept override;
+    virtual ~SL_SwapchainXCB() noexcept override;
 
-    SL_WindowBufferXCB() noexcept;
+    SL_SwapchainXCB() noexcept;
 
-    SL_WindowBufferXCB(const SL_WindowBufferXCB&) = delete;
+    SL_SwapchainXCB(const SL_SwapchainXCB&) = delete;
 
-    SL_WindowBufferXCB(SL_WindowBufferXCB&&) noexcept;
+    SL_SwapchainXCB(SL_SwapchainXCB&&) noexcept;
 
-    SL_WindowBufferXCB& operator=(const SL_WindowBufferXCB&) = delete;
+    SL_SwapchainXCB& operator=(const SL_SwapchainXCB&) = delete;
 
-    SL_WindowBufferXCB& operator=(SL_WindowBufferXCB&&) noexcept;
+    SL_SwapchainXCB& operator=(SL_SwapchainXCB&&) noexcept;
 
     virtual int init(SL_RenderWindow& win, unsigned width, unsigned height) noexcept override;
 
@@ -78,7 +78,7 @@ class SL_WindowBufferXCB : public SL_WindowBuffer
 /*-------------------------------------
  * Get the backbuffer width
 -------------------------------------*/
-inline unsigned SL_WindowBufferXCB::width() const noexcept
+inline unsigned SL_SwapchainXCB::width() const noexcept
 {
     return mTexture.width();
 }
@@ -88,7 +88,7 @@ inline unsigned SL_WindowBufferXCB::width() const noexcept
 /*-------------------------------------
  * Get the backbuffer height
 -------------------------------------*/
-inline unsigned SL_WindowBufferXCB::height() const noexcept
+inline unsigned SL_SwapchainXCB::height() const noexcept
 {
     return mTexture.height();
 }
@@ -98,7 +98,7 @@ inline unsigned SL_WindowBufferXCB::height() const noexcept
 /*-------------------------------------
  * Native Handle
 -------------------------------------*/
-inline const void* SL_WindowBufferXCB::native_handle() const noexcept
+inline const void* SL_SwapchainXCB::native_handle() const noexcept
 {
     return &mTexture;
 }
@@ -108,7 +108,7 @@ inline const void* SL_WindowBufferXCB::native_handle() const noexcept
 /*-------------------------------------
  * Native Handle
 -------------------------------------*/
-inline void* SL_WindowBufferXCB::native_handle() noexcept
+inline void* SL_SwapchainXCB::native_handle() noexcept
 {
     return &mTexture;
 }
@@ -118,7 +118,7 @@ inline void* SL_WindowBufferXCB::native_handle() noexcept
 /*-------------------------------------
  * Retrieve the raw data within the backbuffer
 -------------------------------------*/
-inline const ls::math::vec4_t<uint8_t>* SL_WindowBufferXCB::buffer() const noexcept
+inline const ls::math::vec4_t<uint8_t>* SL_SwapchainXCB::buffer() const noexcept
 {
     return reinterpret_cast<const ls::math::vec4_t<uint8_t>*>(mTexture.data());
 }
@@ -128,11 +128,11 @@ inline const ls::math::vec4_t<uint8_t>* SL_WindowBufferXCB::buffer() const noexc
 /*-------------------------------------
  * Retrieve the raw data within the backbuffer
 -------------------------------------*/
-inline ls::math::vec4_t<uint8_t>* SL_WindowBufferXCB::buffer() noexcept
+inline ls::math::vec4_t<uint8_t>* SL_SwapchainXCB::buffer() noexcept
 {
     return reinterpret_cast<ls::math::vec4_t<uint8_t>*>(mTexture.data());
 }
 
 
 
-#endif /* SL_WINDOW_BUFFER_XCB_HPP */
+#endif /* SL_SWAPCHAIN_XCB_HPP */

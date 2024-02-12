@@ -178,7 +178,7 @@ set(SL_LIB_HEADERS
     include/softlight/SL_VertexCache.hpp
     include/softlight/SL_VertexProcessor.hpp
     include/softlight/SL_ViewportState.hpp
-    include/softlight/SL_WindowBuffer.hpp
+    include/softlight/SL_Swapchain.hpp
     include/softlight/SL_WindowEvent.hpp
 
     include/softlight/script/SL_SceneGraphScript.hpp
@@ -188,21 +188,21 @@ if (WIN32)
     set(SL_PLATFORM_HEADERS
         include/softlight/SL_KeySymWin32.hpp
         include/softlight/SL_RenderWindowWin32.hpp
-        include/softlight/SL_WindowBufferWin32.hpp)
+        include/softlight/SL_SwapchainWin32.hpp)
 
 elseif (PREFER_COCOA)
     set(SL_PLATFORM_HEADERS
         include/softlight/SL_KeySymCocoa.hpp
         include/softlight/SL_RenderWindowCocoa.hpp
-        include/softlight/SL_WindowBufferCocoa.hpp)
+        include/softlight/SL_SwapchainCocoa.hpp)
 
 else()
     set(SL_PLATFORM_HEADERS
         include/softlight/SL_KeySymXlib.hpp
         include/softlight/SL_RenderWindowXCB.hpp
-        include/softlight/SL_WindowBufferXCB.hpp
+        include/softlight/SL_SwapchainXCB.hpp
         include/softlight/SL_RenderWindowXlib.hpp
-        include/softlight/SL_WindowBufferXlib.hpp)
+        include/softlight/SL_SwapchainXlib.hpp)
 endif()
 
 
@@ -253,7 +253,7 @@ set(SL_LIB_SOURCES
     src/SL_VertexCache.cpp
     src/SL_VertexProcessor.cpp
     src/SL_ViewportState.cpp
-    src/SL_WindowBuffer.cpp
+    src/SL_Swapchain.cpp
 
     src/script/SL_SceneGraphScript.cpp
 )
@@ -263,7 +263,7 @@ if(WIN32)
     set(SL_PLATFORM_SOURCES
         src/SL_KeySymWin32.cpp
         src/SL_RenderWindowWin32.cpp
-        src/SL_WindowBufferWin32.cpp)
+        src/SL_SwapchainWin32.cpp)
 
 elseif (PREFER_COCOA)
     message("-- Cocoa window backend enabled.")
@@ -272,7 +272,7 @@ elseif (PREFER_COCOA)
     set(SL_PLATFORM_SOURCES
         src/SL_KeySymCocoa.mm
         src/SL_RenderWindowCocoa.mm
-        src/SL_WindowBufferCocoa.mm)
+        src/SL_SwapchainCocoa.mm)
 
 elseif(UNIX)
     if (PREFER_XCB)
@@ -297,8 +297,8 @@ elseif(UNIX)
         src/SL_KeySymXlib.cpp
         src/SL_RenderWindowXCB.cpp
         src/SL_RenderWindowXlib.cpp
-        src/SL_WindowBufferXCB.cpp
-        src/SL_WindowBufferXlib.cpp)
+        src/SL_SwapchainXCB.cpp
+        src/SL_SwapchainXlib.cpp)
 
 else()
     message(FATAL_ERROR "Unknown/unsupported platform")

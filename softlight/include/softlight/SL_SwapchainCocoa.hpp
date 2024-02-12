@@ -1,8 +1,8 @@
 
-#ifndef SL_WINDOW_BUFFER_COCOA_HPP
-#define SL_WINDOW_BUFFER_COCOA_HPP
+#ifndef SL_SWAPCHAIN_COCOA_HPP
+#define SL_SWAPCHAIN_COCOA_HPP
 
-#include "softlight/SL_WindowBuffer.hpp"
+#include "softlight/SL_Swapchain.hpp"
 
 
 
@@ -23,7 +23,7 @@ union vec4_t;
 /*-----------------------------------------------------------------------------
  * Cocoa Window Backbuffer
 -----------------------------------------------------------------------------*/
-class SL_WindowBufferCocoa : public SL_WindowBuffer
+class SL_SwapchainCocoa : public SL_Swapchain
 {
     friend class SL_RenderWindowCocoa;
 
@@ -35,17 +35,17 @@ class SL_WindowBufferCocoa : public SL_WindowBuffer
     //void* mImageRef; // CGImageRef
 
   public:
-    virtual ~SL_WindowBufferCocoa() noexcept override;
+    virtual ~SL_SwapchainCocoa() noexcept override;
 
-    SL_WindowBufferCocoa() noexcept;
+    SL_SwapchainCocoa() noexcept;
 
-    SL_WindowBufferCocoa(const SL_WindowBufferCocoa&) = delete;
+    SL_SwapchainCocoa(const SL_SwapchainCocoa&) = delete;
 
-    SL_WindowBufferCocoa(SL_WindowBufferCocoa&&) noexcept;
+    SL_SwapchainCocoa(SL_SwapchainCocoa&&) noexcept;
 
-    SL_WindowBufferCocoa& operator=(const SL_WindowBufferCocoa&) = delete;
+    SL_SwapchainCocoa& operator=(const SL_SwapchainCocoa&) = delete;
 
-    SL_WindowBufferCocoa& operator=(SL_WindowBufferCocoa&&) noexcept;
+    SL_SwapchainCocoa& operator=(SL_SwapchainCocoa&&) noexcept;
 
     int init(SL_RenderWindow& win, unsigned width, unsigned height) noexcept override;
 
@@ -69,7 +69,7 @@ class SL_WindowBufferCocoa : public SL_WindowBuffer
 /*-------------------------------------
  * Get the backbuffer width
 -------------------------------------*/
-inline unsigned SL_WindowBufferCocoa::width() const noexcept
+inline unsigned SL_SwapchainCocoa::width() const noexcept
 {
     return mTexture.width();
 }
@@ -79,7 +79,7 @@ inline unsigned SL_WindowBufferCocoa::width() const noexcept
 /*-------------------------------------
  * Get the backbuffer height
 -------------------------------------*/
-inline unsigned SL_WindowBufferCocoa::height() const noexcept
+inline unsigned SL_SwapchainCocoa::height() const noexcept
 {
     return mTexture.height();
 }
@@ -89,7 +89,7 @@ inline unsigned SL_WindowBufferCocoa::height() const noexcept
 /*-------------------------------------
  * HDC
 -------------------------------------*/
-inline const void* SL_WindowBufferCocoa::native_handle() const noexcept
+inline const void* SL_SwapchainCocoa::native_handle() const noexcept
 {
     //return mImageRef;
     return mImageProvider;
@@ -100,7 +100,7 @@ inline const void* SL_WindowBufferCocoa::native_handle() const noexcept
 /*-------------------------------------
  * HDC
 -------------------------------------*/
-inline void* SL_WindowBufferCocoa::native_handle() noexcept
+inline void* SL_SwapchainCocoa::native_handle() noexcept
 {
     //return mImageRef;
     return mImageProvider;
@@ -111,7 +111,7 @@ inline void* SL_WindowBufferCocoa::native_handle() noexcept
 /*-------------------------------------
  * Retrieve the raw data within the backbuffer
 -------------------------------------*/
-inline const ls::math::vec4_t<uint8_t>* SL_WindowBufferCocoa::buffer() const noexcept
+inline const ls::math::vec4_t<uint8_t>* SL_SwapchainCocoa::buffer() const noexcept
 {
     return reinterpret_cast<const ls::math::vec4_t<uint8_t>*>(mTexture.data());
 }
@@ -121,11 +121,11 @@ inline const ls::math::vec4_t<uint8_t>* SL_WindowBufferCocoa::buffer() const noe
 /*-------------------------------------
  * Retrieve the raw data within the backbuffer
 -------------------------------------*/
-inline ls::math::vec4_t<uint8_t>* SL_WindowBufferCocoa::buffer() noexcept
+inline ls::math::vec4_t<uint8_t>* SL_SwapchainCocoa::buffer() noexcept
 {
     return reinterpret_cast<ls::math::vec4_t<uint8_t>*>(mTexture.data());
 }
 
 
 
-#endif /* SL_WINDOW_BUFFER_COCOA_HPP */
+#endif /* SL_SWAPCHAIN_COCOA_HPP */

@@ -9,7 +9,7 @@
 
 #include "softlight/SL_Color.hpp"
 #include "softlight/SL_KeySym.hpp"
-#include "softlight/SL_WindowBufferCocoa.hpp"
+#include "softlight/SL_SwapchainCocoa.hpp"
 #include "softlight/SL_RenderWindowCocoa.hpp"
 #include "softlight/SL_WindowEvent.hpp"
 
@@ -976,12 +976,12 @@ bool SL_RenderWindowCocoa::set_keys_repeat(bool doKeysRepeat) noexcept
 /*-------------------------------------
  * Render a framebuffer to the current window
 -------------------------------------*/
-void SL_RenderWindowCocoa::render(SL_WindowBuffer& buffer) noexcept
+void SL_RenderWindowCocoa::render(SL_Swapchain& buffer) noexcept
 {
     LS_ASSERT(this->valid());
     LS_ASSERT(buffer.native_handle() != nullptr);
 
-    SL_WindowBufferCocoa& buf  = static_cast<SL_WindowBufferCocoa&>(buffer);
+    SL_SwapchainCocoa& buf  = static_cast<SL_SwapchainCocoa&>(buffer);
     //CGImageRef            img  = (CGImageRef)buf.native_handle();
     NSWindow*             win  = (NSWindow*)mWindow;
 

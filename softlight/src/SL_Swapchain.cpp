@@ -4,22 +4,22 @@
 #include "lightsky/setup/OS.h" // OS detection
 
 #if defined(LS_OS_WINDOWS)
-    #include "softlight/SL_WindowBufferWin32.hpp"
+    #include "softlight/SL_SwapchainWin32.hpp"
 #elif defined(SL_PREFER_COCOA)
-    #include "softlight/SL_WindowBufferCocoa.hpp"
+    #include "softlight/SL_SwapchainCocoa.hpp"
 #else
-    #include "softlight/SL_WindowBufferXCB.hpp"
-    #include "softlight/SL_WindowBufferXlib.hpp"
+    #include "softlight/SL_SwapchainXCB.hpp"
+    #include "softlight/SL_SwapchainXlib.hpp"
 #endif
 
-#include "softlight/SL_WindowBuffer.hpp"
+#include "softlight/SL_Swapchain.hpp"
 
 
 
 /*-------------------------------------
  * Destructor
 -------------------------------------*/
-SL_WindowBuffer::~SL_WindowBuffer() noexcept
+SL_Swapchain::~SL_Swapchain() noexcept
 {
 }
 
@@ -28,7 +28,7 @@ SL_WindowBuffer::~SL_WindowBuffer() noexcept
 /*-------------------------------------
  * Constructor
 -------------------------------------*/
-SL_WindowBuffer::SL_WindowBuffer() noexcept
+SL_Swapchain::SL_Swapchain() noexcept
 {
 }
 
@@ -37,7 +37,7 @@ SL_WindowBuffer::SL_WindowBuffer() noexcept
 /*-------------------------------------
  * Move Constructor
 -------------------------------------*/
-SL_WindowBuffer::SL_WindowBuffer(SL_WindowBuffer&& wb) noexcept :
+SL_Swapchain::SL_Swapchain(SL_Swapchain&& wb) noexcept :
     mTexture{std::move(wb.mTexture)}
 {}
 
@@ -46,7 +46,7 @@ SL_WindowBuffer::SL_WindowBuffer(SL_WindowBuffer&& wb) noexcept :
 /*-------------------------------------
  * Move another window buffer into *this.
 -------------------------------------*/
-SL_WindowBuffer& SL_WindowBuffer::operator=(SL_WindowBuffer&& wb) noexcept
+SL_Swapchain& SL_Swapchain::operator=(SL_Swapchain&& wb) noexcept
 {
     mTexture = std::move(wb.mTexture);
     return *this;
@@ -57,17 +57,17 @@ SL_WindowBuffer& SL_WindowBuffer::operator=(SL_WindowBuffer&& wb) noexcept
 /*-------------------------------------
  * Instance Creation
 -------------------------------------*/
-ls::utils::Pointer<SL_WindowBuffer> SL_WindowBuffer::create() noexcept
+ls::utils::Pointer<SL_Swapchain> SL_Swapchain::create() noexcept
 {
     #ifdef LS_OS_WINDOWS
-        return ls::utils::Pointer<SL_WindowBuffer>{new SL_WindowBufferWin32{}};
+        return ls::utils::Pointer<SL_Swapchain>{new SL_SwapchainWin32{}};
     #elif defined(SL_PREFER_COCOA)
-            return ls::utils::Pointer<SL_WindowBuffer>{new SL_WindowBufferCocoa{}};
+            return ls::utils::Pointer<SL_Swapchain>{new SL_SwapchainCocoa{}};
     #elif defined(LS_OS_UNIX)
         #if defined(SL_PREFER_XCB)
-            return ls::utils::Pointer<SL_WindowBuffer>{new SL_WindowBufferXCB{}};
+            return ls::utils::Pointer<SL_Swapchain>{new SL_SwapchainXCB{}};
         #else
-            return ls::utils::Pointer<SL_WindowBuffer>{new SL_WindowBufferXlib{}};
+            return ls::utils::Pointer<SL_Swapchain>{new SL_SwapchainXlib{}};
         #endif
     #else
         #error "Window buffer backend not implemented for this platform."

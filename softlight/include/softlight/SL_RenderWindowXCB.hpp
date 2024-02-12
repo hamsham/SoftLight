@@ -16,7 +16,7 @@ struct xcb_connection_t;
 -----------------------------------------------------------------------------*/
 class SL_RenderWindowXCB final : public SL_RenderWindow
 {
-    friend class SL_WindowBufferXlib;
+    friend class SL_SwapchainXlib;
 
   private:
     _XDisplay* mDisplay;
@@ -110,7 +110,7 @@ class SL_RenderWindowXCB final : public SL_RenderWindow
 
     virtual bool keys_repeat() const noexcept override;
 
-    virtual void render(SL_WindowBuffer& buffer) noexcept override;
+    virtual void render(SL_Swapchain& buffer) noexcept override;
 
     virtual void set_mouse_capture(bool isCaptured) noexcept override;
 

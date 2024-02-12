@@ -21,7 +21,7 @@
 
 #include "softlight/SL_Color.hpp"
 #include "softlight/SL_KeySym.hpp"
-#include "softlight/SL_WindowBufferWin32.hpp"
+#include "softlight/SL_SwapchainWin32.hpp"
 #include "softlight/SL_RenderWindowWin32.hpp"
 #include "softlight/SL_WindowEvent.hpp"
 
@@ -964,12 +964,12 @@ bool SL_RenderWindowWin32::set_keys_repeat(bool doKeysRepeat) noexcept
 /*-------------------------------------
  * Render a framebuffer to the current window
 -------------------------------------*/
-void SL_RenderWindowWin32::render(SL_WindowBuffer& buffer) noexcept
+void SL_RenderWindowWin32::render(SL_Swapchain& buffer) noexcept
 {
     LS_ASSERT(this->valid());
     LS_ASSERT(buffer.native_handle() != nullptr);
 
-    SL_WindowBufferWin32& pWinBuffer = static_cast<SL_WindowBufferWin32&>(buffer);
+    SL_SwapchainWin32& pWinBuffer = static_cast<SL_SwapchainWin32&>(buffer);
 
     RECT displayArea;
     GetClientRect(mHwnd, &displayArea);

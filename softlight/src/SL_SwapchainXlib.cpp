@@ -24,7 +24,7 @@ extern "C"
 
 #include "softlight/SL_Color.hpp"
 #include "softlight/SL_RenderWindowXlib.hpp"
-#include "softlight/SL_WindowBufferXlib.hpp"
+#include "softlight/SL_SwapchainXlib.hpp"
 
 
 
@@ -35,7 +35,7 @@ extern "C"
 /*-------------------------------------
  *
 -------------------------------------*/
-SL_WindowBufferXlib::~SL_WindowBufferXlib() noexcept
+SL_SwapchainXlib::~SL_SwapchainXlib() noexcept
 {
     terminate();
 }
@@ -45,8 +45,8 @@ SL_WindowBufferXlib::~SL_WindowBufferXlib() noexcept
 /*-------------------------------------
  *
 -------------------------------------*/
-SL_WindowBufferXlib::SL_WindowBufferXlib() noexcept :
-    SL_WindowBuffer{},
+SL_SwapchainXlib::SL_SwapchainXlib() noexcept :
+    SL_Swapchain{},
     mWindow{nullptr},
     mBuffer{nullptr},
     mShmInfo{nullptr}
@@ -57,8 +57,8 @@ SL_WindowBufferXlib::SL_WindowBufferXlib() noexcept :
 /*-------------------------------------
  *
 -------------------------------------*/
-SL_WindowBufferXlib::SL_WindowBufferXlib(SL_WindowBufferXlib&& wb) noexcept :
-    SL_WindowBuffer{std::move(wb)},
+SL_SwapchainXlib::SL_SwapchainXlib(SL_SwapchainXlib&& wb) noexcept :
+    SL_Swapchain{std::move(wb)},
     mWindow{wb.mWindow},
     mBuffer{wb.mBuffer},
     mShmInfo{wb.mShmInfo}
@@ -74,11 +74,11 @@ SL_WindowBufferXlib::SL_WindowBufferXlib(SL_WindowBufferXlib&& wb) noexcept :
 /*-------------------------------------
  *
 -------------------------------------*/
-SL_WindowBufferXlib& SL_WindowBufferXlib::operator=(SL_WindowBufferXlib&& wb) noexcept
+SL_SwapchainXlib& SL_SwapchainXlib::operator=(SL_SwapchainXlib&& wb) noexcept
 {
     if (this != &wb)
     {
-        SL_WindowBuffer::operator=(std::move(wb));
+        SL_Swapchain::operator=(std::move(wb));
 
         mWindow = wb.mWindow;
         wb.mWindow = nullptr;
@@ -98,7 +98,7 @@ SL_WindowBufferXlib& SL_WindowBufferXlib::operator=(SL_WindowBufferXlib&& wb) no
 /*-------------------------------------
  *
 -------------------------------------*/
-int SL_WindowBufferXlib::init(SL_RenderWindow& win, unsigned width, unsigned height) noexcept
+int SL_SwapchainXlib::init(SL_RenderWindow& win, unsigned width, unsigned height) noexcept
 {
     if (mBuffer)
     {
@@ -198,7 +198,7 @@ int SL_WindowBufferXlib::init(SL_RenderWindow& win, unsigned width, unsigned hei
 /*-------------------------------------
  *
 -------------------------------------*/
-int SL_WindowBufferXlib::terminate() noexcept
+int SL_SwapchainXlib::terminate() noexcept
 {
     if (mBuffer)
     {
@@ -233,7 +233,7 @@ int SL_WindowBufferXlib::terminate() noexcept
 /*-------------------------------------
  *
 -------------------------------------*/
-SL_WindowBufferXlib::~SL_WindowBufferXlib() noexcept
+SL_SwapchainXlib::~SL_SwapchainXlib() noexcept
 {
     terminate();
 }
@@ -243,8 +243,8 @@ SL_WindowBufferXlib::~SL_WindowBufferXlib() noexcept
 /*-------------------------------------
  *
 -------------------------------------*/
-SL_WindowBufferXlib::SL_WindowBufferXlib() noexcept :
-    SL_WindowBuffer{},
+SL_SwapchainXlib::SL_SwapchainXlib() noexcept :
+    SL_Swapchain{},
     mWindow{nullptr},
     mBuffer{nullptr}
 {}
@@ -254,8 +254,8 @@ SL_WindowBufferXlib::SL_WindowBufferXlib() noexcept :
 /*-------------------------------------
  *
 -------------------------------------*/
-SL_WindowBufferXlib::SL_WindowBufferXlib(SL_WindowBufferXlib&& wb) noexcept :
-    SL_WindowBuffer{std::move(wb)},
+SL_SwapchainXlib::SL_SwapchainXlib(SL_SwapchainXlib&& wb) noexcept :
+    SL_Swapchain{std::move(wb)},
     mWindow{wb.mWindow},
     mBuffer{wb.mBuffer}
 {
@@ -269,11 +269,11 @@ SL_WindowBufferXlib::SL_WindowBufferXlib(SL_WindowBufferXlib&& wb) noexcept :
 /*-------------------------------------
  *
 -------------------------------------*/
-SL_WindowBufferXlib& SL_WindowBufferXlib::operator=(SL_WindowBufferXlib&& wb) noexcept
+SL_SwapchainXlib& SL_SwapchainXlib::operator=(SL_SwapchainXlib&& wb) noexcept
 {
     if (this != &wb)
     {
-        SL_WindowBuffer::operator=(std::move(wb));
+        SL_Swapchain::operator=(std::move(wb));
 
         mWindow = wb.mWindow;
         wb.mWindow = nullptr;
@@ -290,7 +290,7 @@ SL_WindowBufferXlib& SL_WindowBufferXlib::operator=(SL_WindowBufferXlib&& wb) no
 /*-------------------------------------
  *
 -------------------------------------*/
-int SL_WindowBufferXlib::init(SL_RenderWindow& win, unsigned width, unsigned height) noexcept
+int SL_SwapchainXlib::init(SL_RenderWindow& win, unsigned width, unsigned height) noexcept
 {
     if (mBuffer)
     {
@@ -337,7 +337,7 @@ int SL_WindowBufferXlib::init(SL_RenderWindow& win, unsigned width, unsigned hei
 /*-------------------------------------
  *
 -------------------------------------*/
-int SL_WindowBufferXlib::terminate() noexcept
+int SL_SwapchainXlib::terminate() noexcept
 {
     if (mBuffer)
     {

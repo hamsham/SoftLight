@@ -1,8 +1,8 @@
 
-#ifndef SL_WINDOW_BUFFER_WIN32_HPP
-#define SL_WINDOW_BUFFER_WIN32_HPP
+#ifndef SL_SWAPCHAIN_WIN32_HPP
+#define SL_SWAPCHAIN_WIN32_HPP
 
-#include "softlight/SL_WindowBuffer.hpp"
+#include "softlight/SL_Swapchain.hpp"
 
 
 
@@ -23,7 +23,7 @@ namespace ls
 /*-----------------------------------------------------------------------------
  * Win32 Window Backbuffer
 -----------------------------------------------------------------------------*/
-class SL_WindowBufferWin32 : public SL_WindowBuffer
+class SL_SwapchainWin32 : public SL_Swapchain
 {
     friend class SL_RenderWindowWin32;
 
@@ -31,17 +31,17 @@ class SL_WindowBufferWin32 : public SL_WindowBuffer
     void* mBitmapInfo; // PBITMAPINFO
 
   public:
-    virtual ~SL_WindowBufferWin32() noexcept override;
+    virtual ~SL_SwapchainWin32() noexcept override;
 
-    SL_WindowBufferWin32() noexcept;
+    SL_SwapchainWin32() noexcept;
 
-    SL_WindowBufferWin32(const SL_WindowBufferWin32&) = delete;
+    SL_SwapchainWin32(const SL_SwapchainWin32&) = delete;
 
-    SL_WindowBufferWin32(SL_WindowBufferWin32&&) noexcept;
+    SL_SwapchainWin32(SL_SwapchainWin32&&) noexcept;
 
-    SL_WindowBufferWin32& operator=(const SL_WindowBufferWin32&) = delete;
+    SL_SwapchainWin32& operator=(const SL_SwapchainWin32&) = delete;
 
-    SL_WindowBufferWin32& operator=(SL_WindowBufferWin32&&) noexcept;
+    SL_SwapchainWin32& operator=(SL_SwapchainWin32&&) noexcept;
 
     int init(SL_RenderWindow& win, unsigned width, unsigned height) noexcept override;
 
@@ -65,7 +65,7 @@ class SL_WindowBufferWin32 : public SL_WindowBuffer
 /*-------------------------------------
  * Get the backbuffer width
 -------------------------------------*/
-inline unsigned SL_WindowBufferWin32::width() const noexcept
+inline unsigned SL_SwapchainWin32::width() const noexcept
 {
     return mTexture.width();
 }
@@ -75,7 +75,7 @@ inline unsigned SL_WindowBufferWin32::width() const noexcept
 /*-------------------------------------
  * Get the backbuffer height
 -------------------------------------*/
-inline unsigned SL_WindowBufferWin32::height() const noexcept
+inline unsigned SL_SwapchainWin32::height() const noexcept
 {
     return mTexture.height();
 }
@@ -85,7 +85,7 @@ inline unsigned SL_WindowBufferWin32::height() const noexcept
 /*-------------------------------------
  * HDC
 -------------------------------------*/
-inline const void* SL_WindowBufferWin32::native_handle() const noexcept
+inline const void* SL_SwapchainWin32::native_handle() const noexcept
 {
     return mBitmapInfo;
 }
@@ -95,7 +95,7 @@ inline const void* SL_WindowBufferWin32::native_handle() const noexcept
 /*-------------------------------------
  * HDC
 -------------------------------------*/
-inline void* SL_WindowBufferWin32::native_handle() noexcept
+inline void* SL_SwapchainWin32::native_handle() noexcept
 {
     return mBitmapInfo;
 }
@@ -105,7 +105,7 @@ inline void* SL_WindowBufferWin32::native_handle() noexcept
 /*-------------------------------------
  * Retrieve the raw data within the backbuffer
 -------------------------------------*/
-inline const ls::math::vec4_t<uint8_t>* SL_WindowBufferWin32::buffer() const noexcept
+inline const ls::math::vec4_t<uint8_t>* SL_SwapchainWin32::buffer() const noexcept
 {
     return reinterpret_cast<const ls::math::vec4_t<uint8_t>*>(mTexture.data());
 }
@@ -115,11 +115,11 @@ inline const ls::math::vec4_t<uint8_t>* SL_WindowBufferWin32::buffer() const noe
 /*-------------------------------------
  * Retrieve the raw data within the backbuffer
 -------------------------------------*/
-inline ls::math::vec4_t<uint8_t>* SL_WindowBufferWin32::buffer() noexcept
+inline ls::math::vec4_t<uint8_t>* SL_SwapchainWin32::buffer() noexcept
 {
     return reinterpret_cast<ls::math::vec4_t<uint8_t>*>(mTexture.data());
 }
 
 
 
-#endif /* SL_WINDOW_BUFFER_WIN32_HPP */
+#endif /* SL_SWAPCHAIN_WIN32_HPP */

@@ -31,7 +31,7 @@
 #include "softlight/SL_UniformBuffer.hpp"
 #include "softlight/SL_VertexArray.hpp"
 #include "softlight/SL_VertexBuffer.hpp"
-#include "softlight/SL_WindowBuffer.hpp"
+#include "softlight/SL_Swapchain.hpp"
 #include "softlight/SL_WindowEvent.hpp"
 
 #ifndef IMAGE_WIDTH
@@ -507,7 +507,7 @@ void update_cam_position(SL_Transform& camTrans, float tickTime, utils::Pointer<
 int main()
 {
     ls::utils::Pointer<SL_RenderWindow> pWindow    {std::move(SL_RenderWindow::create())};
-    ls::utils::Pointer<SL_WindowBuffer> pRenderBuf {SL_WindowBuffer::create()};
+    ls::utils::Pointer<SL_Swapchain>    pSwapchain {SL_Swapchain::create()};
     ls::utils::Pointer<SL_SceneGraph>   pGraph     {std::move(init_sky_context())};
     SL_Context&                         context    = pGraph->mContext;
     ls::utils::Pointer<bool[]>          pKeySyms   {new bool[65536]};
@@ -539,7 +539,7 @@ int main()
         return -1;
     }
 
-    if (pRenderBuf->init(*pWindow, IMAGE_WIDTH, IMAGE_HEIGHT) != 0 || pWindow->set_title("Volume Rendering Test") != 0)
+    if (pSwapchain->init(*pWindow, IMAGE_WIDTH, IMAGE_HEIGHT) != 0 || pWindow->set_title("Volume Rendering Test") != 0)
     {
         return -2;
     }
@@ -565,8 +565,8 @@ int main()
                 fbo.attach_color_buffer(0, context.texture(0).view());
                 fbo.attach_depth_buffer(context.texture(1).view());
 
-                pRenderBuf->terminate();
-                pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
+                pSwapchain->terminate();
+                pSwapchain->init(*pWindow, pWindow->width(), pWindow->height());
             }
             else if (evt.type == SL_WinEventType::WIN_EVENT_KEY_DOWN)
             {
@@ -668,8 +668,8 @@ int main()
                 pGraph->update();
                 context.clear_depth_buffer(0, 0.0);
                 render_scene(pGraph.get(), vpMatrix);
-                context.blit(pRenderBuf->texture().view(), 0);
-                pWindow->render(*pRenderBuf);
+                context.blit(pSwapchain->texture().view(), 0);
+                pWindow->render(*pSwapchain);
             }
         }
 
@@ -681,7 +681,7 @@ int main()
         }
     }
 
-    pRenderBuf->terminate();
+    pSwapchain->terminate();
 
     return pWindow->destroy();
 }

@@ -18,7 +18,7 @@
 /*-----------------------------------------------------------------------------
  *
 -----------------------------------------------------------------------------*/
-class SL_WindowBuffer;
+class SL_Swapchain;
 struct SL_WindowEvent;
 
 
@@ -106,7 +106,7 @@ class SL_RenderWindow
 
     virtual bool keys_repeat() const noexcept = 0;
 
-    virtual void render(SL_WindowBuffer& buffer) noexcept = 0;
+    virtual void render(SL_Swapchain& buffer) noexcept = 0;
 
     virtual void set_mouse_capture(bool isCaptured) noexcept = 0;
 

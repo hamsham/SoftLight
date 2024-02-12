@@ -4,7 +4,7 @@
 #include "lightsky/utils/Log.h"
 
 #import "softlight/SL_RenderWindowCocoa.hpp"
-#include "softlight/SL_WindowBufferCocoa.hpp"
+#include "softlight/SL_SwapchainCocoa.hpp"
 
 
 
@@ -33,7 +33,7 @@ inline size_t SL_CocoaDataGetBytesAtOffset(void* info, void* buffer, off_t offse
 /*-------------------------------------
  * Destructor
 -------------------------------------*/
-SL_WindowBufferCocoa::~SL_WindowBufferCocoa() noexcept
+SL_SwapchainCocoa::~SL_SwapchainCocoa() noexcept
 {
     terminate();
 }
@@ -43,8 +43,8 @@ SL_WindowBufferCocoa::~SL_WindowBufferCocoa() noexcept
 /*-------------------------------------
  * Constructor
 -------------------------------------*/
-SL_WindowBufferCocoa::SL_WindowBufferCocoa() noexcept :
-    SL_WindowBuffer{},
+SL_SwapchainCocoa::SL_SwapchainCocoa() noexcept :
+    SL_Swapchain{},
     mImageProvider{nullptr},
     mColorSpace{nullptr}
     //mImageRef{nullptr}
@@ -55,8 +55,8 @@ SL_WindowBufferCocoa::SL_WindowBufferCocoa() noexcept :
 /*-------------------------------------
  * Move Constructor
 -------------------------------------*/
-SL_WindowBufferCocoa::SL_WindowBufferCocoa(SL_WindowBufferCocoa&& wb) noexcept :
-    SL_WindowBuffer{std::move(wb)}, // This handles the internal texture
+SL_SwapchainCocoa::SL_SwapchainCocoa(SL_SwapchainCocoa&& wb) noexcept :
+    SL_Swapchain{std::move(wb)}, // This handles the internal texture
     mImageProvider{wb.mImageProvider},
     mColorSpace{wb.mColorSpace}
     //mImageRef{wb.mImageRef}
@@ -72,12 +72,12 @@ SL_WindowBufferCocoa::SL_WindowBufferCocoa(SL_WindowBufferCocoa&& wb) noexcept :
 /*-------------------------------------
  * Move Operator
 -------------------------------------*/
-SL_WindowBufferCocoa& SL_WindowBufferCocoa::operator=(SL_WindowBufferCocoa&& wb) noexcept
+SL_SwapchainCocoa& SL_SwapchainCocoa::operator=(SL_SwapchainCocoa&& wb) noexcept
 {
     if (this != &wb)
     {
         // This handles the internal texture
-        SL_WindowBuffer::operator=(std::move(wb));
+        SL_Swapchain::operator=(std::move(wb));
 
         mImageProvider = wb.mImageProvider;
         wb.mImageProvider = nullptr;
@@ -97,7 +97,7 @@ SL_WindowBufferCocoa& SL_WindowBufferCocoa::operator=(SL_WindowBufferCocoa&& wb)
 /*-------------------------------------
  * Initialize the backbuffer
 -------------------------------------*/
-int SL_WindowBufferCocoa::init(SL_RenderWindow& win, unsigned width, unsigned height) noexcept
+int SL_SwapchainCocoa::init(SL_RenderWindow& win, unsigned width, unsigned height) noexcept
 {
     if (mTexture.data() != nullptr)
     {
@@ -189,7 +189,7 @@ int SL_WindowBufferCocoa::init(SL_RenderWindow& win, unsigned width, unsigned he
 /*-------------------------------------
  * Clear all memory used by the backbuffer.
 -------------------------------------*/
-int SL_WindowBufferCocoa::terminate() noexcept
+int SL_SwapchainCocoa::terminate() noexcept
 {
     //CGImageRelease((CGImageRef)mImageRef);
     CGColorSpaceRelease((CGColorSpaceRef)mColorSpace);

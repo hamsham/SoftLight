@@ -20,7 +20,7 @@ extern "C"
 #include "lightsky/utils/Copy.h"
 #include "lightsky/utils/Log.h"
 
-#include "softlight/SL_WindowBufferXlib.hpp"
+#include "softlight/SL_SwapchainXlib.hpp"
 #include "softlight/SL_RenderWindowXlib.hpp"
 #include "softlight/SL_WindowEvent.hpp"
 
@@ -1090,7 +1090,7 @@ bool SL_RenderWindowXlib::set_keys_repeat(bool doKeysRepeat) noexcept
 /*-------------------------------------
  * Render a framebuffer to the current window
 -------------------------------------*/
-void SL_RenderWindowXlib::render(SL_WindowBuffer& buffer) noexcept
+void SL_RenderWindowXlib::render(SL_Swapchain& buffer) noexcept
 {
     LS_ASSERT(this->valid());
     LS_ASSERT(buffer.native_handle() != nullptr);

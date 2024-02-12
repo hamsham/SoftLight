@@ -33,7 +33,7 @@
 #include "softlight/SL_UniformBuffer.hpp"
 #include "softlight/SL_VertexArray.hpp"
 #include "softlight/SL_VertexBuffer.hpp"
-#include "softlight/SL_WindowBuffer.hpp"
+#include "softlight/SL_Swapchain.hpp"
 #include "softlight/SL_WindowEvent.hpp"
 
 #ifndef IMAGE_WIDTH
@@ -861,7 +861,7 @@ utils::Pointer<SL_SceneGraph> create_context()
 int main()
 {
     utils::Pointer<SL_RenderWindow> pWindow{std::move(SL_RenderWindow::create())};
-    utils::Pointer<SL_WindowBuffer> pRenderBuf{SL_WindowBuffer::create()};
+    utils::Pointer<SL_Swapchain>    pRenderBuf{SL_Swapchain::create()};
     utils::Pointer<SL_SceneGraph>   pGraph{std::move(create_context())};
     utils::Pointer<bool[]>          pKeySyms{new bool[65536]};
 

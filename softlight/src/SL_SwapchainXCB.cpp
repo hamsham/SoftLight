@@ -23,7 +23,7 @@ extern "C"
 
 #include "softlight/SL_Color.hpp"
 #include "softlight/SL_RenderWindowXCB.hpp"
-#include "softlight/SL_WindowBufferXCB.hpp"
+#include "softlight/SL_SwapchainXCB.hpp"
 
 
 
@@ -34,7 +34,7 @@ extern "C"
 /*-------------------------------------
  *
 -------------------------------------*/
-SL_WindowBufferXCB::~SL_WindowBufferXCB() noexcept
+SL_SwapchainXCB::~SL_SwapchainXCB() noexcept
 {
     terminate();
 }
@@ -44,8 +44,8 @@ SL_WindowBufferXCB::~SL_WindowBufferXCB() noexcept
 /*-------------------------------------
  *
 -------------------------------------*/
-SL_WindowBufferXCB::SL_WindowBufferXCB() noexcept :
-    SL_WindowBuffer{},
+SL_SwapchainXCB::SL_SwapchainXCB() noexcept :
+    SL_Swapchain{},
     mWindow{nullptr},
     mShmInfo{nullptr}
 {}
@@ -55,8 +55,8 @@ SL_WindowBufferXCB::SL_WindowBufferXCB() noexcept :
 /*-------------------------------------
  *
 -------------------------------------*/
-SL_WindowBufferXCB::SL_WindowBufferXCB(SL_WindowBufferXCB&& wb) noexcept :
-    SL_WindowBuffer{std::move(wb)},
+SL_SwapchainXCB::SL_SwapchainXCB(SL_SwapchainXCB&& wb) noexcept :
+    SL_Swapchain{std::move(wb)},
     mWindow{wb.mWindow},
     mShmInfo{wb.mShmInfo}
 {
@@ -70,11 +70,11 @@ SL_WindowBufferXCB::SL_WindowBufferXCB(SL_WindowBufferXCB&& wb) noexcept :
 /*-------------------------------------
  *
 -------------------------------------*/
-SL_WindowBufferXCB& SL_WindowBufferXCB::operator=(SL_WindowBufferXCB&& wb) noexcept
+SL_SwapchainXCB& SL_SwapchainXCB::operator=(SL_SwapchainXCB&& wb) noexcept
 {
     if (this != &wb)
     {
-        SL_WindowBuffer::operator=(std::move(wb));
+        SL_Swapchain::operator=(std::move(wb));
 
         mWindow = wb.mWindow;
         wb.mWindow = nullptr;
@@ -91,7 +91,7 @@ SL_WindowBufferXCB& SL_WindowBufferXCB::operator=(SL_WindowBufferXCB&& wb) noexc
 /*-------------------------------------
  *
 -------------------------------------*/
-int SL_WindowBufferXCB::init(SL_RenderWindow& win, unsigned width, unsigned height) noexcept
+int SL_SwapchainXCB::init(SL_RenderWindow& win, unsigned width, unsigned height) noexcept
 {
     if (mTexture.data())
     {
@@ -175,7 +175,7 @@ int SL_WindowBufferXCB::init(SL_RenderWindow& win, unsigned width, unsigned heig
 /*-------------------------------------
  *
 -------------------------------------*/
-int SL_WindowBufferXCB::terminate() noexcept
+int SL_SwapchainXCB::terminate() noexcept
 {
     if (mTexture.data())
     {
@@ -200,7 +200,7 @@ int SL_WindowBufferXCB::terminate() noexcept
 /*-------------------------------------
  *
 -------------------------------------*/
-SL_WindowBufferXCB::~SL_WindowBufferXCB() noexcept
+SL_SwapchainXCB::~SL_SwapchainXCB() noexcept
 {
     terminate();
 }
@@ -210,8 +210,8 @@ SL_WindowBufferXCB::~SL_WindowBufferXCB() noexcept
 /*-------------------------------------
  *
 -------------------------------------*/
-SL_WindowBufferXCB::SL_WindowBufferXCB() noexcept :
-    SL_WindowBuffer{},
+SL_SwapchainXCB::SL_SwapchainXCB() noexcept :
+    SL_Swapchain{},
     mWindow{nullptr}
 {}
 
@@ -220,8 +220,8 @@ SL_WindowBufferXCB::SL_WindowBufferXCB() noexcept :
 /*-------------------------------------
  *
 -------------------------------------*/
-SL_WindowBufferXCB::SL_WindowBufferXCB(SL_WindowBufferXCB&& wb) noexcept :
-    SL_WindowBuffer{std::move(wb)},
+SL_SwapchainXCB::SL_SwapchainXCB(SL_SwapchainXCB&& wb) noexcept :
+    SL_Swapchain{std::move(wb)},
     mWindow{wb.mWindow}
 {
     wb.mWindow = nullptr;
@@ -233,11 +233,11 @@ SL_WindowBufferXCB::SL_WindowBufferXCB(SL_WindowBufferXCB&& wb) noexcept :
 /*-------------------------------------
  *
 -------------------------------------*/
-SL_WindowBufferXCB& SL_WindowBufferXCB::operator=(SL_WindowBufferXCB&& wb) noexcept
+SL_SwapchainXCB& SL_SwapchainXCB::operator=(SL_SwapchainXCB&& wb) noexcept
 {
     if (this != &wb)
     {
-        SL_WindowBuffer::operator=(std::move(wb));
+        SL_Swapchain::operator=(std::move(wb));
 
         mWindow = wb.mWindow;
         wb.mWindow = nullptr;
@@ -251,7 +251,7 @@ SL_WindowBufferXCB& SL_WindowBufferXCB::operator=(SL_WindowBufferXCB&& wb) noexc
 /*-------------------------------------
  *
 -------------------------------------*/
-int SL_WindowBufferXCB::init(SL_RenderWindow& win, unsigned width, unsigned height) noexcept
+int SL_SwapchainXCB::init(SL_RenderWindow& win, unsigned width, unsigned height) noexcept
 {
     if (mTexture.data())
     {
@@ -285,7 +285,7 @@ int SL_WindowBufferXCB::init(SL_RenderWindow& win, unsigned width, unsigned heig
 /*-------------------------------------
  *
 -------------------------------------*/
-int SL_WindowBufferXCB::terminate() noexcept
+int SL_SwapchainXCB::terminate() noexcept
 {
     if (mTexture.data())
     {

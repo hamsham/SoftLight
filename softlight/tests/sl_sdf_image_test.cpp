@@ -27,7 +27,7 @@
 #include "softlight/SL_UniformBuffer.hpp"
 #include "softlight/SL_VertexArray.hpp"
 #include "softlight/SL_VertexBuffer.hpp"
-#include "softlight/SL_WindowBuffer.hpp"
+#include "softlight/SL_Swapchain.hpp"
 #include "softlight/SL_WindowEvent.hpp"
 
 #include "sl_sdf_generator.hpp"
@@ -261,7 +261,7 @@ int main()
     (void)retCode;
 
     utils::Pointer<SL_RenderWindow> pWindow{SL_RenderWindow::create()};
-    utils::Pointer<SL_WindowBuffer> pRenderBuf{SL_WindowBuffer::create()};
+    utils::Pointer<SL_Swapchain>    pSwapchain{SL_Swapchain::create()};
     if (pWindow->init(IMAGE_WIDTH, IMAGE_HEIGHT))
     {
         LS_LOG_ERR("Unable to initialize a window.");
@@ -273,7 +273,7 @@ int main()
         pWindow->destroy();
         return -2;
     }
-    else if (pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height()) != 0 || pWindow->set_title("Mesh Test") != 0)
+    else if (pSwapchain->init(*pWindow, pWindow->width(), pWindow->height()) != 0 || pWindow->set_title("Mesh Test") != 0)
     {
         LS_LOG_ERR("Unable to resize the test window buffer!");
         pWindow->destroy();
@@ -316,8 +316,8 @@ int main()
             if (evt.type == SL_WinEventType::WIN_EVENT_RESIZED)
             {
                 std::cout<< "Window resized: " << evt.window.width << 'x' << evt.window.height << std::endl;
-                pRenderBuf->terminate();
-                pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
+                pSwapchain->terminate();
+                pSwapchain->init(*pWindow, pWindow->width(), pWindow->height());
 
                 context.texture(0).init(context.texture(0).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
                 context.texture(1).init(context.texture(1).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
@@ -359,8 +359,8 @@ int main()
             mesh_test_render(pGraph.get(), projMatrix, viewMatrix.transform());
 
             sl_create_sdf(context.texture(0), context.texture(2), context.texture(3));
-            context.blit(pRenderBuf->texture().view(), 2);
-            pWindow->render(*pRenderBuf);
+            context.blit(pSwapchain->texture().view(), 2);
+            pWindow->render(*pSwapchain);
 
             ++numFrames;
             ++totalFrames;
@@ -388,6 +388,6 @@ int main()
         }
     }
 
-    pRenderBuf->terminate();
+    pSwapchain->terminate();
     return pWindow->destroy();
 }

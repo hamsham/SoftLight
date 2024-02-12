@@ -25,7 +25,7 @@
 #include "softlight/SL_Color.hpp"
 #include "softlight/SL_RenderWindowWin32.hpp"
 #include "softlight/SL_Texture.hpp"
-#include "softlight/SL_WindowBufferWin32.hpp"
+#include "softlight/SL_SwapchainWin32.hpp"
 
 
 
@@ -35,7 +35,7 @@
 /*-------------------------------------
  * Destructor
 -------------------------------------*/
-SL_WindowBufferWin32::~SL_WindowBufferWin32() noexcept
+SL_SwapchainWin32::~SL_SwapchainWin32() noexcept
 {
     terminate();
 }
@@ -45,8 +45,8 @@ SL_WindowBufferWin32::~SL_WindowBufferWin32() noexcept
 /*-------------------------------------
  * Constructor
 -------------------------------------*/
-SL_WindowBufferWin32::SL_WindowBufferWin32() noexcept :
-    SL_WindowBuffer{},
+SL_SwapchainWin32::SL_SwapchainWin32() noexcept :
+    SL_Swapchain{},
     mBitmapInfo{nullptr}
 {}
 
@@ -55,8 +55,8 @@ SL_WindowBufferWin32::SL_WindowBufferWin32() noexcept :
 /*-------------------------------------
  * Move Constructor
 -------------------------------------*/
-SL_WindowBufferWin32::SL_WindowBufferWin32(SL_WindowBufferWin32&& wb) noexcept :
-    SL_WindowBuffer{std::move(wb)}, // This handles the internal texture
+SL_SwapchainWin32::SL_SwapchainWin32(SL_SwapchainWin32&& wb) noexcept :
+    SL_Swapchain{std::move(wb)}, // This handles the internal texture
     mBitmapInfo{wb.mBitmapInfo}
 {
     wb.mBitmapInfo = nullptr;
@@ -68,12 +68,12 @@ SL_WindowBufferWin32::SL_WindowBufferWin32(SL_WindowBufferWin32&& wb) noexcept :
 /*-------------------------------------
  * Move Operator
 -------------------------------------*/
-SL_WindowBufferWin32& SL_WindowBufferWin32::operator=(SL_WindowBufferWin32&& wb) noexcept
+SL_SwapchainWin32& SL_SwapchainWin32::operator=(SL_SwapchainWin32&& wb) noexcept
 {
     if (this != &wb)
     {
         // This handles the internal texture
-        SL_WindowBuffer::operator=(std::move(wb));
+        SL_Swapchain::operator=(std::move(wb));
 
         mBitmapInfo = wb.mBitmapInfo;
         wb.mBitmapInfo = nullptr;
@@ -87,7 +87,7 @@ SL_WindowBufferWin32& SL_WindowBufferWin32::operator=(SL_WindowBufferWin32&& wb)
 /*-------------------------------------
  * Initialize the backbuffer
 -------------------------------------*/
-int SL_WindowBufferWin32::init(SL_RenderWindow& win, unsigned width, unsigned height) noexcept
+int SL_SwapchainWin32::init(SL_RenderWindow& win, unsigned width, unsigned height) noexcept
 {
     if (mTexture.data() != nullptr)
     {
@@ -136,7 +136,7 @@ int SL_WindowBufferWin32::init(SL_RenderWindow& win, unsigned width, unsigned he
 /*-------------------------------------
  * Clear all memory used by the backbuffer.
 -------------------------------------*/
-int SL_WindowBufferWin32::terminate() noexcept
+int SL_SwapchainWin32::terminate() noexcept
 {
     if (mBitmapInfo)
     {

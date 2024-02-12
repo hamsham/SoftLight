@@ -23,7 +23,7 @@ extern "C"
 #include "lightsky/utils/Copy.h"
 #include "lightsky/utils/Log.h"
 
-#include "softlight/SL_WindowBufferXCB.hpp"
+#include "softlight/SL_SwapchainXCB.hpp"
 #include "softlight/SL_RenderWindowXCB.hpp"
 #include "softlight/SL_WindowEvent.hpp"
 
@@ -1087,7 +1087,7 @@ bool SL_RenderWindowXCB::set_keys_repeat(bool doKeysRepeat) noexcept
 /*-------------------------------------
  * Render a framebuffer to the current window
 -------------------------------------*/
-void SL_RenderWindowXCB::render(SL_WindowBuffer& buffer) noexcept
+void SL_RenderWindowXCB::render(SL_Swapchain& buffer) noexcept
 {
     LS_ASSERT(this->valid());
     LS_ASSERT(buffer.native_handle() != nullptr);
@@ -1096,7 +1096,7 @@ void SL_RenderWindowXCB::render(SL_WindowBuffer& buffer) noexcept
     const uint32_t h = (uint32_t)height();
 
     #if SL_ENABLE_XSHM != 0
-        xcb_shm_segment_info_t* pShmInfo = (xcb_shm_segment_info_t*)((SL_WindowBufferXCB*)&buffer)->mShmInfo;
+        xcb_shm_segment_info_t* pShmInfo = (xcb_shm_segment_info_t*)((SL_SwapchainXCB*)&buffer)->mShmInfo;
 
         xcb_shm_put_image(
             mConnection,

@@ -31,7 +31,7 @@
 #include "softlight/SL_UniformBuffer.hpp"
 #include "softlight/SL_VertexArray.hpp"
 #include "softlight/SL_VertexBuffer.hpp"
-#include "softlight/SL_WindowBuffer.hpp"
+#include "softlight/SL_Swapchain.hpp"
 #include "softlight/SL_WindowEvent.hpp"
 
 #ifndef IMAGE_WIDTH
@@ -368,7 +368,7 @@ utils::Pointer<SL_SceneGraph> create_context()
 int main()
 {
     utils::Pointer<SL_RenderWindow> pWindow{std::move(SL_RenderWindow::create())};
-    utils::Pointer<SL_WindowBuffer> pRenderBuf{SL_WindowBuffer::create()};
+    utils::Pointer<SL_Swapchain>    pSwapchain {SL_Swapchain::create()};
     utils::Pointer<SL_SceneGraph>   pGraph{std::move(create_context())};
     utils::Pointer<bool[]>          pKeySyms{new bool[65536]};
 
@@ -404,7 +404,7 @@ int main()
         return -1;
     }
 
-    if (pRenderBuf->init(*pWindow, IMAGE_WIDTH, IMAGE_HEIGHT) != 0 || pWindow->set_title("Mesh Test") != 0)
+    if (pSwapchain->init(*pWindow, IMAGE_WIDTH, IMAGE_HEIGHT) != 0 || pWindow->set_title("Mesh Test") != 0)
     {
         return -2;
     }
@@ -429,8 +429,8 @@ int main()
             if (evt.type == SL_WinEventType::WIN_EVENT_RESIZED)
             {
                 std::cout<< "Window resized: " << evt.window.width << 'x' << evt.window.height << std::endl;
-                pRenderBuf->terminate();
-                pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
+                pSwapchain->terminate();
+                pSwapchain->init(*pWindow, pWindow->width(), pWindow->height());
                 context.texture(0).init(context.texture(0).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
                 context.texture(1).init(context.texture(1).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
 
@@ -555,8 +555,8 @@ int main()
             context.clear_framebuffer(0, 0, SL_ColorRGBAd{0.6, 0.6, 0.6, 1.0}, 0.0);
 
             render_scene(pGraph.get(), projMatrix, pWindow->width(), pWindow->height(), camTrans);
-            context.blit(pRenderBuf->texture().view(), 0);
-            pWindow->render(*pRenderBuf);
+            context.blit(pSwapchain->texture().view(), 0);
+            pWindow->render(*pSwapchain);
         }
 
         // All events handled. Now check on the state of the window.
@@ -567,7 +567,7 @@ int main()
         }
     }
 
-    pRenderBuf->terminate();
+    pSwapchain->terminate();
 
     std::cout
         << "Rendered " << totalFrames << " frames in " << totalSeconds << " seconds ("

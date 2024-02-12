@@ -11,7 +11,7 @@
 -----------------------------------------------------------------------------*/
 class SL_RenderWindowCocoa final : public SL_RenderWindow
 {
-    friend class SL_WindowBufferCocoa;
+    friend class SL_SwapchainCocoa;
     friend class SL_BlitProcessor;
 
   private:
@@ -86,7 +86,7 @@ class SL_RenderWindowCocoa final : public SL_RenderWindow
 
     bool keys_repeat() const noexcept override;
 
-    void render(SL_WindowBuffer& buffer) noexcept override;
+    void render(SL_Swapchain& buffer) noexcept override;
 
     void set_mouse_capture(bool isCaptured) noexcept override;
 

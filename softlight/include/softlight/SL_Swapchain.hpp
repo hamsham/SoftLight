@@ -1,6 +1,6 @@
 
-#ifndef SL_WINDOW_BUFFER_HPP
-#define SL_WINDOW_BUFFER_HPP
+#ifndef SL_SWAPCHAIN_HPP
+#define SL_SWAPCHAIN_HPP
 
 #include <cstdint> // uint8_t
 
@@ -28,33 +28,33 @@ class SL_Texture;
 
 
 /**----------------------------------------------------------------------------
- * @brief The SL_WindowBuffer class encapsulates the native windowing system's
+ * @brief The SL_Swapchain class encapsulates the native windowing system's
  * backbuffer. This class gets passed into an SL_RenderWindow for blitting to
  * the front buffer.
 -----------------------------------------------------------------------------*/
-class SL_WindowBuffer
+class SL_Swapchain
 {
     friend class SL_Context;
     friend struct SL_ShaderProcessor;
 
   public:
-    static ls::utils::Pointer<SL_WindowBuffer> create() noexcept;
+    static ls::utils::Pointer<SL_Swapchain> create() noexcept;
 
   protected:
     SL_Texture mTexture;
 
   public:
-    virtual ~SL_WindowBuffer() noexcept = 0;
+    virtual ~SL_Swapchain() noexcept = 0;
 
-    SL_WindowBuffer() noexcept;
+    SL_Swapchain() noexcept;
 
-    SL_WindowBuffer(const SL_WindowBuffer&) = delete;
+    SL_Swapchain(const SL_Swapchain&) = delete;
 
-    SL_WindowBuffer(SL_WindowBuffer&&) noexcept;
+    SL_Swapchain(SL_Swapchain&&) noexcept;
 
-    SL_WindowBuffer& operator=(const SL_WindowBuffer&) = delete;
+    SL_Swapchain& operator=(const SL_Swapchain&) = delete;
 
-    SL_WindowBuffer& operator=(SL_WindowBuffer&&) noexcept;
+    SL_Swapchain& operator=(SL_Swapchain&&) noexcept;
 
     virtual int init(SL_RenderWindow& w, unsigned width, unsigned height) noexcept = 0;
 
@@ -74,9 +74,9 @@ class SL_WindowBuffer
 
     inline SL_ColorDataType type() const noexcept;
 
-    inline const SL_Texture& texture() const noexcept;
+    virtual inline const SL_Texture& texture() const noexcept;
 
-    inline SL_Texture& texture() noexcept;
+    virtual inline SL_Texture& texture() noexcept;
 };
 
 
@@ -84,7 +84,7 @@ class SL_WindowBuffer
 /*-------------------------------------
  * Retrieve the native color type of the backbuffer.
 -------------------------------------*/
-inline SL_ColorDataType SL_WindowBuffer::type() const noexcept
+inline SL_ColorDataType SL_Swapchain::type() const noexcept
 {
     return SL_ColorDataType::SL_COLOR_RGBA_8U;
 }
@@ -94,7 +94,7 @@ inline SL_ColorDataType SL_WindowBuffer::type() const noexcept
 /*-------------------------------------
  * Retrieve the texture contained within the backbuffer.
 -------------------------------------*/
-inline const SL_Texture& SL_WindowBuffer::texture() const noexcept
+inline const SL_Texture& SL_Swapchain::texture() const noexcept
 {
     return mTexture;
 }
@@ -104,11 +104,11 @@ inline const SL_Texture& SL_WindowBuffer::texture() const noexcept
 /*-------------------------------------
  * Retrieve the texture contained within the backbuffer.
 -------------------------------------*/
-inline SL_Texture& SL_WindowBuffer::texture() noexcept
+inline SL_Texture& SL_Swapchain::texture() noexcept
 {
     return mTexture;
 }
 
 
 
-#endif /* SL_WINDOW_BUFFER_HPP */
+#endif /* SL_SWAPCHAIN_HPP */
