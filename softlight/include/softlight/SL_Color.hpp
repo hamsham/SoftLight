@@ -257,8 +257,8 @@ color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, S
     return SL_ColorRType<T>
    {
         ((uint64_t)SL_ColorLimits<T, SL_ColorRType>::max().r > (uint64_t)SL_ColorLimits<U, SL_ColorRType>::max().r)
-            ? ((T)p.r * (SL_ColorLimits<T, SL_ColorRType>::max().r / (T)SL_ColorLimits<U, SL_ColorRType>::max().r))
-            : (T)(p.r / (SL_ColorLimits<U, SL_ColorRType>::max().r / (U)SL_ColorLimits<T, SL_ColorRType>::max().r))
+            ? ((SL_ColorRType<T>)p * (SL_ColorLimits<T, SL_ColorRType>::max() / (T)SL_ColorLimits<U, SL_ColorRType>::max()))
+            : (SL_ColorRType<T>)(p / (SL_ColorLimits<U, SL_ColorRType>::max() / (U)SL_ColorLimits<T, SL_ColorRType>::max()))
    };
 }
 
@@ -271,7 +271,7 @@ template <typename T, typename U>
 constexpr typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRType<T>>::type
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value && !ls::setup::IsSame<U, ls::math::half>::value, SL_ColorRType<U>>::type& p)
 {
-    return (SL_ColorRType<T>)(p.r * (U)SL_ColorLimits<T, SL_ColorRType>::max().r);
+    return (SL_ColorRType<T>)(p * (U)SL_ColorLimits<T, SL_ColorRType>::max());
 }
 
 
@@ -280,7 +280,7 @@ template <typename T, typename U>
 constexpr typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRType<T>>::type
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value && ls::setup::IsSame<U, ls::math::half>::value, SL_ColorRType<U>>::type& p)
 {
-    return (SL_ColorRType<T>)((float)p.r * (float)SL_ColorLimits<T, SL_ColorRType>::max().r);
+    return (SL_ColorRType<T>)((float)p * (float)SL_ColorLimits<T, SL_ColorRType>::max());
 }
 
 
@@ -293,8 +293,8 @@ constexpr typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRTy
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value && !ls::setup::IsSame<T, ls::math::half>::value, SL_ColorRType<U>>::type& p)
 {
     return ls::setup::IsSigned<U>::value
-        ? SL_ColorRType<T>{T{0.5} * ((T)p.r * (T{1.0} / (T)SL_ColorLimits<U, SL_ColorRType>::max().r)) + T{0.5}}
-        : SL_ColorRType<T>{(T)p.r * (T{1.0} / (T)SL_ColorLimits<U, SL_ColorRType>::max().r)};
+        ? SL_ColorRType<T>{T{0.5} * ((T)p * (T{1.0} / (T)SL_ColorLimits<U, SL_ColorRType>::max())) + T{0.5}}
+        : SL_ColorRType<T>{(T)p * (T{1.0} / (T)SL_ColorLimits<U, SL_ColorRType>::max())};
 }
 
 
@@ -304,8 +304,8 @@ constexpr typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRTy
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value && ls::setup::IsSame<T, ls::math::half>::value, SL_ColorRType<U>>::type& p)
 {
     return ls::setup::IsSigned<U>::value
-        ? SL_ColorRType<T>{0.5f * ((float)p.r * (1.f / (float)SL_ColorLimits<U, SL_ColorRType>::max().r)) + 0.5f}
-        : SL_ColorRType<T>{(float)p.r * (1.f / (float)SL_ColorLimits<U, SL_ColorRType>::max().r)};
+        ? SL_ColorRType<T>{0.5f * ((float)p * (1.f / (float)SL_ColorLimits<U, SL_ColorRType>::max())) + 0.5f}
+        : SL_ColorRType<T>{(float)p * (1.f / (float)SL_ColorLimits<U, SL_ColorRType>::max())};
 }
 
 
@@ -375,8 +375,8 @@ inline typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGT
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SL_ColorRGType<U>>::type& p)
 {
     return ((uint64_t)SL_ColorLimits<T, SL_ColorRType>::max().r > (uint64_t)SL_ColorLimits<U, SL_ColorRType>::max().r)
-        ? ((SL_ColorRGType<T>)p * SL_ColorLimits<T, SL_ColorRType>::max().r)
-        : (SL_ColorRGType<T>)(p / (U)SL_ColorLimits<T, SL_ColorRType>::max().r);
+        ? ((SL_ColorRGType<T>)p * SL_ColorLimits<T, SL_ColorRGType>::max())
+        : (SL_ColorRGType<T>)(p / (SL_ColorRGType<U>)SL_ColorLimits<T, SL_ColorRGType>::max());
 }
 
 
@@ -388,7 +388,7 @@ template <typename T, typename U>
 inline typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGType<T>>::type
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value && !ls::setup::IsSame<U, ls::math::half>::value, SL_ColorRGType<U>>::type& p)
 {
-    return (SL_ColorRGType<T>)(p * (U)SL_ColorLimits<T, SL_ColorRType>::max().r);
+    return (SL_ColorRGType<T>)(p * (SL_ColorRGType<U>)SL_ColorLimits<T, SL_ColorRGType>::max());
 }
 
 
@@ -397,7 +397,7 @@ template <typename T, typename U>
 inline typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGType<T>>::type
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value && ls::setup::IsSame<U, ls::math::half>::value, SL_ColorRGType<U>>::type& p)
 {
-    return (SL_ColorRGType<T>)((SL_ColorRGType<float>)p * (float)SL_ColorLimits<T, SL_ColorRType>::max().r);
+    return (SL_ColorRGType<T>)((SL_ColorRGType<float>)p * (SL_ColorRGType<float>)SL_ColorLimits<T, SL_ColorRGType>::max());
 }
 
 
@@ -410,8 +410,8 @@ inline typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRGType
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value && !ls::setup::IsSame<T, ls::math::half>::value, SL_ColorRGType<U>>::type& p)
 {
     return ls::setup::IsSigned<U>::value
-           ? (SL_ColorRGType<T>{0.5} * ((SL_ColorRGType<T>)p * (T{1.0} / (T)SL_ColorLimits<U, SL_ColorRType>::max().r)) + SL_ColorRGType<T>{0.5})
-           : ((SL_ColorRGType<T>)p * (T{1.0} / (T)SL_ColorLimits<U, SL_ColorRType>::max().r));
+           ? (SL_ColorRGType<T>{0.5} * ((SL_ColorRGType<T>)p * (SL_ColorRGType<T>{1.0} / (SL_ColorRGType<T>)SL_ColorLimits<U, SL_ColorRGType>::max())) + SL_ColorRGType<T>{0.5})
+           : ((SL_ColorRGType<T>)p * (SL_ColorRGType<T>{1.0} / (SL_ColorRGType<T>)SL_ColorLimits<U, SL_ColorRGType>::max()));
 }
 
 
@@ -421,8 +421,8 @@ inline typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRGType
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value && ls::setup::IsSame<T, ls::math::half>::value, SL_ColorRGType<U>>::type& p)
 {
     return (SL_ColorRGType<ls::math::half>)(ls::setup::IsSigned<U>::value
-        ? SL_ColorRGType<float>{0.5f} * ((SL_ColorRGType<float>)p * (1.f / (float)SL_ColorLimits<U, SL_ColorRType>::max().r)) + SL_ColorRGType<float>{0.5f}
-        : (SL_ColorRGType<float>)p * (1.f / (float)SL_ColorLimits<U, SL_ColorRType>::max().r)
+        ? SL_ColorRGType<float>{0.5f} * ((SL_ColorRGType<float>)p * (SL_ColorRGType<float>{1.f} / (SL_ColorRGType<float>)SL_ColorLimits<U, SL_ColorRGType>::max())) + SL_ColorRGType<float>{0.5f}
+        : (SL_ColorRGType<float>)p * (SL_ColorRGType<float>{1.f} / (SL_ColorRGType<float>)SL_ColorLimits<U, SL_ColorRGType>::max())
     );
 }
 
@@ -492,8 +492,8 @@ inline typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGB
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SL_ColorRGBType<U>>::type& p)
 {
     return ((uint64_t)SL_ColorLimits<T, SL_ColorRType>::max().r > (uint64_t)SL_ColorLimits<U, SL_ColorRType>::max().r)
-        ? ((SL_ColorRGBType<T>)p * (SL_ColorLimits<T, SL_ColorRType>::max().r / (T)SL_ColorLimits<U, SL_ColorRType>::max().r))
-        : (SL_ColorRGBType<T>)(p / (SL_ColorLimits<U, SL_ColorRType>::max().r / (U)SL_ColorLimits<T, SL_ColorRType>::max().r));
+        ? ((SL_ColorRGBType<T>)p * (SL_ColorLimits<T, SL_ColorRGBType>::max() / (SL_ColorRGBType<T>)SL_ColorLimits<U, SL_ColorRGBType>::max()))
+        : (SL_ColorRGBType<T>)(p / (SL_ColorLimits<U, SL_ColorRGBType>::max() / (SL_ColorRGBType<U>)SL_ColorLimits<T, SL_ColorRGBType>::max()));
 }
 
 
@@ -505,7 +505,7 @@ template <typename T, typename U>
 inline typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGBType<T>>::type
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value && !ls::setup::IsSame<U, ls::math::half>::value, SL_ColorRGBType<U>>::type& p)
 {
-    return (SL_ColorRGBType<T>)(p * (U)SL_ColorLimits<T, SL_ColorRType>::max().r);
+    return (SL_ColorRGBType<T>)(p * (SL_ColorRGBType<U>)SL_ColorLimits<T, SL_ColorRGBType>::max());
 }
 
 
@@ -514,7 +514,7 @@ template <typename T, typename U>
 inline typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGBType<T>>::type
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value && ls::setup::IsSame<U, ls::math::half>::value, SL_ColorRGBType<U>>::type& p)
 {
-    return (SL_ColorRGBType<T>)((SL_ColorRGBType<float>)p * (float)SL_ColorLimits<T, SL_ColorRType>::max().r);
+    return (SL_ColorRGBType<T>)((SL_ColorRGBType<float>)p * (SL_ColorRGBType<float>)SL_ColorLimits<T, SL_ColorRGBType>::max());
 }
 
 
@@ -527,8 +527,8 @@ inline typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRGBTyp
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value && !ls::setup::IsSame<T, ls::math::half>::value, SL_ColorRGBType<U>>::type& p)
 {
     return ls::setup::IsSigned<U>::value
-           ? (SL_ColorRGBType<T>{0.5} * ((SL_ColorRGBType<T>)p * (T{1.0} / (T)SL_ColorLimits<U, SL_ColorRType>::max().r)) + SL_ColorRGBType<T>{0.5})
-           : ((SL_ColorRGBType<T>)p * (T{1.0} / (T)SL_ColorLimits<U, SL_ColorRType>::max().r));
+           ? (SL_ColorRGBType<T>{0.5} * ((SL_ColorRGBType<T>)p * (SL_ColorRGBType<T>{1.0} / (SL_ColorRGBType<T>)SL_ColorLimits<U, SL_ColorRGBType>::max())) + SL_ColorRGBType<T>{0.5})
+           : ((SL_ColorRGBType<T>)p * (SL_ColorRGBType<T>{1.0} / (SL_ColorRGBType<T>)SL_ColorLimits<U, SL_ColorRGBType>::max()));
 }
 
 
@@ -538,8 +538,8 @@ inline typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRGBTyp
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value && ls::setup::IsSame<T, ls::math::half>::value, SL_ColorRGBType<U>>::type& p)
 {
     return (SL_ColorRGBType<ls::math::half>)(ls::setup::IsSigned<U>::value
-        ? SL_ColorRGBType<float>{0.5f} * ((SL_ColorRGBType<float>)p * (1.f / (float)SL_ColorLimits<U, SL_ColorRType>::max().r)) + SL_ColorRGBType<float>{0.5f}
-        : (SL_ColorRGBType<float>)p * (1.f / (float)SL_ColorLimits<U, SL_ColorRType>::max().r)
+        ? SL_ColorRGBType<float>{0.5f} * ((SL_ColorRGBType<float>)p * (SL_ColorRGBType<float>{1.f} / (SL_ColorRGBType<float>)SL_ColorLimits<U, SL_ColorRGBType>::max())) + SL_ColorRGBType<float>{0.5f}
+        : (SL_ColorRGBType<float>)p * (SL_ColorRGBType<float>{1.f} / (SL_ColorRGBType<float>)SL_ColorLimits<U, SL_ColorRGBType>::max())
     );
 }
 
@@ -609,8 +609,8 @@ inline typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGB
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value, SL_ColorRGBAType<U>>::type& p)
 {
     return ((uint64_t)SL_ColorLimits<T, SL_ColorRType>::max().r > (uint64_t)SL_ColorLimits<U, SL_ColorRType>::max().r)
-        ? ((SL_ColorRGBAType<T>)p * (SL_ColorLimits<T, SL_ColorRType>::max().r / (T)SL_ColorLimits<U, SL_ColorRType>::max().r))
-        : (SL_ColorRGBAType<T>)(p / (SL_ColorLimits<U, SL_ColorRType>::max().r / (U)SL_ColorLimits<T, SL_ColorRType>::max().r));
+        ? ((SL_ColorRGBAType<T>)p * (SL_ColorLimits<T, SL_ColorRGBAType>::max() / (SL_ColorRGBAType<T>)SL_ColorLimits<U, SL_ColorRGBAType>::max()))
+        : (SL_ColorRGBAType<T>)(p / (SL_ColorLimits<U, SL_ColorRGBAType>::max() / (SL_ColorRGBAType<U>)SL_ColorLimits<T, SL_ColorRGBAType>::max()));
 }
 
 
@@ -622,7 +622,7 @@ template <typename T, typename U>
 inline typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGBAType<T>>::type
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value && !ls::setup::IsSame<U, ls::math::half>::value, SL_ColorRGBAType<U>>::type& p)
 {
-    return (SL_ColorRGBAType<T>)(p * (U)SL_ColorLimits<T, SL_ColorRType>::max().r);
+    return (SL_ColorRGBAType<T>)(p * (SL_ColorRGBAType<U>)SL_ColorLimits<T, SL_ColorRGBAType>::max());
 }
 
 
@@ -631,7 +631,7 @@ template <typename T, typename U>
 inline typename ls::setup::EnableIf<ls::setup::IsIntegral<T>::value, SL_ColorRGBAType<T>>::type
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsFloat<U>::value && ls::setup::IsSame<U, ls::math::half>::value, SL_ColorRGBAType<U>>::type& p)
 {
-    return (SL_ColorRGBAType<T>)((SL_ColorRGBAType<float>)p * (float)SL_ColorLimits<T, SL_ColorRType>::max().r);
+    return (SL_ColorRGBAType<T>)((SL_ColorRGBAType<float>)p * (SL_ColorRGBAType<float>)SL_ColorLimits<T, SL_ColorRGBAType>::max());
 }
 
 
@@ -644,8 +644,8 @@ inline typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRGBATy
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value && !ls::setup::IsSame<T, ls::math::half>::value, SL_ColorRGBAType<U>>::type& p)
 {
     return ls::setup::IsSigned<U>::value
-           ? (SL_ColorRGBAType<T>{0.5} * ((SL_ColorRGBAType<T>)p * (T{1.0} / (T)SL_ColorLimits<U, SL_ColorRType>::max().r)) + SL_ColorRGBAType<T>{0.5})
-           : ((SL_ColorRGBAType<T>)p * (T{1.0} / (T)SL_ColorLimits<U, SL_ColorRType>::max().r));
+           ? (SL_ColorRGBAType<T>{0.5} * ((SL_ColorRGBAType<T>)p * (SL_ColorRGBAType<T>{1.0} / (SL_ColorRGBAType<T>)SL_ColorLimits<U, SL_ColorRGBAType>::max())) + SL_ColorRGBAType<T>{0.5})
+           : ((SL_ColorRGBAType<T>)p * (SL_ColorRGBAType<T>{1.0} / (SL_ColorRGBAType<T>)SL_ColorLimits<U, SL_ColorRGBAType>::max()));
 }
 
 
@@ -655,8 +655,8 @@ inline typename ls::setup::EnableIf<ls::setup::IsFloat<T>::value, SL_ColorRGBATy
 color_cast(const typename ls::setup::EnableIf<ls::setup::IsIntegral<U>::value && ls::setup::IsSame<T, ls::math::half>::value, SL_ColorRGBAType<U>>::type& p)
 {
     return (SL_ColorRGBAType<ls::math::half>)(ls::setup::IsSigned<U>::value
-        ? SL_ColorRGBAType<float>{0.5f} * ((SL_ColorRGBAType<float>)p * (1.f / (float)SL_ColorLimits<U, SL_ColorRType>::max().r)) + SL_ColorRGBAType<float>{0.5f}
-        : (SL_ColorRGBAType<float>)p * (1.f / (float)SL_ColorLimits<U, SL_ColorRType>::max().r)
+        ? SL_ColorRGBAType<float>{0.5f} * ((SL_ColorRGBAType<float>)p * (SL_ColorRGBAType<float>{1.f} / (SL_ColorRGBAType<float>)SL_ColorLimits<U, SL_ColorRGBAType>::max())) + SL_ColorRGBAType<float>{0.5f}
+        : (SL_ColorRGBAType<float>)p * (SL_ColorRGBAType<float>{1.f} / (SL_ColorRGBAType<float>)SL_ColorLimits<U, SL_ColorRGBAType>::max())
     );
 }
 
