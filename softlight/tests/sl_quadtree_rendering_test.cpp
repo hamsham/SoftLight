@@ -400,7 +400,19 @@ int main()
         {
             pWindow->pop_event(&evt);
 
-            if (evt.type == SL_WinEventType::WIN_EVENT_KEY_UP)
+            if (evt.type == SL_WinEventType::WIN_EVENT_RESIZED)
+            {
+                std::cout<< "Window resized: " << evt.window.width << 'x' << evt.window.height << std::endl;
+                pRenderBuf->terminate();
+                pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
+                context.texture(0).init(context.texture(0).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
+                context.texture(1).init(context.texture(1).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
+
+                SL_Framebuffer& fbo = context.framebuffer(0);
+                fbo.attach_color_buffer(0, context.texture(0).view());
+                fbo.attach_depth_buffer(context.texture(1).view());
+            }
+            else if (evt.type == SL_WinEventType::WIN_EVENT_KEY_UP)
             {
                 const SL_KeySymbol keySym = evt.keyboard.keysym;
                 switch (keySym)
@@ -493,15 +505,6 @@ int main()
 
             maxDepth = quadtree.depth();
             currDepth = math::clamp<size_t>(currDepth, 0, maxDepth);
-
-            if (pWindow->width() != pRenderBuf->width() || pWindow->height() != pRenderBuf->height())
-            {
-                context.texture(0).init(context.texture(0).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height(), 1);
-                context.texture(1).init(context.texture(1).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height(), 1);
-
-                pRenderBuf->terminate();
-                pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());
-            }
 
             pGraph->update();
 
