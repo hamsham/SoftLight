@@ -402,6 +402,13 @@ int main()
                 context.texture(3).init(context.texture(3).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
                 context.texture(4).init(context.texture(4).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
 
+                SL_Framebuffer& fbo = context.framebuffer(0);
+                fbo.attach_color_buffer(0, context.texture(1).view());
+                fbo.attach_color_buffer(1, context.texture(2).view());
+                fbo.attach_color_buffer(2, context.texture(3).view());
+                fbo.attach_color_buffer(3, context.texture(4).view());
+                fbo.attach_depth_buffer(context.texture(0).view());
+
                 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
             }
             else if (evt.type == SL_WinEventType::WIN_EVENT_KEY_UP)

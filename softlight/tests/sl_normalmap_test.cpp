@@ -474,6 +474,11 @@ int main()
                 context.texture(0).init(context.texture(0).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
                 context.texture(1).init(context.texture(1).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
                 context.texture(2).init(context.texture(2).type(), (uint16_t)pWindow->width(), (uint16_t)pWindow->height());
+
+                SL_Framebuffer& fbo0 = context.framebuffer(0);
+                fbo0.attach_color_buffer(0, context.texture(1).view());
+                fbo0.attach_color_buffer(1, context.texture(2).view());
+                fbo0.attach_depth_buffer(context.texture(0).view());
             }
             else if (evt.type == SL_WinEventType::WIN_EVENT_KEY_UP)
             {
