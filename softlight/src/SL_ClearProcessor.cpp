@@ -68,6 +68,7 @@ template void SL_ClearProcessor::clear_texture<SL_ColorRType<uint8_t>>(const SL_
 template void SL_ClearProcessor::clear_texture<SL_ColorRType<uint16_t>>(const SL_ColorRType<uint16_t>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRType<uint32_t>>(const SL_ColorRType<uint32_t>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRType<uint64_t>>(const SL_ColorRType<uint64_t>&) noexcept;
+template void SL_ClearProcessor::clear_texture<SL_ColorRType<ls::math::half>>(const SL_ColorRType<ls::math::half>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRType<float>>(const SL_ColorRType<float>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRType<double>>(const SL_ColorRType<double>&) noexcept;
 
@@ -75,6 +76,7 @@ template void SL_ClearProcessor::clear_texture<SL_ColorRGType<uint8_t>>(const SL
 template void SL_ClearProcessor::clear_texture<SL_ColorRGType<uint16_t>>(const SL_ColorRGType<uint16_t>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRGType<uint32_t>>(const SL_ColorRGType<uint32_t>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRGType<uint64_t>>(const SL_ColorRGType<uint64_t>&) noexcept;
+template void SL_ClearProcessor::clear_texture<SL_ColorRGType<ls::math::half>>(const SL_ColorRGType<ls::math::half>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRGType<float>>(const SL_ColorRGType<float>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRGType<double>>(const SL_ColorRGType<double>&) noexcept;
 
@@ -82,6 +84,7 @@ template void SL_ClearProcessor::clear_texture<SL_ColorRGBType<uint8_t>>(const S
 template void SL_ClearProcessor::clear_texture<SL_ColorRGBType<uint16_t>>(const SL_ColorRGBType<uint16_t>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRGBType<uint32_t>>(const SL_ColorRGBType<uint32_t>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRGBType<uint64_t>>(const SL_ColorRGBType<uint64_t>&) noexcept;
+template void SL_ClearProcessor::clear_texture<SL_ColorRGBType<ls::math::half>>(const SL_ColorRGBType<ls::math::half>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRGBType<float>>(const SL_ColorRGBType<float>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRGBType<double>>(const SL_ColorRGBType<double>&) noexcept;
 
@@ -89,6 +92,7 @@ template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint8_t>>(const 
 template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint16_t>>(const SL_ColorRGBAType<uint16_t>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint32_t>>(const SL_ColorRGBAType<uint32_t>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<uint64_t>>(const SL_ColorRGBAType<uint64_t>&) noexcept;
+template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<ls::math::half>>(const SL_ColorRGBAType<ls::math::half>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<float>>(const SL_ColorRGBAType<float>&) noexcept;
 template void SL_ClearProcessor::clear_texture<SL_ColorRGBAType<double>>(const SL_ColorRGBAType<double>&) noexcept;
 
@@ -111,6 +115,7 @@ void SL_ClearProcessor::execute() noexcept
         case SL_COLOR_R_16U:      clear_texture<SL_ColorRType<uint16_t>>(*reinterpret_cast<const SL_ColorRType<uint16_t>*>(mTexture));    break;
         case SL_COLOR_R_32U:      clear_texture<SL_ColorRType<uint32_t>>(*reinterpret_cast<const SL_ColorRType<uint32_t>*>(mTexture));    break;
         case SL_COLOR_R_64U:      clear_texture<SL_ColorRType<uint64_t>>(*reinterpret_cast<const SL_ColorRType<uint64_t>*>(mTexture));    break;
+        case SL_COLOR_R_HALF:     clear_texture<SL_ColorRType<ls::math::half>>(*reinterpret_cast<const SL_ColorRType<ls::math::half>*>(mTexture)); break;
         case SL_COLOR_R_FLOAT:    clear_texture<SL_ColorRType<float>>(*reinterpret_cast<const SL_ColorRType<float>*>(mTexture));       break;
         case SL_COLOR_R_DOUBLE:   clear_texture<SL_ColorRType<double>>(*reinterpret_cast<const SL_ColorRType<double>*>(mTexture));      break;
 
@@ -118,6 +123,7 @@ void SL_ClearProcessor::execute() noexcept
         case SL_COLOR_RG_16U:     clear_texture<SL_ColorRGType<uint16_t>>(*reinterpret_cast<const SL_ColorRGType<uint16_t>*>(mTexture));   break;
         case SL_COLOR_RG_32U:     clear_texture<SL_ColorRGType<uint32_t>>(*reinterpret_cast<const SL_ColorRGType<uint32_t>*>(mTexture));   break;
         case SL_COLOR_RG_64U:     clear_texture<SL_ColorRGType<uint64_t>>(*reinterpret_cast<const SL_ColorRGType<uint64_t>*>(mTexture));   break;
+        case SL_COLOR_RG_HALF:    clear_texture<SL_ColorRGType<ls::math::half>>(*reinterpret_cast<const SL_ColorRGType<ls::math::half>*>(mTexture)); break;
         case SL_COLOR_RG_FLOAT:   clear_texture<SL_ColorRGType<float>>(*reinterpret_cast<const SL_ColorRGType<float>*>(mTexture));      break;
         case SL_COLOR_RG_DOUBLE:  clear_texture<SL_ColorRGType<double>>(*reinterpret_cast<const SL_ColorRGType<double>*>(mTexture));     break;
 
@@ -125,6 +131,7 @@ void SL_ClearProcessor::execute() noexcept
         case SL_COLOR_RGB_16U:    clear_texture<SL_ColorRGBType<uint16_t>>(*reinterpret_cast<const SL_ColorRGBType<uint16_t>*>(mTexture));  break;
         case SL_COLOR_RGB_32U:    clear_texture<SL_ColorRGBType<uint32_t>>(*reinterpret_cast<const SL_ColorRGBType<uint32_t>*>(mTexture));  break;
         case SL_COLOR_RGB_64U:    clear_texture<SL_ColorRGBType<uint64_t>>(*reinterpret_cast<const SL_ColorRGBType<uint64_t>*>(mTexture));  break;
+        case SL_COLOR_RGB_HALF:   clear_texture<SL_ColorRGBType<ls::math::half>>(*reinterpret_cast<const SL_ColorRGBType<ls::math::half>*>(mTexture)); break;
         case SL_COLOR_RGB_FLOAT:  clear_texture<SL_ColorRGBType<float>>(*reinterpret_cast<const SL_ColorRGBType<float>*>(mTexture));     break;
         case SL_COLOR_RGB_DOUBLE: clear_texture<SL_ColorRGBType<double>>(*reinterpret_cast<const SL_ColorRGBType<double>*>(mTexture));    break;
 
@@ -132,6 +139,7 @@ void SL_ClearProcessor::execute() noexcept
         case SL_COLOR_RGBA_16U:    clear_texture<SL_ColorRGBAType<uint16_t>>(*reinterpret_cast<const SL_ColorRGBAType<uint16_t>*>(mTexture)); break;
         case SL_COLOR_RGBA_32U:    clear_texture<SL_ColorRGBAType<uint32_t>>(*reinterpret_cast<const SL_ColorRGBAType<uint32_t>*>(mTexture)); break;
         case SL_COLOR_RGBA_64U:    clear_texture<SL_ColorRGBAType<uint64_t>>(*reinterpret_cast<const SL_ColorRGBAType<uint64_t>*>(mTexture)); break;
+        case SL_COLOR_RGBA_HALF:   clear_texture<SL_ColorRGBAType<ls::math::half>>(*reinterpret_cast<const SL_ColorRGBAType<ls::math::half>*>(mTexture)); break;
         case SL_COLOR_RGBA_FLOAT:  clear_texture<SL_ColorRGBAType<float>>(*reinterpret_cast<const SL_ColorRGBAType<float>*>(mTexture));    break;
         case SL_COLOR_RGBA_DOUBLE: clear_texture<SL_ColorRGBAType<double>>(*reinterpret_cast<const SL_ColorRGBAType<double>*>(mTexture));   break;
 

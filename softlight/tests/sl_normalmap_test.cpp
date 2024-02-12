@@ -325,7 +325,7 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
     LS_ASSERT(retCode == 0);
 
     SL_Texture& ambient = context.texture(3);
-    retCode = texDepth.init(SL_ColorDataType::SL_COLOR_R_16U, ambient.width(), ambient.height(), 1);
+    retCode = texDepth.init(SL_ColorDataType::SL_COLOR_R_HALF, ambient.width(), ambient.height(), 1);
     LS_ASSERT(retCode == 0);
 
     retCode = texUv.init(SL_ColorDataType::SL_COLOR_RGB_8U, ambient.width(), ambient.height(), 1);

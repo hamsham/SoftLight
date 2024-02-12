@@ -193,6 +193,7 @@ SL_ColorDataType get_pixel_format(FIBITMAP* pImg, unsigned bpp, bool* success)
         LS_LOG_MSG("\tFloat Image");
         switch (bpp)
         {
+            case 16: return SL_COLOR_R_HALF;
             case 32: return SL_COLOR_R_FLOAT;
             case 64: return SL_COLOR_RG_FLOAT;
             case 96: return SL_COLOR_RGB_FLOAT;
@@ -281,6 +282,7 @@ FREE_IMAGE_TYPE sl_color_to_freeimage(SL_ColorDataType type)
         case SL_COLOR_RGBA_5551:
         case SL_COLOR_RGBA_4444:
         case SL_COLOR_RGBA_1010102:
+        default:
             break;
     }
 
@@ -303,6 +305,10 @@ unsigned sl_r_mask_to_freeimage(SL_ColorDataType type)
         case SL_COLOR_RG_16U:
         case SL_COLOR_RGB_16U:
         case SL_COLOR_RGBA_16U:
+        case SL_COLOR_R_HALF:
+        case SL_COLOR_RG_HALF:
+        case SL_COLOR_RGB_HALF:
+        case SL_COLOR_RGBA_HALF:
             return 0x0000FFFF;
 
         case SL_COLOR_R_32U:
@@ -337,6 +343,9 @@ unsigned sl_g_mask_to_freeimage(SL_ColorDataType type)
         case SL_COLOR_RG_16U:
         case SL_COLOR_RGB_16U:
         case SL_COLOR_RGBA_16U:
+        case SL_COLOR_RG_HALF:
+        case SL_COLOR_RGB_HALF:
+        case SL_COLOR_RGBA_HALF:
             return 0x0000FFFF;
 
         case SL_COLOR_RG_32U:
@@ -367,6 +376,8 @@ unsigned sl_b_mask_to_freeimage(SL_ColorDataType type)
 
         case SL_COLOR_RGB_16U:
         case SL_COLOR_RGBA_16U:
+        case SL_COLOR_RGB_HALF:
+        case SL_COLOR_RGBA_HALF:
             return 0x0000FFFF;
 
         case SL_COLOR_RGB_32U:

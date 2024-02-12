@@ -832,6 +832,7 @@ void SL_BlitCompressedProcessor::blit_src_compressed() noexcept
         case SL_COLOR_R_16U:        blit_nearest<SL_Blit_Compressed_to_R<inColor_type, uint16_t>>();    break;
         case SL_COLOR_R_32U:        blit_nearest<SL_Blit_Compressed_to_R<inColor_type, uint32_t>>();    break;
         case SL_COLOR_R_64U:        blit_nearest<SL_Blit_Compressed_to_R<inColor_type, uint64_t>>();    break;
+        case SL_COLOR_R_HALF:       blit_nearest<SL_Blit_Compressed_to_R<inColor_type, ls::math::half>>(); break;
         case SL_COLOR_R_FLOAT:      blit_nearest<SL_Blit_Compressed_to_R<inColor_type, float>>();       break;
         case SL_COLOR_R_DOUBLE:     blit_nearest<SL_Blit_Compressed_to_R<inColor_type, double>>();      break;
 
@@ -839,6 +840,7 @@ void SL_BlitCompressedProcessor::blit_src_compressed() noexcept
         case SL_COLOR_RG_16U:       blit_nearest<SL_Blit_Compressed_to_RG<inColor_type, uint16_t>>();   break;
         case SL_COLOR_RG_32U:       blit_nearest<SL_Blit_Compressed_to_RG<inColor_type, uint32_t>>();   break;
         case SL_COLOR_RG_64U:       blit_nearest<SL_Blit_Compressed_to_RG<inColor_type, uint64_t>>();   break;
+        case SL_COLOR_RG_HALF:      blit_nearest<SL_Blit_Compressed_to_RG<inColor_type, ls::math::half>>(); break;
         case SL_COLOR_RG_FLOAT:     blit_nearest<SL_Blit_Compressed_to_RG<inColor_type, float>>();      break;
         case SL_COLOR_RG_DOUBLE:    blit_nearest<SL_Blit_Compressed_to_RG<inColor_type, double>>();     break;
 
@@ -846,6 +848,7 @@ void SL_BlitCompressedProcessor::blit_src_compressed() noexcept
         case SL_COLOR_RGB_16U:      blit_nearest<SL_Blit_Compressed_to_RGB<inColor_type, uint16_t>>();  break;
         case SL_COLOR_RGB_32U:      blit_nearest<SL_Blit_Compressed_to_RGB<inColor_type, uint32_t>>();  break;
         case SL_COLOR_RGB_64U:      blit_nearest<SL_Blit_Compressed_to_RGB<inColor_type, uint64_t>>();  break;
+        case SL_COLOR_RGB_HALF:     blit_nearest<SL_Blit_Compressed_to_RGB<inColor_type, ls::math::half>>(); break;
         case SL_COLOR_RGB_FLOAT:    blit_nearest<SL_Blit_Compressed_to_RGB<inColor_type, float>>();     break;
         case SL_COLOR_RGB_DOUBLE:   blit_nearest<SL_Blit_Compressed_to_RGB<inColor_type, double>>();    break;
 
@@ -853,6 +856,7 @@ void SL_BlitCompressedProcessor::blit_src_compressed() noexcept
         case SL_COLOR_RGBA_16U:     blit_nearest<SL_Blit_Compressed_to_RGBA<inColor_type, uint16_t>>(); break;
         case SL_COLOR_RGBA_32U:     blit_nearest<SL_Blit_Compressed_to_RGBA<inColor_type, uint32_t>>(); break;
         case SL_COLOR_RGBA_64U:     blit_nearest<SL_Blit_Compressed_to_RGBA<inColor_type, uint64_t>>(); break;
+        case SL_COLOR_RGBA_HALF:    blit_nearest<SL_Blit_Compressed_to_RGBA<inColor_type, ls::math::half>>(); break;
         case SL_COLOR_RGBA_FLOAT:   blit_nearest<SL_Blit_Compressed_to_RGBA<inColor_type, float>>();    break;
         case SL_COLOR_RGBA_DOUBLE:  blit_nearest<SL_Blit_Compressed_to_RGBA<inColor_type, double>>();   break;
 
@@ -936,6 +940,7 @@ void SL_BlitCompressedProcessor::execute() noexcept
         case SL_COLOR_R_16U:      blit_src_r<uint16_t>();    break;
         case SL_COLOR_R_32U:      blit_src_r<uint32_t>();    break;
         case SL_COLOR_R_64U:      blit_src_r<uint64_t>();    break;
+        case SL_COLOR_R_HALF:     blit_src_r<ls::math::half>(); break;
         case SL_COLOR_R_FLOAT:    blit_src_r<float>();       break;
         case SL_COLOR_R_DOUBLE:   blit_src_r<double>();      break;
 
@@ -943,6 +948,7 @@ void SL_BlitCompressedProcessor::execute() noexcept
         case SL_COLOR_RG_16U:     blit_src_rg<uint16_t>();   break;
         case SL_COLOR_RG_32U:     blit_src_rg<uint32_t>();   break;
         case SL_COLOR_RG_64U:     blit_src_rg<uint64_t>();   break;
+        case SL_COLOR_RG_HALF:    blit_src_rg<ls::math::half>(); break;
         case SL_COLOR_RG_FLOAT:   blit_src_rg<float>();      break;
         case SL_COLOR_RG_DOUBLE:  blit_src_rg<double>();     break;
 
@@ -950,6 +956,7 @@ void SL_BlitCompressedProcessor::execute() noexcept
         case SL_COLOR_RGB_16U:    blit_src_rgb<uint16_t>();  break;
         case SL_COLOR_RGB_32U:    blit_src_rgb<uint32_t>();  break;
         case SL_COLOR_RGB_64U:    blit_src_rgb<uint64_t>();  break;
+        case SL_COLOR_RGB_HALF:   blit_src_rgb<ls::math::half>(); break;
         case SL_COLOR_RGB_FLOAT:  blit_src_rgb<float>();     break;
         case SL_COLOR_RGB_DOUBLE: blit_src_rgb<double>();    break;
 
@@ -957,6 +964,7 @@ void SL_BlitCompressedProcessor::execute() noexcept
         case SL_COLOR_RGBA_16U:    blit_src_rgba<uint16_t>(); break;
         case SL_COLOR_RGBA_32U:    blit_src_rgba<uint32_t>(); break;
         case SL_COLOR_RGBA_64U:    blit_src_rgba<uint64_t>(); break;
+        case SL_COLOR_RGBA_HALF:   blit_src_rgba<ls::math::half>(); break;
         case SL_COLOR_RGBA_FLOAT:  blit_src_rgba<float>();    break;
         case SL_COLOR_RGBA_DOUBLE: blit_src_rgba<double>();   break;
 

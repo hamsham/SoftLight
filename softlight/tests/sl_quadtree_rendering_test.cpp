@@ -215,7 +215,7 @@ utils::Pointer<SL_SceneGraph> init_context()
     LS_ASSERT(retCode == 0);
 
     SL_Texture& depth = context.texture(depthId);
-    retCode = depth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = depth.init(SL_ColorDataType::SL_COLOR_R_HALF, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
     LS_ASSERT(retCode == 0);
 
     SL_Framebuffer& fbo = context.framebuffer(fboId);

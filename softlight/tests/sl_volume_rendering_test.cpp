@@ -500,7 +500,7 @@ utils::Pointer<SL_SceneGraph> init_volume_context()
     LS_ASSERT(retCode == 0);
 
     SL_Texture& depth = context.texture(depthId);
-    retCode = depth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH/2, IMAGE_HEIGHT/2, 1);
+    retCode = depth.init(SL_ColorDataType::SL_COLOR_R_HALF, IMAGE_WIDTH/2, IMAGE_HEIGHT/2, 1);
     LS_ASSERT(retCode == 0);
 
     SL_Framebuffer& fbo = context.framebuffer(fboId);
@@ -779,7 +779,7 @@ int main()
             if (pWindow->width() != pRenderBuf->width() || pWindow->height() != pRenderBuf->height())
             {
                 context.texture(0).init(SL_ColorDataType::SL_COLOR_RGBA_FLOAT, (uint16_t)pWindow->width()/2, (uint16_t)pWindow->height()/2, 1);
-                context.texture(1).init(SL_ColorDataType::SL_COLOR_R_16U,      (uint16_t)pWindow->width()/2, (uint16_t)pWindow->height()/2, 1);
+                context.texture(1).init(SL_ColorDataType::SL_COLOR_R_HALF,      (uint16_t)pWindow->width()/2, (uint16_t)pWindow->height()/2, 1);
 
                 pRenderBuf->terminate();
                 pRenderBuf->init(*pWindow, pWindow->width(), pWindow->height());

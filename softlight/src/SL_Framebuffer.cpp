@@ -612,6 +612,10 @@ SL_ColorPlacementFunc _get_placement_func(const SL_ColorDataType type) noexcept
         case SL_COLOR_RG_64U:                         return &assign_pixel<SL_ColorRG64>; break;
         case SL_COLOR_RGB_64U:                        return &assign_pixel<SL_ColorRGB64>; break;
         case SL_COLOR_RGBA_64U:                       return &assign_pixel<SL_ColorRGBA64>; break;
+        case SL_COLOR_R_HALF:                         return &assign_pixel<SL_ColorRh>; break;
+        case SL_COLOR_RG_HALF:                        return &assign_pixel<SL_ColorRGh>; break;
+        case SL_COLOR_RGB_HALF:                       return &assign_pixel<SL_ColorRGBh>; break;
+        case SL_COLOR_RGBA_HALF:                      return &assign_pixel<SL_ColorRGBAh>; break;
         case SL_COLOR_R_FLOAT:                        return &assign_pixel<SL_ColorRf>; break;
         case SL_COLOR_RG_FLOAT:                       return &assign_pixel<SL_ColorRGf>; break;
         case SL_COLOR_RGB_FLOAT:                      return &assign_pixel<SL_ColorRGBf>; break;
@@ -658,6 +662,10 @@ SL_BlendedColorPlacementFunc _get_blended_placement_func(const SL_ColorDataType 
         case SL_COLOR_RG_64U:                         return &assign_alpha_pixel<SL_ColorRG64>;
         case SL_COLOR_RGB_64U:                        return &assign_alpha_pixel<SL_ColorRGB64>;
         case SL_COLOR_RGBA_64U:                       return &assign_alpha_pixel<SL_ColorRGBA64>;
+        case SL_COLOR_R_HALF:                         return &assign_alpha_pixel<SL_ColorRh>;
+        case SL_COLOR_RG_HALF:                        return &assign_alpha_pixel<SL_ColorRGh>;
+        case SL_COLOR_RGB_HALF:                       return &assign_alpha_pixel<SL_ColorRGBh>;
+        case SL_COLOR_RGBA_HALF:                      return &assign_alpha_pixel<SL_ColorRGBAh>;
         case SL_COLOR_R_FLOAT:                        return &assign_alpha_pixel<SL_ColorRf>;
         case SL_COLOR_RG_FLOAT:                       return &assign_alpha_pixel<SL_ColorRGf>;
         case SL_COLOR_RGB_FLOAT:                      return &assign_alpha_pixel<SL_ColorRGBf>;
@@ -973,7 +981,7 @@ int SL_Framebuffer::valid() const noexcept
         return -9;
     }
 
-    if (mDepth.type != SL_COLOR_R_16U && mDepth.type != SL_COLOR_R_FLOAT && mDepth.type != SL_COLOR_R_DOUBLE)
+    if (mDepth.type != SL_COLOR_R_HALF && mDepth.type != SL_COLOR_R_FLOAT && mDepth.type != SL_COLOR_R_DOUBLE)
     {
         return -10;
     }
@@ -1031,6 +1039,11 @@ void SL_Framebuffer::put_pixel(
         case SL_COLOR_RG_64U:      assign_pixel<SL_ColorRG64>(x, y, rgba, pTexture); break;
         case SL_COLOR_RGB_64U:     assign_pixel<SL_ColorRGB64>(x, y, rgba, pTexture); break;
         case SL_COLOR_RGBA_64U:    assign_pixel<SL_ColorRGBA64>(x, y, rgba, pTexture); break;
+
+        case SL_COLOR_R_HALF:      assign_pixel<SL_ColorRh>(x, y, rgba, pTexture); break;
+        case SL_COLOR_RG_HALF:     assign_pixel<SL_ColorRGh>(x, y, rgba, pTexture); break;
+        case SL_COLOR_RGB_HALF:    assign_pixel<SL_ColorRGBh>(x, y, rgba, pTexture); break;
+        case SL_COLOR_RGBA_HALF:   assign_pixel<SL_ColorRGBAh>(x, y, rgba, pTexture); break;
 
         case SL_COLOR_R_FLOAT:     assign_pixel<SL_ColorRf>(x, y, rgba, pTexture); break;
         case SL_COLOR_RG_FLOAT:    assign_pixel<SL_ColorRGf>(x, y, rgba, pTexture); break;
@@ -1114,6 +1127,11 @@ void SL_Framebuffer::put_alpha_pixel(
         case SL_COLOR_RG_64U:      assign_alpha_pixel<SL_ColorRG64>(x, y, colors, pTexture, blendMode); break;
         case SL_COLOR_RGB_64U:     assign_alpha_pixel<SL_ColorRGB64>(x, y, colors, pTexture, blendMode); break;
         case SL_COLOR_RGBA_64U:    assign_alpha_pixel<SL_ColorRGBA64>(x, y, colors, pTexture, blendMode); break;
+
+        case SL_COLOR_R_HALF:      assign_alpha_pixel<SL_ColorRh>(x, y, colors, pTexture, blendMode); break;
+        case SL_COLOR_RG_HALF:     assign_alpha_pixel<SL_ColorRGh>(x, y, colors, pTexture, blendMode); break;
+        case SL_COLOR_RGB_HALF:    assign_alpha_pixel<SL_ColorRGBh>(x, y, colors, pTexture, blendMode); break;
+        case SL_COLOR_RGBA_HALF:   assign_alpha_pixel<SL_ColorRGBAh>(x, y, colors, pTexture, blendMode); break;
 
         case SL_COLOR_R_FLOAT:     assign_alpha_pixel<SL_ColorRf>(x, y, colors, pTexture, blendMode); break;
         case SL_COLOR_RG_FLOAT:    assign_alpha_pixel<SL_ColorRGf>(x, y, colors, pTexture, blendMode); break;

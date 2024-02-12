@@ -411,7 +411,7 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
 
         size_t depthId = context.create_texture();
         SL_Texture& depth = context.texture(depthId);
-        retCode = depth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+        retCode = depth.init(SL_ColorDataType::SL_COLOR_R_HALF, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
         LS_ASSERT(retCode == 0);
 
         size_t texId = context.create_texture();
@@ -442,7 +442,7 @@ utils::Pointer<SL_SceneGraph> mesh_test_create_context()
 
         size_t depthId = context.create_texture();
         SL_Texture& depth = context.texture(depthId);
-        retCode = depth.init(SL_ColorDataType::SL_COLOR_R_16U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+        retCode = depth.init(SL_ColorDataType::SL_COLOR_R_HALF, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
         LS_ASSERT(retCode == 0);
 
         size_t texId = context.create_texture();

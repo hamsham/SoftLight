@@ -17,6 +17,7 @@ size_t sl_bytes_per_color(SL_ColorDataType p) noexcept
         case SL_COLOR_R_16U:        return 1 * sizeof(uint16_t);
         case SL_COLOR_R_32U:        return 1 * sizeof(uint32_t);
         case SL_COLOR_R_64U:        return 1 * sizeof(uint64_t);
+        case SL_COLOR_R_HALF:       return 1 * sizeof(ls::math::half);
         case SL_COLOR_R_FLOAT:      return 1 * sizeof(float);
         case SL_COLOR_R_DOUBLE:     return 1 * sizeof(double);
 
@@ -24,6 +25,7 @@ size_t sl_bytes_per_color(SL_ColorDataType p) noexcept
         case SL_COLOR_RG_16U:       return 2 * sizeof(uint16_t);
         case SL_COLOR_RG_32U:       return 2 * sizeof(uint32_t);
         case SL_COLOR_RG_64U:       return 2 * sizeof(uint64_t);
+        case SL_COLOR_RG_HALF:      return 2 * sizeof(ls::math::half);
         case SL_COLOR_RG_FLOAT:     return 2 * sizeof(float);
         case SL_COLOR_RG_DOUBLE:    return 2 * sizeof(double);
 
@@ -31,6 +33,7 @@ size_t sl_bytes_per_color(SL_ColorDataType p) noexcept
         case SL_COLOR_RGB_16U:      return 3 * sizeof(uint16_t);
         case SL_COLOR_RGB_32U:      return 3 * sizeof(uint32_t);
         case SL_COLOR_RGB_64U:      return 3 * sizeof(uint64_t);
+        case SL_COLOR_RGB_HALF:     return 3 * sizeof(ls::math::half);
         case SL_COLOR_RGB_FLOAT:    return 3 * sizeof(float);
         case SL_COLOR_RGB_DOUBLE:   return 3 * sizeof(double);
 
@@ -38,6 +41,7 @@ size_t sl_bytes_per_color(SL_ColorDataType p) noexcept
         case SL_COLOR_RGBA_16U:     return 4 * sizeof(uint16_t);
         case SL_COLOR_RGBA_32U:     return 4 * sizeof(uint32_t);
         case SL_COLOR_RGBA_64U:     return 4 * sizeof(uint64_t);
+        case SL_COLOR_RGBA_HALF:    return 4 * sizeof(ls::math::half);
         case SL_COLOR_RGBA_FLOAT:   return 4 * sizeof(float);
         case SL_COLOR_RGBA_DOUBLE:  return 4 * sizeof(double);
 
@@ -67,6 +71,7 @@ unsigned sl_elements_per_color(SL_ColorDataType p) noexcept
         case SL_COLOR_R_16U:        return 1;
         case SL_COLOR_R_32U:        return 1;
         case SL_COLOR_R_64U:        return 1;
+        case SL_COLOR_R_HALF:       return 1;
         case SL_COLOR_R_FLOAT:      return 1;
         case SL_COLOR_R_DOUBLE:     return 1;
 
@@ -74,6 +79,7 @@ unsigned sl_elements_per_color(SL_ColorDataType p) noexcept
         case SL_COLOR_RG_16U:       return 2;
         case SL_COLOR_RG_32U:       return 2;
         case SL_COLOR_RG_64U:       return 2;
+        case SL_COLOR_RG_HALF:      return 2;
         case SL_COLOR_RG_FLOAT:     return 2;
         case SL_COLOR_RG_DOUBLE:    return 2;
 
@@ -81,6 +87,7 @@ unsigned sl_elements_per_color(SL_ColorDataType p) noexcept
         case SL_COLOR_RGB_16U:      return 3;
         case SL_COLOR_RGB_32U:      return 3;
         case SL_COLOR_RGB_64U:      return 3;
+        case SL_COLOR_RGB_HALF:     return 3;
         case SL_COLOR_RGB_FLOAT:    return 3;
         case SL_COLOR_RGB_DOUBLE:   return 3;
 
@@ -88,6 +95,7 @@ unsigned sl_elements_per_color(SL_ColorDataType p) noexcept
         case SL_COLOR_RGBA_16U:     return 4;
         case SL_COLOR_RGBA_32U:     return 4;
         case SL_COLOR_RGBA_64U:     return 4;
+        case SL_COLOR_RGBA_HALF:    return 4;
         case SL_COLOR_RGBA_FLOAT:   return 4;
         case SL_COLOR_RGBA_DOUBLE:  return 4;
 
@@ -153,6 +161,11 @@ SL_GeneralColor sl_match_color_for_type(SL_ColorDataType typeToMatch, const ls::
         case SL_COLOR_RG_64U:       outColor.color.rg64 = color_cast<uint64_t, double>(*reinterpret_cast<const SL_ColorRGd*>(inColor.v)); break;
         case SL_COLOR_RGB_64U:      outColor.color.rgb64 = color_cast<uint64_t, double>(*reinterpret_cast<const SL_ColorRGBd*>(inColor.v)); break;
         case SL_COLOR_RGBA_64U:     outColor.color.rgba64 = color_cast<uint64_t, double>(*reinterpret_cast<const SL_ColorRGBAd*>(inColor.v)); break;
+
+        case SL_COLOR_R_HALF:       outColor.color.rh = color_cast<ls::math::half, double>(*reinterpret_cast<const SL_ColorRd*>(inColor.v)); break;
+        case SL_COLOR_RG_HALF:      outColor.color.rgh = color_cast<ls::math::half, double>(*reinterpret_cast<const SL_ColorRGd*>(inColor.v)); break;
+        case SL_COLOR_RGB_HALF:     outColor.color.rgbh = color_cast<ls::math::half, double>(*reinterpret_cast<const SL_ColorRGBd*>(inColor.v)); break;
+        case SL_COLOR_RGBA_HALF:    outColor.color.rgbah = color_cast<ls::math::half, double>(*reinterpret_cast<const SL_ColorRGBAd*>(inColor.v)); break;
 
         case SL_COLOR_R_FLOAT:      outColor.color.rf = color_cast<float, double>(*reinterpret_cast<const SL_ColorRd*>(inColor.v)); break;
         case SL_COLOR_RG_FLOAT:     outColor.color.rgf = color_cast<float, double>(*reinterpret_cast<const SL_ColorRGd*>(inColor.v)); break;
