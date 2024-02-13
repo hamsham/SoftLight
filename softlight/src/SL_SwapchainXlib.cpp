@@ -1,10 +1,7 @@
 
-#include <cstdint> // fixed-width types
 #include <cstdlib>
+#include <cstring> // strerror()
 #include <utility> // std::move()
-
-#include <unistd.h>
-#include <string.h> // strerror()
 
 extern "C"
 {
@@ -16,13 +13,12 @@ extern "C"
 
         #include <sys/ipc.h> // IPC_CREAT
         #include <sys/shm.h> // shmget
-        #include <sys/stat.h> // SL_IRWXU
+        #include <sys/stat.h> // S_IREAD, S_IWRITE, S_IRGRP, S_IWGRP, S_IROTH, S_IWOTH
     #endif /* SL_ENABLE_XSHM */
 }
 
 #include "lightsky/utils/Log.h"
 
-#include "softlight/SL_Color.hpp"
 #include "softlight/SL_RenderWindowXlib.hpp"
 #include "softlight/SL_SwapchainXlib.hpp"
 
@@ -106,7 +102,6 @@ int SL_SwapchainXlib::init(SL_RenderWindow& win, unsigned width, unsigned height
     }
 
     SL_RenderWindowXlib* pWin = dynamic_cast<SL_RenderWindowXlib*>(&win);
-
     if (pWin == nullptr)
     {
         return -1;
@@ -125,9 +120,9 @@ int SL_SwapchainXlib::init(SL_RenderWindow& win, unsigned width, unsigned height
     XWindowAttributes attribs;
     XGetWindowAttributes(pWin->mDisplay, pWin->mWindow, &attribs);
 
-    char*            pTexData = reinterpret_cast<char*>(mTexture.data());
-    XShmSegmentInfo* pShm     = new XShmSegmentInfo;
-    XImage*          pImg     = XShmCreateImage(pWin->mDisplay, attribs.visual, attribs.depth, ZPixmap, pTexData, pShm, width, height);
+    char* const      pTexData   = reinterpret_cast<char*>(mTexture.data());
+    XShmSegmentInfo* const pShm = new XShmSegmentInfo;
+    XImage* const    pImg       = XShmCreateImage(pWin->mDisplay, attribs.visual, attribs.depth, ZPixmap, pTexData, pShm, width, height);
 
     if (!pShm || !pImg)
     {
@@ -138,15 +133,14 @@ int SL_SwapchainXlib::init(SL_RenderWindow& win, unsigned width, unsigned height
 
     // Some POSIX systems require that the user, group, and "other" can all
     // read to and write to the shared memory segment.
-    constexpr int permissions =
-        0
+    constexpr int permissions = 0
         | S_IREAD
         | S_IWRITE
         | S_IRGRP
         | S_IWGRP
         | S_IROTH
         | S_IWOTH
-        | 0;
+        ;
 
     // Textures on POSIX-based systems are page-aligned to ensure we can use
     // the X11-shared memory extension.

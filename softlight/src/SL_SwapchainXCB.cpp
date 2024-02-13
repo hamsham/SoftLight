@@ -1,10 +1,6 @@
 
-#include <cstdint> // fixed-width types
-#include <cstdlib>
 #include <utility> // std::move()
-
-#include <unistd.h>
-#include <string.h> // strerror()
+#include <cstring> // strerror()
 
 extern "C"
 {
@@ -21,7 +17,6 @@ extern "C"
 
 #include "lightsky/utils/Log.h"
 
-#include "softlight/SL_Color.hpp"
 #include "softlight/SL_RenderWindowXCB.hpp"
 #include "softlight/SL_SwapchainXCB.hpp"
 
@@ -111,15 +106,13 @@ int SL_SwapchainXCB::init(SL_RenderWindow& win, unsigned width, unsigned height)
         return -3;
     }
 
-    //Shm test
-    xcb_shm_segment_info_t* pInfo = nullptr;
     xcb_connection_t* const pConnection = reinterpret_cast<xcb_connection_t*>(pWin->native_handle());
     if (!pConnection)
     {
         return -4;
     }
 
-    pInfo =  new(std::nothrow) xcb_shm_segment_info_t;
+    xcb_shm_segment_info_t* const pInfo = new(std::nothrow) xcb_shm_segment_info_t;
     if (!pInfo)
     {
         LS_LOG_ERR("Unable to allocate memory to setup XCB shared memory data.");
@@ -135,21 +128,19 @@ int SL_SwapchainXCB::init(SL_RenderWindow& win, unsigned width, unsigned height)
 
     // Some POSIX systems require that the user, group, and "other" can all
     // read to and write to the shared memory segment.
-    constexpr int permissions =
-        0
+    constexpr int permissions = 0
         | S_IREAD
         | S_IWRITE
         | S_IRGRP
         | S_IWGRP
         | S_IROTH
         | S_IWOTH
-        | 0;
+        ;
 
     // Textures on POSIX-based systems are page-aligned to ensure we can use
     // the X11-shared memory extension.
     // Hopefully this won't fail...
     pInfo->shmid = shmget(IPC_PRIVATE, width*height*sizeof(SL_ColorRGBA8), IPC_CREAT|permissions);
-
     if (!pInfo->shmid)
     {
         LS_LOG_ERR("Unable to allocate a shared memory segment: (", errno, ") ", strerror(errno));
@@ -158,7 +149,7 @@ int SL_SwapchainXCB::init(SL_RenderWindow& win, unsigned width, unsigned height)
         return -8;
     }
 
-    pInfo->shmaddr = (unsigned char*)shmat(pInfo->shmid, (char*)mTexture.data(), SHM_REMAP);
+    pInfo->shmaddr = (unsigned char*)shmat((int)pInfo->shmid, (char*)mTexture.data(), SHM_REMAP);
     pInfo->shmseg = xcb_generate_id(pConnection);
     xcb_shm_attach(pConnection, pInfo->shmseg, pInfo->shmid, 0);
     //shmctl(info.shmid, IPC_RMID, 0);
