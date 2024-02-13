@@ -8,7 +8,7 @@
  * Vertex Processing Configuration
 -----------------------------------------------------------------------------*/
 #ifndef SL_VERTEX_CACHING_ENABLED
-    #define SL_VERTEX_CACHING_ENABLED 1
+    #define SL_VERTEX_CACHING_ENABLED 0
 #endif /* SL_VERTEX_CACHING_ENABLED */
 
 #ifndef SL_VERTEX_CACHE_SIZE
