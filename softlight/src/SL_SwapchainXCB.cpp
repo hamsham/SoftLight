@@ -112,9 +112,8 @@ int SL_SwapchainXCB::init(SL_RenderWindow& win, unsigned width, unsigned height)
     }
 
     //Shm test
-    xcb_shm_segment_info_t*        pInfo = nullptr;
-    xcb_connection_t*              pConnection = reinterpret_cast<xcb_connection_t*>(pWin->native_handle());
-
+    xcb_shm_segment_info_t* pInfo = nullptr;
+    xcb_connection_t* const pConnection = reinterpret_cast<xcb_connection_t*>(pWin->native_handle());
     if (!pConnection)
     {
         return -4;
@@ -181,9 +180,13 @@ int SL_SwapchainXCB::terminate() noexcept
     {
         mTexture.terminate();
 
-        delete (xcb_shm_segment_info_t*)mShmInfo;
-        mShmInfo = nullptr;
+        xcb_shm_segment_info_t* const pSegment = static_cast<xcb_shm_segment_info_t*>(mShmInfo);
+        xcb_connection_t* const pConnection = reinterpret_cast<xcb_connection_t*>(mWindow->native_handle());
 
+        xcb_shm_detach(pConnection, pSegment->shmseg);
+        delete (xcb_shm_segment_info_t*)mShmInfo;
+
+        mShmInfo = nullptr;
         mWindow = nullptr;
     }
 
