@@ -509,35 +509,6 @@ struct SL_DepthFuncNE
 
 
 /*-----------------------------------------------------------------------------
- * Constants needed for shader operation
------------------------------------------------------------------------------*/
-enum SL_ShaderLimits
-{
-    SL_SHADER_MAX_WORLD_COORDS    = 3,
-    SL_SHADER_MAX_SCREEN_COORDS   = 3,
-    SL_SHADER_MAX_VARYING_VECTORS = 4,
-    SL_SHADER_MAX_FRAG_OUTPUTS    = 4,
-
-    // Maximum number of fragments that get queued before being placed on a
-    // framebuffer.
-    #if !SL_CONSERVE_MEMORY
-    SL_SHADER_MAX_QUEUED_FRAGS    = 600,
-    #else
-    SL_SHADER_MAX_QUEUED_FRAGS    = 16,
-    #endif /* !SL_CONSERVE_MEMORY */
-
-    // Maximum number of vertex groups which get binned before being sent to a
-    // fragment processor.
-    SL_SHADER_MAX_BINNED_PRIMS    = 1024,
-
-    // Maximum possible amount of fragment operations running while
-    // simultaneously allowing vertex processing.
-    SL_VERT_PROCESSOR_MAX_BUFFERS = 8
-};
-
-
-
-/*-----------------------------------------------------------------------------
  * Padded data types to avoid false sharing
 -----------------------------------------------------------------------------*/
 template <typename data_t>

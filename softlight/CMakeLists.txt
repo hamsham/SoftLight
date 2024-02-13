@@ -152,6 +152,7 @@ set(SL_LIB_HEADERS
     include/softlight/SL_Plane.hpp
     include/softlight/SL_PointProcessor.hpp
     include/softlight/SL_PointRasterizer.hpp
+    include/softlight/SL_PostVertexTransform.hpp
     include/softlight/SL_ProcessorPool.hpp
     include/softlight/SL_Quadtree.hpp
     include/softlight/SL_RenderWindow.hpp

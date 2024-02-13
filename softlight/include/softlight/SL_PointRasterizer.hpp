@@ -18,9 +18,6 @@ struct half;
 }
 }
 
-template <typename data_t>
-union SL_BinCounter;
-
 struct SL_FragCoord; // SL_ShaderProcessor.hpp
 struct SL_FragmentBin; // SL_ShaderProcessor.hpp
 class SL_Framebuffer;

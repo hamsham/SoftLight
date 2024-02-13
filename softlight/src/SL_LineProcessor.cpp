@@ -6,213 +6,14 @@
 #include "softlight/SL_IndexBuffer.hpp"
 #include "softlight/SL_LineProcessor.hpp"
 #include "softlight/SL_LineRasterizer.hpp"
+#include "softlight/SL_PostVertexTransform.hpp"
 #include "softlight/SL_Shader.hpp"
 #include "softlight/SL_ShaderUtil.hpp" // SL_BinCounter
 #include "softlight/SL_VertexArray.hpp"
 #include "softlight/SL_VertexCache.hpp"
 #include "softlight/SL_ViewportState.hpp"
 
-
-
-/*-----------------------------------------------------------------------------
- * Anonymous Helper Functions
------------------------------------------------------------------------------*/
 namespace math = ls::math;
-
-
-
-namespace
-{
-
-
-
-/*--------------------------------------
- * Convert world coordinates to screen coordinates
---------------------------------------*/
-inline LS_INLINE void sl_perspective_divide2(math::vec4& LS_RESTRICT_PTR v0, math::vec4& LS_RESTRICT_PTR v1) noexcept
-{
-    #if defined(LS_X86_SSE4_1)
-        const __m128 wInv0 = _mm_rcp_ps(_mm_shuffle_ps(v0.simd, v0.simd, 0xFF));
-        const __m128 wInv1 = _mm_rcp_ps(_mm_shuffle_ps(v1.simd, v1.simd, 0xFF));
-
-        const __m128 vMul0 = _mm_mul_ps(v0.simd, wInv0);
-        const __m128 vMul1 = _mm_mul_ps(v1.simd, wInv1);
-
-        v0.simd = _mm_blend_ps(wInv0, vMul0, 0x07);
-        v1.simd = _mm_blend_ps(wInv1, vMul1, 0x07);
-
-    #elif defined(LS_X86_SSSE3)
-        const __m128 wInv0 = _mm_rcp_ps(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(v0.simd), 0xFF)));
-        const __m128 wInv1 = _mm_rcp_ps(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(v1.simd), 0xFF)));
-
-        const __m128 vMul0 = _mm_mul_ps(v0.simd, wInv0);
-        const __m128 vMul1 = _mm_mul_ps(v1.simd, wInv1);
-
-        const __m128i wi0  = _mm_shuffle_epi8(_mm_castps_si128(wInv0), _mm_set_epi8(15, 14, 13, 12, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1));
-        const __m128i wi1  = _mm_shuffle_epi8(_mm_castps_si128(wInv1), _mm_set_epi8(15, 14, 13, 12, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1));
-
-        const __m128i vi0  = _mm_shuffle_epi8(_mm_castps_si128(vMul0), _mm_set_epi8(-1, -1, -1, -1, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0));
-        const __m128i vi1  = _mm_shuffle_epi8(_mm_castps_si128(vMul1), _mm_set_epi8(-1, -1, -1, -1, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0));
-
-        v0.simd = _mm_or_ps(_mm_castsi128_ps(vi0), _mm_castsi128_ps(wi0));
-        v1.simd = _mm_or_ps(_mm_castsi128_ps(vi1), _mm_castsi128_ps(wi1));
-
-    #elif defined(LS_ARCH_AARCH64)
-        //const uint32x4_t blendMask{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000000};
-        const uint32x4_t blendMask = vsetq_lane_u32(0, vdupq_n_u32(0xFFFFFFFF), 3);
-
-        const float32x4_t w0 = vdupq_n_f32(vgetq_lane_f32(v0.simd, 3));
-        const float32x4_t wInv0 = vdivq_f32(vdupq_n_f32(1.f), w0);
-        const float32x4_t vMul0 = vmulq_f32(v0.simd, wInv0);
-        v0.simd = vbslq_f32(blendMask, vMul0, wInv0);
-
-        const float32x4_t w1 = vdupq_n_f32(vgetq_lane_f32(v1.simd, 3));
-        const float32x4_t wInv1 = vdivq_f32(vdupq_n_f32(1.f), w1);
-        const float32x4_t vMul1 = vmulq_f32(v1.simd, wInv1);
-        v1.simd = vbslq_f32(blendMask, vMul1, wInv1);
-
-    #elif defined(LS_ARM_NEON)
-        //const uint32x4_t blendMask{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000000};
-        const uint32x4_t blendMask = vsetq_lane_u32(0, vdupq_n_u32(0xFFFFFFFF), 3);
-
-        const float32x4_t w0 = vdupq_n_f32(vgetq_lane_f32(v0.simd, 3));
-        const float32x4_t wInv0 = vrecpeq_f32(w0);
-        const float32x4_t vMul0 = vmulq_f32(v0.simd, vmulq_f32(vrecpsq_f32(w0, wInv0), wInv0));
-        v0.simd = vbslq_f32(blendMask, vMul0, wInv0);
-
-        const float32x4_t w1 = vdupq_n_f32(vgetq_lane_f32(v1.simd, 3));
-        const float32x4_t wInv1 = vrecpeq_f32(w1);
-        const float32x4_t vMul1 = vmulq_f32(v1.simd, vmulq_f32(vrecpsq_f32(w1, wInv1), wInv1));
-        v1.simd = vbslq_f32(blendMask, vMul1, wInv1);
-
-    #else
-        const math::vec4&& wInv0 = math::rcp(v0[3]);
-        const math::vec4&& wInv1 = math::rcp(v1[3]);
-
-        const math::vec4&& vMul0 = v0 * wInv0;
-        const math::vec4&& vMul1 = v1 * wInv1;
-
-        v0 = {vMul0[0], vMul0[1], vMul0[2], wInv0[0]};
-        v1 = {vMul1[0], vMul1[1], vMul1[2], wInv1[0]};
-
-    #endif
-}
-
-
-
-/*--------------------------------------
- * Convert world coordinates to screen coordinates
---------------------------------------*/
-inline LS_INLINE void sl_world_to_screen_coords_divided2(
-    math::vec4& LS_RESTRICT_PTR p0,
-    math::vec4& LS_RESTRICT_PTR p1,
-    const math::vec4& viewportDims
-) noexcept
-{
-    #if defined(LS_X86_FMA)
-        const __m128 dims = _mm_load_ps(&viewportDims);
-        const __m128 halfDims = _mm_mul_ps(dims, _mm_set1_ps(0.5f));
-        const __m128 one = _mm_set1_ps(1.f);
-        const __m128 wh = _mm_shuffle_ps(halfDims, one, 0x0E);
-
-        __m128 v0 = _mm_add_ps(one, p0.simd);
-        v0 = _mm_floor_ps(_mm_fmadd_ps(v0, wh, dims));
-        p0.simd = _mm_shuffle_ps(_mm_max_ps(v0, _mm_setzero_ps()), p0.simd, 0xE4);
-
-        __m128 v1 = _mm_add_ps(one, p1.simd);
-        v1 = _mm_floor_ps(_mm_fmadd_ps(v1, wh, dims));
-        p1.simd = _mm_shuffle_ps(_mm_max_ps(v1, _mm_setzero_ps()), p1.simd, 0xE4);
-
-    #elif defined(LS_X86_SSE)
-        const __m128 dims = _mm_load_ps(&viewportDims);
-        const __m128 halfDims = _mm_mul_ps(dims, _mm_set1_ps(0.5f));
-        const __m128 one = _mm_set1_ps(1.f);
-        const __m128 wh = _mm_shuffle_ps(halfDims, one, 0x0E);
-
-        __m128 v0 = _mm_mul_ps(_mm_add_ps(one, p0.simd), wh);
-        v0 = _mm_cvtepi32_ps(_mm_cvtps_epi32(_mm_add_ps(v0, dims)));
-        p0.simd = _mm_shuffle_ps(_mm_max_ps(v0, _mm_setzero_ps()), p0.simd, 0xE4);
-
-        __m128 v1 = _mm_mul_ps(_mm_add_ps(one, p1.simd), wh);
-        v1 = _mm_cvtepi32_ps(_mm_cvtps_epi32(_mm_add_ps(v1, dims)));
-        p1.simd = _mm_shuffle_ps(_mm_max_ps(v1, _mm_setzero_ps()), p1.simd, 0xE4);
-
-    #elif defined(LS_ARCH_AARCH64)
-        const float32x4_t dims = vld1q_f32(&viewportDims);
-        const float32x2_t offset = vget_low_f32(dims);
-        const float32x2_t wh = vmul_f32(vdup_n_f32(0.5f), vget_high_f32(dims));
-        const float32x2_t one = vdup_n_f32(1.f);
-
-        float32x2_t v0 = vadd_f32(vld1_f32(&p0), one);
-        v0 = vrndm_f32(vmla_f32(offset, wh, v0));
-        vst1_f32(&p0, vmax_f32(v0, vdup_n_f32(0.f)));
-
-        float32x2_t v1 = vadd_f32(vld1_f32(&p1), one);
-        v1 = vrndm_f32(vmla_f32(offset, wh, v1));
-        vst1_f32(&p1, vmax_f32(v1, vdup_n_f32(0.f)));
-
-    #elif defined(LS_ARM_NEON)
-        const float32x4_t dims = vld1q_f32(&viewportDims);
-        const float32x2_t offset = vget_low_f32(dims);
-        const float32x2_t wh = vmul_f32(vdup_n_f32(0.5f), vget_high_f32(dims));
-        const float32x2_t one = vdup_n_f32(1.f);
-
-        float32x2_t v0 = vadd_f32(vld1_f32(&p0), one);
-        v0 = vcvt_f32_s32(vcvt_s32_f32(vmla_f32(offset, wh, v0)));
-        vst1_f32(&p0, vmax_f32(v0, vdup_n_f32(0.f)));
-
-        float32x2_t v1 = vadd_f32(vld1_f32(&p1), one);
-        v1 = vcvt_f32_s32(vcvt_s32_f32(vmla_f32(offset, wh, v1)));
-        vst1_f32(&p1, vmax_f32(v1, vdup_n_f32(0.f)));
-
-    #else
-        // NDC->screen space transform is clamped to the framebuffer bounds.
-        // For example:
-        // x = math::clamp(x, 0.f, fboW);
-        // w = min(w, fboW-x);
-        const float w = viewportDims[2] * 0.5f;
-        const float h = viewportDims[3] * 0.5f;
-
-        p0[0] = math::max(math::floor(math::fmadd(p0[0]+1.f, w, viewportDims[0])), 0.f);
-        p0[1] = math::max(math::floor(math::fmadd(p0[1]+1.f, h, viewportDims[1])), 0.f);
-
-        p1[0] = math::max(math::floor(math::fmadd(p1[0]+1.f, w, viewportDims[0])), 0.f);
-        p1[1] = math::max(math::floor(math::fmadd(p1[1]+1.f, h, viewportDims[1])), 0.f);
-
-    #endif
-}
-
-
-
-/*--------------------------------------
- * Cull only triangle outside of the screen
---------------------------------------*/
-inline LS_INLINE SL_ClipStatus line_visible(
-    const math::vec4& LS_RESTRICT_PTR clip0,
-    const math::vec4& LS_RESTRICT_PTR clip1
-) noexcept
-{
-    const math::vec4 w0p = clip0[3];
-    const math::vec4 w1p = clip1[3];
-
-    const math::vec4 w1n = -clip1[3];
-    const math::vec4 w0n = -clip0[3];
-
-    int vis = SL_CLIP_STATUS_FULLY_VISIBLE & -(
-        clip0 <= w0p &&
-        clip1 <= w1p &&
-        clip0 >= w0n &&
-        clip1 >= w1n
-    );
-
-    int part = SL_CLIP_STATUS_PARTIALLY_VISIBLE & -(w0p > 0.f || w1p > 0.f);
-
-    return (SL_ClipStatus)(vis | part);
-}
-
-
-
-} // end anonymous namespace
 
 
 
@@ -222,27 +23,15 @@ inline LS_INLINE SL_ClipStatus line_visible(
 /*--------------------------------------
  * Publish a vertex to a fragment thread
 --------------------------------------*/
-void SL_LineProcessor::push_bin(size_t primIndex, const math::vec4& viewportDims, const SL_TransformedVert& a, const SL_TransformedVert& b) noexcept
+void SL_LineProcessor::push_bin(
+    size_t primIndex,
+    const SL_TransformedVert& a,
+    const SL_TransformedVert& b) noexcept
 {
     const uint_fast32_t numVaryings = (uint_fast32_t)mShader->pipelineState.num_varyings();
 
     const math::vec4& p0 = a.vert;
     const math::vec4& p1 = b.vert;
-
-    // establish a bounding box to detect overlap with a thread's tiles
-    const float bboxMinX = math::min(p0[0], p1[0]);
-    const float bboxMinY = math::min(p0[1], p1[1]);
-    const float bboxMaxX = math::max(p0[0], p1[0]);
-    const float bboxMaxY = math::max(p0[1], p1[1]);
-
-    const float fboW = viewportDims[0]+viewportDims[2];
-    const float fboH = viewportDims[1]+viewportDims[3];
-
-    int isPrimHidden = (bboxMaxX < viewportDims[0] || bboxMaxY < viewportDims[1] || fboW < bboxMinX || fboH < bboxMinY);
-    if (LS_UNLIKELY(isPrimHidden))
-    {
-        return;
-    }
 
     // Check if the output bin is full
     uint_fast64_t binId;
@@ -294,7 +83,7 @@ void SL_LineProcessor::clip_and_process_lines(
     {
         if (a.vert[0] >= xMin && a.vert[0] <= xMax && a.vert[1] >= yMin && a.vert[1] <= yMax)
         {
-            push_bin(primIndex, viewportDims, a, b);
+            push_bin(primIndex, a, b);
             return;
         }
     }
@@ -387,7 +176,7 @@ void SL_LineProcessor::clip_and_process_lines(
         _interpolate_varyings(a.varyings, b.varyings, p0.varyings, interp0);
         _interpolate_varyings(b.varyings, a.varyings, p1.varyings, interp1);
 
-        push_bin(primIndex, viewportDims, p0, p1);
+        push_bin(primIndex, p0, p1);
     }
 }
 
@@ -470,18 +259,18 @@ void SL_LineProcessor::process_verts(
             continue;
         }
 
-        const SL_ClipStatus visStatus = line_visible(pVert0.vert, pVert1.vert);
+        const SL_ClipStatus visStatus = sl_ndc_clip_status(pVert0.vert, pVert1.vert);
         if (visStatus == SL_CLIP_STATUS_NOT_VISIBLE)
         {
             continue;
         }
 
-        sl_perspective_divide2(pVert0.vert, pVert1.vert);
-        sl_world_to_screen_coords_divided2(pVert0.vert, pVert1.vert, viewportDims);
+        sl_perspective_divide(pVert0.vert, pVert1.vert);
+        sl_ndc_to_screen_coords(pVert0.vert, pVert1.vert, viewportDims);
 
         if (visStatus == SL_CLIP_STATUS_FULLY_VISIBLE)
         {
-            push_bin(i, viewportDims, pVert0, pVert1);
+            push_bin(i, pVert0, pVert1);
         }
         else if (visStatus == SL_CLIP_STATUS_PARTIALLY_VISIBLE)
         {
