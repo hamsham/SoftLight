@@ -4,8 +4,7 @@
 
 #include <cstdint>
 
-#include "lightsky/math/vec3.h"
-#include "lightsky/math/vec4.h"
+#include "lightsky/math/vec_utils.h"
 
 
 
