@@ -331,7 +331,7 @@ inline LS_INLINE int32_t sl_pack_vec4_9e5(const ls::math::vec4& rgb) noexcept
  *
  * @return A 3D vector containing the unpacked vertex.
 -------------------------------------*/
-constexpr LS_INLINE ls::math::vec3 sl_unpack_vec3_9e5(int32_t rgb) noexcept
+inline LS_INLINE ls::math::vec3 sl_unpack_vec3_9e5(int32_t rgb) noexcept
 {
     return (ls::math::vec3)SL_PackedVertex_9e5{rgb};
 }
