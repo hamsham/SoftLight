@@ -10,7 +10,7 @@
 
 
 /**------------------------------------
- * @brief SL_PackedVertex_2_10_10_10
+ * @brief SL_PackedVertex_10_10_10_2
  * This is a Vertex Packing Structure which can convert a vertex normal to the
  * OpenGL-compatible GL_UNSIGNED_INT_2_10_10_10_REV integer format. This
  * format can reduce memory from 66% (for 3D vectors) to 75% (4D vectors) per
@@ -20,28 +20,35 @@
  * bi-tangents as there is significant precision loss for values outside of
  * the range (-1, 1).
 -------------------------------------*/
-struct alignas(sizeof(int32_t)) SL_PackedVertex_2_10_10_10
+struct alignas(sizeof(int32_t)) SL_PackedVertex_10_10_10_2
 {
     int32_t x: 10;
     int32_t y: 10;
     int32_t z: 10;
     int32_t w: 2;
 
-    constexpr LS_INLINE SL_PackedVertex_2_10_10_10(const int32_t& v) noexcept :
+    explicit constexpr LS_INLINE SL_PackedVertex_10_10_10_2(const int32_t& v) noexcept :
         x{(v >>  0) & 0x03FF},
         y{(v >> 10) & 0x03FF},
         z{(v >> 20) & 0x03FF},
         w{0}
     {}
 
-    constexpr LS_INLINE SL_PackedVertex_2_10_10_10(const ls::math::vec3& v) noexcept :
+    explicit constexpr LS_INLINE SL_PackedVertex_10_10_10_2(const uint32_t& v) noexcept :
+        x{(int32_t)((v >>  0u) & 0x03FFu)},
+        y{(int32_t)((v >> 10u) & 0x03FFu)},
+        z{(int32_t)((v >> 20u) & 0x03FFu)},
+        w{0}
+    {}
+
+    constexpr LS_INLINE SL_PackedVertex_10_10_10_2(const ls::math::vec3& v) noexcept :
         x{(int32_t)(v[0] * 511.f)},
         y{(int32_t)(v[1] * 511.f)},
         z{(int32_t)(v[2] * 511.f)},
         w{0}
     {}
 
-    inline LS_INLINE SL_PackedVertex_2_10_10_10(const ls::math::vec4& v) noexcept :
+    inline LS_INLINE SL_PackedVertex_10_10_10_2(const ls::math::vec4& v) noexcept :
         x{(int32_t)(v[0] * 511.f)},
         y{(int32_t)(v[1] * 511.f)},
         z{(int32_t)(v[2] * 511.f)},
@@ -51,6 +58,11 @@ struct alignas(sizeof(int32_t)) SL_PackedVertex_2_10_10_10
     explicit inline LS_INLINE operator int32_t() const noexcept
     {
         return *reinterpret_cast<const int32_t*>(this);
+    }
+
+    explicit inline LS_INLINE operator uint32_t() const noexcept
+    {
+        return *reinterpret_cast<const uint32_t*>(this);
     }
 
     explicit constexpr LS_INLINE operator ls::math::vec3() const noexcept
@@ -94,7 +106,7 @@ struct alignas(sizeof(int32_t)) SL_PackedVertex_2_10_10_10
     }
 };
 
-static_assert(sizeof(SL_PackedVertex_2_10_10_10) == sizeof(int32_t), "Unable to store a SL_PackedVertex_2_10_10_10 type within an int32.");
+static_assert(sizeof(SL_PackedVertex_10_10_10_2) == sizeof(int32_t), "Unable to store a SL_PackedVertex_10_10_10_2 type within an int32.");
 
 
 
@@ -109,9 +121,9 @@ static_assert(sizeof(SL_PackedVertex_2_10_10_10) == sizeof(int32_t), "Unable to 
  * @return A signed 32-bit integer containing a vertex normal with data in the
  * range of [-2^10, 2^10].
 -------------------------------------*/
-inline int32_t sl_pack_vertex_2_10_10_10(const ls::math::vec3& norm) noexcept
+inline int32_t sl_pack_vec3_10_10_10_2(const ls::math::vec3& norm) noexcept
 {
-    return (int32_t)SL_PackedVertex_2_10_10_10{norm};
+    return (int32_t)SL_PackedVertex_10_10_10_2{norm};
 }
 
 
@@ -128,7 +140,7 @@ inline int32_t sl_pack_vertex_2_10_10_10(const ls::math::vec3& norm) noexcept
  * @return A signed 32-bit integer containing a vertex normal with data in the
  * range of [-2^10, 2^10].
 -------------------------------------*/
-inline LS_INLINE int32_t sl_pack_vertex_2_10_10_10(const ls::math::vec4& norm) noexcept
+inline LS_INLINE int32_t sl_pack_vec4_10_10_10_2(const ls::math::vec4& norm) noexcept
 {
     #if defined(LS_X86_AVX2)
         const __m128i i = _mm_cvtps_epi32(_mm_mul_ps(norm.simd, _mm_set1_ps(511.f)));
@@ -139,7 +151,7 @@ inline LS_INLINE int32_t sl_pack_vertex_2_10_10_10(const ls::math::vec4& norm) n
         return _mm_cvtsi128_si32(i1);
 
     #else
-        return (int32_t)SL_PackedVertex_2_10_10_10{norm};
+        return (int32_t)SL_PackedVertex_10_10_10_2{norm};
     #endif
 }
 
@@ -154,9 +166,9 @@ inline LS_INLINE int32_t sl_pack_vertex_2_10_10_10(const ls::math::vec4& norm) n
  *
  * @return A 3D vector containing the unpacked vertex.
 -------------------------------------*/
-constexpr LS_INLINE ls::math::vec3 sl_unpack_vertex_vec3(int32_t norm) noexcept
+constexpr LS_INLINE ls::math::vec3 sl_unpack_vec3_10_10_10_2(int32_t norm) noexcept
 {
-    return (ls::math::vec3)SL_PackedVertex_2_10_10_10{norm};
+    return (ls::math::vec3)SL_PackedVertex_10_10_10_2{norm};
 }
 
 
@@ -171,9 +183,173 @@ constexpr LS_INLINE ls::math::vec3 sl_unpack_vertex_vec3(int32_t norm) noexcept
  *
  * @return A 4D vector containing the unpacked vertex.
 -------------------------------------*/
-inline LS_INLINE ls::math::vec4 sl_unpack_vertex_vec4(int32_t norm) noexcept
+inline LS_INLINE ls::math::vec4 sl_unpack_vec4_10_10_10_2(int32_t norm) noexcept
 {
-    return (ls::math::vec4)SL_PackedVertex_2_10_10_10{norm};
+    return (ls::math::vec4)SL_PackedVertex_10_10_10_2{norm};
+}
+
+
+
+
+
+/**------------------------------------
+ * @brief SL_PackedVertex_9e5
+ * This is a Vertex Packing Structure which can convert a 3d or 4d vector into
+ * the GL-compatible GL_UNSIGNED_INT_5_9_9_9_REV integer format. This format
+ * can reduce HDR texture memory by  66%.
+ *
+ * It is recommended to only use this format for decoding 3-component HDR
+ * texture data as encoding into the shared-exponent format is not suitable for
+ * real-time applications.
+-------------------------------------*/
+union SL_PackedVertex_9e5
+{
+    enum SL_RGB9e5Limits : int32_t
+    {
+        RGB9E5_EXPONENT_BITS        = 5,
+        RGB9E5_MANTISSA_BITS        = 9,
+        RGB9E5_EXP_BIAS             = 15,
+        RGB9E5_MAX_VALID_BIASED_EXP = 31
+    };
+
+
+    uint32_t mRaw;
+    struct
+    {
+        uint32_t r : RGB9E5_MANTISSA_BITS;
+        uint32_t g : RGB9E5_MANTISSA_BITS;
+        uint32_t b : RGB9E5_MANTISSA_BITS;
+        uint32_t biasedexponent : RGB9E5_EXPONENT_BITS;
+    } mField;
+
+  private:
+    static uint32_t _pack_vector(const ls::math::vec3& rgb) noexcept;
+
+  public:
+    constexpr SL_PackedVertex_9e5() noexcept :
+        mRaw{0}
+    {}
+
+    explicit constexpr LS_INLINE SL_PackedVertex_9e5(const int32_t& v) noexcept :
+        mRaw{static_cast<const uint32_t&>(v)}
+    {}
+
+    explicit constexpr LS_INLINE SL_PackedVertex_9e5(const uint32_t& v) noexcept :
+        mRaw{v}
+    {}
+
+    inline SL_PackedVertex_9e5(const ls::math::vec3& rgb) noexcept :
+        mRaw{_pack_vector(rgb)}
+    {}
+
+    inline SL_PackedVertex_9e5(const ls::math::vec4& rgba) noexcept :
+        mRaw{_pack_vector(ls::math::vec3_cast(rgba))}
+    {}
+
+    explicit inline LS_INLINE operator int32_t() const noexcept
+    {
+        return reinterpret_cast<const int32_t&>(this->mRaw);
+    }
+
+    explicit inline LS_INLINE operator uint32_t() const noexcept
+    {
+        return this->mRaw;
+    }
+
+    explicit inline operator ls::math::vec3() const noexcept
+    {
+        const float exponent = (float)(this->mField.biasedexponent - RGB9E5_EXP_BIAS - RGB9E5_MANTISSA_BITS);
+        const float scale = std::exp2(exponent);
+
+        return ls::math::vec3
+        {
+            (float)this->mField.r * scale,
+            (float)this->mField.g * scale,
+            (float)this->mField.b * scale
+        };
+    }
+
+    explicit inline operator ls::math::vec4() const noexcept
+    {
+        const float exponent = (float)(this->mField.biasedexponent - RGB9E5_EXP_BIAS - RGB9E5_MANTISSA_BITS);
+        const float scale = std::exp2(exponent);
+
+        return ls::math::vec4
+        {
+            (float)this->mField.r * scale,
+            (float)this->mField.g * scale,
+            (float)this->mField.b * scale,
+            0.f
+        };
+    }
+};
+
+static_assert(sizeof(SL_PackedVertex_9e5) == sizeof(uint32_t), "Unable to store a SL_PackedVertex_9e5 type within a uint32.");
+
+
+
+/**------------------------------------
+ * @brief Convert a 3-dimensional vertex normal to a packed 3D vertex/RGB color
+ * which follows the GL_UNSIGNED_INT_5_9_9_9_REV format.
+ *
+ * @param rgb
+ * A constant reference to a 3D vector or RGB color.
+ *
+ * @return A signed 32-bit integer containing a 3D vertex with 9-bits per
+ * element and 5 bits for a shared exponent.
+-------------------------------------*/
+inline int32_t sl_pack_vec3_9e5(const ls::math::vec3& rgb) noexcept
+{
+    return (int32_t)SL_PackedVertex_9e5{rgb};
+}
+
+
+
+
+/**------------------------------------
+ * @brief Convert a 4-dimensional vertex normal to a packed 3D vertex/RGB color
+ * which follows the GL_UNSIGNED_INT_5_9_9_9_REV format.
+ *
+ * @param rgb
+ * A constant reference to a 3D vector or RGB color.
+ *
+ * @return A signed 32-bit integer containing a 3D vertex with 9-bits per
+ * element and 5 bits for a shared exponent.
+-------------------------------------*/
+inline LS_INLINE int32_t sl_pack_vec4_9e5(const ls::math::vec4& rgb) noexcept
+{
+    return (int32_t)SL_PackedVertex_9e5{rgb};
+}
+
+
+
+/**------------------------------------
+ * @brief Convert a packed RGB9e5 type into a 3D vector.
+ *
+ * @param rgb
+ * A 32-bit integer containing a vertex packed into the RGB9e5 integer format.
+ *
+ * @return A 3D vector containing the unpacked vertex.
+-------------------------------------*/
+constexpr LS_INLINE ls::math::vec3 sl_unpack_vec3_9e5(int32_t rgb) noexcept
+{
+    return (ls::math::vec3)SL_PackedVertex_9e5{rgb};
+}
+
+
+
+
+/**------------------------------------
+ * @brief Convert a packed RGB9e5 type into a 4D vector.
+ *
+ * @param rgb
+ * A 32-bit integer containing a vertex packed into the RGB9e5 integer format.
+ *
+ * @return A 4D vector containing the unpacked vertex.
+-------------------------------------*/
+inline LS_INLINE ls::math::vec4 sl_unpack_vec4_9e5(int32_t rgb) noexcept
+{
+    return (ls::math::vec4)SL_PackedVertex_9e5{rgb};
 }
 
 

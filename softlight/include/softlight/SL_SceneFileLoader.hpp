@@ -99,8 +99,8 @@ struct SL_SceneLoadOpts
 
     // Vertex normals will be compressed from a math::vec3_t<float> type into
     // an int32_t type. They can be unpacked using either
-    // "sl_unpack_vertex_vec3()" or "sl_unpack_vertex_vec4()." This option
-    // does nothing if no normals exist or are generated.
+    // "sl_unpack_vec3_10_10_10_2()" or "sl_unpack_vec4_10_10_10_2()." This
+    // option does nothing if no normals exist or are generated.
     bool packNormals;
 
     // Use 16-bit bone IDs (4 per vertex) rather than 32-bit bone IDs.

@@ -71,7 +71,7 @@ struct MeshTestUniforms
 --------------------------------------*/
 math::vec4 _mesh_vert_shader(SL_VertexParam& param)
 {
-    typedef utils::Tuple<math::vec3, SL_PackedVertex_2_10_10_10> Vertex;
+    typedef utils::Tuple<math::vec3, SL_PackedVertex_10_10_10_2> Vertex;
 
     const MeshTestUniforms* pUniforms = param.pUniforms->as<MeshTestUniforms>();
     const Vertex*           v         = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));

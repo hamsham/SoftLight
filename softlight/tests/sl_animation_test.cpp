@@ -91,7 +91,7 @@ math::vec4 _untextured_vert_shader_impl(SL_VertexParam& param)
     const AnimUniforms* pUniforms   = param.pUniforms->as<AnimUniforms>();
     const Vertex* const v           = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));
     const math::vec4&&  vert        = math::vec4_cast(v->const_element<0>(), 1.f);
-    const math::vec4&&  norm        = sl_unpack_vertex_vec4(v->const_element<1>());
+    const math::vec4&&  norm        = sl_unpack_vec4_10_10_10_2(v->const_element<1>());
 
     const math::vec4&& pos = pUniforms->modelMatrix * vert;
 
@@ -167,7 +167,7 @@ math::vec4 _textured_vert_shader_impl(SL_VertexParam& param)
     const Vertex* const v           = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));
     const math::vec4&&  vert        = math::vec4_cast(v->const_element<0>(), 1.f);
     const math::vec2h   uv          = v->const_element<1>();
-    const math::vec4&&  norm        = sl_unpack_vertex_vec4(v->const_element<2>());
+    const math::vec4&&  norm        = sl_unpack_vec4_10_10_10_2(v->const_element<2>());
     const math::mat4&   modelPos    = pUniforms->modelMatrix;
 
     const math::vec4&& pos = modelPos * vert;
@@ -206,7 +206,7 @@ math::vec4 _textured_skin_vert_shader_impl(SL_VertexParam& param)
     const Vertex* const v           = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));
     const math::vec4&&  vert        = math::vec4_cast(v->const_element<0>(), 1.f);
     const math::vec2h   uv          = v->const_element<1>();
-    const math::vec4&&  norm        = sl_unpack_vertex_vec4(v->const_element<2>());
+    const math::vec4&&  norm        = sl_unpack_vec4_10_10_10_2(v->const_element<2>());
     const math::vec4s   boneIds     = v->const_element<3>();
     const math::vec4&&  boneWeights = (math::vec4)v->const_element<4>();
 

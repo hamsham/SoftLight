@@ -16,149 +16,6 @@ namespace math = ls::math;
 
 
 
-struct SL_RGB9e5Properties
-{
-    enum SL_RGB9e5Limits : int32_t
-    {
-        RGB9E5_EXPONENT_BITS        = 5,
-        RGB9E5_MANTISSA_BITS        = 9,
-        RGB9E5_EXP_BIAS             = 15,
-        RGB9E5_MAX_VALID_BIASED_EXP = 31
-    };
-
-    static constexpr float MAX_RGB9E5_EXP         = (float)(1 << (RGB9E5_MAX_VALID_BIASED_EXP - RGB9E5_EXP_BIAS));
-    static constexpr float RGB9E5_MANTISSA_VALUES = (float)(1 << RGB9E5_MANTISSA_BITS);
-    static constexpr float MAX_RGB9E5_MANTISSA    = (float)(RGB9E5_MANTISSA_VALUES - 1);
-    static constexpr float MAX_RGB9E5             = MAX_RGB9E5_MANTISSA / RGB9E5_MANTISSA_VALUES * MAX_RGB9E5_EXP;
-};
-
-
-
-struct BitsOfIEEE754
-{
-    uint32_t mantissa : 23;
-    uint32_t biasedexponent : 8;
-    uint32_t negative : 1;
-};
-
-
-
-union float754
-{
-    uint32_t raw;
-    float value;
-    BitsOfIEEE754 field;
-};
-
-
-
-struct BitsOfRGB9E5
-{
-    uint32_t r : SL_RGB9e5Properties::RGB9E5_MANTISSA_BITS;
-    uint32_t g : SL_RGB9e5Properties::RGB9E5_MANTISSA_BITS;
-    uint32_t b : SL_RGB9e5Properties::RGB9E5_MANTISSA_BITS;
-    uint32_t biasedexponent : SL_RGB9e5Properties::RGB9E5_EXPONENT_BITS;
-};
-
-
-
-union sl_rgb9e5f
-{
-    unsigned int raw;
-    BitsOfRGB9E5 field;
-};
-
-
-
-inline float rgb9e5_clamp(float x) noexcept
-{
-    return math::clamp(x, 0.f, SL_RGB9e5Properties::MAX_RGB9E5);
-}
-
-
-
-// FloorLog2 is not correct for the denorm and zero values, but we are going to
-// do a max of this value with the minimum rgb9e5 exponent that will hide these
-// problem cases.
-inline int rgb9e5_floor_log2(float x) noexcept
-{
-    float754 f;
-    f.value = x;
-
-    return (f.field.biasedexponent - 127);
-}
-
-
-sl_rgb9e5f float3_to_rgb9e5(const SL_ColorRGBf& rgb) noexcept
-{
-    const float rc = rgb9e5_clamp(rgb[0]);
-    const float gc = rgb9e5_clamp(rgb[1]);
-    const float bc = rgb9e5_clamp(rgb[2]);
-
-    const float maxrgb = math::max<float>(rc, gc, bc);
-    int exp_shared = math::max<int>(-SL_RGB9e5Properties::RGB9E5_EXP_BIAS-1, (int)rgb9e5_floor_log2(maxrgb));
-    exp_shared = exp_shared + 1 + SL_RGB9e5Properties::RGB9E5_EXP_BIAS;
-
-    LS_ASSERT(exp_shared <= SL_RGB9e5Properties::RGB9E5_MAX_VALID_BIASED_EXP);
-    LS_ASSERT(exp_shared >= 0);
-
-    // This pow function could be replaced by a table.
-    float denom = std::exp2((float)(exp_shared - SL_RGB9e5Properties::RGB9E5_EXP_BIAS - SL_RGB9e5Properties::RGB9E5_MANTISSA_BITS));
-
-    float rDenom = 1.f / denom;
-    const int maxm = (int)std::floor(math::fmadd(maxrgb, rDenom, 0.5f));
-    if (maxm == (1 << (int)SL_RGB9e5Properties::RGB9E5_MANTISSA_BITS))
-    {
-        //denom *= 2.f;
-        denom += denom;
-        exp_shared += 1;
-        LS_ASSERT(exp_shared <= SL_RGB9e5Properties::RGB9E5_MAX_VALID_BIASED_EXP);
-    }
-    else
-    {
-        LS_ASSERT(maxm <= (int)SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA);
-    }
-
-    rDenom = 1.f / denom;
-    const int rm = (int)std::floor(math::fmadd(rc, rDenom, 0.5f));
-    const int gm = (int)std::floor(math::fmadd(gc, rDenom, 0.5f));
-    const int bm = (int)std::floor(math::fmadd(bc, rDenom, 0.5f));
-
-    LS_ASSERT(rm <= (int)SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA);
-    LS_ASSERT(gm <= (int)SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA);
-    LS_ASSERT(bm <= (int)SL_RGB9e5Properties::MAX_RGB9E5_MANTISSA);
-    LS_ASSERT(rm >= 0);
-    LS_ASSERT(gm >= 0);
-    LS_ASSERT(bm >= 0);
-
-    //std::cout << rm << ", " << gm << ", " << bm << ", " << exp_shared << std::endl;
-
-    sl_rgb9e5f retval;
-    retval.field.r = rm;
-    retval.field.g = gm;
-    retval.field.b = bm;
-    retval.field.biasedexponent = exp_shared;
-
-    return retval;
-}
-
-
-
-inline SL_ColorRGBf rgb9e5_to_float3(sl_rgb9e5f v) noexcept
-{
-    const float exponent = (float)(v.field.biasedexponent - SL_RGB9e5Properties::RGB9E5_EXP_BIAS - SL_RGB9e5Properties::RGB9E5_MANTISSA_BITS);
-    const float scale = std::exp2(exponent);
-
-    return SL_ColorRGBf
-    {
-        (float)v.field.r * scale,
-        (float)v.field.g * scale,
-        (float)v.field.b * scale
-    };
-}
-
-
-
 /*-----------------------------------------------------------------------------
  * plane from 3 points
 -----------------------------------------------------------------------------*/
@@ -328,7 +185,7 @@ inline float xyz_to_index(const SL_ColorRGBf& xyz) noexcept
     ret.i = IndexScheme::encode_index3d(a, b, c);
 
     // encode the bits needed for normalization between (0.0, 1.0)
-    ret.i |= 0x3F000000u;
+    ret.i |= 0x3E000000u;
 
     //std::cout << "INDEX IN: " << ret.i << std::endl;
 
@@ -457,7 +314,7 @@ struct Rgb9e5Compression
     union Rgb9e5Vec4
     {
         math::vec4 f;
-        sl_rgb9e5f i[4];
+        SL_PackedVertex_9e5 i[4];
     };
 
     static inline math::vec4 encode(const SL_ColorRGB8& a0, const SL_ColorRGB8& b0, const SL_ColorRGB8& c0) noexcept
@@ -466,33 +323,33 @@ struct Rgb9e5Compression
         SL_ColorRGBf b = color_cast<float, uint8_t>(b0);
         SL_ColorRGBf c = color_cast<float, uint8_t>(c0);
 
-        Rgb9e5Vec4 ret;
-        ret.i[0] = float3_to_rgb9e5(a);
-        ret.i[1] = float3_to_rgb9e5(b);
-        ret.i[2] = float3_to_rgb9e5(c);
-        ret.i[3].raw = 0;
+        Rgb9e5Vec4 ret{};
+        ret.i[0] = SL_PackedVertex_9e5(a);
+        ret.i[1] = SL_PackedVertex_9e5(b);
+        ret.i[2] = SL_PackedVertex_9e5(c);
+        ret.i[3].mRaw = 0;
 
         std::cout << "IN: Af: " << a[0] << ", " << a[1] << ", " << a[2] << std::endl;
         std::cout << "IN: Bf: " << b[0] << ", " << b[1] << ", " << b[2] << std::endl;
         std::cout << "IN: Cf: " << c[0] << ", " << c[1] << ", " << c[2] << std::endl;
-        std::cout << "IN: P: " << ret.i[0].raw << ", " << ret.i[1].raw << ", " << ret.i[2].raw << ", " << ret.i[3].raw << std::endl;
+        std::cout << "IN: P: " << ret.i[0].mRaw << ", " << ret.i[1].mRaw << ", " << ret.i[2].mRaw << ", " << ret.i[3].mRaw << std::endl;
 
         return ret.f;
     }
 
     static inline void decode(const math::vec4& plane, SL_ColorRGB8& a0, SL_ColorRGB8& b0, SL_ColorRGB8& c0) noexcept
     {
-        Rgb9e5Vec4 ret;
+        Rgb9e5Vec4 ret{};
         ret.f = plane;
 
-        const SL_ColorRGBf&& a = rgb9e5_to_float3(ret.i[0]);
-        const SL_ColorRGBf&& b = rgb9e5_to_float3(ret.i[1]);
-        const SL_ColorRGBf&& c = rgb9e5_to_float3(ret.i[2]);
+        const SL_ColorRGBf&& a = (math::vec3)ret.i[0];
+        const SL_ColorRGBf&& b = (math::vec3)ret.i[1];
+        const SL_ColorRGBf&& c = (math::vec3)ret.i[2];
 
         std::cout << "OUT: Af: " << a[0] << ", " << a[1] << ", " << a[2] << std::endl;
         std::cout << "OUT: Bf: " << b[0] << ", " << b[1] << ", " << b[2] << std::endl;
         std::cout << "OUT: Cf: " << c[0] << ", " << c[1] << ", " << c[2] << std::endl;
-        std::cout << "OUT: P: " << ret.i[0].raw << ", " << ret.i[1].raw << ", " << ret.i[2].raw << ", " << ret.i[3].raw << std::endl;
+        std::cout << "OUT: P: " << ret.i[0].mRaw << ", " << ret.i[1].mRaw << ", " << ret.i[2].mRaw << ", " << ret.i[3].mRaw << std::endl;
 
         a0 = color_cast<uint8_t, float>(a);
         b0 = color_cast<uint8_t, float>(b);
@@ -546,7 +403,7 @@ struct PlaneCompression
         //const rgb9e5&& rgb9 = float3_to_rgb9e5(math::vec3_cast(plane));
         //const math::vec4&& p = math::vec4_cast(rgb9e5_to_float3(rgb9), plane[3]);
 
-        //SL_PackedVertex_2_10_10_10&& rgb10 = SL_PackedVertex_2_10_10_10{math::vec3_cast(plane)};
+        //SL_PackedVertex_10_10_10_2&& rgb10 = SL_PackedVertex_10_10_10_2{math::vec3_cast(plane)};
         //const math::vec4&& p = math::vec4_cast((math::vec3)rgb10, plane[3]);
 
         /*
@@ -665,12 +522,12 @@ int main()
     SL_ColorRGB8 rgb8 = {42, 77, 193};
     SL_ColorRGBf rgbf = color_cast<float, uint8_t>(rgb8);
 
-    sl_rgb9e5f rgb9 = float3_to_rgb9e5(rgbf);
+    SL_PackedVertex_9e5 rgb9{rgbf};
     std::cout << "RGB8:   " << (unsigned)rgb8[0] << ", " << (unsigned)rgb8[1] << ", " << (unsigned)rgb8[2] << std::endl;
     std::cout << "RGBf:   " << rgbf[0] << ", " << rgbf[1] << ", " << rgbf[2] << std::endl;
-    std::cout << "RGB9e5: " << rgb9.field.r << ", " << rgb9.field.g << ", " << rgb9.field.b << std::endl;
+    std::cout << "RGB9e5: " << rgb9.mField.r << ", " << rgb9.mField.g << ", " << rgb9.mField.b << std::endl;
 
-    rgbf = rgb9e5_to_float3(rgb9);
+    rgbf = (math::vec3)rgb9;
     rgb8 = color_cast<uint8_t, float>(rgbf);
 
     std::cout << "RGB8:   " << (unsigned)rgb8[0] << ", " << (unsigned)rgb8[1] << ", " << (unsigned)rgb8[2] << std::endl;
