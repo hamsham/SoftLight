@@ -134,11 +134,11 @@ SL_KeySymbol sl_keycode_to_keysym_win32(const uint32_t keycode) noexcept
         case VK_SUBTRACT: return KEY_SYM_NUMPAD_SUB;
         case VK_MULTIPLY: return KEY_SYM_NUMPAD_MUL;
         case VK_DIVIDE: return KEY_SYM_NUMPAD_DIV;
-        case VK_OEM_PLUS: return KEY_SYM_NUMPAD_EQUAL;
+        //case VK_OEM_PLUS: return KEY_SYM_NUMPAD_EQUAL;
         case VK_RETURN: return KEY_SYM_NUMPAD_ENTER;
         case VK_DELETE: return KEY_SYM_NUMPAD_DELETE;
         case VK_DECIMAL: return KEY_SYM_NUMPAD_DECIMAL;
-        case VK_OEM_5: return KEY_SYM_NUMPAD_SEP;
+        //case VK_OEM_5: return KEY_SYM_NUMPAD_SEP;
 
         case VK_SNAPSHOT: return KEY_SYM_PRINT_SCREEN;
         case VK_PAUSE: return KEY_SYM_PAUSE;
@@ -156,7 +156,7 @@ SL_KeySymbol sl_keycode_to_keysym_win32(const uint32_t keycode) noexcept
         case VK_SPACE: return KEY_SYM_SPACE;
         case VK_BACK: return KEY_SYM_BACKSPACE;
         case VK_RETURN: return KEY_SYM_LINE_FEED;
-        case VK_RETURN, // Enter: return KEY_SYM_RETURN; return
+        case VK_RETURN: return KEY_SYM_RETURN; // Enter key
         case VK_TAB: return KEY_SYM_TAB;
         case VK_CLEAR: return KEY_SYM_CLEAR;
 
@@ -165,38 +165,65 @@ SL_KeySymbol sl_keycode_to_keysym_win32(const uint32_t keycode) noexcept
         case VK_SCROLL: return KEY_SYM_SCROLL_LOCK;
 
         case VK_OEM_7: return KEY_SYM_SINGLE_QUOTE; // '
-        case VK_OEM_7: return KEY_SYM_DOUBLE_QUOTE; // "
-        case VK_OEM_3: return KEY_SYM_TILDE; // ~
+        //case VK_OEM_7: return KEY_SYM_DOUBLE_QUOTE; // "
         case VK_OEM_3: return KEY_SYM_GRAVE; // `
-        case 0x32: return KEY_SYM_AT; // @
-        case 0x33: return KEY_SYM_POUND; // #
-        case 0x34: return KEY_SYM_DOLLAR; // $
-        case 0x35: return KEY_SYM_PERCENT; // %
-        case 0x36: return KEY_SYM_CARET; // ^
-        case 0x37: return KEY_SYM_AMPERSAND; // &
-        case 0x38: return KEY_SYM_ASTERISK; // *
-        case VK_OEM_MINUS: return KEY_SYM_UNDERSCORE; // _
+        //case VK_OEM_3: return KEY_SYM_TILDE; // ~
+        //case 0x32: return KEY_SYM_AT; // @
+        //case 0x33: return KEY_SYM_POUND; // #
+        //case 0x34: return KEY_SYM_DOLLAR; // $
+        //case 0x35: return KEY_SYM_PERCENT; // %
+        //case 0x36: return KEY_SYM_CARET; // ^
+        //case 0x37: return KEY_SYM_AMPERSAND; // &
+        //case 0x38: return KEY_SYM_ASTERISK; // *
         case VK_OEM_MINUS: return KEY_SYM_HYPHEN; // -
+        //case VK_OEM_MINUS: return KEY_SYM_UNDERSCORE; // _
         case VK_OEM_PLUS: return KEY_SYM_PLUS; // +
-        case VK_OEM_PLUS: return KEY_SYM_EQUALS; // =
+        //case VK_OEM_PLUS: return KEY_SYM_EQUALS; // =
 
-        case 0x39: return KEY_SYM_PARENTHESIS_LEFT;
-        case 0x39: return KEY_SYM_PARENTHESIS_RIGHT;
+        //case 0x39: return KEY_SYM_PARENTHESIS_LEFT;
+        //case 0x39: return KEY_SYM_PARENTHESIS_RIGHT;
         case VK_OEM_4: return KEY_SYM_BRACKET_LEFT; // [
         case VK_OEM_6: return KEY_SYM_BRACKET_RIGHT; // ]
-        case VK_OEM_4: return KEY_SYM_BRACE_LEFT; // {
-        case VK_OEM_6: return KEY_SYM_BRACE_RIGHT; // }
-        case VK_OEM_COMMA: return KEY_SYM_ANGLE_LEFT; // <
-        case VK_OEM_PERIOD: return KEY_SYM_ANGLE_RIGHT; // >
+        //case VK_OEM_4: return KEY_SYM_BRACE_LEFT; // {
+        //case VK_OEM_6: return KEY_SYM_BRACE_RIGHT; // }
+        //case VK_OEM_COMMA: return KEY_SYM_ANGLE_LEFT; // <
+        //case VK_OEM_PERIOD: return KEY_SYM_ANGLE_RIGHT; // >
         case VK_OEM_2: return KEY_SYM_FORWARD_SLASH;     /* / */
         case VK_OEM_5: return KEY_SYM_BACKWARD_SLASH; /* \ */
-        case VK_OEM_5: return KEY_SYM_VERTICAL_BAR;       /* | */
+        //case VK_OEM_5: return KEY_SYM_VERTICAL_BAR;       /* | */
         case VK_OEM_1: return KEY_SYM_SEMICOLON;
-        case VK_OEM_1: return KEY_SYM_COLON;
+        //case VK_OEM_1: return KEY_SYM_COLON;
         case VK_OEM_COMMA: return KEY_SYM_COMMA;
         case VK_OEM_PERIOD: return KEY_SYM_PERIOD;
         case VK_OEM_8: return KEY_SYM_EXCLAMATION;
-        case VK_OEM_2: return KEY_SYM_QUESTION;
+        //case VK_OEM_2: return KEY_SYM_QUESTION;
+
+        //case 0x41: return KEY_SYM_A;
+        //case 0x42: return KEY_SYM_B;
+        //case 0x43: return KEY_SYM_C;
+        //case 0x44: return KEY_SYM_D;
+        //case 0x45: return KEY_SYM_E;
+        //case 0x46: return KEY_SYM_F;
+        //case 0x47: return KEY_SYM_G;
+        //case 0x48: return KEY_SYM_H;
+        //case 0x49: return KEY_SYM_I;
+        //case 0x4A: return KEY_SYM_J;
+        //case 0x4B: return KEY_SYM_K;
+        //case 0x4C: return KEY_SYM_L;
+        //case 0x4D: return KEY_SYM_M;
+        //case 0x4E: return KEY_SYM_N;
+        //case 0x4F: return KEY_SYM_O;
+        //case 0x50: return KEY_SYM_P;
+        //case 0x51: return KEY_SYM_Q;
+        //case 0x52: return KEY_SYM_R;
+        //case 0x53: return KEY_SYM_S;
+        //case 0x54: return KEY_SYM_T;
+        //case 0x55: return KEY_SYM_U;
+        //case 0x56: return KEY_SYM_V;
+        //case 0x57: return KEY_SYM_W;
+        //case 0x58: return KEY_SYM_X;
+        //case 0x59: return KEY_SYM_Y;
+        //case 0x5A: return KEY_SYM_Z;
 
         case 0x41: return KEY_SYM_a;
         case 0x42: return KEY_SYM_b;
@@ -224,33 +251,6 @@ SL_KeySymbol sl_keycode_to_keysym_win32(const uint32_t keycode) noexcept
         case 0x58: return KEY_SYM_x;
         case 0x59: return KEY_SYM_y;
         case 0x5A: return KEY_SYM_z;
-
-        case 0x41: return KEY_SYM_A;
-        case 0x42: return KEY_SYM_B;
-        case 0x43: return KEY_SYM_C;
-        case 0x44: return KEY_SYM_D;
-        case 0x45: return KEY_SYM_E;
-        case 0x46: return KEY_SYM_F;
-        case 0x47: return KEY_SYM_G;
-        case 0x48: return KEY_SYM_H;
-        case 0x49: return KEY_SYM_I;
-        case 0x4A: return KEY_SYM_J;
-        case 0x4B: return KEY_SYM_K;
-        case 0x4C: return KEY_SYM_L;
-        case 0x4D: return KEY_SYM_M;
-        case 0x4E: return KEY_SYM_N;
-        case 0x4F: return KEY_SYM_O;
-        case 0x50: return KEY_SYM_P;
-        case 0x51: return KEY_SYM_Q;
-        case 0x52: return KEY_SYM_R;
-        case 0x53: return KEY_SYM_S;
-        case 0x54: return KEY_SYM_T;
-        case 0x55: return KEY_SYM_U;
-        case 0x56: return KEY_SYM_V;
-        case 0x57: return KEY_SYM_W;
-        case 0x58: return KEY_SYM_X;
-        case 0x59: return KEY_SYM_Y;
-        case 0x5A: return KEY_SYM_Z;
 
         default:
             break;
