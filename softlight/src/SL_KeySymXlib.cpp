@@ -120,7 +120,7 @@ SL_KeySymbol sl_keycode_to_keysym_xkb(const uint32_t keycode) noexcept
         case XK_space: return KEY_SYM_SPACE;
         case XK_BackSpace: return KEY_SYM_BACKSPACE;
         case XK_Linefeed: return KEY_SYM_LINE_FEED;
-        case XK_Return: return KEY_SYM_RETURN; // Enter: return KEY_SYM_RETURN; return
+        case XK_Return: return KEY_SYM_RETURN; // Enter
         case XK_Tab: return KEY_SYM_TAB;
         case XK_Clear: return KEY_SYM_CLEAR;
 

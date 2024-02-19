@@ -156,7 +156,7 @@ SL_KeySymbol sl_keycode_to_keysym_win32(const uint32_t keycode) noexcept
         case VK_SPACE: return KEY_SYM_SPACE;
         case VK_BACK: return KEY_SYM_BACKSPACE;
         case VK_RETURN: return KEY_SYM_LINE_FEED;
-        case VK_RETURN: return KEY_SYM_RETURN; // Enter key
+        case VK_RETURN: return KEY_SYM_RETURN; // Enter
         case VK_TAB: return KEY_SYM_TAB;
         case VK_CLEAR: return KEY_SYM_CLEAR;
 
