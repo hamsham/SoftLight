@@ -32,7 +32,7 @@ jobs:
             name: ubuntu
             generator: "Ninja"
             shell: bash
-            dependencies: ninja-build x11-utils libx11-dev libx11-xcb-dev libxext-dev libxcb1-dev libxcb-image0-dev libxcb-shm0-dev subversion libassimp-dev libfreeimage-dev libfreetype6-dev libglm-dev libenet-dev
+            dependencies: gobjc gobjc++ gnustep gnustep-devel ninja-build x11-utils libx11-dev libx11-xcb-dev libxext-dev libxcb1-dev libxcb-image0-dev libxcb-shm0-dev subversion libassimp-dev libfreeimage-dev libfreetype6-dev libglm-dev libenet-dev
             cmakeopts: -DLIGHTSKY_ENABLE_PCH:BOOL=ON
 
           - os: macos-latest

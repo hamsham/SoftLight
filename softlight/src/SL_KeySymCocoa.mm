@@ -47,8 +47,8 @@ SL_KeySymbol sl_keycode_to_keysym_cocoa(const uint32_t keycode) noexcept
         case 0x3C: return KEY_SYM_R_SHIFT;
         case 0x3E: return KEY_SYM_R_CONTROL;
         case 0x3D: return KEY_SYM_R_ALT;
-        case 0x37: return KEY_SYM_R_SUPER;
-        case 0x3F: return KEY_SYM_R_META;
+        //case 0x37: return KEY_SYM_R_SUPER;
+        //case 0x3F: return KEY_SYM_R_META;
 
         case 0x7A: return KEY_SYM_F1;
         case 0x78: return KEY_SYM_F2;
@@ -96,16 +96,16 @@ SL_KeySymbol sl_keycode_to_keysym_cocoa(const uint32_t keycode) noexcept
         case 0x5B: return KEY_SYM_NUMPAD_8;
         case 0x5C: return KEY_SYM_NUMPAD_9;
         case 0x52: return KEY_SYM_NUMPAD_0;
-        case KEY_SYM_NUMPAD_1: return KEY_SYM_NUMPAD_END; // Numpad alias: 1
-        case KEY_SYM_NUMPAD_2: return KEY_SYM_NUMPAD_DOWN; // Numpad alias: 2
-        case KEY_SYM_NUMPAD_3: return KEY_SYM_NUMPAD_PG_DOWN; // Numpad alias: 3
-        case KEY_SYM_NUMPAD_4: return KEY_SYM_NUMPAD_LEFT; // Numpad alias: 4
-        case KEY_SYM_NUMPAD_5: return KEY_SYM_NUMPAD_BEGIN; // Numpad alias: 5
-        case KEY_SYM_NUMPAD_6: return KEY_SYM_NUMPAD_RIGHT; // Numpad alias: 6
-        case KEY_SYM_NUMPAD_7: return KEY_SYM_NUMPAD_HOME; // Numpad alias: 7
-        case KEY_SYM_NUMPAD_8: return KEY_SYM_NUMPAD_UP; // Numpad alias: 8
-        case KEY_SYM_NUMPAD_9: return KEY_SYM_NUMPAD_PG_UP; // Numpad alias: 9
-        case KEY_SYM_NUMPAD_0: return KEY_SYM_NUMPAD_INSERT; // Numpad alias: 0
+        //case KEY_SYM_NUMPAD_1: return KEY_SYM_NUMPAD_END; // Numpad alias: 1
+        //case KEY_SYM_NUMPAD_2: return KEY_SYM_NUMPAD_DOWN; // Numpad alias: 2
+        //case KEY_SYM_NUMPAD_3: return KEY_SYM_NUMPAD_PG_DOWN; // Numpad alias: 3
+        //case KEY_SYM_NUMPAD_4: return KEY_SYM_NUMPAD_LEFT; // Numpad alias: 4
+        //case KEY_SYM_NUMPAD_5: return KEY_SYM_NUMPAD_BEGIN; // Numpad alias: 5
+        //case KEY_SYM_NUMPAD_6: return KEY_SYM_NUMPAD_RIGHT; // Numpad alias: 6
+        //case KEY_SYM_NUMPAD_7: return KEY_SYM_NUMPAD_HOME; // Numpad alias: 7
+        //case KEY_SYM_NUMPAD_8: return KEY_SYM_NUMPAD_UP; // Numpad alias: 8
+        //case KEY_SYM_NUMPAD_9: return KEY_SYM_NUMPAD_PG_UP; // Numpad alias: 9
+        //case KEY_SYM_NUMPAD_0: return KEY_SYM_NUMPAD_INSERT; // Numpad alias: 0
         case 0x45: return KEY_SYM_NUMPAD_ADD;
         case 0x4E: return KEY_SYM_NUMPAD_SUB;
         case 0x43: return KEY_SYM_NUMPAD_MUL;
@@ -116,10 +116,10 @@ SL_KeySymbol sl_keycode_to_keysym_cocoa(const uint32_t keycode) noexcept
         case 0x41: return KEY_SYM_NUMPAD_DECIMAL;
         case 0xFF: return KEY_SYM_NUMPAD_SEP;
 
-        case KEY_SYM_F13: return KEY_SYM_PRINT_SCREEN;
-        case KEY_SYM_F15: return KEY_SYM_PAUSE;
-        case KEY_SYM_F13: return KEY_SYM_SYS_REQ;
-        case 0x3F: return KEY_SYM_INSERT;
+        //case KEY_SYM_F13: return KEY_SYM_PRINT_SCREEN;
+        //case KEY_SYM_F15: return KEY_SYM_PAUSE;
+        //case KEY_SYM_F13: return KEY_SYM_SYS_REQ;
+        //case 0x3F: return KEY_SYM_INSERT;
         case 0x75: return KEY_SYM_DELETE;
         case 0x73: return KEY_SYM_HOME;
         case 0x77: return KEY_SYM_END;
@@ -131,33 +131,33 @@ SL_KeySymbol sl_keycode_to_keysym_cocoa(const uint32_t keycode) noexcept
         case 0x7D: return KEY_SYM_DOWN;
         case 0x31: return KEY_SYM_SPACE;
         case 0x33: return KEY_SYM_BACKSPACE;
-        case 0x24: return KEY_SYM_LINE_FEED;
-        case 0x24, // Enter: return KEY_SYM_RETURN; return
+        //case 0x24: return KEY_SYM_LINE_FEED;
+        case 0x24: KEY_SYM_RETURN; // Enter: return
         case 0x30: return KEY_SYM_TAB;
         case 0x47: return KEY_SYM_CLEAR;
 
         case 0x39: return KEY_SYM_CAPS_LOCK;
         case 0x47: return KEY_SYM_NUM_LOCK;
-        case KEY_SYM_F14: return KEY_SYM_SCROLL_LOCK;
+        //case KEY_SYM_F14: return KEY_SYM_SCROLL_LOCK;
 
         case 0x27: return KEY_SYM_SINGLE_QUOTE; // '
         case 0x27: return KEY_SYM_DOUBLE_QUOTE; // "
         case 0x32: return KEY_SYM_TILDE; // ~
         case 0x32: return KEY_SYM_GRAVE; // `
-        case KEY_SYM_2: return KEY_SYM_AT; // @
-        case KEY_SYM_3: return KEY_SYM_POUND; // #
-        case KEY_SYM_4: return KEY_SYM_DOLLAR; // $
-        case KEY_SYM_5: return KEY_SYM_PERCENT; // %
-        case KEY_SYM_6: return KEY_SYM_CARET; // ^
-        case KEY_SYM_7: return KEY_SYM_AMPERSAND; // &
-        case KEY_SYM_8: return KEY_SYM_ASTERISK; // *
+        //case KEY_SYM_2: return KEY_SYM_AT; // @
+        //case KEY_SYM_3: return KEY_SYM_POUND; // #
+        //case KEY_SYM_4: return KEY_SYM_DOLLAR; // $
+        //case KEY_SYM_5: return KEY_SYM_PERCENT; // %
+        //case KEY_SYM_6: return KEY_SYM_CARET; // ^
+        //case KEY_SYM_7: return KEY_SYM_AMPERSAND; // &
+        //case KEY_SYM_8: return KEY_SYM_ASTERISK; // *
         case 0x1B: return KEY_SYM_UNDERSCORE; // _
         case 0x1B: return KEY_SYM_HYPHEN; // -
         case 0x18: return KEY_SYM_PLUS; // +
         case 0x18: return KEY_SYM_EQUALS; // =
 
-        case KEY_SYM_9: return KEY_SYM_PARENTHESIS_LEFT;
-        case KEY_SYM_0: return KEY_SYM_PARENTHESIS_RIGHT;
+        //case KEY_SYM_9: return KEY_SYM_PARENTHESIS_LEFT;
+        //case KEY_SYM_0: return KEY_SYM_PARENTHESIS_RIGHT;
         case 0x21: return KEY_SYM_BRACKET_LEFT; // [
         case 0x1E: return KEY_SYM_BRACKET_RIGHT; // ]
         case 0x21: return KEY_SYM_BRACE_LEFT; // {
@@ -171,7 +171,7 @@ SL_KeySymbol sl_keycode_to_keysym_cocoa(const uint32_t keycode) noexcept
         case 0x29: return KEY_SYM_COLON;
         case 0x2B: return KEY_SYM_COMMA;
         case 0x2F: return KEY_SYM_PERIOD;
-        case KEY_SYM_1: return KEY_SYM_EXCLAMATION;
+        //case KEY_SYM_1: return KEY_SYM_EXCLAMATION;
         case 0x2C: return KEY_SYM_QUESTION;
 
         case 0x00: return KEY_SYM_a;
@@ -201,32 +201,32 @@ SL_KeySymbol sl_keycode_to_keysym_cocoa(const uint32_t keycode) noexcept
         case 0x10: return KEY_SYM_y;
         case 0x06: return KEY_SYM_z;
 
-        case KEY_SYM_a: return KEY_SYM_A;
-        case KEY_SYM_b: return KEY_SYM_B;
-        case KEY_SYM_c: return KEY_SYM_C;
-        case KEY_SYM_d: return KEY_SYM_D;
-        case KEY_SYM_e: return KEY_SYM_E;
-        case KEY_SYM_f: return KEY_SYM_F;
-        case KEY_SYM_g: return KEY_SYM_G;
-        case KEY_SYM_h: return KEY_SYM_H;
-        case KEY_SYM_i: return KEY_SYM_I;
-        case KEY_SYM_j: return KEY_SYM_J;
-        case KEY_SYM_k: return KEY_SYM_K;
-        case KEY_SYM_l: return KEY_SYM_L;
-        case KEY_SYM_m: return KEY_SYM_M;
-        case KEY_SYM_n: return KEY_SYM_N;
-        case KEY_SYM_o: return KEY_SYM_O;
-        case KEY_SYM_p: return KEY_SYM_P;
-        case KEY_SYM_q: return KEY_SYM_Q;
-        case KEY_SYM_r: return KEY_SYM_R;
-        case KEY_SYM_s: return KEY_SYM_S;
-        case KEY_SYM_t: return KEY_SYM_T;
-        case KEY_SYM_u: return KEY_SYM_U;
-        case KEY_SYM_v: return KEY_SYM_V;
-        case KEY_SYM_w: return KEY_SYM_W;
-        case KEY_SYM_x: return KEY_SYM_X;
-        case KEY_SYM_y: return KEY_SYM_Y;
-        case KEY_SYM_z: return KEY_SYM_Z;
+        //case KEY_SYM_a: return KEY_SYM_A;
+        //case KEY_SYM_b: return KEY_SYM_B;
+        //case KEY_SYM_c: return KEY_SYM_C;
+        //case KEY_SYM_d: return KEY_SYM_D;
+        //case KEY_SYM_e: return KEY_SYM_E;
+        //case KEY_SYM_f: return KEY_SYM_F;
+        //case KEY_SYM_g: return KEY_SYM_G;
+        //case KEY_SYM_h: return KEY_SYM_H;
+        //case KEY_SYM_i: return KEY_SYM_I;
+        //case KEY_SYM_j: return KEY_SYM_J;
+        //case KEY_SYM_k: return KEY_SYM_K;
+        //case KEY_SYM_l: return KEY_SYM_L;
+        //case KEY_SYM_m: return KEY_SYM_M;
+        //case KEY_SYM_n: return KEY_SYM_N;
+        //case KEY_SYM_o: return KEY_SYM_O;
+        //case KEY_SYM_p: return KEY_SYM_P;
+        //case KEY_SYM_q: return KEY_SYM_Q;
+        //case KEY_SYM_r: return KEY_SYM_R;
+        //case KEY_SYM_s: return KEY_SYM_S;
+        //case KEY_SYM_t: return KEY_SYM_T;
+        //case KEY_SYM_u: return KEY_SYM_U;
+        //case KEY_SYM_v: return KEY_SYM_V;
+        //case KEY_SYM_w: return KEY_SYM_W;
+        //case KEY_SYM_x: return KEY_SYM_X;
+        //case KEY_SYM_y: return KEY_SYM_Y;
+        //case KEY_SYM_z: return KEY_SYM_Z;
         
         default:
             break;
