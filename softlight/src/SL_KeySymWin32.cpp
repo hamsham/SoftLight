@@ -72,7 +72,7 @@ SL_KeySymbol sl_keycode_to_keysym_win32(const uint32_t keycode) noexcept
         case VK_RCONTROL: return KEY_SYM_R_CONTROL;
         case VK_MENU: return KEY_SYM_R_ALT;
         case VK_RWIN: return KEY_SYM_R_SUPER;
-        case VK_APPS: return KEY_SYM_R_META;
+        //case VK_APPS: return KEY_SYM_R_META;
 
         case VK_F1: return KEY_SYM_F1;
         case VK_F2: return KEY_SYM_F2;
@@ -120,23 +120,23 @@ SL_KeySymbol sl_keycode_to_keysym_win32(const uint32_t keycode) noexcept
         case VK_NUMPAD8: return KEY_SYM_NUMPAD_8;
         case VK_NUMPAD9: return KEY_SYM_NUMPAD_9;
         case VK_NUMPAD0: return KEY_SYM_NUMPAD_0;
-        case VK_END: return KEY_SYM_NUMPAD_END;     // Numpad alias: 1
-        case VK_DOWN: return KEY_SYM_NUMPAD_DOWN;    // Numpad alias: 2
-        case VK_NEXT: return KEY_SYM_NUMPAD_PG_DOWN;    // Numpad alias: 3
-        case VK_LEFT: return KEY_SYM_NUMPAD_LEFT;    // Numpad alias: 4
-        case VK_NUMPAD5: return KEY_SYM_NUMPAD_BEGIN; // Numpad alias: 5
-        case VK_RIGHT: return KEY_SYM_NUMPAD_RIGHT;   // Numpad alias: 6
-        case VK_HOME: return KEY_SYM_NUMPAD_HOME;    // Numpad alias: 7
-        case VK_UP: return KEY_SYM_NUMPAD_UP;      // Numpad alias: 8
-        case VK_PRIOR: return KEY_SYM_NUMPAD_PG_UP;   // Numpad alias: 9
-        case VK_INSERT: return KEY_SYM_NUMPAD_INSERT;  // Numpad alias: 0
+        //case VK_END: return KEY_SYM_NUMPAD_END;     // Numpad alias: 1
+        //case VK_DOWN: return KEY_SYM_NUMPAD_DOWN;    // Numpad alias: 2
+        //case VK_NEXT: return KEY_SYM_NUMPAD_PG_DOWN;    // Numpad alias: 3
+        //case VK_LEFT: return KEY_SYM_NUMPAD_LEFT;    // Numpad alias: 4
+        //case VK_NUMPAD5: return KEY_SYM_NUMPAD_BEGIN; // Numpad alias: 5
+        //case VK_RIGHT: return KEY_SYM_NUMPAD_RIGHT;   // Numpad alias: 6
+        //case VK_HOME: return KEY_SYM_NUMPAD_HOME;    // Numpad alias: 7
+        //case VK_UP: return KEY_SYM_NUMPAD_UP;      // Numpad alias: 8
+        //case VK_PRIOR: return KEY_SYM_NUMPAD_PG_UP;   // Numpad alias: 9
+        //case VK_INSERT: return KEY_SYM_NUMPAD_INSERT;  // Numpad alias: 0
         case VK_ADD: return KEY_SYM_NUMPAD_ADD;
         case VK_SUBTRACT: return KEY_SYM_NUMPAD_SUB;
         case VK_MULTIPLY: return KEY_SYM_NUMPAD_MUL;
         case VK_DIVIDE: return KEY_SYM_NUMPAD_DIV;
         //case VK_OEM_PLUS: return KEY_SYM_NUMPAD_EQUAL;
-        case VK_RETURN: return KEY_SYM_NUMPAD_ENTER;
-        case VK_DELETE: return KEY_SYM_NUMPAD_DELETE;
+        //case VK_RETURN: return KEY_SYM_NUMPAD_ENTER;
+        //case VK_DELETE: return KEY_SYM_NUMPAD_DELETE;
         case VK_DECIMAL: return KEY_SYM_NUMPAD_DECIMAL;
         //case VK_OEM_5: return KEY_SYM_NUMPAD_SEP;
 
@@ -155,7 +155,7 @@ SL_KeySymbol sl_keycode_to_keysym_win32(const uint32_t keycode) noexcept
         case VK_DOWN: return KEY_SYM_DOWN;
         case VK_SPACE: return KEY_SYM_SPACE;
         case VK_BACK: return KEY_SYM_BACKSPACE;
-        case VK_RETURN: return KEY_SYM_LINE_FEED;
+        //case VK_RETURN: return KEY_SYM_LINE_FEED;
         case VK_RETURN: return KEY_SYM_RETURN; // Enter
         case VK_TAB: return KEY_SYM_TAB;
         case VK_CLEAR: return KEY_SYM_CLEAR;

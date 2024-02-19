@@ -233,3 +233,4 @@ SL_KeySymbol sl_keycode_to_keysym_cocoa(const uint32_t keycode) noexcept
     
     return KEY_SYM_UNKNOWN;
 }
+
