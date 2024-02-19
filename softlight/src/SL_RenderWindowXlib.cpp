@@ -256,7 +256,7 @@ SL_RenderWindowXlib& SL_RenderWindowXlib::operator=(SL_RenderWindowXlib&& rw) no
 -------------------------------------*/
 SL_WindowBackend SL_RenderWindowXlib::backend() const noexcept
 {
-    return SL_WindowBackend::X11;
+    return SL_WindowBackend::X11_BACKEND;
 }
 
 

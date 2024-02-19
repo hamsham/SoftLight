@@ -281,7 +281,7 @@ LRESULT SL_RenderWindowWin32::win_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
 -------------------------------------*/
 SL_WindowBackend SL_RenderWindowWin32::backend() const noexcept
 {
-    return SL_WindowBackend::WIN32;
+    return SL_WindowBackend::WIN32_BACKEND;
 }
 
 

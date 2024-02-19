@@ -43,10 +43,10 @@ enum WindowStateInfo
 -----------------------------------------------------------------------------*/
 enum class SL_WindowBackend
 {
-    WIN32,
-    COCOA,
-    XCB,
-    X11,
+    WIN32_BACKEND,
+    COCOA_BACKEND,
+    XCB_BACKEND,
+    X11_BACKEND,
 };
 
 

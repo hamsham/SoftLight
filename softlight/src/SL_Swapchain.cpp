@@ -68,19 +68,19 @@ ls::utils::Pointer<SL_Swapchain> SL_Swapchain::create(SL_WindowBackend backend) 
     switch (backend)
     {
         #if defined(SL_HAVE_WIN32_BACKEND)
-            case SL_WindowBackend::WIN32: return ls::utils::Pointer<SL_Swapchain>{new SL_SwapchainWin32{}};
+            case SL_WindowBackend::WIN32_BACKEND: return ls::utils::Pointer<SL_Swapchain>{new SL_SwapchainWin32{}};
         #endif
 
         #if defined(SL_HAVE_COCOA_BACKEND)
-            case SL_WindowBackend::COCOA: return ls::utils::Pointer<SL_Swapchain>{new SL_SwapchainCocoa{}};
+            case SL_WindowBackend::COCOA_BACKEND: return ls::utils::Pointer<SL_Swapchain>{new SL_SwapchainCocoa{}};
         #endif
 
         #if defined(SL_HAVE_XCB_BACKEND)
-            case SL_WindowBackend::XCB: return ls::utils::Pointer<SL_Swapchain>{new SL_SwapchainXCB{}};
+            case SL_WindowBackend::XCB_BACKEND: return ls::utils::Pointer<SL_Swapchain>{new SL_SwapchainXCB{}};
         #endif
 
         #if defined(SL_HAVE_XCB_BACKEND)
-            case SL_WindowBackend::X11: return ls::utils::Pointer<SL_Swapchain>{new SL_SwapchainXlib{}};
+            case SL_WindowBackend::X11_BACKEND: return ls::utils::Pointer<SL_Swapchain>{new SL_SwapchainXlib{}};
         #endif
 
         default:

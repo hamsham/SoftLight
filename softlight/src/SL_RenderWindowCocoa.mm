@@ -335,7 +335,7 @@ SL_RenderWindowCocoa& SL_RenderWindowCocoa::operator=(SL_RenderWindowCocoa&& rw)
 -------------------------------------*/
 SL_WindowBackend SL_RenderWindowCocoa::backend() const noexcept
 {
-return SL_WindowBackend::COCOA;
+return SL_WindowBackend::COCOA_BACKEND;
 }
 
 

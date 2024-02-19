@@ -263,7 +263,7 @@ SL_RenderWindowXCB& SL_RenderWindowXCB::operator=(SL_RenderWindowXCB&& rw) noexc
 -------------------------------------*/
 SL_WindowBackend SL_RenderWindowXCB::backend() const noexcept
 {
-    return SL_WindowBackend::XCB;
+    return SL_WindowBackend::XCB_BACKEND;
 }
 
 
