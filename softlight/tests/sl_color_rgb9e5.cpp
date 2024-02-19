@@ -403,7 +403,7 @@ struct PlaneCompression
         //const rgb9e5&& rgb9 = float3_to_rgb9e5(math::vec3_cast(plane));
         //const math::vec4&& p = math::vec4_cast(rgb9e5_to_float3(rgb9), plane[3]);
 
-        //SL_PackedVertex_10_10_10_2&& rgb10 = SL_PackedVertex_10_10_10_2{math::vec3_cast(plane)};
+        //SL_PackedVertex_10_10_10_2I&& rgb10 = SL_PackedVertex_10_10_10_2I{math::vec3_cast(plane)};
         //const math::vec4&& p = math::vec4_cast((math::vec3)rgb10, plane[3]);
 
         /*
