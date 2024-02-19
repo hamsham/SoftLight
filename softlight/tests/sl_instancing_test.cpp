@@ -387,7 +387,7 @@ utils::Pointer<SL_SceneGraph> create_context()
 int main()
 {
     utils::Pointer<SL_RenderWindow> pWindow{std::move(SL_RenderWindow::create())};
-    utils::Pointer<SL_Swapchain>    pSwapchain{SL_Swapchain::create()};
+    utils::Pointer<SL_Swapchain>    pSwapchain{SL_Swapchain::create(pWindow->backend())};
     utils::Pointer<SL_SceneGraph>   pGraph{std::move(create_context())};
     utils::Pointer<bool[]>          pKeySyms{new bool[65536]};
 

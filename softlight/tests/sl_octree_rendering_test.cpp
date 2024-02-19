@@ -397,7 +397,7 @@ void update_cam_position(SL_Transform& camTrans, float tickTime, utils::Pointer<
 int main()
 {
     ls::utils::Pointer<SL_RenderWindow> pWindow    {SL_RenderWindow::create()};
-    ls::utils::Pointer<SL_Swapchain>    pSwapchain {SL_Swapchain::create()};
+    ls::utils::Pointer<SL_Swapchain>    pSwapchain {SL_Swapchain::create(pWindow->backend())};
     ls::utils::Pointer<SL_SceneGraph>   pGraph     {init_context()};
     OctreeType&&                        octree     = init_octree();
     SL_Context&                         context    = pGraph->mContext;

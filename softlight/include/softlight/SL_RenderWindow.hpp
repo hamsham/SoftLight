@@ -39,6 +39,19 @@ enum WindowStateInfo
 
 
 /*-----------------------------------------------------------------------------
+ * Get the windowing backend
+-----------------------------------------------------------------------------*/
+enum class SL_WindowBackend
+{
+    X11,
+    XCB,
+    COCOA,
+    WIN32
+};
+
+
+
+/*-----------------------------------------------------------------------------
  *
 -----------------------------------------------------------------------------*/
 class SL_RenderWindow
@@ -61,6 +74,8 @@ class SL_RenderWindow
     SL_RenderWindow& operator=(const SL_RenderWindow&) noexcept;
 
     SL_RenderWindow& operator=(SL_RenderWindow&&) noexcept;
+
+    virtual SL_WindowBackend backend() const noexcept = 0;
 
     virtual int set_title(const char* const pName) noexcept = 0;
 

@@ -22,6 +22,8 @@ namespace ls
     }
 }
 
+enum class SL_WindowBackend;
+
 class SL_RenderWindow;
 class SL_Texture;
 
@@ -38,7 +40,7 @@ class SL_Swapchain
     friend struct SL_ShaderProcessor;
 
   public:
-    static ls::utils::Pointer<SL_Swapchain> create() noexcept;
+    static ls::utils::Pointer<SL_Swapchain> create(SL_WindowBackend backend) noexcept;
 
   protected:
     SL_Texture mTexture;

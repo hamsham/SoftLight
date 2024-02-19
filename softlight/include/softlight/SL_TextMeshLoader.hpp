@@ -70,8 +70,8 @@ struct SL_TextLoadOpts
 
     // Implies "genNormals." Vertex normals will be compressed from a
     // math::vec3_t<float> type into an int32_t type. They can be unpacked
-    // using either "sl_unpack_vec3_10_10_10_2()" or
-    // "sl_unpack_vec4_10_10_10_2()."
+    // using either "sl_unpack_vec3_10_10_10_2I()" or
+    // "sl_unpack_vec4_10_10_10_2I()."
     bool packNormals;
 
     // Implies "genNormals." This will generate tangents and bitangents

@@ -66,6 +66,8 @@ class SL_RenderWindowXCB final : public SL_RenderWindow
 
     SL_RenderWindowXCB& operator=(SL_RenderWindowXCB&&) noexcept;
 
+    virtual SL_WindowBackend backend() const noexcept override;
+
     virtual int set_title(const char* const pName) noexcept override;
 
     virtual int init(unsigned width = 640, unsigned height = 480) noexcept override;

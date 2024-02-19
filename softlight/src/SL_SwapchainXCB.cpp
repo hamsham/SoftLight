@@ -4,7 +4,7 @@
 
 extern "C"
 {
-    #if SL_ENABLE_XSHM != 0
+    #if SL_ENABLE_XCB_SHM != 0
         #include <xcb/xcb.h>
         #include <xcb/shm.h>
         #include <xcb/xcb_image.h>
@@ -12,7 +12,7 @@ extern "C"
         #include <sys/ipc.h> // IPC_CREAT
         #include <sys/shm.h> // shmget
         #include <sys/stat.h> // SL_IRWXU
-    #endif /* SL_ENABLE_XSHM */
+    #endif /* SL_ENABLE_XCB_SHM */
 }
 
 #include "lightsky/utils/Log.h"
@@ -25,7 +25,7 @@ extern "C"
 /*-----------------------------------------------------------------------------
  *
 -----------------------------------------------------------------------------*/
-#if SL_ENABLE_XSHM != 0
+#if SL_ENABLE_XCB_SHM != 0
 /*-------------------------------------
  *
 -------------------------------------*/
@@ -293,4 +293,4 @@ int SL_SwapchainXCB::terminate() noexcept
 
 
 
-#endif /* SL_ENABLE_XSHM */
+#endif /* SL_ENABLE_XCB_SHM */

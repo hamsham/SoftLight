@@ -278,7 +278,7 @@ char* sl_calc_mesh_geometry_norm_packed(
     const aiVector3D&  inNorm = pInNorms[index];
     const math::vec3&& n      = sl_convert_assimp_vector(inNorm);
 
-    return set_mesh_vertex_data(pVbo, sl_pack_vec3_10_10_10_2(math::normalize(n)));
+    return set_mesh_vertex_data(pVbo, sl_pack_vec3_10_10_10_2I(math::normalize(n)));
 }
 
 
@@ -316,7 +316,7 @@ char* sl_calc_mesh_geometry_tangent_packed(
     const aiVector3D&  inTng = (tangentType == SL_CommonVertType::PACKED_TANGENT_VERTEX) ? pMesh->mTangents[index] : pMesh->mBitangents[index];
     const math::vec3&& t     = sl_convert_assimp_vector(inTng);
 
-    return set_mesh_vertex_data(pVbo, sl_pack_vec3_10_10_10_2(math::normalize(t)));
+    return set_mesh_vertex_data(pVbo, sl_pack_vec3_10_10_10_2I(math::normalize(t)));
 }
 
 

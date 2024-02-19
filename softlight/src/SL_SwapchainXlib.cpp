@@ -8,13 +8,13 @@ extern "C"
     #include <X11/Xlib.h>
     #include <X11/Xutil.h>
 
-    #if SL_ENABLE_XSHM != 0
+    #if SL_ENABLE_X11_SHM != 0
         #include <X11/extensions/XShm.h>
 
         #include <sys/ipc.h> // IPC_CREAT
         #include <sys/shm.h> // shmget
         #include <sys/stat.h> // S_IREAD, S_IWRITE, S_IRGRP, S_IWGRP, S_IROTH, S_IWOTH
-    #endif /* SL_ENABLE_XSHM */
+    #endif /* SL_ENABLE_X11_SHM */
 }
 
 #include "lightsky/utils/Log.h"
@@ -27,7 +27,7 @@ extern "C"
 /*-----------------------------------------------------------------------------
  *
 -----------------------------------------------------------------------------*/
-#if SL_ENABLE_XSHM != 0
+#if SL_ENABLE_X11_SHM != 0
 /*-------------------------------------
  *
 -------------------------------------*/
@@ -223,7 +223,7 @@ int SL_SwapchainXlib::terminate() noexcept
 /*-----------------------------------------------------------------------------
  *
 -----------------------------------------------------------------------------*/
-#else /* SL_ENABLE_XSHM */
+#else /* SL_ENABLE_X11_SHM */
 /*-------------------------------------
  *
 -------------------------------------*/
@@ -351,4 +351,4 @@ int SL_SwapchainXlib::terminate() noexcept
 
 
 
-#endif /* SL_ENABLE_XSHM */
+#endif /* SL_ENABLE_X11_SHM */

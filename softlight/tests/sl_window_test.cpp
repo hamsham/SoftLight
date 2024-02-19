@@ -125,7 +125,7 @@ int main()
                         break;
 
                     default:
-                        std::cout << "Released key " << keySym << ": " << key_to_string(keySym) << std::endl;
+                        std::cout << "Released key " << keySym << ": " << sl_key_to_string(keySym) << std::endl;
                         break;
                 }
             }

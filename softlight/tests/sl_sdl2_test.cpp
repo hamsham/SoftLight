@@ -131,7 +131,7 @@ math::vec4 _normal_vert_shader_impl(SL_VertexParam& param)
     const MeshUniforms* pUniforms = param.pUniforms->as<MeshUniforms>();
     const Vertex*       v         = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));
     const math::vec4&&  vert      = math::vec4_cast(v->const_element<0>(), 1.f);
-    const math::vec4&&  norm      = sl_unpack_vec4_10_10_10_2(v->const_element<1>());
+    const math::vec4&&  norm      = sl_unpack_vec4_10_10_10_2I(v->const_element<1>());
 
     param.pVaryings[0] = pUniforms->modelMatrix * vert;
     param.pVaryings[1] = pUniforms->modelMatrix * norm;
@@ -238,7 +238,7 @@ math::vec4 _texture_vert_shader_impl(SL_VertexParam& param)
     const Vertex*       v         = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));
     const math::vec4&&  vert      = math::vec4_cast(v->const_element<0>(), 1.f);
     const math::vec4&&  uv        = math::vec4_cast(v->const_element<1>(), 0.f, 0.f);
-    const math::vec4&&  norm      = sl_unpack_vec4_10_10_10_2(v->const_element<2>());
+    const math::vec4&&  norm      = sl_unpack_vec4_10_10_10_2I(v->const_element<2>());
 
     param.pVaryings[0] = pUniforms->modelMatrix * vert;
     param.pVaryings[1] = uv;

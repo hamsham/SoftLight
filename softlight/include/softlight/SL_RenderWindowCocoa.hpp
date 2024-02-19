@@ -42,6 +42,8 @@ class SL_RenderWindowCocoa final : public SL_RenderWindow
 
     SL_RenderWindowCocoa& operator=(SL_RenderWindowCocoa&&) noexcept;
 
+    virtual SL_WindowBackend backend() const noexcept override;
+
     int set_title(const char* const pName) noexcept override;
 
     int init(unsigned width = 640, unsigned height = 480) noexcept override;

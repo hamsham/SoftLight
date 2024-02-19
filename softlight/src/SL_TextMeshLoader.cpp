@@ -271,7 +271,7 @@ unsigned SL_TextMeshLoader::calc_text_geometry_packed_norms(
     const math::vec3& normDir
 ) noexcept
 {
-    const int32_t packedNorm = sl_pack_vec3_10_10_10_2(normDir);
+    const int32_t packedNorm = sl_pack_vec3_10_10_10_2I(normDir);
     pVert = set_text_vertex_data(pVert, packedNorm);
     pVert = set_text_vertex_data(pVert, packedNorm);
     pVert = set_text_vertex_data(pVert, packedNorm);

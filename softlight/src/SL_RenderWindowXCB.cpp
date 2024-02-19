@@ -13,7 +13,7 @@ extern "C"
     #include <X11/Xlib-xcb.h>
     #include <X11/XKBlib.h> // XkbKeycodeToKeysym
 
-    #if SL_ENABLE_XSHM != 0
+    #if SL_ENABLE_XCB_SHM != 0
         #include <xcb/shm.h>
         #include <xcb/xcb_image.h>
     #endif
@@ -23,6 +23,7 @@ extern "C"
 #include "lightsky/utils/Copy.h"
 #include "lightsky/utils/Log.h"
 
+#include "softlight/SL_KeySymXlib.hpp"
 #include "softlight/SL_SwapchainXCB.hpp"
 #include "softlight/SL_RenderWindowXCB.hpp"
 #include "softlight/SL_WindowEvent.hpp"
@@ -253,6 +254,16 @@ SL_RenderWindowXCB& SL_RenderWindowXCB::operator=(SL_RenderWindowXCB&& rw) noexc
     rw.mClipboard = nullptr;
 
     return *this;
+}
+
+
+
+/*-------------------------------------
+ * Window Backend
+-------------------------------------*/
+SL_WindowBackend SL_RenderWindowXCB::backend() const noexcept
+{
+    return SL_WindowBackend::XCB;
 }
 
 
@@ -848,7 +859,7 @@ bool SL_RenderWindowXCB::peek_event(SL_WindowEvent* const pEvent) noexcept
             XkbLookupKeySym(mDisplay, pKeyPress->detail, pKeyPress->state, &keyMods, &keySym);
             pEvent->type = WIN_EVENT_KEY_DOWN;
             pEvent->pNativeWindow = pKeyPress->event;
-            pEvent->keyboard.keysym = (SL_KeySymbol)keySym;
+            pEvent->keyboard.keysym = sl_keycode_to_keysym_xkb(keySym);
             pEvent->keyboard.key = mKeysRepeat ? 0 : (uint8_t)pKeyPress->detail; // only get key names in text mode
             pEvent->keyboard.capsLock = (uint8_t)((pKeyPress->state & LockMask) > 0);
             pEvent->keyboard.numLock = (uint8_t)((pKeyPress->state & Mod2Mask) > 0);
@@ -862,7 +873,7 @@ bool SL_RenderWindowXCB::peek_event(SL_WindowEvent* const pEvent) noexcept
             XkbLookupKeySym(mDisplay, pKeyRelease->detail, pKeyRelease->state, &keyMods, &keySym);
             pEvent->type = WIN_EVENT_KEY_UP;
             pEvent->pNativeWindow = pKeyRelease->event;
-            pEvent->keyboard.keysym = (SL_KeySymbol)keySym;
+            pEvent->keyboard.keysym = sl_keycode_to_keysym_xkb(keySym);
             pEvent->keyboard.key = mKeysRepeat ? 0 : (uint8_t)pKeyRelease->detail; // only get key names in text mode
             pEvent->keyboard.capsLock = (uint8_t)((pKeyRelease->state & LockMask) > 0);
             pEvent->keyboard.numLock = (uint8_t)((pKeyRelease->state & Mod2Mask) > 0);
@@ -1095,7 +1106,7 @@ void SL_RenderWindowXCB::render(SL_Swapchain& buffer) noexcept
     const uint32_t w = (uint32_t)width();
     const uint32_t h = (uint32_t)height();
 
-    #if SL_ENABLE_XSHM != 0
+    #if SL_ENABLE_XCB_SHM != 0
         xcb_shm_segment_info_t* pShmInfo = (xcb_shm_segment_info_t*)((SL_SwapchainXCB*)&buffer)->mShmInfo;
 
         xcb_shm_put_image(

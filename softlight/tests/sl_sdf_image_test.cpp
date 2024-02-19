@@ -71,7 +71,7 @@ struct MeshTestUniforms
 --------------------------------------*/
 math::vec4 _mesh_vert_shader(SL_VertexParam& param)
 {
-    typedef utils::Tuple<math::vec3, SL_PackedVertex_10_10_10_2> Vertex;
+    typedef utils::Tuple<math::vec3, SL_PackedVertex_10_10_10_2I> Vertex;
 
     const MeshTestUniforms* pUniforms = param.pUniforms->as<MeshTestUniforms>();
     const Vertex*           v         = param.pVbo->element<const Vertex>(param.pVao->offset(0, param.vertId));
@@ -261,7 +261,7 @@ int main()
     (void)retCode;
 
     utils::Pointer<SL_RenderWindow> pWindow{SL_RenderWindow::create()};
-    utils::Pointer<SL_Swapchain>    pSwapchain{SL_Swapchain::create()};
+    utils::Pointer<SL_Swapchain>    pSwapchain{SL_Swapchain::create(pWindow->backend())};
     if (pWindow->init(IMAGE_WIDTH, IMAGE_HEIGHT))
     {
         LS_LOG_ERR("Unable to initialize a window.");

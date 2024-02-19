@@ -336,7 +336,7 @@ void render_quadtree(SL_SceneGraph* pGraph, const QuadtreeNodeType& quadtree, co
 int main()
 {
     ls::utils::Pointer<SL_RenderWindow> pWindow    {SL_RenderWindow::create()};
-    ls::utils::Pointer<SL_Swapchain>    pSwapchain {SL_Swapchain::create()};
+    ls::utils::Pointer<SL_Swapchain>    pSwapchain {SL_Swapchain::create(pWindow->backend())};
     ls::utils::Pointer<SL_SceneGraph>   pGraph     {init_context()};
     QuadtreeType&&                      quadtree   = init_quadtree(1.f, 1.f);
     SL_Context&                         context    = pGraph->mContext;

@@ -418,7 +418,7 @@ int main()
     (void)retCode;
 
     utils::Pointer<SL_RenderWindow> pWindow{std::move(SL_RenderWindow::create())};
-    utils::Pointer<SL_Swapchain>    pSwapchain{SL_Swapchain::create()};
+    utils::Pointer<SL_Swapchain>    pSwapchain{SL_Swapchain::create(pWindow->backend())};
     if (pWindow->init(IMAGE_WIDTH, IMAGE_HEIGHT))
     {
         LS_LOG_ERR("Unable to initialize a window.");

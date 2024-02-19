@@ -3,13 +3,20 @@
 
 #include "lightsky/setup/OS.h" // OS detection
 
-#ifdef LS_OS_WINDOWS
+#if defined(SL_HAVE_WIN32_BACKEND)
     #include "softlight/SL_RenderWindowWin32.hpp"
-#elif defined(SL_PREFER_COCOA)
+#endif
+
+#if defined(SL_HAVE_COCOA_BACKEND)
         #include "softlight/SL_RenderWindowCocoa.hpp"
-#else
-    #include "softlight/SL_RenderWindowXCB.hpp"
+#endif
+
+#if defined(SL_HAVE_X11_BACKEND)
     #include "softlight/SL_RenderWindowXlib.hpp"
+#endif
+
+#if defined(SL_HAVE_XCB_BACKEND)
+    #include "softlight/SL_RenderWindowXCB.hpp"
 #endif
 
 
@@ -80,16 +87,14 @@ SL_RenderWindow& SL_RenderWindow::operator=(SL_RenderWindow&& rw) noexcept
 -------------------------------------*/
 ls::utils::Pointer<SL_RenderWindow> SL_RenderWindow::create() noexcept
 {
-    #ifdef LS_OS_WINDOWS
+    #if defined(SL_HAVE_WIN32_BACKEND)
         return ls::utils::Pointer<SL_RenderWindow>{new SL_RenderWindowWin32{}};
-    #elif defined(SL_PREFER_COCOA)
+    #elif defined(SL_PREFER_COCOA) && defined(SL_HAVE_COCOA_BACKEND)
         return ls::utils::Pointer<SL_RenderWindow>{new SL_RenderWindowCocoa{}};
-    #elif defined(LS_OS_UNIX)
-        #if defined(SL_PREFER_XCB)
+    #elif defined(SL_PREFER_XCB) && defined(SL_HAVE_XCB_BACKEND)
             return ls::utils::Pointer<SL_RenderWindow>{new SL_RenderWindowXCB{}};
-        #else
-            return ls::utils::Pointer<SL_RenderWindow>{new SL_RenderWindowXlib{}};
-        #endif
+    #elif defined(SL_HAVE_X11_BACKEND)
+        return ls::utils::Pointer<SL_RenderWindow>{new SL_RenderWindowXlib{}};
     #else
         #error "Window buffer backend not implemented for this platform."
     #endif

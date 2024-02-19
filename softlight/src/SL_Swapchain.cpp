@@ -3,15 +3,23 @@
 
 #include "lightsky/setup/OS.h" // OS detection
 
-#if defined(LS_OS_WINDOWS)
+#if defined(SL_HAVE_WIN32_BACKEND)
     #include "softlight/SL_SwapchainWin32.hpp"
-#elif defined(SL_PREFER_COCOA)
+#endif
+
+#if defined(SL_HAVE_COCOA_BACKEND)
     #include "softlight/SL_SwapchainCocoa.hpp"
-#else
-    #include "softlight/SL_SwapchainXCB.hpp"
+#endif
+
+#if defined(SL_HAVE_X11_BACKEND)
     #include "softlight/SL_SwapchainXlib.hpp"
 #endif
 
+#if defined(SL_HAVE_XCB_BACKEND)
+    #include "softlight/SL_SwapchainXCB.hpp"
+#endif
+
+#include "softlight/SL_RenderWindow.hpp"
 #include "softlight/SL_Swapchain.hpp"
 
 
@@ -57,19 +65,29 @@ SL_Swapchain& SL_Swapchain::operator=(SL_Swapchain&& wb) noexcept
 /*-------------------------------------
  * Instance Creation
 -------------------------------------*/
-ls::utils::Pointer<SL_Swapchain> SL_Swapchain::create() noexcept
+ls::utils::Pointer<SL_Swapchain> SL_Swapchain::create(SL_WindowBackend backend) noexcept
 {
-    #ifdef LS_OS_WINDOWS
-        return ls::utils::Pointer<SL_Swapchain>{new SL_SwapchainWin32{}};
-    #elif defined(SL_PREFER_COCOA)
-            return ls::utils::Pointer<SL_Swapchain>{new SL_SwapchainCocoa{}};
-    #elif defined(LS_OS_UNIX)
-        #if defined(SL_PREFER_XCB)
-            return ls::utils::Pointer<SL_Swapchain>{new SL_SwapchainXCB{}};
-        #else
-            return ls::utils::Pointer<SL_Swapchain>{new SL_SwapchainXlib{}};
+    switch (backend)
+    {
+        #if defined(SL_HAVE_WIN32_BACKEND)
+            case SL_WindowBackend::WIN32: return ls::utils::Pointer<SL_Swapchain>{new SL_SwapchainWin32{}};
         #endif
-    #else
-        #error "Window buffer backend not implemented for this platform."
-    #endif
+
+        #if defined(SL_HAVE_COCOA_BACKEND)
+            case SL_WindowBackend::COCOA: return ls::utils::Pointer<SL_Swapchain>{new SL_SwapchainCocoa{}};
+        #endif
+
+        #if defined(SL_HAVE_XCB_BACKEND)
+            case SL_WindowBackend::XCB: return ls::utils::Pointer<SL_Swapchain>{new SL_SwapchainXCB{}};
+        #endif
+
+        #if defined(SL_HAVE_XCB_BACKEND)
+            case SL_WindowBackend::X11: return ls::utils::Pointer<SL_Swapchain>{new SL_SwapchainXlib{}};
+        #endif
+
+        default:
+            break;
+    }
+
+    return ls::utils::Pointer<SL_Swapchain>{nullptr};
 }

@@ -624,7 +624,7 @@ void update_cam_position(SL_Transform& camTrans, float tickTime, utils::Pointer<
 int main()
 {
     ls::utils::Pointer<SL_RenderWindow> pWindow    {std::move(SL_RenderWindow::create())};
-    ls::utils::Pointer<SL_Swapchain>    pSwapchain {SL_Swapchain::create()};
+    ls::utils::Pointer<SL_Swapchain>    pSwapchain {SL_Swapchain::create(pWindow->backend())};
     ls::utils::Pointer<SL_SceneGraph>   pGraph     {std::move(init_volume_context())};
     SL_Context&                         context    = pGraph->mContext;
     ls::utils::Pointer<bool[]>          pKeySyms   {new bool[65536]};

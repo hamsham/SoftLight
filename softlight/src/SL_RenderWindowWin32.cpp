@@ -20,7 +20,7 @@
 #include "lightsky/utils/Log.h"
 
 #include "softlight/SL_Color.hpp"
-#include "softlight/SL_KeySym.hpp"
+#include "softlight/SL_KeySymWin32.hpp"
 #include "softlight/SL_SwapchainWin32.hpp"
 #include "softlight/SL_RenderWindowWin32.hpp"
 #include "softlight/SL_WindowEvent.hpp"
@@ -272,6 +272,16 @@ LRESULT SL_RenderWindowWin32::win_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
     }
 
     return FALSE;
+}
+
+
+
+/*-------------------------------------
+ * Window Backend
+-------------------------------------*/
+SL_WindowBackend SL_RenderWindowWin32::backend() const noexcept
+{
+    return SL_WindowBackend::WIN32;
 }
 
 
@@ -783,7 +793,7 @@ bool SL_RenderWindowWin32::peek_event(SL_WindowEvent* const pEvent) noexcept
         }
 
         pEvent->type = WIN_EVENT_KEY_DOWN;
-        pEvent->keyboard.keysym = (SL_KeySymbol)mLastMsg.wParam;
+        pEvent->keyboard.keysym = sl_keycode_to_keysym_win32((uint32_t)mLastMsg.wParam);
         pEvent->keyboard.key = mLastMsg.wParam & 0xFF;
         pEvent->keyboard.capsLock = (uint8_t)((GetKeyState(VK_CAPITAL) & 0x0001) != 0);
         pEvent->keyboard.numLock = (uint8_t)((GetKeyState(VK_NUMLOCK) & 0x0001) != 0);
@@ -800,7 +810,7 @@ bool SL_RenderWindowWin32::peek_event(SL_WindowEvent* const pEvent) noexcept
         }
 
         pEvent->type = WIN_EVENT_KEY_DOWN;
-        pEvent->keyboard.keysym = (SL_KeySymbol)mLastMsg.wParam;
+        pEvent->keyboard.keysym = sl_keycode_to_keysym_win32((uint32_t)mLastMsg.wParam);
         pEvent->keyboard.key = 0; // do no additional processing in non-text mode.
         pEvent->keyboard.capsLock = (uint8_t)((GetKeyState(VK_CAPITAL) & 0x0001) != 0);
         pEvent->keyboard.numLock = (uint8_t)((GetKeyState(VK_NUMLOCK) & 0x0001) != 0);
@@ -809,7 +819,7 @@ bool SL_RenderWindowWin32::peek_event(SL_WindowEvent* const pEvent) noexcept
 
     case WM_KEYUP:
         pEvent->type = WIN_EVENT_KEY_UP;
-        pEvent->keyboard.keysym = (SL_KeySymbol)mLastMsg.wParam;
+        pEvent->keyboard.keysym = sl_keycode_to_keysym_win32((uint32_t)mLastMsg.wParam);
         pEvent->keyboard.key = 0; // do no additional processing in non-text mode.
         pEvent->keyboard.capsLock = (uint8_t)((GetKeyState(VK_CAPITAL) & 0x0001) != 0);
         pEvent->keyboard.numLock = (uint8_t)((GetKeyState(VK_NUMLOCK) & 0x0001) != 0);

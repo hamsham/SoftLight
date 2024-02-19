@@ -9,9 +9,9 @@
 // Should be defined by the build system
 // OSX with XQuartz runs out of memory when attaching textures to shared
 // memory segments.
-#ifndef SL_ENABLE_XSHM
-    #define SL_ENABLE_XSHM 0
-#endif /* SL_ENABLE_XSHM */
+#ifndef SL_ENABLE_X11_SHM
+    #define SL_ENABLE_X11_SHM 0
+#endif /* SL_ENABLE_X11_SHM */
 
 
 
@@ -39,7 +39,7 @@ class SL_SwapchainXlib : public SL_Swapchain
 
     void* mBuffer;
 
-    #if SL_ENABLE_XSHM != 0
+    #if SL_ENABLE_X11_SHM != 0
     void* mShmInfo;
     #endif
 

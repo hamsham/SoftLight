@@ -8,7 +8,7 @@
 #include "lightsky/utils/Log.h"
 
 #include "softlight/SL_Color.hpp"
-#include "softlight/SL_KeySym.hpp"
+#include "softlight/SL_KeySymCocoa.hpp"
 #include "softlight/SL_SwapchainCocoa.hpp"
 #include "softlight/SL_RenderWindowCocoa.hpp"
 #include "softlight/SL_WindowEvent.hpp"
@@ -326,6 +326,16 @@ SL_RenderWindowCocoa& SL_RenderWindowCocoa::operator=(SL_RenderWindowCocoa&& rw)
     rw.mMouseY = 0;
 
     return *this;
+}
+
+
+
+/*-------------------------------------
+ * Window Backend
+-------------------------------------*/
+SL_WindowBackend SL_RenderWindowCocoa::backend() const noexcept
+{
+return SL_WindowBackend::COCOA;
 }
 
 
@@ -831,7 +841,7 @@ bool SL_RenderWindowCocoa::peek_event(SL_WindowEvent* const pEvent) noexcept
         case NSEventTypeKeyDown:
             modFlags = [evt modifierFlags];
             pEvent->type = WIN_EVENT_KEY_DOWN;
-            pEvent->keyboard.keysym = (SL_KeySymbol)[evt keyCode];
+            pEvent->keyboard.keysym = sl_keycode_to_keysym_cocoa((uint32_t)[evt keyCode]);
             pEvent->keyboard.key = (uint8_t)(mKeysRepeat ? 0 : [[evt charactersIgnoringModifiers] characterAtIndex:0]);
             pEvent->keyboard.capsLock = (uint8_t)(0 != (modFlags & NSEventModifierFlagCapsLock));
             pEvent->keyboard.numLock = (uint8_t)(0 != (modFlags & NSEventModifierFlagNumericPad));
@@ -841,7 +851,7 @@ bool SL_RenderWindowCocoa::peek_event(SL_WindowEvent* const pEvent) noexcept
         case NSEventTypeKeyUp:
             modFlags = [evt modifierFlags];
             pEvent->type = WIN_EVENT_KEY_UP;
-            pEvent->keyboard.keysym = (SL_KeySymbol)[evt keyCode];
+            pEvent->keyboard.keysym = sl_keycode_to_keysym_cocoa((uint32_t)[evt keyCode]);
             pEvent->keyboard.key = (uint8_t)(mKeysRepeat ? 0 : [[evt charactersIgnoringModifiers] characterAtIndex:0]);
             pEvent->keyboard.capsLock = (uint8_t)(0 != (modFlags & NSEventModifierFlagCapsLock));
             pEvent->keyboard.numLock = (uint8_t)(0 != (modFlags & NSEventModifierFlagNumericPad));

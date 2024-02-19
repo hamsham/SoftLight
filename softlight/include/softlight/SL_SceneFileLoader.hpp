@@ -99,7 +99,7 @@ struct SL_SceneLoadOpts
 
     // Vertex normals will be compressed from a math::vec3_t<float> type into
     // an int32_t type. They can be unpacked using either
-    // "sl_unpack_vec3_10_10_10_2()" or "sl_unpack_vec4_10_10_10_2()." This
+    // "sl_unpack_vec3_10_10_10_2I()" or "sl_unpack_vec4_10_10_10_2I()." This
     // option does nothing if no normals exist or are generated.
     bool packNormals;
 
