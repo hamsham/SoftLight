@@ -841,8 +841,9 @@ bool SL_RenderWindowCocoa::peek_event(SL_WindowEvent* const pEvent) noexcept
         case NSEventTypeKeyDown:
             modFlags = [evt modifierFlags];
             pEvent->type = WIN_EVENT_KEY_DOWN;
-            pEvent->keyboard.keysym = sl_keycode_to_keysym_cocoa((uint32_t)[evt keyCode]);
-            pEvent->keyboard.key = (uint8_t)(mKeysRepeat ? 0 : [[evt charactersIgnoringModifiers] characterAtIndex:0]);
+            pEvent->keyboard.keySym = sl_keycode_to_keysym_cocoa((uint32_t)[evt keyCode]);
+            pEvent->keyboard.keyPlatform = (uint16_t)[evt keyCode];
+            pEvent->keyboard.keyRaw = (uint8_t)(mKeysRepeat ? 0 : [[evt charactersIgnoringModifiers] characterAtIndex:0]);
             pEvent->keyboard.capsLock = (uint8_t)(0 != (modFlags & NSEventModifierFlagCapsLock));
             pEvent->keyboard.numLock = (uint8_t)(0 != (modFlags & NSEventModifierFlagNumericPad));
             pEvent->keyboard.scrollLock = (uint8_t)(0 != (modFlags & NSEventModifierFlagFunction));
@@ -851,8 +852,9 @@ bool SL_RenderWindowCocoa::peek_event(SL_WindowEvent* const pEvent) noexcept
         case NSEventTypeKeyUp:
             modFlags = [evt modifierFlags];
             pEvent->type = WIN_EVENT_KEY_UP;
-            pEvent->keyboard.keysym = sl_keycode_to_keysym_cocoa((uint32_t)[evt keyCode]);
-            pEvent->keyboard.key = (uint8_t)(mKeysRepeat ? 0 : [[evt charactersIgnoringModifiers] characterAtIndex:0]);
+            pEvent->keyboard.keySym = sl_keycode_to_keysym_cocoa((uint32_t)[evt keyCode]);
+            pEvent->keyboard.keyPlatform = (uint16_t)[evt keyCode];
+            pEvent->keyboard.keyRaw = (uint8_t)(mKeysRepeat ? 0 : [[evt charactersIgnoringModifiers] characterAtIndex:0]);
             pEvent->keyboard.capsLock = (uint8_t)(0 != (modFlags & NSEventModifierFlagCapsLock));
             pEvent->keyboard.numLock = (uint8_t)(0 != (modFlags & NSEventModifierFlagNumericPad));
             pEvent->keyboard.scrollLock = (uint8_t)(0 != (modFlags & NSEventModifierFlagFunction));

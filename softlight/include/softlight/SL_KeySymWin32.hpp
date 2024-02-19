@@ -9,7 +9,7 @@
 /*-------------------------------------
  * @brief Keyboard Symbols
 -------------------------------------*/
-enum SL_KeySymbol : uint32_t;
+enum SL_KeySymbol : uint16_t;
 
 
 

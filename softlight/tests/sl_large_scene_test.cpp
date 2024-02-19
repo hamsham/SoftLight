@@ -942,12 +942,12 @@ int main()
             }
             else if (evt.type == SL_WinEventType::WIN_EVENT_KEY_DOWN)
             {
-                const SL_KeySymbol keySym = evt.keyboard.keysym;
+                const SL_KeySymbol keySym = evt.keyboard.keySym;
                 pKeySyms[keySym] = true;
             }
             else if (evt.type == SL_WinEventType::WIN_EVENT_KEY_UP)
             {
-                const SL_KeySymbol keySym = evt.keyboard.keysym;
+                const SL_KeySymbol keySym = evt.keyboard.keySym;
                 pKeySyms[keySym] = false;
 
                 switch (keySym)

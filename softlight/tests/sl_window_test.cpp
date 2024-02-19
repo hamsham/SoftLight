@@ -47,12 +47,12 @@ int main()
 
             if (evt.type == SL_WinEventType::WIN_EVENT_KEY_DOWN)
             {
-                isCtrlPressed = isCtrlPressed || (evt.keyboard.keysym == SL_KeySymbol::KEY_SYM_L_CONTROL) || (evt.keyboard.keysym == SL_KeySymbol::KEY_SYM_R_CONTROL);
-                std::cout << "Pressed key " << evt.keyboard.key << ' ' << evt.keyboard.keysym << ' ' << isCtrlPressed << std::endl;
+                isCtrlPressed = isCtrlPressed || (evt.keyboard.keySym == SL_KeySymbol::KEY_SYM_L_CONTROL) || (evt.keyboard.keySym == SL_KeySymbol::KEY_SYM_R_CONTROL);
+                std::cout << "Pressed key " << evt.keyboard.keyRaw << ' ' << evt.keyboard.keySym << ' ' << isCtrlPressed << std::endl;
             }
             else if (evt.type == SL_WinEventType::WIN_EVENT_KEY_UP)
             {
-                const SL_KeySymbol keySym = evt.keyboard.keysym;
+                const SL_KeySymbol keySym = evt.keyboard.keySym;
                 switch (keySym)
                 {
                     case SL_KeySymbol::KEY_SYM_ESCAPE:
@@ -125,7 +125,7 @@ int main()
                         break;
 
                     default:
-                        std::cout << "Released key " << keySym << ": " << sl_key_to_string(keySym) << std::endl;
+                        std::cout << "Released key " << keySym << ": " << sl_key_to_string(evt.keyboard.keySym) << std::endl;
                         break;
                 }
             }

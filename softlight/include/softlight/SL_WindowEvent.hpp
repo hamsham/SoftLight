@@ -9,7 +9,7 @@
 /*-----------------------------------------------------------------------------
  * Forward Declarations
 -----------------------------------------------------------------------------*/
-enum SL_KeySymbol : uint32_t; // KeySym*.hpp
+enum SL_KeySymbol : uint16_t; // KeySym*.hpp
 
 
 
@@ -53,8 +53,9 @@ enum SL_WinEventType : uint32_t
 -------------------------------------*/
 struct alignas(8) SL_KeyEvent
 {
-    SL_KeySymbol keysym; // symbolic key (common-use)
-    uint8_t key; // raw-hardware key
+    SL_KeySymbol keySym; // symbolic key (common-use)
+    uint16_t keyPlatform; // platform-specific symbolic key
+    uint8_t keyRaw; // raw-hardware key
     uint8_t capsLock;
     uint8_t numLock;
     uint8_t scrollLock;

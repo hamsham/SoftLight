@@ -859,8 +859,9 @@ bool SL_RenderWindowXCB::peek_event(SL_WindowEvent* const pEvent) noexcept
             XkbLookupKeySym(mDisplay, pKeyPress->detail, pKeyPress->state, &keyMods, &keySym);
             pEvent->type = WIN_EVENT_KEY_DOWN;
             pEvent->pNativeWindow = pKeyPress->event;
-            pEvent->keyboard.keysym = sl_keycode_to_keysym_xkb(keySym);
-            pEvent->keyboard.key = mKeysRepeat ? 0 : (uint8_t)pKeyPress->detail; // only get key names in text mode
+            pEvent->keyboard.keySym = sl_keycode_to_keysym_xkb((uint32_t)keySym);
+            pEvent->keyboard.keyPlatform = (uint16_t)keySym;
+            pEvent->keyboard.keyRaw = mKeysRepeat ? 0 : (uint8_t)pKeyPress->detail; // only get key names in text mode
             pEvent->keyboard.capsLock = (uint8_t)((pKeyPress->state & LockMask) > 0);
             pEvent->keyboard.numLock = (uint8_t)((pKeyPress->state & Mod2Mask) > 0);
             pEvent->keyboard.scrollLock = (uint8_t)((pKeyPress->state & Mod3Mask) > 0);
@@ -873,8 +874,9 @@ bool SL_RenderWindowXCB::peek_event(SL_WindowEvent* const pEvent) noexcept
             XkbLookupKeySym(mDisplay, pKeyRelease->detail, pKeyRelease->state, &keyMods, &keySym);
             pEvent->type = WIN_EVENT_KEY_UP;
             pEvent->pNativeWindow = pKeyRelease->event;
-            pEvent->keyboard.keysym = sl_keycode_to_keysym_xkb(keySym);
-            pEvent->keyboard.key = mKeysRepeat ? 0 : (uint8_t)pKeyRelease->detail; // only get key names in text mode
+            pEvent->keyboard.keySym = sl_keycode_to_keysym_xkb((uint32_t)keySym);
+            pEvent->keyboard.keyPlatform = (uint16_t)keySym;
+            pEvent->keyboard.keyRaw = mKeysRepeat ? 0 : (uint8_t)pKeyRelease->detail; // only get key names in text mode
             pEvent->keyboard.capsLock = (uint8_t)((pKeyRelease->state & LockMask) > 0);
             pEvent->keyboard.numLock = (uint8_t)((pKeyRelease->state & Mod2Mask) > 0);
             pEvent->keyboard.scrollLock = (uint8_t)((pKeyRelease->state & Mod3Mask) > 0);

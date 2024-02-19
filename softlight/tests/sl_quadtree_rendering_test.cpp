@@ -414,7 +414,7 @@ int main()
             }
             else if (evt.type == SL_WinEventType::WIN_EVENT_KEY_UP)
             {
-                const SL_KeySymbol keySym = evt.keyboard.keysym;
+                const SL_KeySymbol keySym = evt.keyboard.keySym;
                 switch (keySym)
                 {
                     case SL_KeySymbol::KEY_SYM_SPACE:
