@@ -23,7 +23,7 @@ enum SL_KeySymbol : uint16_t;
  * @return A string, containing the string representation of a key symbol in
  * the SL_KeySymbol enumeration, or NULL if one doesn't exist.
  */
-const char* sl_key_to_string_cocoa(const SL_KeySymbol keySym) noexcept;
+const char* sl_key_to_string_cocoa(const uint32_t keySym) noexcept;
 
 
 

@@ -9,7 +9,7 @@
 /*-------------------------------------
  * Keycode to string
 -------------------------------------*/
-const char* sl_key_to_string_cocoa(const SL_KeySymbol keySym) noexcept
+const char* sl_key_to_string_cocoa(const uint32_t keySym) noexcept
 {
     static thread_local UniChar charStr[17];
     UniCharCount count = 0;

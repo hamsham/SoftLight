@@ -10,7 +10,7 @@
 /*-------------------------------------
  * Keycode to string
 -------------------------------------*/
-const char* sl_key_to_string_xkb(const SL_KeySymbol keySym) noexcept
+const char* sl_key_to_string_xkb(const uint32_t keySym) noexcept
 {
   return XKeysymToString(keySym);
 }

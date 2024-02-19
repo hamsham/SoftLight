@@ -4,7 +4,20 @@
  * Created on February 19, 2024, at 12:06 AM
  */
 
+#include "softlight/SL_RenderWindow.hpp"
 #include "softlight/SL_KeySym.hpp"
+
+#if defined(SL_HAVE_WIN32_BACKEND)
+    #include "softlight/SL_KeySymWin32.hpp"
+#endif
+
+#if defined(SL_HAVE_COCOA_BACKEND)
+    #include "softlight/SL_KeySymCocoa.hpp"
+#endif
+
+#if defined(SL_HAVE_XCB_BACKEND) || defined(SL_HAVE_X11_BACKEND)
+    #include "softlight/SL_KeySymXlib.hpp"
+#endif
 
 
 
@@ -206,6 +219,46 @@ const char* sl_key_to_string(const SL_KeySymbol keySym) noexcept
         case KEY_SYM_X: return "KEY_SYM_X";
         case KEY_SYM_Y: return "KEY_SYM_Y";
         case KEY_SYM_Z: return "KEY_SYM_Z";
+
+        default:
+            break;
+    }
+
+    return "KEY_SYM_UNKNOWN";
+}
+
+
+
+/*-------------------------------------
+ * Native key sym to platform
+-------------------------------------*/
+const char* sl_key_to_string_native(const uint32_t keySym, const SL_WindowBackend backend) noexcept
+{
+    (void)keySym;
+
+    switch (backend)
+    {
+        case SL_WindowBackend::WIN32_BACKEND:
+            #if defined(SL_HAVE_WIN32_BACKEND)
+                return sl_key_to_string_win32(keySym);
+            #else
+                break;
+            #endif
+
+        case SL_WindowBackend::COCOA_BACKEND:
+            #if defined(SL_HAVE_COCOA_BACKEND)
+                return sl_key_to_string_cocoa(keySym);
+            #else
+                break;
+            #endif
+
+        case SL_WindowBackend::XCB_BACKEND:
+        case SL_WindowBackend::X11_BACKEND:
+            #if defined(SL_HAVE_Xcb_BACKEND) || defined(SL_HAVE_X11_BACKEND)
+                return sl_key_to_string_xkb(keySym);
+            #else
+                break;
+            #endif
 
         default:
             break;

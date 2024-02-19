@@ -125,9 +125,10 @@ int main()
                         break;
 
                     default:
-                        std::cout << "Released key " << keySym << ": " << sl_key_to_string(evt.keyboard.keySym) << std::endl;
                         break;
                 }
+
+                std::cout << "Released key " << keySym << ": " << sl_key_to_string_native(evt.keyboard.keyPlatform, pWindow->backend()) << std::endl;
             }
             else if (evt.type == SL_WinEventType::WIN_EVENT_MOUSE_WHEEL_MOVED)
             {

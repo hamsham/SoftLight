@@ -6,6 +6,13 @@
 
 
 
+/*-------------------------------------
+ * Forward declarations
+-------------------------------------*/
+enum class SL_WindowBackend;
+
+
+
 /**------------------------------------
  * @brief Keyboard Symbols
 -------------------------------------*/
@@ -219,6 +226,24 @@ enum SL_KeySymbol : uint16_t
  * the SL_KeySymbol enumeration, or NULL if one doesn't exist.
  */
 const char* sl_key_to_string(const SL_KeySymbol keySym) noexcept;
+
+
+
+/**
+ * @brief Convert a key symbol into a string which can be used for later
+ * reference. This method retrieves the backend-native string representation
+ * of a raw key symbol
+ *
+ * @param keySym
+ * A value from the SL_KeySymbol enumeration.
+ *
+ * @param backend
+ * A value from the SL_WindowBackend enumeration.
+ *
+ * @return A string, containing the string representation of a key symbol in
+ * the SL_KeySymbol enumeration, or NULL if one doesn't exist.
+ */
+const char* sl_key_to_string_native(const uint32_t keySym, const SL_WindowBackend backend) noexcept;
 
 
 
