@@ -1,8 +1,6 @@
 
 #include <utility> // std::move()
 
-#include "lightsky/setup/OS.h" // OS detection
-
 #if defined(SL_HAVE_WIN32_BACKEND)
     #include "softlight/SL_SwapchainWin32.hpp"
 #endif

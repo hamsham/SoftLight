@@ -57,7 +57,7 @@ class SL_RenderWindowWin32 final : public SL_RenderWindow
 
     SL_RenderWindowWin32& operator=(SL_RenderWindowWin32&&) noexcept;
 
-    virtual SL_WindowBackend backend() const noexcept override;
+    SL_WindowBackend backend() const noexcept override;
 
     int set_title(const char* const pName) noexcept override;
 

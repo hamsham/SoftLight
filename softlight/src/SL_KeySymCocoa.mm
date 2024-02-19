@@ -138,7 +138,7 @@ SL_KeySymbol sl_keycode_to_keysym_cocoa(const uint32_t keycode) noexcept
         //case 0x24: return KEY_SYM_LINE_FEED;
         case 0x24: return KEY_SYM_RETURN; // Enter
         case 0x30: return KEY_SYM_TAB;
-        case 0x47: return KEY_SYM_CLEAR;
+        //case 0x47: return KEY_SYM_CLEAR;
 
         case 0x27: return KEY_SYM_SINGLE_QUOTE; // '
         //case KEY_SYM_SINGLE_QUOTE: return KEY_SYM_DOUBLE_QUOTE; // "
@@ -233,4 +233,3 @@ SL_KeySymbol sl_keycode_to_keysym_cocoa(const uint32_t keycode) noexcept
     
     return KEY_SYM_UNKNOWN;
 }
-
