@@ -135,15 +135,18 @@ SL_KeySymbol sl_keycode_to_keysym_cocoa(const uint32_t keycode) noexcept
         case 0x7D: return KEY_SYM_DOWN;
         case 0x31: return KEY_SYM_SPACE;
         case 0x33: return KEY_SYM_BACKSPACE;
+        //case 0x24: return KEY_SYM_LINE_FEED;
         case 0x24: KEY_SYM_RETURN; // Enter: return
-        //case KEY_SYM_RETURN: return KEY_SYM_LINE_FEED;
         case 0x30: return KEY_SYM_TAB;
-        //case KEY_SYM_NUM_LOCK: return KEY_SYM_CLEAR;
+        case 0x47: return KEY_SYM_CLEAR;
+
+        case 0x39: return KEY_SYM_CAPS_LOCK;
+        case 0x47: return KEY_SYM_NUM_LOCK;
+        //case KEY_SYM_F14: return KEY_SYM_SCROLL_LOCK;
 
         case 0x27: return KEY_SYM_SINGLE_QUOTE; // '
         //case KEY_SYM_SINGLE_QUOTE: return KEY_SYM_DOUBLE_QUOTE; // "
         case 0x32: return KEY_SYM_GRAVE; // `
-        //case KEY_SYM_GRAVE: return KEY_SYM_TILDE; // ~
         //case KEY_SYM_2: return KEY_SYM_AT; // @
         //case KEY_SYM_3: return KEY_SYM_POUND; // #
         //case KEY_SYM_4: return KEY_SYM_DOLLAR; // $
@@ -151,6 +154,7 @@ SL_KeySymbol sl_keycode_to_keysym_cocoa(const uint32_t keycode) noexcept
         //case KEY_SYM_6: return KEY_SYM_CARET; // ^
         //case KEY_SYM_7: return KEY_SYM_AMPERSAND; // &
         //case KEY_SYM_8: return KEY_SYM_ASTERISK; // *
+        case 0x1B: return KEY_SYM_UNDERSCORE; // _
         case 0x1B: return KEY_SYM_HYPHEN; // -
         //case KEY_SYM_HYPHEN: return KEY_SYM_UNDERSCORE; // _
         case 0x18: return KEY_SYM_PLUS; // +
@@ -172,7 +176,7 @@ SL_KeySymbol sl_keycode_to_keysym_cocoa(const uint32_t keycode) noexcept
         case 0x2B: return KEY_SYM_COMMA;
         case 0x2F: return KEY_SYM_PERIOD;
         //case KEY_SYM_1: return KEY_SYM_EXCLAMATION;
-        //case KEY_SYM_FORWARD_SLASH: return KEY_SYM_QUESTION;
+        case 0x2C: return KEY_SYM_QUESTION;
 
         case 0x00: return KEY_SYM_a;
         case 0x0B: return KEY_SYM_b;
