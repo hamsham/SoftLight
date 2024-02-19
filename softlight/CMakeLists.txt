@@ -4,9 +4,9 @@
 # -------------------------------------
 project(softlight VERSION 0.1.0 LANGUAGES CXX)
 
-if (UNIX AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16.0")
-    enable_language(OBJC)
-    enable_language(OBJCXX)
+if (${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16.0")
+    enable_language(OBJC OPTIONAL)
+    enable_language(OBJCXX OPTIONAL)
 endif()
 
 
