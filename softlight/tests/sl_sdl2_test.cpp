@@ -793,6 +793,10 @@ extern "C" SDLMAIN_DECLSPEC int main(int argc, char* argv[])
                     context.texture(1).init(context.texture(1).type(), (uint16_t)evt.window.data1, (uint16_t)evt.window.data2);
                     projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)evt.window.data1/(float)evt.window.data2, 0.01f);
 
+                    SL_Framebuffer& fbo = context.framebuffer(0);
+                    fbo.attach_color_buffer(0, context.texture(0).view());
+                    fbo.attach_depth_buffer(context.texture(1).view());
+
                     SDL_DestroyTexture(pBackBuffer);
                     pBackBuffer = SDL_CreateTexture(pRenderer, sl_pixel_fmt_to_sdl(context.texture(0).type()), SDL_TEXTUREACCESS_STREAMING, evt.window.data1, evt.window.data2);
                     if (!pBackBuffer)
