@@ -59,6 +59,8 @@ class SL_RenderWindow
   public:
     static ls::utils::Pointer<SL_RenderWindow> create() noexcept;
 
+    static ls::utils::Pointer<SL_RenderWindow> create(SL_WindowBackend backendHint) noexcept;
+
   protected:
     WindowStateInfo mCurrentState;
 
