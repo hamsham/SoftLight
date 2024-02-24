@@ -716,6 +716,7 @@ void SL_RenderWindowXCB::update() noexcept
         }
     }
 
+    xcb_flush(mConnection);
 }
 
 
@@ -1127,8 +1128,6 @@ void SL_RenderWindowXCB::render(SL_Swapchain& buffer) noexcept
             pShmInfo->shmseg,
             0
         );
-
-        xcb_flush(mConnection);
     #else
         xcb_put_image(
             mConnection,
@@ -1215,7 +1214,6 @@ void SL_RenderWindowXCB::request_clipboard() const noexcept
     const xcb_atom_t xselAtom = _get_xcb_atom(mConnection, xselStrName, sizeof(xselStrName)-1);
 
     xcb_convert_selection(mConnection, mWindow, clipboardAtom, utf8Atom, xselAtom, XCB_TIME_CURRENT_TIME);
-    xcb_flush(mConnection);
 }
 
 

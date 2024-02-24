@@ -717,6 +717,8 @@ void SL_RenderWindowXlib::update() noexcept
         mCurrentState = WindowStateInfo::WINDOW_CLOSING;
         destroy();
     }
+
+    XFlush(mDisplay);
 }
 
 
@@ -1200,7 +1202,6 @@ void SL_RenderWindowXlib::request_clipboard() const noexcept
     Atom clipProperty = XInternAtom(mDisplay, "XSEL_DATA", 0);
 
     XConvertSelection(mDisplay, clipboardId, utf8Atom, clipProperty, mWindow, CurrentTime);
-    XFlush(mDisplay);
 }
 
 
