@@ -162,7 +162,7 @@ SL_FragmentShader normal_frag_shader()
     shader.numVaryings = 2;
     shader.numOutputs  = 1;
     shader.blend       = SL_BLEND_OFF;
-    shader.depthTest = SL_DEPTH_TEST_GREATER_EQUAL;
+    shader.depthTest   = SL_DEPTH_TEST_GREATER_EQUAL;
     shader.depthMask   = SL_DEPTH_MASK_ON;
     shader.shader      = [](SL_FragmentParam& fragParams)->bool
     {
@@ -264,6 +264,7 @@ SL_VertexShader texture_vert_shader()
 /*--------------------------------------
  * Fragment Shader
 --------------------------------------*/
+template <unsigned numAlbedoChannels>
 SL_FragmentShader texture_frag_shader()
 {
     SL_FragmentShader shader;
@@ -274,11 +275,11 @@ SL_FragmentShader texture_frag_shader()
     shader.depthMask   = SL_DEPTH_MASK_ON;
     shader.shader      = [](SL_FragmentParam& fragParams)->bool
     {
-        const MeshUniforms* pUniforms  = fragParams.pUniforms->as<MeshUniforms>();
+        const MeshUniforms*  pUniforms = fragParams.pUniforms->as<MeshUniforms>();
+        const SL_Texture*    albedo    = pUniforms->pTexture;
         const math::vec4&    pos       = fragParams.pVaryings[0];
         const math::vec4&    uv        = fragParams.pVaryings[1];
         math::vec4&&         norm      = math::normalize(fragParams.pVaryings[2]);
-        const SL_Texture*    albedo    = pUniforms->pTexture;
         float                attenuation;
         math::vec4           pixel;
         math::vec4           diffuse;
@@ -289,16 +290,16 @@ SL_FragmentShader texture_frag_shader()
         constexpr float shininess = 50.f;
 
         // normalize the texture colors to within (0.f, 1.f)
-        if (albedo->channels() == 3)
+        if (numAlbedoChannels)
         {
-            //const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::ORDERED>(*albedo, uv[0], uv[1]);
-            const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::SWIZZLED>(*albedo, uv[0], uv[1]);
+            const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::ORDERED>(*albedo, uv[0], uv[1]);
+            //const math::vec3_t<uint8_t>&& pixel8 = sl_sample_nearest<math::vec3_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::SWIZZLED>(*albedo, uv[0], uv[1]);
             pixel = color_cast<float, uint8_t>(math::vec4_cast<uint8_t>(pixel8, 255));
         }
         else
         {
-            //pixel = color_cast<float, uint8_t>(sl_sample_nearest<math::vec4_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::ORDERED>(*albedo, uv[0], uv[1]));
-            pixel = color_cast<float, uint8_t>(sl_sample_nearest<math::vec4_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::SWIZZLED>(*albedo, uv[0], uv[1]));
+            pixel = color_cast<float, uint8_t>(sl_sample_nearest<math::vec4_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::ORDERED>(*albedo, uv[0], uv[1]));
+            //pixel = color_cast<float, uint8_t>(sl_sample_nearest<math::vec4_t<uint8_t>, SL_WrapMode::REPEAT, SL_TexelOrder::SWIZZLED>(*albedo, uv[0], uv[1]));
         }
 
         #if SL_TEST_BUMP_MAPS
@@ -402,7 +403,7 @@ void update_cam_position(SL_Transform& camTrans, float tickTime, utils::Pointer<
 /*-----------------------------------------------------------------------------
  * Create the context for a demo scene
 -----------------------------------------------------------------------------*/
-utils::Pointer<SL_SceneGraph> create_context()
+utils::Pointer<SL_SceneGraph> create_context(unsigned w, unsigned h)
 {
     int retCode = 0;
 
@@ -417,20 +418,20 @@ utils::Pointer<SL_SceneGraph> create_context()
 
     SL_Texture& tex = context.texture(texId);
     #if SL_COMPRESSED_RGB565
-        retCode = tex.init(SL_ColorDataType::SL_COLOR_RGB_565, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+        retCode = tex.init(SL_ColorDataType::SL_COLOR_RGB_565, w, h, 1);
     #elif SL_COMPRESSED_RGB5551
-        retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_5551, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+        retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_5551, w, h, 1);
     #elif SL_COMPRESSED_RGB4444
-        retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_4444, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+        retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_4444, w, h, 1);
     #elif SL_COMPRESSED_RGB1010102
-        retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_1010102, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+        retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_1010102, w, h, 1);
     #else
-        retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_8U, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+        retCode = tex.init(SL_ColorDataType::SL_COLOR_RGBA_8U, w, h, 1);
     #endif
     LS_ASSERT(retCode == 0);
 
     SL_Texture& depth = context.texture(depthId);
-    retCode = depth.init(SL_ColorDataType::SL_COLOR_R_HALF, IMAGE_WIDTH, IMAGE_HEIGHT, 1);
+    retCode = depth.init(SL_ColorDataType::SL_COLOR_R_HALF, w, h, 1);
     LS_ASSERT(retCode == 0);
 
     SL_Framebuffer& fbo = context.framebuffer(fboId);
@@ -451,7 +452,7 @@ utils::Pointer<SL_SceneGraph> create_context()
 
     SL_SceneLoadOpts opts = sl_default_scene_load_opts();
     opts.packNormals = true;
-    opts.swizzleTexels = true;
+    opts.swizzleTexels = false;
 
     SL_SceneFileLoader meshLoader;
     retCode = meshLoader.load("testdata/sibenik/sibenik.obj", opts);
@@ -469,7 +470,8 @@ utils::Pointer<SL_SceneGraph> create_context()
     const SL_VertexShader&&   normVertShader = normal_vert_shader();
     const SL_VertexShader&&   texVertShader  = texture_vert_shader();
     const SL_FragmentShader&& normFragShader = normal_frag_shader();
-    const SL_FragmentShader&& texFragShader  = texture_frag_shader();
+    const SL_FragmentShader&& texFragShader3 = texture_frag_shader<3>();
+    const SL_FragmentShader&& texFragShader4 = texture_frag_shader<4>();
 
     size_t uboId = context.create_ubo();
     SL_UniformBuffer& ubo = context.ubo(uboId);
@@ -482,13 +484,16 @@ utils::Pointer<SL_SceneGraph> create_context()
     pUniforms->point.linear     = 0.009f;
     pUniforms->point.quadratic  = 0.00018f;
 
-    size_t texShaderId     = context.create_shader(texVertShader,  texFragShader,     uboId);
-    size_t normShaderId    = context.create_shader(normVertShader, normFragShader,    uboId);
+    size_t normShaderId    = context.create_shader(normVertShader, normFragShader, uboId);
+    size_t texShader3Id    = context.create_shader(texVertShader,  texFragShader3, uboId);
+    size_t texShader4Id    = context.create_shader(texVertShader,  texFragShader4, uboId);
 
-    LS_ASSERT(texShaderId == 0);
-    LS_ASSERT(normShaderId == 1);
-    (void)texShaderId;
+    LS_ASSERT(normShaderId == 0);
+    LS_ASSERT(texShader3Id == 1);
+    LS_ASSERT(texShader4Id == 2);
     (void)normShaderId;
+    (void)texShader3Id;
+    (void)texShader4Id;
     (void)retCode;
 
     return pGraph;
@@ -581,11 +586,10 @@ inline void update_sdl_backbuffer(SL_Texture& tex, SDL_Texture* pBackbuffer) noe
 /*-------------------------------------
  * Render the Scene
 -------------------------------------*/
-void render_scene(SL_SceneGraph* pGraph, unsigned w, unsigned h, const math::mat4& projection, const SL_Transform& camTrans, SDL_Texture* pBackbuffer)
+void render_scene(SL_SceneGraph* pGraph, const math::mat4& projection, const SL_Transform& camTrans, SDL_Texture* pBackbuffer)
 {
     SL_Context&    context   = pGraph->mContext;
     MeshUniforms*  pUniforms = context.ubo(0).as<MeshUniforms>();
-
 
     void* pTexData = nullptr;
     int pitch = 0;
@@ -600,11 +604,11 @@ void render_scene(SL_SceneGraph* pGraph, unsigned w, unsigned h, const math::mat
 
     sl_texture_view_from_buffer(view, context.texture(0).width(), context.texture(0).height(), context.texture(0).type(), pTexData);
     context.framebuffer(0).attach_color_buffer(0, view);
+    context.clear_framebuffer(0, 0, SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0}, 0.0);
 
     SL_Plane planes[6];
-    const math::mat4&& p  = math::perspective(math::radians(60.f), (float)w/(float)h, 0.1f, 100.f);
     const math::mat4&& vp = projection * camTrans.transform();
-    sl_extract_frustum_planes(p, planes);
+    sl_extract_frustum_planes(projection, planes);
 
     for (size_t nodeId = 0; nodeId < pGraph->mNodes.size(); ++nodeId)
     {
@@ -646,7 +650,22 @@ void render_scene(SL_SceneGraph* pGraph, unsigned w, unsigned h, const math::mat
             #endif
 
             // Use the textureless shader if needed
-            size_t shaderId = (size_t)(material.pTextures[SL_MATERIAL_TEXTURE_AMBIENT] == nullptr);
+            size_t shaderId;
+            if (material.pTextures[SL_MATERIAL_TEXTURE_AMBIENT])
+            {
+                if (material.pTextures[SL_MATERIAL_TEXTURE_AMBIENT]->channels() == 4)
+                {
+                    shaderId = 2;
+                }
+                else
+                {
+                    shaderId = 1;
+                }
+            }
+            else
+            {
+                shaderId = 0;
+            }
 
             pUniforms->light.ambient = material.ambient;
             pUniforms->light.diffuse = material.diffuse;
@@ -668,8 +687,11 @@ extern "C" SDLMAIN_DECLSPEC int main(int argc, char* argv[])
 {
     (void)argc;
     (void)argv;
+    int w, h;
 
     SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "1");
+    SDL_SetHint(SDL_HINT_VIDEO_HIGHDPI_DISABLED, "1");
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) < 0)
     {
         LS_LOG_ERR(
@@ -708,15 +730,16 @@ extern "C" SDLMAIN_DECLSPEC int main(int argc, char* argv[])
     {
         LS_LOG_MSG("Successfully instantiated an accelerated render backend (", renderDriverId, ").");
         SDL_SetRenderDrawBlendMode(pRenderer, SDL_BLENDMODE_NONE);
+        SDL_GetRendererOutputSize(pRenderer, &w, &h);
     }
 
     utils::Pointer<bool[]> pKeySyms{new bool[SDL_NUM_SCANCODES]};
     std::fill_n(pKeySyms.get(), SDL_NUM_SCANCODES, false);
 
-    utils::Pointer<SL_SceneGraph> pGraph{std::move(create_context())};
+    utils::Pointer<SL_SceneGraph> pGraph{std::move(create_context((unsigned)w, (unsigned)h))};
     SL_Context& context = pGraph->mContext;
 
-    SDL_Texture* pBackBuffer = SDL_CreateTexture(pRenderer, sl_pixel_fmt_to_sdl(context.texture(0).type()), SDL_TEXTUREACCESS_STREAMING, IMAGE_WIDTH, IMAGE_HEIGHT);
+    SDL_Texture* pBackBuffer = SDL_CreateTexture(pRenderer, sl_pixel_fmt_to_sdl(context.texture(0).type()), SDL_TEXTUREACCESS_STREAMING, w, h);
     if (!pBackBuffer)
     {
         LS_LOG_ERR("Unable to instantiate a backbuffer texture.");
@@ -727,10 +750,11 @@ extern "C" SDLMAIN_DECLSPEC int main(int argc, char* argv[])
     }
     else
     {
-        uint32_t fmt;
-        int access, w, h;
-        SDL_QueryTexture(pBackBuffer, &fmt, &access, &w, &h);
-        LS_LOG_MSG("Successfully instantiated a (backbuffer ", w, 'x', h, ").");
+        LS_LOG_MSG("Successfully instantiated a backbuffer (", w, 'x', h, ").");
+
+        SDL_SetTextureColorMod(pBackBuffer, 0xFF, 0xFF, 0xFF);
+        SDL_SetTextureAlphaMod(pBackBuffer, 0xFF);
+        SDL_SetTextureBlendMode(pBackBuffer, SDL_BLENDMODE_NONE);
     }
 
     int shouldQuit = 0;
@@ -886,8 +910,8 @@ extern "C" SDLMAIN_DECLSPEC int main(int argc, char* argv[])
                     }
                     else
                     {
-                        dx = (float)evt.motion.xrel / (float)hdpi * 0.05f;
-                        dy = (float)evt.motion.yrel / (float)vdpi * 0.05f;
+                        dx = (float)evt.motion.xrel / (float)hdpi * 0.5f;
+                        dy = (float)evt.motion.yrel / (float)vdpi * 0.5f;
                         camTrans.rotate(math::vec3{dx, dy, 0.f});
                     }
                 }
@@ -930,9 +954,7 @@ extern "C" SDLMAIN_DECLSPEC int main(int argc, char* argv[])
 
             pGraph->update();
 
-            SL_Texture& frontBuffer = context.texture(0);
-            context.clear_framebuffer(0, 0, SL_ColorRGBAd{0.0, 0.0, 0.0, 1.0}, 0.0);
-            render_scene(pGraph.get(), (unsigned)frontBuffer.width(), (unsigned)frontBuffer.height(), projMatrix, camTrans, pBackBuffer);
+            render_scene(pGraph.get(), projMatrix, camTrans, pBackBuffer);
             //update_sdl_backbuffer(frontBuffer, pBackBuffer);
 
             SDL_RenderCopyEx(pRenderer, pBackBuffer, nullptr, nullptr, 0.0, nullptr, SDL_FLIP_VERTICAL);
