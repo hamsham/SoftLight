@@ -99,3 +99,47 @@ ls::utils::Pointer<SL_RenderWindow> SL_RenderWindow::create() noexcept
         #error "Window buffer backend not implemented for this platform."
     #endif
 }
+
+
+
+/*-------------------------------------
+ * Instance Creation (with user-defined hinting)
+-------------------------------------*/
+ls::utils::Pointer<SL_RenderWindow> SL_RenderWindow::create(SL_WindowBackend backendHint) noexcept
+{
+    switch (backendHint)
+    {
+        case SL_WindowBackend::WIN32_BACKEND:
+            #if defined(SL_HAVE_WIN32_BACKEND)
+                return ls::utils::Pointer<SL_RenderWindow>{new SL_RenderWindowWin32{}};
+            #else
+                break;
+            #endif
+
+        case SL_WindowBackend::COCOA_BACKEND:
+            #if defined(SL_HAVE_COCOA_BACKEND)
+                return ls::utils::Pointer<SL_RenderWindow>{new SL_RenderWindowCocoa{}};
+            #else
+                break;
+            #endif
+
+        case SL_WindowBackend::XCB_BACKEND:
+            #if defined(SL_HAVE_XCB_BACKEND)
+                return ls::utils::Pointer<SL_RenderWindow>{new SL_RenderWindowXCB{}};
+            #else
+                break;
+            #endif
+
+        case SL_WindowBackend::X11_BACKEND:
+            #if defined(SL_HAVE_X11_BACKEND)
+                return ls::utils::Pointer<SL_RenderWindow>{new SL_RenderWindowXlib{}};
+            #else
+                break;
+            #endif
+
+        default:
+            break;
+    }
+
+    return SL_RenderWindow::create();
+}
