@@ -13,6 +13,7 @@
 #include <SDL2/SDL.h>
 
 #include "lightsky/math/vec_utils.h"
+#include "lightsky/math/vec_swizzle.h"
 #include "lightsky/math/mat_utils.h"
 #include "lightsky/math/quat_utils.h"
 
@@ -212,7 +213,7 @@ SL_FragmentShader normal_frag_shader()
         {
             const math::vec4&& accumulation = math::min(diffuse+specular+ambient, math::vec4{1.f});
 
-            fragParams.pOutputs[0] = accumulation;
+            fragParams.pOutputs[0] = math::swizzle_zyxw(accumulation);
         }
 
         return true;
@@ -271,7 +272,7 @@ SL_FragmentShader texture_frag_shader()
     shader.numVaryings = 3;
     shader.numOutputs  = 1;
     shader.blend       = SL_BLEND_OFF;
-    shader.depthTest = SL_DEPTH_TEST_GREATER_EQUAL;
+    shader.depthTest   = SL_DEPTH_TEST_GREATER_EQUAL;
     shader.depthMask   = SL_DEPTH_MASK_ON;
     shader.shader      = [](SL_FragmentParam& fragParams)->bool
     {
@@ -349,7 +350,7 @@ SL_FragmentShader texture_frag_shader()
         {
             const math::vec4&& accumulation = math::min(diffuse+specular+ambient, math::vec4{1.f});
 
-            fragParams.pOutputs[0] = pixel * accumulation;
+            fragParams.pOutputs[0] = math::swizzle_zyxw(pixel * accumulation);
         }
 
         return true;
@@ -513,7 +514,7 @@ inline Uint32 sl_pixel_fmt_to_sdl(const SL_ColorDataType slFmt) noexcept
         case SL_COLOR_RGBA_4444:    return SDL_PIXELFORMAT_ARGB4444;
         case SL_COLOR_RGBA_1010102: return SDL_PIXELFORMAT_ARGB2101010;
         case SL_COLOR_RGB_8U:       return SDL_PIXELFORMAT_BGR888;
-        case SL_COLOR_RGBA_8U:      return SDL_PIXELFORMAT_ARGB8888;
+        case SL_COLOR_RGBA_8U:      return SDL_PIXELFORMAT_ABGR8888;
 
         default:
             break;
@@ -545,7 +546,7 @@ int select_sdl_render_driver() noexcept
         {
             for (unsigned fmtId = 0; fmtId < info.num_texture_formats; ++fmtId)
             {
-                if (ret == -1 && info.texture_formats[fmtId] == SDL_PIXELFORMAT_ARGB8888)
+                if (ret == -1 && info.texture_formats[fmtId] == SDL_PIXELFORMAT_ABGR8888)
                 {
                     ret = i;
                 }
