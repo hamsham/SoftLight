@@ -46,7 +46,7 @@ jobs:
             name: mingw
             generator: "Ninja"
             shell: msys2 {0}
-            dependencies: cmake:u ninja:u toolchain:u freeimage:u
+            dependencies: gcc-objc:u cmake:u ninja:u toolchain:u freeimage:u
             cmakeopts: -DLIGHTSKY_ENABLE_PCH:BOOL=ON
 
           - os: windows-latest
