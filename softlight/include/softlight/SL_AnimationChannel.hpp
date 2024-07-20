@@ -6,6 +6,7 @@
 #include "lightsky/utils/Pointer.h"
 
 #include "lightsky/math/vec3.h"
+#include "lightsky/math/vec4.h"
 #include "lightsky/math/quat.h"
 
 #include "softlight/SL_AnimationProperty.hpp"

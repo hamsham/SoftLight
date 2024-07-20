@@ -225,7 +225,7 @@ bool SL_AnimationKeyList<data_t>::init(const size_t keyCount) noexcept
     for (size_t i = 0; i < keyCount; ++i)
     {
         mKeyTimes[i] = SL_AnimPrecision{0};
-        mKeyData[i] = data_t{0};
+        mKeyData[i] = data_t{};
     }
 
     return true;

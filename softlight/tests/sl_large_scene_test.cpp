@@ -888,9 +888,9 @@ int main()
     //camTrans.look_at(math::vec3{200.f, 150.f, 0.f}, math::vec3{0.f, 100.f, 0.f}, math::vec3{0.f, 1.f, 0.f});
 
     #if TEST_REVERSED_DEPTH
-        math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
+        math::mat4 projMatrix = math::infinite_perspective(math::radians(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
     #else
-        math::mat4 projMatrix = math::perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 10.f, 500.f);
+        math::mat4 projMatrix = math::perspective(math::radians(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 10.f, 500.f);
     #endif
 
     if (shouldQuit)
@@ -935,9 +935,9 @@ int main()
                 fbo.attach_depth_buffer(context.texture(1).view());
 
                 #if TEST_REVERSED_DEPTH
-                    projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
+                    projMatrix = math::infinite_perspective(math::radians(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
                 #else
-                    projMatrix = math::perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.1f, 500.f);
+                    projMatrix = math::perspective(math::radians(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.1f, 500.f);
                 #endif
             }
             else if (evt.type == SL_WinEventType::WIN_EVENT_KEY_DOWN)

@@ -1,7 +1,8 @@
 
 #include <utility> // std::move()
 
-#include "lightsky/math/Math.h"
+#include "lightsky/math/vec3.h"
+#include "lightsky/math/quat.h"
 
 #include "lightsky/utils/Assertions.h"
 

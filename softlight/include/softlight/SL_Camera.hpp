@@ -169,7 +169,7 @@ class SL_Camera
     /**
      * @brief Default angle for the field-of-view
      */
-    static constexpr float DEFAULT_VIEW_ANGLE = LS_DEG2RAD(60.f);
+    static constexpr float DEFAULT_VIEW_ANGLE = ls::math::radians(60.f);
 
     /**
      * @brief Default Perspective-projection matrix.

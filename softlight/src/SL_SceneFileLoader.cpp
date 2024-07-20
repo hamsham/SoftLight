@@ -7,8 +7,7 @@
 
 #include "lightsky/utils/Log.h"
 
-#include "lightsky/math/Math.h"
-#include "lightsky/math/scalar_utils.h"
+#include "lightsky/math/quat_utils.h"
 
 #include "softlight/SL_BoundingBox.hpp"
 #include "softlight/SL_Camera.hpp"
@@ -1596,7 +1595,7 @@ void SL_SceneFileLoader::import_camera_node(
 
     std::cout
         << "\tLoaded the scene camera " << pInCam->mName.C_Str() << ':'
-        << "\n\t\tField of View: " << LS_RAD2DEG(outCam.fov())
+        << "\n\t\tField of View: " << math::degrees(outCam.fov())
         << "\n\t\tAspect Ratio:  " << outCam.aspect_ratio()
         << "\n\t\tNear Plane:    " << outCam.near_plane()
         << "\n\t\tFar Plane:     " << outCam.far_plane()

@@ -263,7 +263,7 @@ int main()
     SL_Texture& depth = context.texture(1);
 
     const math::mat4&& viewMatrix = math::look_at(math::vec3{10.f, 30.f, 70.f}, math::vec3{0.f, 20.f, 0.f}, math::vec3{0.f, 1.f, 0.f});
-    const math::mat4&& projMatrix = math::infinite_perspective(LS_DEG2RAD(80.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
+    const math::mat4&& projMatrix = math::infinite_perspective(math::radians(80.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
 
     ls::utils::Clock<float> timer;
     timer.start();

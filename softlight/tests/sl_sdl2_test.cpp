@@ -776,7 +776,7 @@ extern "C" SDLMAIN_DECLSPEC int main(int argc, char* argv[])
     camTrans.look_at(math::vec3{0.f}, math::vec3{3.f, -5.f, 0.f}, math::vec3{0.f, 1.f, 0.f});
     //camTrans.look_at(math::vec3{200.f, 150.f, 0.f}, math::vec3{0.f, 100.f, 0.f}, math::vec3{0.f, 1.f, 0.f});
 
-    math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
+    math::mat4 projMatrix = math::infinite_perspective(math::radians(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
 
     timer.start();
 
@@ -816,7 +816,7 @@ extern "C" SDLMAIN_DECLSPEC int main(int argc, char* argv[])
                     LS_LOG_MSG("Window resized: ", evt.window.data1, 'x', evt.window.data2);
                     context.texture(0).init(context.texture(0).type(), (uint16_t)evt.window.data1, (uint16_t)evt.window.data2);
                     context.texture(1).init(context.texture(1).type(), (uint16_t)evt.window.data1, (uint16_t)evt.window.data2);
-                    projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)evt.window.data1/(float)evt.window.data2, 0.01f);
+                    projMatrix = math::infinite_perspective(math::radians(60.f), (float)evt.window.data1/(float)evt.window.data2, 0.01f);
 
                     SL_Framebuffer& fbo = context.framebuffer(0);
                     fbo.attach_color_buffer(0, context.texture(0).view());

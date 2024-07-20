@@ -605,7 +605,7 @@ int main()
     ls::utils::Clock<float>          timer;
     SL_Transform                     viewMatrix;
     SL_WindowEvent                   evt;
-    math::mat4         projMatrix     = math::infinite_perspective(LS_DEG2RAD(80.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
+    math::mat4         projMatrix     = math::infinite_perspective(math::radians(80.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
     SL_Context&        context        = pGraph->mContext;
     SL_Texture&        depth          = context.texture(0);
     SL_Texture&        tex            = context.texture(3);
@@ -661,7 +661,7 @@ int main()
                 fbo1.attach_color_buffer(0, context.texture(3).view());
                 fbo1.attach_depth_buffer(context.texture(2).view());
 
-                projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
+                projMatrix = math::infinite_perspective(math::radians(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
             }
             else if (evt.type == SL_WinEventType::WIN_EVENT_KEY_UP)
             {

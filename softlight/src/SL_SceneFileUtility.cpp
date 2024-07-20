@@ -3,15 +3,12 @@
 
 #include "lightsky/utils/Log.h"
 
-#include "lightsky/math/Math.h"
-
 #include "softlight/SL_BoundingBox.hpp"
 #include "softlight/SL_Geometry.hpp"
 #include "softlight/SL_PackedVertex.hpp"
 #include "softlight/SL_Sampler.hpp"
 #include "softlight/SL_SceneFileLoader.hpp"
 #include "softlight/SL_SceneFileUtility.hpp"
-#include "softlight/SL_Texture.hpp"
 
 
 

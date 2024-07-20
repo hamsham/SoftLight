@@ -576,7 +576,7 @@ int main()
     camTrans.type(SL_TransformType::SL_TRANSFORM_TYPE_VIEW_ARC_LOCKED_Y);
     math::vec3 viewPos = math::vec3{(float)instancesX, (float)instancesY, (float)instancesZ} * 15.f;
     camTrans.look_at(viewPos, math::vec3{0.f}, math::vec3{0.f, 1.f, 0.f}, false);
-    math::mat4 projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
+    math::mat4 projMatrix = math::infinite_perspective(math::radians(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
 
     math::quat target{0.f, 0.f, 0.f, 1.f};
 
@@ -626,7 +626,7 @@ int main()
                 fbo0.attach_color_buffer(0, context.texture(0).view());
                 fbo0.attach_depth_buffer(context.texture(1).view());
 
-                projMatrix = math::infinite_perspective(LS_DEG2RAD(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
+                projMatrix = math::infinite_perspective(math::radians(60.f), (float)pWindow->width()/(float)pWindow->height(), 0.01f);
             }
             else if (evt.type == SL_WinEventType::WIN_EVENT_KEY_DOWN)
             {

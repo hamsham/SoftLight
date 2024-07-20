@@ -1,14 +1,9 @@
 
 #include <utility>
 
-#include "lightsky/math/Math.h"
-
-#include "lightsky/utils/Assertions.h"
 #include "lightsky/utils/Copy.h"
-#include "lightsky/utils/Log.h"
 
 #include "softlight/SL_AnimationChannel.hpp"
-#include "softlight/SL_SceneGraph.hpp"
 
 
 
