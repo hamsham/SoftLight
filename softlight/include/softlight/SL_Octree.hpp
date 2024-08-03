@@ -1,6 +1,6 @@
 
 /**
- * @brief Basic Octree interface
+ * @brief Basic SL_Octree interface
  *
  * @todo Finish implementing proper allocator usage
  *
@@ -26,6 +26,37 @@ class SL_Octree;
 
 
 /**
+ * @brief Enum to describe which of the 8 directions an object can be placed
+ * within an SL_Octree node.
+ */
+enum SL_OctreeDirection : int
+{
+    INSIDE = -1,
+
+    FRONT_TOP_LEFT = 0,
+    FRONT_TOP_RIGHT,
+    FRONT_BOTTOM_LEFT,
+    FRONT_BOTTOM_RIGHT,
+    BACK_TOP_LEFT,
+    BACK_TOP_RIGHT,
+    BACK_BOTTOM_LEFT,
+    BACK_BOTTOM_RIGHT,
+
+    MAX_DIRECTIONS = 8
+};
+
+
+
+ls::math::vec4 sl_octree_direction_vector(SL_OctreeDirection direction) noexcept;
+
+
+
+SL_OctreeDirection sl_octree_vector_direction(const ls::math::vec4& direction) noexcept;
+SL_OctreeDirection sl_octree_vector_direction(const ls::math::vec3& direction) noexcept;
+
+
+
+/**
  * @brief A Generic Octree node for spatial partitioning of general 3D
  * data.
  *
@@ -42,13 +73,15 @@ class SL_Octree;
 template <typename T, class Allocator = std::allocator<T>>
 class SL_OctreeNode
 {
-    template <typename, size_t depth, class>
-    friend class SL_Octree;
+    template <typename, size_t, class>
+    friend class Octree;
 
   protected:
+    // contains origin using elements X, Y, & Z. Bounding box half-extent
+    // (from origin) is contained in the W-component.
     ls::math::vec4 mOrigin;
 
-    float mRadius;
+    SL_OctreeNode* mParent;
 
     SL_OctreeNode<T, Allocator>* mNodes[8];
 
@@ -77,13 +110,19 @@ class SL_OctreeNode
     /**
      * @brief Constructor
      *
+     * @param pParent
+     * Non-owning pointer to the current node's parent.
+     *
      * @param origin
      * The center of the octree in 3D space.
      *
-     * @param radius
-     * The radius of the top-level octree.
+     * @param extent
+     * The distance from the node's origin to its bounding box corners.
      */
-    SL_OctreeNode(const ls::math::vec3& origin = ls::math::vec3{0.f, 0.f, 0.f}, float radius = 1.f) noexcept;
+    SL_OctreeNode(
+        SL_OctreeNode* pParent = nullptr,
+        const ls::math::vec3& origin = ls::math::vec3{0.f, 0.f, 0.f},
+        float extent = 1.f) noexcept;
 
     /**
      * @brief Constructor
@@ -92,10 +131,13 @@ class SL_OctreeNode
      * The center of the octree in 3D space. The last (fourth) element of the
      * input vector is unused.
      *
-     * @param radius
-     * The radius of the top-level octree.
+     * @param extent
+     * The distance from the node's origin to its bounding box corners.
      */
-    SL_OctreeNode(const ls::math::vec4& origin, float radius) noexcept;
+    SL_OctreeNode(
+        SL_OctreeNode* pParent,
+        const ls::math::vec4& origin,
+        float extent) noexcept;
 
     /**
      * @brief Copy Constructor
@@ -145,6 +187,42 @@ class SL_OctreeNode
     SL_OctreeNode& operator=(SL_OctreeNode&& tree) noexcept;
 
     /**
+     * @brief Determine the direction of an object, relative to *this in 3D
+     * space.
+     *
+     * @param location
+     * A 3D point which indicates where an object exists.
+     *
+     * @param extent
+     * The distance from \p location to a corner of the object's axis-aligned
+     * bounding box.
+     *
+     * @return An enum which determines where an object can be placed in a
+     * sub-node, relative to the origin of *this parent node.
+     */
+    SL_OctreeDirection relative_direction_for_object(
+        const ls::math::vec4& location,
+        float extent) const noexcept;
+
+    /**
+     * @brief Determine the direction of an object, relative to *this in 3D
+     * space.
+     *
+     * @param location
+     * A 3D point which indicates where an object exists.
+     *
+     * @param extent
+     * The distance from \p location to a corner of the object's axis-aligned
+     * bounding box.
+     *
+     * @return An enum which determines where an object can be placed in a
+     * sub-node, relative to the origin of *this parent node.
+     */
+    SL_OctreeDirection relative_direction_for_object(
+        const ls::math::vec3& location,
+        float extent) const noexcept;
+
+    /**
      * @brief Retrieve the user-defined origin of the top-level octree.
      *
      * Sub-trees will return their origin with respect to, and subdivided by,
@@ -152,18 +230,32 @@ class SL_OctreeNode
      *
      * @return A reference to the 3D (4D-padded) octree's origin.
      */
-    const ls::math::vec4& origin() const noexcept;
+    ls::math::vec4 origin() const noexcept;
 
     /**
-     * @brief Retrieve the radius of an internal bounding-sphere's 3D space.
+     * @brief Retrieve the extent of an internal bounding-sphere's 3D space.
      *
-     * Sub-trees will return their radius with respect to, and subdivided by,
+     * Sub-trees will return their extent with respect to, and subdivided by,
      * the top-level octree.
      *
-     * @return A floating-point value representing the size of the current
-     * octree node.
+     * @return A floating-point value representing the distance from the node's
+     * origin to its bounding box corners.
      */
-    float radius() const noexcept;
+    float extent() const noexcept;
+
+    /**
+     * @brief Retrieve the current node's parent node.
+     *
+     * @return A pointer to a parent SL_OctreeNode, if one exists.
+     */
+    const SL_OctreeNode<T, Allocator>* parent() const noexcept;
+
+    /**
+     * @brief Retrieve the current node's parent node.
+     *
+     * @return A pointer to a parent SL_OctreeNode, if one exists.
+     */
+    SL_OctreeNode<T, Allocator>* parent() noexcept;
 
     /**
      * @brief Retrieve the internal sub-trees.
@@ -186,6 +278,22 @@ class SL_OctreeNode
     SL_OctreeNode<T, Allocator>** sub_nodes() noexcept;
 
     /**
+     * @brief Retrieve a pointer to a sub-node.
+     *
+     * @return A const pointer to a single octree node, if one exists at the
+     * requested direction.
+     */
+    const SL_OctreeNode<T, Allocator>* sub_node(SL_OctreeDirection direction) const noexcept;
+
+    /**
+     * @brief Retrieve a pointer to a sub-node.
+     *
+     * @return A pointer to a single octree node, if one exists at the
+     * requested direction.
+     */
+    SL_OctreeNode<T, Allocator>* sub_node(SL_OctreeDirection direction) noexcept;
+
+    /**
      * @brief Retrieve the constant list of objects contained directly within
      * *this top-level tree node.
      *
@@ -202,6 +310,13 @@ class SL_OctreeNode
      * include sub-tree data.
      */
     std::vector<T, Allocator>& data() noexcept;
+
+    /**
+     * @brief Determine if this node contains any data which is not in a sub-tree.
+     *
+     * @return TRUE if this specific node contains any data, FALSE if not.
+     */
+    bool empty() const noexcept;
 
     /**
      * @brief Retrieve the number of objects contained at *this tree's 3D
@@ -330,6 +445,72 @@ class SL_OctreeNode
 
 
 
+/*-----------------------------------------------------------------------------
+ * Octree Helper Functions
+-----------------------------------------------------------------------------*/
+/*-------------------------------------
+ * Direction vectors for SL_OctreeDirection enums
+-------------------------------------*/
+inline ls::math::vec4 sl_octree_direction_vector(SL_OctreeDirection direction) noexcept
+{
+    constexpr float x = 1.f;
+    ls::math::vec4 result;
+
+    switch (direction)
+    {
+        case FRONT_TOP_LEFT:     result = ls::math::vec4{ x,  x,  x, 0.f}; break;
+        case FRONT_TOP_RIGHT:    result = ls::math::vec4{-x,  x,  x, 0.f}; break;
+        case FRONT_BOTTOM_LEFT:  result = ls::math::vec4{ x, -x,  x, 0.f}; break;
+        case FRONT_BOTTOM_RIGHT: result = ls::math::vec4{-x, -x,  x, 0.f}; break;
+        case BACK_TOP_LEFT:      result = ls::math::vec4{ x,  x, -x, 0.f}; break;
+        case BACK_TOP_RIGHT:     result = ls::math::vec4{-x,  x, -x, 0.f}; break;
+        case BACK_BOTTOM_LEFT:   result = ls::math::vec4{ x, -x, -x, 0.f}; break;
+        case BACK_BOTTOM_RIGHT:  result = ls::math::vec4{-x, -x, -x, 0.f}; break;
+        default:
+            result = ls::math::vec4{0.f};
+            break;
+    }
+
+    return result;
+}
+
+
+
+/*-------------------------------------
+ * SL_OctreeDirection from Direction vector (4D)
+-------------------------------------*/
+inline SL_OctreeDirection sl_octree_vector_direction(const ls::math::vec4& direction) noexcept
+{
+    if (ls::math::length(direction) == 0.f)
+    {
+        return SL_OctreeDirection::INSIDE;
+    }
+
+    const int mask = ls::math::sign_mask(direction);
+    return static_cast<SL_OctreeDirection>(mask);
+}
+
+
+
+/*-------------------------------------
+ * SL_OctreeDirection from Direction vector (3D)
+-------------------------------------*/
+inline SL_OctreeDirection sl_octree_vector_direction(const ls::math::vec3& direction) noexcept
+{
+    if (ls::math::length(direction) == 0.f)
+    {
+        return SL_OctreeDirection::INSIDE;
+    }
+
+    const int mask = ls::math::sign_mask(direction);
+    return static_cast<SL_OctreeDirection>(mask);
+}
+
+
+
+/*-----------------------------------------------------------------------------
+ * Octree Node Member Functions
+-----------------------------------------------------------------------------*/
 /*-------------------------------------
  * Destructor
 -------------------------------------*/
@@ -345,9 +526,12 @@ SL_OctreeNode<T, Allocator>::~SL_OctreeNode() noexcept
  * Constructor
 -------------------------------------*/
 template <typename T, class Allocator>
-SL_OctreeNode<T, Allocator>::SL_OctreeNode(const ls::math::vec3& origin, float radius) noexcept :
-    mOrigin{ls::math::vec4_cast(origin, 0.f)},
-    mRadius{radius},
+SL_OctreeNode<T, Allocator>::SL_OctreeNode(
+    SL_OctreeNode* pParent,
+    const ls::math::vec3& origin,
+    float extent) noexcept :
+    mOrigin{origin[0], origin[1], origin[2], extent},
+    mParent{pParent},
     mNodes{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
     mData{}
 {}
@@ -358,9 +542,12 @@ SL_OctreeNode<T, Allocator>::SL_OctreeNode(const ls::math::vec3& origin, float r
  * Constructor
 -------------------------------------*/
 template <typename T, class Allocator>
-SL_OctreeNode<T, Allocator>::SL_OctreeNode(const ls::math::vec4& origin, float radius) noexcept :
-    mOrigin{origin},
-    mRadius{radius},
+SL_OctreeNode<T, Allocator>::SL_OctreeNode(
+    SL_OctreeNode* pParent,
+    const ls::math::vec4& origin,
+    float extent) noexcept :
+    mOrigin{origin[0], origin[1], origin[2], extent},
+    mParent{pParent},
     mNodes{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
     mData{}
 {}
@@ -372,10 +559,7 @@ SL_OctreeNode<T, Allocator>::SL_OctreeNode(const ls::math::vec4& origin, float r
 -------------------------------------*/
 template <typename T, class Allocator>
 SL_OctreeNode<T, Allocator>::SL_OctreeNode(const SL_OctreeNode& tree) noexcept :
-    mOrigin{tree.mOrigin},
-    mRadius{tree.mRadius},
-    mNodes{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
-    mData{}
+    SL_OctreeNode{}
 {
     *this = tree;
 }
@@ -388,7 +572,7 @@ SL_OctreeNode<T, Allocator>::SL_OctreeNode(const SL_OctreeNode& tree) noexcept :
 template <typename T, class Allocator>
 SL_OctreeNode<T, Allocator>::SL_OctreeNode(SL_OctreeNode&& tree) noexcept :
     mOrigin{tree.mOrigin},
-    mRadius{tree.mRadius},
+    mParent{tree.mParent},
     mNodes{
         tree.mNodes[0],
         tree.mNodes[1],
@@ -402,7 +586,7 @@ SL_OctreeNode<T, Allocator>::SL_OctreeNode(SL_OctreeNode&& tree) noexcept :
     mData{std::move(tree.mData)}
 {
     tree.mOrigin = ls::math::vec4{0.f};
-    tree.mRadius = 0.f;
+    tree.mParent = nullptr;
 
     for (unsigned i = 0; i < 8; ++i)
     {
@@ -423,48 +607,22 @@ SL_OctreeNode<T, Allocator>& SL_OctreeNode<T, Allocator>::operator=(const SL_Oct
         return *this;
     }
 
-    SL_OctreeNode<T, Allocator>* tempNodes[8] = {
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr
-    };
-
-    for (unsigned i = 0; i < 8; ++i)
-    {
-        if (!tree.mNodes[i])
-        {
-            continue;
-        }
-
-        tempNodes[i] = new(std::nothrow) SL_OctreeNode<T, Allocator>{*(tree.mNodes[i])};
-        if (!tempNodes[i])
-        {
-            for (SL_OctreeNode<T, Allocator>* pTemp : tempNodes)
-            {
-                delete pTemp;
-            }
-
-            return *this;
-        }
-
-        tempNodes[i]->mData = tree.mNodes[i]->mData;
-    }
+    clear();
 
     mOrigin = tree.mOrigin;
-    mRadius = tree.mRadius;
+    mParent = nullptr;
+    mData = tree.mData;
 
     for (unsigned i = 0; i < 8; ++i)
     {
-        delete mNodes[i];
-        mNodes[i] = tempNodes[i];
+        SL_OctreeNode<T, Allocator>* pNode = tree.mNodes[i];
+        if (pNode && !mNodes[i])
+        {
+            mNodes[i] = new(std::nothrow) SL_OctreeNode<T, Allocator>{};
+            *mNodes[i] = *(pNode->mNodes[i]); // recurse
+            mNodes[i]->mParent = this;
+        }
     }
-
-    mData = tree.mData;
 
     return *this;
 }
@@ -482,14 +640,29 @@ SL_OctreeNode<T, Allocator>& SL_OctreeNode<T, Allocator>::operator=(SL_OctreeNod
         return *this;
     }
 
+    clear();
+
     mOrigin = tree.mOrigin;
-    mRadius = tree.mRadius;
+    tree.mOrigin = ls::math::vec4{0.f};
+
+    mParent = tree.mParent;
+    tree.mParent = nullptr;
 
     for (unsigned i = 0; i < 8; ++i)
     {
-        delete mNodes[i];
+        if (mNodes[i])
+        {
+            delete mNodes[i];
+            mNodes[i] = nullptr;
+        }
+
         mNodes[i] = tree.mNodes[i];
         tree.mNodes[i] = nullptr;
+
+        if (mNodes[i])
+        {
+            mNodes[i]->mParent = this;
+        }
     }
 
     mData = std::move(tree.mData);
@@ -500,23 +673,104 @@ SL_OctreeNode<T, Allocator>& SL_OctreeNode<T, Allocator>::operator=(SL_OctreeNod
 
 
 /*-------------------------------------
- * Get the origin
+ * Determine the direction of an object, relative to *this.
 -------------------------------------*/
 template <typename T, class Allocator>
-inline const ls::math::vec4& SL_OctreeNode<T, Allocator>::origin() const noexcept
+SL_OctreeDirection SL_OctreeNode<T, Allocator>::relative_direction_for_object(
+    const ls::math::vec4& location,
+    float extent) const noexcept
 {
-    return mOrigin;
+    const ls::math::vec4&& localSpace = this->origin() - location;
+    const ls::math::vec4&& ls0 = localSpace - extent;
+    const ls::math::vec4&& ls1 = localSpace + extent;
+
+    // Calculate a three-bit mask from the object's position and size. This
+    // mask will be used as the index of a sub-node in the tree. Sign-masks
+    // determine if data should be placed into a locally positive or negative
+    // direction for each X/Y/Z component.
+    // This will simultaneously check all sub-quadrants to determine which
+    // individual sub-node can properly contain data.
+    const int locations[8] = {
+        ls::math::sign_mask(ls::math::vec4{ls0[0], ls0[1], ls0[2], 0.f}), // left,  top,    front
+        ls::math::sign_mask(ls::math::vec4{ls1[0], ls0[1], ls0[2], 0.f}), // right, top,    front
+        ls::math::sign_mask(ls::math::vec4{ls0[0], ls1[1], ls0[2], 0.f}), // left,  bottom, front
+        ls::math::sign_mask(ls::math::vec4{ls1[0], ls1[1], ls0[2], 0.f}), // right, bottom, front
+        ls::math::sign_mask(ls::math::vec4{ls0[0], ls0[1], ls1[2], 0.f}), // left,  top,    back
+        ls::math::sign_mask(ls::math::vec4{ls1[0], ls0[1], ls1[2], 0.f}), // right, top,    back
+        ls::math::sign_mask(ls::math::vec4{ls0[0], ls1[1], ls1[2], 0.f}), // left,  bottom, back
+        ls::math::sign_mask(ls::math::vec4{ls1[0], ls1[1], ls1[2], 0.f}), // right, bottom, back
+    };
+
+    // determine if all the calculated masks match. unique masks mean the
+    // object overlaps sub-nodes
+    const int nodeId   = locations[0] | locations[1] | locations[2] | locations[3] | locations[4] | locations[5] | locations[6] | locations[7];
+    const int overlaps = locations[0] & locations[1] & locations[2] & locations[3] & locations[4] & locations[5] & locations[6] & locations[7];
+
+    // If an object intersects multiple sub-nodes, keep it in the current node
+    // rather than split the object across the intersecting sub-nodes
+    if (nodeId ^ overlaps)
+    {
+        return SL_OctreeDirection::INSIDE;
+    }
+
+    return static_cast<SL_OctreeDirection>(nodeId);
 }
 
 
 
 /*-------------------------------------
- * Get the radius
+ * Determine the direction of an object, relative to *this.
 -------------------------------------*/
 template <typename T, class Allocator>
-inline float SL_OctreeNode<T, Allocator>::radius() const noexcept
+SL_OctreeDirection SL_OctreeNode<T, Allocator>::relative_direction_for_object(
+    const ls::math::vec3& location,
+    float extent) const noexcept
 {
-    return mRadius;
+    return relative_direction_for_object(ls::math::vec4_cast(location, 0.f), extent);
+}
+
+
+
+/*-------------------------------------
+ * Get the origin
+-------------------------------------*/
+template <typename T, class Allocator>
+inline ls::math::vec4 SL_OctreeNode<T, Allocator>::origin() const noexcept
+{
+    return ls::math::vec4{mOrigin[0], mOrigin[1], mOrigin[2], 0.f};
+}
+
+
+
+/*-------------------------------------
+ * Get the bounding-box extent
+-------------------------------------*/
+template <typename T, class Allocator>
+inline float SL_OctreeNode<T, Allocator>::extent() const noexcept
+{
+    return mOrigin[3];
+}
+
+
+
+/*-------------------------------------
+ * Get the parent node (const)
+-------------------------------------*/
+template <typename T, class Allocator>
+inline const SL_OctreeNode<T, Allocator>* SL_OctreeNode<T, Allocator>::parent() const noexcept
+{
+    return mParent;
+}
+
+
+
+/*-------------------------------------
+ * Get the parent node
+-------------------------------------*/
+template <typename T, class Allocator>
+inline SL_OctreeNode<T, Allocator>* SL_OctreeNode<T, Allocator>::parent() noexcept
+{
+    return mParent;
 }
 
 
@@ -544,6 +798,40 @@ inline SL_OctreeNode<T, Allocator>** SL_OctreeNode<T, Allocator>::sub_nodes() no
 
 
 /*-------------------------------------
+ * Get the sub-nodes (const)
+-------------------------------------*/
+template <typename T, class Allocator>
+inline const SL_OctreeNode<T, Allocator>* SL_OctreeNode<T, Allocator>::sub_node(SL_OctreeDirection dir) const noexcept
+{
+    const int index = static_cast<int>(dir);
+    if (index < 0 || index >= SL_OctreeDirection::MAX_DIRECTIONS)
+    {
+        return nullptr;
+    }
+
+    return mNodes[index];
+}
+
+
+
+/*-------------------------------------
+ * Get the sub-nodes
+-------------------------------------*/
+template <typename T, class Allocator>
+inline SL_OctreeNode<T, Allocator>* SL_OctreeNode<T, Allocator>::sub_node(SL_OctreeDirection dir) noexcept
+{
+    const int index = static_cast<int>(dir);
+    if (index < 0 || index >= SL_OctreeDirection::MAX_DIRECTIONS)
+    {
+        return nullptr;
+    }
+
+    return mNodes[index];
+}
+
+
+
+/*-------------------------------------
  * Get the internal objects (const)
 -------------------------------------*/
 template <typename T, class Allocator>
@@ -561,6 +849,17 @@ template <typename T, class Allocator>
 inline std::vector<T, Allocator>& SL_OctreeNode<T, Allocator>::data() noexcept
 {
     return mData;
+}
+
+
+
+/*-------------------------------------
+ * Determine if there's any data
+-------------------------------------*/
+template <typename T, class Allocator>
+inline bool SL_OctreeNode<T, Allocator>::empty() const noexcept
+{
+    return mData.empty();
 }
 
 
@@ -640,7 +939,7 @@ void SL_OctreeNode<T, Allocator>::clear() noexcept
 template <typename T, class Allocator>
 const SL_OctreeNode<T, Allocator>* SL_OctreeNode<T, Allocator>::find(const ls::math::vec4& location) const noexcept
 {
-    const int nodeId = ls::math::sign_mask(location - this->mOrigin);
+    const int nodeId = ls::math::sign_mask(location - this->origin());
 
     if (!this->mNodes[nodeId])
     {
@@ -658,7 +957,7 @@ const SL_OctreeNode<T, Allocator>* SL_OctreeNode<T, Allocator>::find(const ls::m
 template <typename T, class Allocator>
 SL_OctreeNode<T, Allocator>* SL_OctreeNode<T, Allocator>::find(const ls::math::vec4& location) noexcept
 {
-    const int nodeId = ls::math::sign_mask(location - this->mOrigin);
+    const int nodeId = ls::math::sign_mask(location - this->origin());
 
     if (!this->mNodes[nodeId])
     {
@@ -719,7 +1018,7 @@ template <typename T, class Allocator>
 template <typename IterCallbackType>
 void SL_OctreeNode<T, Allocator>::iterate_from_bottom_internal(IterCallbackType&& iterCallback, size_t currDepth) noexcept
 {
-    for (const SL_OctreeNode<T, Allocator>* pNode : this->mNodes)
+    for (SL_OctreeNode<T, Allocator>* pNode : this->mNodes)
     {
         if (pNode)
         {
@@ -791,7 +1090,7 @@ void SL_OctreeNode<T, Allocator>::iterate_from_top_internal(IterCallbackType&& i
         return;
     }
 
-    for (const SL_OctreeNode<T, Allocator>* pNode : this->mNodes)
+    for (SL_OctreeNode<T, Allocator>* pNode : this->mNodes)
     {
         if (pNode)
         {
@@ -827,7 +1126,7 @@ inline void SL_OctreeNode<T, Allocator>::iterate_top_down(IterCallbackType&& ite
 
 
 /**
- * @brief A Generic Octree container for spatial partitioning of general 3D
+ * @brief A Generic SL_Octree container for spatial partitioning of general 3D
  * data.
  *
  * This octree will perform a best-fit of data into sub-trees. If an object
@@ -846,8 +1145,13 @@ inline void SL_OctreeNode<T, Allocator>::iterate_top_down(IterCallbackType&& ite
 template <typename T, size_t MaxDepth, class Allocator>
 class SL_Octree final : public SL_OctreeNode<T, Allocator>
 {
-  private:
-    bool emplace_internal(const ls::math::vec4& location, float radius, T&& value, size_t currDepth) noexcept;
+  public:
+    enum Limits : size_t
+    {
+        DEFAULT_DEPTH_LIMIT = std::numeric_limits<size_t>::max()
+    };
+
+    SL_OctreeNode<T, Allocator>* _insert_node(const ls::math::vec4& location, float extent, size_t depthLimit) noexcept;
 
   public:
     /**
@@ -863,10 +1167,12 @@ class SL_Octree final : public SL_OctreeNode<T, Allocator>
      * @param origin
      * The center of the octree in 3D space.
      *
-     * @param radius
-     * The radius of the top-level octree.
+     * @param extent
+     * The distance from the node's origin to its bounding box corners.
      */
-    SL_Octree(const ls::math::vec3& origin = ls::math::vec3{0.f, 0.f, 0.f}, float radius = 1.f) noexcept;
+    SL_Octree(
+        const ls::math::vec3& origin = ls::math::vec3{0.f, 0.f, 0.f},
+        float extent = 1.f) noexcept;
 
     /**
      * @brief Constructor
@@ -875,10 +1181,12 @@ class SL_Octree final : public SL_OctreeNode<T, Allocator>
      * The center of the octree in 3D space. The last (fourth) element of the
      * input vector is unused.
      *
-     * @param radius
-     * The radius of the top-level octree.
+     * @param extent
+     * The distance from the node's origin to its bounding box corners.
      */
-    SL_Octree(const ls::math::vec4& origin, float radius) noexcept;
+    SL_Octree(
+        const ls::math::vec4& origin,
+        float extent) noexcept;
 
     /**
      * @brief Copy Constructor
@@ -935,23 +1243,62 @@ class SL_Octree final : public SL_OctreeNode<T, Allocator>
     constexpr size_t max_depth() const noexcept;
 
     /**
+     * @brief Insert an empty node into *this, creating sub-tree partitions if
+     * needed.
+     *
+     * @param location
+     * The 3D spatial location of the object to be stored.
+     *
+     * @param extent
+     * The distance from the node's origin to its bounding box corners.
+     *
+     * @return A pointer to the node which exists (or is created at) at \p
+     * location.
+     */
+    SL_OctreeNode<T, Allocator>* insert_empty(
+        const ls::math::vec4& location,
+        float extent,
+        size_t depthLimit = DEFAULT_DEPTH_LIMIT) noexcept;
+
+    /**
+     * @brief Insert an empty node into *this, creating sub-tree partitions if
+     * needed.
+     *
+     * @param location
+     * The 3D spatial location of the object to be stored.
+     *
+     * @param extent
+     * The distance from the node's origin to its bounding box corners.
+     *
+     * @return A pointer to the node which exists (or is created at) at \p
+     * location.
+     */
+    SL_OctreeNode<T, Allocator>* insert_empty(
+        const ls::math::vec3& location,
+        float extent,
+        size_t depthLimit = DEFAULT_DEPTH_LIMIT) noexcept;
+
+    /**
      * @brief Insert an object into *this, creating sub-tree partitions if
      * needed.
      *
      * @param location
      * The 3D spatial location of the object to be stored.
      *
-     * @param radius
-     * The maximum bounding-radius occupied by the input object.
+     * @param extent
+     * The distance from the node's origin to its bounding box corners.
      *
      * @param value
      * The data to be stored. This object must be copy-constructable,
      * copy-assignable, move-constructable, or move-assignable.
      *
-     * @return TRUE if the data was successfully inserted into *this or a
-     * sub-tree, FALSE if an error occurred.
+     * @return A pointer to the node which will contain \p args.
      */
-    bool insert(const ls::math::vec4& location, float radius, T&& value) noexcept;
+    SL_OctreeNode<T, Allocator>* insert(
+        const ls::math::vec4& location,
+        float extent,
+        const T& value,
+        size_t depthLimit = DEFAULT_DEPTH_LIMIT) noexcept;
 
     /**
      * @brief Insert (copy) an object into *this, creating sub-tree partitions
@@ -960,17 +1307,64 @@ class SL_Octree final : public SL_OctreeNode<T, Allocator>
      * @param location
      * The 3D spatial location of the object to be stored.
      *
-     * @param radius
-     * The maximum bounding-radius occupied by the input object.
+     * @param extent
+     * The distance from the node's origin to its bounding box corners.
      *
      * @param value
      * The data to be stored. This object must be move-constructable, and
      * move-assignable.
      *
-     * @return TRUE if the data was successfully inserted into *this or a
-     * sub-tree, FALSE if an error occurred.
+     * @return A pointer to the node which will contain \p args.
      */
-    bool insert(const ls::math::vec3& location, float radius, T&& value) noexcept;
+    SL_OctreeNode<T, Allocator>* insert(
+        const ls::math::vec3& location,
+        float extent,
+        const T& value,
+        size_t depthLimit = DEFAULT_DEPTH_LIMIT) noexcept;
+
+    /**
+     * @brief Insert an object into *this, creating sub-tree partitions if
+     * needed.
+     *
+     * @param location
+     * The 3D spatial location of the object to be stored.
+     *
+     * @param extent
+     * The distance from the node's origin to its bounding box corners.
+     *
+     * @param value
+     * The data to be stored. This object must be copy-constructable,
+     * copy-assignable, move-constructable, or move-assignable.
+     *
+     * @return A pointer to the node which will contain \p args.
+     */
+    SL_OctreeNode<T, Allocator>* insert(
+        const ls::math::vec4& location,
+        float extent,
+        T&& value,
+        size_t depthLimit = DEFAULT_DEPTH_LIMIT) noexcept;
+
+    /**
+     * @brief Insert (copy) an object into *this, creating sub-tree partitions
+     * if needed.
+     *
+     * @param location
+     * The 3D spatial location of the object to be stored.
+     *
+     * @param extent
+     * The distance from the node's origin to its bounding box corners.
+     *
+     * @param value
+     * The data to be stored. This object must be move-constructable, and
+     * move-assignable.
+     *
+     * @return A pointer to the node which will contain \p args.
+     */
+    SL_OctreeNode<T, Allocator>* insert(
+        const ls::math::vec3& location,
+        float extent,
+        T&& value,
+        size_t depthLimit = DEFAULT_DEPTH_LIMIT) noexcept;
 
     /**
      * @brief Insert an object into *this, creating sub-tree partitions if
@@ -982,17 +1376,20 @@ class SL_Octree final : public SL_OctreeNode<T, Allocator>
      * @param location
      * The 3D spatial location of the object to be stored.
      *
-     * @param radius
-     * The maximum bounding-radius occupied by the input object.
+     * @param extent
+     * The distance from the node's origin to its bounding box corners.
      *
      * @param args
      * The data to construct a type T in-place.
      *
-     * @return TRUE if the data was successfully inserted into *this or a
-     * sub-tree, FALSE if an error occurred.
+     * @return A pointer to the node which will contain \p args.
      */
      template <typename... Args>
-    bool emplace(const ls::math::vec4& location, float radius, Args&&... args) noexcept;
+    SL_OctreeNode<T, Allocator>* emplace(
+        const ls::math::vec4& location,
+        float extent,
+        Args&&... args,
+        size_t depthLimit = DEFAULT_DEPTH_LIMIT) noexcept;
 
     /**
      * @brief Insert an object into *this, creating sub-tree partitions if
@@ -1004,17 +1401,20 @@ class SL_Octree final : public SL_OctreeNode<T, Allocator>
      * @param location
      * The 3D spatial location of the object to be stored.
      *
-     * @param radius
-     * The maximum bounding-radius occupied by the input object.
+     * @param extent
+     * The distance from the node's origin to its bounding box corners.
      *
      * @param args
      * The data to construct a type T in-place.
      *
-     * @return TRUE if the data was successfully inserted into *this or a
-     * sub-tree, FALSE if an error occurred.
+     * @return A pointer to the node which will contain \p args.
      */
     template <typename... Args>
-    bool emplace(const ls::math::vec3& location, float radius, Args&&... args) noexcept;
+    SL_OctreeNode<T, Allocator>* emplace(
+        const ls::math::vec3& location,
+        float exetent,
+        Args&&... args,
+        size_t depthLimit = DEFAULT_DEPTH_LIMIT) noexcept;
 };
 
 
@@ -1023,8 +1423,10 @@ class SL_Octree final : public SL_OctreeNode<T, Allocator>
  * Constructor
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-SL_Octree<T, MaxDepth, Allocator>::SL_Octree(const ls::math::vec3& origin, float radius) noexcept :
-    SL_OctreeNode<T, Allocator>{origin, radius}
+SL_Octree<T, MaxDepth, Allocator>::SL_Octree(
+    const ls::math::vec3& origin,
+    float extent) noexcept :
+    SL_OctreeNode<T, Allocator>{nullptr, origin, extent}
 {}
 
 
@@ -1033,8 +1435,10 @@ SL_Octree<T, MaxDepth, Allocator>::SL_Octree(const ls::math::vec3& origin, float
  * Constructor
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-SL_Octree<T, MaxDepth, Allocator>::SL_Octree(const ls::math::vec4& origin, float radius) noexcept :
-    SL_OctreeNode<T, Allocator>{origin, radius}
+SL_Octree<T, MaxDepth, Allocator>::SL_Octree(
+    const ls::math::vec4& origin,
+    float extent) noexcept :
+    SL_OctreeNode<T, Allocator>{nullptr, origin, extent}
 {}
 
 
@@ -1094,74 +1498,66 @@ SL_Octree<T, MaxDepth, Allocator>& SL_Octree<T, MaxDepth, Allocator>::operator=(
 
 
 /*-------------------------------------
- * Emplace (move) an object into *this
+ * Place a new node into *this
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-bool SL_Octree<T, MaxDepth, Allocator>::emplace_internal(const ls::math::vec4& location, float radius, T&& value, size_t currDepth) noexcept
+SL_OctreeNode<T, Allocator>* SL_Octree<T, MaxDepth, Allocator>::_insert_node(const ls::math::vec4& location, float extent, size_t depthLimit) noexcept
 {
+    typedef SL_Octree<T, MaxDepth, Allocator> OctreeType;
+    SL_OctreeNode<T, Allocator>* pParent = nullptr;
     SL_OctreeNode<T, Allocator>* pTree = this;
+    size_t currDepth = 0;
 
-    while (true)
+    do
     {
-        // Don't even bother placing an object into sub-nodes if it can't fit
-        const float r2 = pTree->mRadius * 0.5f;
-        if (radius > r2 || (MaxDepth && currDepth == MaxDepth))
+        // Don't bother placing an object into sub-nodes if it can't fit
+        const float subExtent = pTree->extent() * 0.5f;
+        if (extent > subExtent
+        || (MaxDepth && currDepth >= MaxDepth)
+        || (depthLimit != OctreeType::DEFAULT_DEPTH_LIMIT && currDepth >= depthLimit))
         {
-            pTree->mData.push_back(ls::setup::forward<T>(value));
-            return true;
+            break;
         }
 
-        // calculate a three-bit mask from the object's position and size. This
-        // mask will be used as the index of a sub-node in the tree
-        const ls::math::vec4&& localSpace = location - pTree->mOrigin;
-        const ls::math::vec4&& ls0 = localSpace + radius;
-        const ls::math::vec4&& ls1 = localSpace - radius;
-
-        const int locations[8] = {
-            ls::math::sign_mask(ls::math::vec4{ls0[0], ls0[1], ls0[2], 0.f}),
-            ls::math::sign_mask(ls::math::vec4{ls1[0], ls0[1], ls0[2], 0.f}),
-            ls::math::sign_mask(ls::math::vec4{ls0[0], ls1[1], ls0[2], 0.f}),
-            ls::math::sign_mask(ls::math::vec4{ls1[0], ls1[1], ls0[2], 0.f}),
-            ls::math::sign_mask(ls::math::vec4{ls0[0], ls0[1], ls1[2], 0.f}),
-            ls::math::sign_mask(ls::math::vec4{ls1[0], ls0[1], ls1[2], 0.f}),
-            ls::math::sign_mask(ls::math::vec4{ls0[0], ls1[1], ls1[2], 0.f}),
-            ls::math::sign_mask(ls::math::vec4{ls1[0], ls1[1], ls1[2], 0.f}),
-        };
-
-        // determine if all the calculated masks match. unique masks mean the
-        // object overlaps sub-nodes
-        const int nodeId   = locations[0] | locations[1] | locations[2] | locations[3] | locations[4] | locations[5] | locations[6] | locations[7];
-        const int overlaps = locations[0] & locations[1] & locations[2] & locations[3] & locations[4] & locations[5] & locations[6] & locations[7];
-
-        // If an object intersects multiple sub-nodes, keep it in the current node
-        // rather than split the object across the intersecting sub-nodes
-        if (nodeId ^ overlaps)
+        // Don't bother placing an object into sub-nodes if it can't fit
+        const int nodeId = (int)pTree->relative_direction_for_object(location, extent);
+        if (nodeId < 0)
         {
-            pTree->mData.push_back(ls::setup::forward<T>(value));
-            return true;
+            break;
         }
 
-        const float xSign = (nodeId & 0x01) ? -1.f : 1.f;
-        const float ySign = (nodeId & 0x02) ? -1.f : 1.f;
-        const float zSign = (nodeId & 0x04) ? -1.f : 1.f;
+        // Using the sign-mask, bucket the data into one of 8 sub-nodes
+        const float xSign = (nodeId & 0x01) ? -subExtent : subExtent;
+        const float ySign = (nodeId & 0x02) ? -subExtent : subExtent;
+        const float zSign = (nodeId & 0x04) ? -subExtent : subExtent;
 
-        const ls::math::vec4&& nodeLocation = pTree->mOrigin + ls::math::vec4{r2} * ls::math::vec4{xSign, ySign, zSign, 0.f};
+        // Don't bother placing an object into sub-nodes if it can't fit
+        const ls::math::vec4&& nodeExtents = ls::math::vec4{xSign, ySign, zSign, 0.f};
+        const ls::math::vec4&& nodeLocation = pTree->origin() - nodeExtents;
 
-        if (!pTree->mNodes[nodeId])
+        // Data can still be bucketed into a smaller lead. Add a sub-node and
+        // continue iterating
+        SL_OctreeNode<T, Allocator>** pSubNodes = pTree->sub_nodes();
+        if (!pSubNodes[nodeId])
         {
-            pTree->mNodes[nodeId] = new(std::nothrow) SL_Octree<T, MaxDepth, Allocator>(nodeLocation, r2);
-
-            if (!pTree->mNodes[nodeId])
+            OctreeType* const pNewSubNode = new(std::nothrow) OctreeType{nodeLocation, subExtent};
+            if (!pNewSubNode)
             {
+                pTree = nullptr; // crash
                 break;
             }
+
+            pNewSubNode->mParent = pParent;
+            pSubNodes[nodeId] = pNewSubNode;
         }
 
         ++currDepth;
-        pTree = pTree->mNodes[nodeId];
+        pParent = pTree;
+        pTree = pSubNodes[nodeId];
     }
+    while (true);
 
-    return false;
+    return pTree;
 }
 
 
@@ -1181,9 +1577,9 @@ constexpr size_t SL_Octree<T, MaxDepth, Allocator>::max_depth() const noexcept
  * Insert an object into *this
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-inline bool SL_Octree<T, MaxDepth, Allocator>::insert(const ls::math::vec4& location, float radius, T&& value) noexcept
+inline SL_OctreeNode<T, Allocator>* SL_Octree<T, MaxDepth, Allocator>::insert_empty(const ls::math::vec4& location, float extent, size_t depthLimit) noexcept
 {
-    return this->emplace_internal(location, radius, ls::setup::forward<T>(value), 0);
+    return this->_insert_node(location, extent, depthLimit);
 }
 
 
@@ -1192,9 +1588,61 @@ inline bool SL_Octree<T, MaxDepth, Allocator>::insert(const ls::math::vec4& loca
  * Insert an object into *this
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
-inline bool SL_Octree<T, MaxDepth, Allocator>::insert(const ls::math::vec3& location, float radius, T&& value) noexcept
+inline SL_OctreeNode<T, Allocator>* SL_Octree<T, MaxDepth, Allocator>::insert_empty(const ls::math::vec3& location, float extent, size_t depthLimit) noexcept
 {
-    return this->emplace_internal(ls::math::vec4_cast(location, 0.f), radius, ls::setup::forward<T>(value), 0);
+    return this->_insert_node(ls::math::vec4_cast(location, 0.f), extent, depthLimit);
+}
+
+
+
+/*-------------------------------------
+ * Insert an object into *this
+-------------------------------------*/
+template <typename T, size_t MaxDepth, class Allocator>
+inline SL_OctreeNode<T, Allocator>* SL_Octree<T, MaxDepth, Allocator>::insert(const ls::math::vec4& location, float extent, const T& value, size_t depthLimit) noexcept
+{
+    SL_OctreeNode<T, Allocator>* pNode = this->_insert_node(location, extent, depthLimit);
+    pNode->data().push_back(value);
+    return pNode;
+}
+
+
+
+/*-------------------------------------
+ * Insert an object into *this
+-------------------------------------*/
+template <typename T, size_t MaxDepth, class Allocator>
+inline SL_OctreeNode<T, Allocator>* SL_Octree<T, MaxDepth, Allocator>::insert(const ls::math::vec3& location, float extent, const T& value, size_t depthLimit) noexcept
+{
+    SL_OctreeNode<T, Allocator>* pNode = this->_insert_node(ls::math::vec4_cast(location, 0.f), extent, depthLimit);
+    pNode->data().push_back(value);
+    return pNode;
+}
+
+
+
+/*-------------------------------------
+ * Insert an object into *this
+-------------------------------------*/
+template <typename T, size_t MaxDepth, class Allocator>
+inline SL_OctreeNode<T, Allocator>* SL_Octree<T, MaxDepth, Allocator>::insert(const ls::math::vec4& location, float extent, T&& value, size_t depthLimit) noexcept
+{
+    SL_OctreeNode<T, Allocator>* pNode = this->_insert_node(location, extent, depthLimit);
+    pNode->data().push_back(std::forward<T>(value));
+    return pNode;
+}
+
+
+
+/*-------------------------------------
+ * Insert an object into *this
+-------------------------------------*/
+template <typename T, size_t MaxDepth, class Allocator>
+inline SL_OctreeNode<T, Allocator>* SL_Octree<T, MaxDepth, Allocator>::insert(const ls::math::vec3& location, float extent, T&& value, size_t depthLimit) noexcept
+{
+    SL_OctreeNode<T, Allocator>* pNode = this->_insert_node(ls::math::vec4_cast(location, 0.f), extent, depthLimit);
+    pNode->data().push_back(std::forward<T>(value));
+    return pNode;
 }
 
 
@@ -1204,9 +1652,11 @@ inline bool SL_Octree<T, MaxDepth, Allocator>::insert(const ls::math::vec3& loca
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
 template <typename... Args>
-inline bool SL_Octree<T, MaxDepth, Allocator>::emplace(const ls::math::vec4& location, float radius, Args&&... args) noexcept
+inline SL_OctreeNode<T, Allocator>* SL_Octree<T, MaxDepth, Allocator>::emplace(const ls::math::vec4& location, float extent, Args&&... args, size_t depthLimit) noexcept
 {
-    return this->emplace_internal(location, radius, T{ls::setup::forward<Args>(args)...}, 0);
+    SL_OctreeNode<T, Allocator>* pNode = this->_insert_node(location, extent, depthLimit);
+    pNode->data().emplace_back(std::forward<Args>(args)...);
+    return pNode;
 }
 
 
@@ -1216,9 +1666,11 @@ inline bool SL_Octree<T, MaxDepth, Allocator>::emplace(const ls::math::vec4& loc
 -------------------------------------*/
 template <typename T, size_t MaxDepth, class Allocator>
 template <typename... Args>
-inline bool SL_Octree<T, MaxDepth, Allocator>::emplace(const ls::math::vec3& location, float radius, Args&&... args) noexcept
+inline SL_OctreeNode<T, Allocator>* SL_Octree<T, MaxDepth, Allocator>::emplace(const ls::math::vec3& location, float exetent, Args&&... args, size_t depthLimit) noexcept
 {
-    return this->emplace_internal(ls::math::vec4_cast(location, 0.f), radius, T{ls::setup::forward<Args>(args)...}, 0);
+    SL_OctreeNode<T, Allocator>* pNode = this->_insert_node(ls::math::vec4_cast(location, 0.f), exetent, depthLimit);
+    pNode->data().emplace_back(std::forward<Args>(args)...);
+    return pNode;
 }
 
 

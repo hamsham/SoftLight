@@ -339,7 +339,7 @@ void render_octree(SL_SceneGraph* pGraph, const OctreeNodeType& octree, const ma
         color.h = percent;
 
         pUniforms->origin    = math::vec3_cast(pTree->origin());
-        pUniforms->radius    = pTree->radius();
+        pUniforms->radius    = pTree->extent();
         pUniforms->color     = math::vec4_cast(rgb_cast<float>(color), percent);
         pUniforms->mvpMatrix = vpMatrix;
 
