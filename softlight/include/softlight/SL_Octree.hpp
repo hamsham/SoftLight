@@ -616,7 +616,7 @@ SL_OctreeNode<T, Allocator>& SL_OctreeNode<T, Allocator>::operator=(const SL_Oct
     for (unsigned i = 0; i < 8; ++i)
     {
         SL_OctreeNode<T, Allocator>* pNode = tree.mNodes[i];
-        if (pNode && !mNodes[i])
+        if (pNode && pNode->mNodes[i] && !mNodes[i])
         {
             mNodes[i] = new(std::nothrow) SL_OctreeNode<T, Allocator>{};
             *mNodes[i] = *(pNode->mNodes[i]); // recurse
