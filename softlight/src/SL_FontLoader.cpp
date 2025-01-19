@@ -5,12 +5,13 @@
  * Created on February 16, 2014, 2:36 PM
  */
 
-#include <algorithm> // std::copy
 #include <utility> // std::move
 #include <string>
 
 #include <freetype2/ft2build.h>
 #include FT_FREETYPE_H
+
+#include "lightsky/utils/Copy.h"
 
 /*-------------------------------------
     FreeType Error Handling
@@ -53,6 +54,9 @@ bool copy_glyph(SL_FontGlyph& pGlyph, const FT_GlyphSlot ftGlyph) {
         return false;
     }
 
+    pGlyph.baseline = {(int)metrics.horiBearingX, -((int)metrics.height - (int)metrics.horiBearingY)};
+    pGlyph.baseline /= 64;
+
     // These need to be divided by 64 as their measurements are
     // in "points," or, 1/64th of a pixel.
     pGlyph.size = {(int)ftBitmap.width, (int)ftBitmap.rows};
@@ -64,7 +68,20 @@ bool copy_glyph(SL_FontGlyph& pGlyph, const FT_GlyphSlot ftGlyph) {
     pGlyph.advance /= 64;
 
     // Copy the data from FreeType into the glyph
-    std::copy(ftBitmap.buffer, ftBitmap.buffer + (ftBitmap.width * ftBitmap.rows), pGlyph.pData);
+    //utils::fast_memcpy(pGlyph.pData, ftBitmap.buffer, ftBitmap.width * ftBitmap.rows);
+
+    // glyphs are currently upside-down. flip them into GL coordinates
+    const unsigned width = ftBitmap.width;
+    const unsigned height = ftBitmap.rows;
+
+    for (unsigned y = 0; y < height; ++y)
+    {
+        unsigned inY = height - y - 1;
+        for (unsigned x = 0; x < width; ++x)
+        {
+            pGlyph.pData[y * width + x] = ftBitmap.buffer[inY * width + x];
+        }
+    }
 
     return true;
 }
@@ -244,7 +261,7 @@ bool SL_FontLoader::load_glyphs(FT_FaceRec_* ftFace) {
         FT_Error ftErr;
         unsigned charIndex = FT_Get_Char_Index(ftFace, i);
 
-        ftErr = FT_Load_Glyph(ftFace, charIndex, FT_LOAD_TARGET_LIGHT); // delayed bitmap generation
+        ftErr = FT_Load_Glyph(ftFace, charIndex, FT_LOAD_TARGET_NORMAL); // delayed bitmap generation
 
         if (ftErr) {
             LS_LOG_ERR(
@@ -257,7 +274,7 @@ bool SL_FontLoader::load_glyphs(FT_FaceRec_* ftFace) {
             return false;
         }
 
-        ftErr = FT_Render_Glyph(ftFace->glyph, FT_RENDER_MODE_LIGHT);
+        ftErr = FT_Render_Glyph(ftFace->glyph, FT_RENDER_MODE_SDF);//FT_RENDER_MODE_LIGHT);
         if (ftErr) {
             LS_LOG_ERR(
                 "\tUnable to render the glyph at index ", charIndex,

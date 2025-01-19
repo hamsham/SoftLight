@@ -119,14 +119,21 @@ SL_VertexShader texture_vert_shader()
 bool _texture_frag_shader(SL_FragmentParam& fragParam)
 {
     const TextUniforms* pUniforms = fragParam.pUniforms->as<TextUniforms>();
-    const math::vec4&   uv        = fragParam.pVaryings[0];
     const SL_Texture*   pTexture  = pUniforms->pTexture;
+    const math::vec4&   uv        = fragParam.pVaryings[0];
     const math::vec4    albedo    = {0.1f, 1.f, 0.25f, 1.f};
+    SL_ColorR8          pixel8;
 
-    const SL_ColorR8&& pixel8 = sl_sample_bilinear<SL_ColorR8, SL_WrapMode::EDGE>(*pTexture, uv[0], uv[1]);
+    if (!pTexture)
+    {
+        pixel8.r = 255;
+    }
+    else
+    {
+        pixel8 = sl_sample_bilinear<SL_ColorR8, SL_WrapMode::EDGE>(*pTexture, uv[0], uv[1]);
+    }
 
     fragParam.pOutputs[0] = albedo * (float)pixel8.r * (1.f/255.f);
-
     return pixel8.r > 128;
 }
 
@@ -190,7 +197,13 @@ void update_cam_position(SL_Transform& camTrans, float tickTime, utils::Pointer<
 /*-------------------------------------
  * Render the Scene
 -------------------------------------*/
-void render_scene(SL_SceneGraph* pGraph, const math::mat4& projection, unsigned w, unsigned h, const SL_Transform& camTrans)
+void render_scene(
+    SL_SceneGraph* pGraph,
+    const math::mat4& projection,
+    unsigned w,
+    unsigned h,
+    const SL_Transform& camTrans,
+    bool showBoundingBoxes)
 {
     SL_Context&   context = pGraph->mContext;
     TextUniforms* pUniforms = context.ubo(0).as<TextUniforms>();
@@ -229,7 +242,7 @@ void render_scene(SL_SceneGraph* pGraph, const math::mat4& projection, unsigned 
 
             if (sl_is_visible(box, mv, planes))
             {
-                pUniforms->pTexture = material.pTextures[SL_MATERIAL_TEXTURE_AMBIENT];
+                pUniforms->pTexture = !showBoundingBoxes ? material.pTextures[SL_MATERIAL_TEXTURE_AMBIENT] : nullptr;
                 //context.draw(m, 0, 0);
                 instances.push_back(m);
             }
@@ -386,10 +399,12 @@ int main()
     float dx = 0.f;
     float dy = 0.f;
     unsigned numThreads = context.num_threads();
+    size_t texIndex = 0;
+    bool showBoundingBoxes = false;
 
     SL_Transform camTrans;
     camTrans.type(SL_TransformType::SL_TRANSFORM_TYPE_VIEW_FPS_LOCKED_Y);
-    camTrans.look_at(math::vec3{30.f, -20.f, -55.f}, math::vec3{30.f, 40.f, 0.f}, math::vec3{0.f, -1.f, 0.f}, true);
+    camTrans.look_at(math::vec3{30.f, 20.f, 55.f}, math::vec3{30.f, 0.f, 0.f}, math::vec3{0.f, 1.f, 0.f}, true);
     math::mat4 projMatrix = math::infinite_perspective(math::radians(60.f), (float)IMAGE_WIDTH/(float)IMAGE_HEIGHT, 0.01f);
 
     if (shouldQuit)
@@ -488,6 +503,22 @@ int main()
                         pWindow->set_mouse_capture(!pWindow->is_mouse_captured());
                         pWindow->set_keys_repeat(!pWindow->keys_repeat()); // no text mode
                         std::cout << "Mouse Capture: " << pWindow->is_mouse_captured() << std::endl;
+                    break;
+
+                    case SL_KeySymbol::KEY_SYM_1:
+                        showBoundingBoxes = !showBoundingBoxes;
+                        break;
+
+                    case SL_KeySymbol::KEY_SYM_PG_UP:
+                        texIndex = (texIndex + 1) % context.textures().size();
+                        break;
+
+                    case SL_KeySymbol::KEY_SYM_PG_DOWN:
+                        texIndex = (texIndex > 0) ? (texIndex-1) : (context.textures().size()-1);
+                        break;
+
+                    case SL_KeySymbol::KEY_SYM_HOME:
+                        texIndex = 0;
                         break;
 
                     case SL_KeySymbol::KEY_SYM_ESCAPE:
@@ -509,8 +540,8 @@ int main()
                 if (pWindow->is_mouse_captured())
                 {
                     SL_MousePosEvent& mouse = evt.mousePos;
-                    dx = ((float)mouse.dx / (float)pWindow->width()) * -0.05f;
-                    dy = ((float)mouse.dy / (float)pWindow->height()) * -0.05f;
+                    dx = ((float)mouse.dx / (float)pWindow->width()) * -0.25f;
+                    dy = ((float)mouse.dy / (float)pWindow->height()) * -0.25f;
                     camTrans.rotate(math::vec3{dx, dy, 0.f});
                 }
             }
@@ -554,8 +585,8 @@ int main()
 
             context.clear_framebuffer(0, 0, SL_ColorRGBAd{0.6, 0.6, 0.6, 1.0}, 0.0);
 
-            render_scene(pGraph.get(), projMatrix, pWindow->width(), pWindow->height(), camTrans);
-            context.blit(pSwapchain->texture().view(), 0);
+            render_scene(pGraph.get(), projMatrix, pWindow->width(), pWindow->height(), camTrans, showBoundingBoxes);
+            context.blit(pSwapchain->texture().view(), texIndex);
             pWindow->render(*pSwapchain);
         }
 

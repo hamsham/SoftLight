@@ -200,12 +200,12 @@ bool SL_Atlas::init(SL_Context& context, const SL_FontLoader& fr) noexcept
     mPixelRatio = 1.f / (float)fr.get_font_size(); // DPI scaling
     mNumEntries = fr.get_num_glyphs();
 
-    const math::vec2i&&    maxGlyphSize  = fr.get_max_glyph_size();
-    const SL_FontGlyph* const pGlyphs       = fr.get_glyphs();
-    const int              dimensions    = calc_glyph_dimensions(fr);
-    const float            fDimensionInv = 1.f / (float)dimensions;
-    const math::vec2i&&    atlasSize     = math::vec2i{(int)mAtlasTex->width(), (int)mAtlasTex->height()};
-    const math::vec2&&     texResolution = (math::vec2)atlasSize;
+    const math::vec2i&& maxGlyphSize  = fr.get_max_glyph_size();
+    const SL_FontGlyph* pGlyphs       = fr.get_glyphs();
+    const int           dimensions    = calc_glyph_dimensions(fr);
+    const float         fDimensionInv = 1.f / (float)dimensions;
+    const math::vec2i&& atlasSize     = math::vec2i{(int)mAtlasTex->width(), (int)mAtlasTex->height()};
+    const math::vec2&&  texResolution = (math::vec2)atlasSize;
 
     for (int x = 0, glyphIndex = 0; x < dimensions; ++x)
     {
@@ -213,6 +213,12 @@ bool SL_Atlas::init(SL_Context& context, const SL_FontLoader& fr) noexcept
         {
             const SL_FontGlyph& pGlyph = pGlyphs[glyphIndex];
             SL_AtlasGlyph& pEntry = mEntries[glyphIndex];
+
+            // Add normalized position/sizing data for each glyph.
+            pEntry.baseline = fDimensionInv * (math::vec2)pGlyph.baseline;
+            pEntry.size = fDimensionInv * (math::vec2)pGlyph.size;
+            pEntry.advance = fDimensionInv * (math::vec2)pGlyph.advance;
+            pEntry.bearing = fDimensionInv * (math::vec2)pGlyph.bearing;
 
             // Upload glyph data
             const int texPosX = x * maxGlyphSize[0];
@@ -226,11 +232,6 @@ bool SL_Atlas::init(SL_Context& context, const SL_FontLoader& fr) noexcept
             // normalize UV coordinates to within (0, 1)
             pEntry.uv[0] /= texResolution;
             pEntry.uv[1] /= texResolution;
-
-            // Add normalized position/sizing data for each glyph.
-            pEntry.advance = fDimensionInv * (math::vec2)pGlyph.advance;
-            pEntry.bearing = fDimensionInv * (math::vec2)pGlyph.bearing;
-            pEntry.size = fDimensionInv * (math::vec2)pGlyph.size;
 
             // next glyph
             ++glyphIndex;

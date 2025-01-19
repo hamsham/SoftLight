@@ -4,10 +4,10 @@
 
 #include <string>
 
+#include "lightsky/math/vec2.h"
+
 #include "lightsky/utils/Resource.h"
 #include "lightsky/utils/StringUtils.h"
-
-#include "lightsky/math/vec2.h"
 
 
 /*-----------------------------------------------------------------------------
@@ -23,6 +23,7 @@ struct FT_FaceRec_;
  * This contains the basic data for each individual glyph in a font.
 -----------------------------------------------------------------------------*/
 struct SL_FontGlyph {
+    ls::math::vec2i baseline = {0};
     ls::math::vec2i size = {0};
     ls::math::vec2i advance = {0};
     ls::math::vec2i bearing = {0};
@@ -53,7 +54,7 @@ class SL_FontLoader final : public ls::utils::Resource {
         FONT_SIZE_MEDIUM = 72,
         FONT_SIZE_HIGH = 96,
 
-        FONT_SIZE_DEFAULT = 72
+        FONT_SIZE_DEFAULT = 48
     };
 
   private:

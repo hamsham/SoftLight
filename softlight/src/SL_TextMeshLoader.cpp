@@ -178,23 +178,23 @@ unsigned SL_TextMeshLoader::calc_text_geometry_pos(
     const math::vec2& glyphSize = rGlyph.size;
 
     const math::vec3 posData[4] = {
-        math::vec3{xOffset, yOffset - glyphSize[1], 0.f},
+        math::vec3{xOffset + glyphSize[0], yOffset, 0.f},
+        math::vec3{xOffset + glyphSize[0], yOffset + glyphSize[1], 0.f},
         math::vec3{xOffset, yOffset, 0.f},
-        math::vec3{xOffset + glyphSize[0], yOffset - glyphSize[1], 0.f},
-        math::vec3{xOffset + glyphSize[0], yOffset, 0.f}
+        math::vec3{xOffset, yOffset + glyphSize[1], 0.f}
     };
 
     pVert = set_text_vertex_data(pVert, posData[0]);
     pVert = set_text_vertex_data(pVert, posData[1]);
     pVert = set_text_vertex_data(pVert, posData[2]);
-    set_text_vertex_data(pVert, posData[3]);
+            set_text_vertex_data(pVert, posData[3]);
 
     SL_AlignedVector<SL_BoundingBox>& boundsBuffer = sceneData.mMeshBounds;
     LS_DEBUG_ASSERT(!boundsBuffer.empty());
 
     SL_BoundingBox& bb = boundsBuffer[charIndex];
-    bb.min_point(math::vec4{xOffset, yOffset - glyphSize[1], 0.f, 1.f});
-    bb.max_point(math::vec4{xOffset + glyphSize[0], yOffset, 0.f, 1.f});
+    bb.min_point(math::vec4{xOffset, yOffset, 0.f, 1.f});
+    bb.max_point(math::vec4{xOffset + glyphSize[0], yOffset + glyphSize[1], 0.f, 1.f});
 
     //return byte-stride to the next vertex attrib
     static const unsigned vertOffset = sl_vertex_byte_size(SL_CommonVertType::POSITION_VERTEX);
@@ -211,10 +211,10 @@ unsigned SL_TextMeshLoader::calc_text_geometry_uvs(
     char* pVert
 ) noexcept
 {
-    pVert = set_text_vertex_data(pVert, math::vec2{rGlyph.uv[0][0], rGlyph.uv[0][1]});
-    pVert = set_text_vertex_data(pVert, math::vec2{rGlyph.uv[0][0], rGlyph.uv[1][1]});
     pVert = set_text_vertex_data(pVert, math::vec2{rGlyph.uv[1][0], rGlyph.uv[0][1]});
-    set_text_vertex_data(pVert, math::vec2{rGlyph.uv[1][0], rGlyph.uv[1][1]});
+    pVert = set_text_vertex_data(pVert, math::vec2{rGlyph.uv[1][0], rGlyph.uv[1][1]});
+    pVert = set_text_vertex_data(pVert, math::vec2{rGlyph.uv[0][0], rGlyph.uv[0][1]});
+            set_text_vertex_data(pVert, math::vec2{rGlyph.uv[0][0], rGlyph.uv[1][1]});
 
     //return byte-stride to the next vertex attrib
     static const unsigned vertOffset = sl_vertex_byte_size(SL_CommonVertType::TEXTURE_VERTEX);
@@ -231,13 +231,13 @@ unsigned SL_TextMeshLoader::calc_text_geometry_packed_uvs(
     char* pVert
 ) noexcept
 {
-    pVert = set_text_vertex_data(pVert, math::vec2_t<math::half>{(math::half)rGlyph.uv[0][0], (math::half)rGlyph.uv[0][1]});
-    pVert = set_text_vertex_data(pVert, math::vec2_t<math::half>{(math::half)rGlyph.uv[0][0], (math::half)rGlyph.uv[1][1]});
     pVert = set_text_vertex_data(pVert, math::vec2_t<math::half>{(math::half)rGlyph.uv[1][0], (math::half)rGlyph.uv[0][1]});
-    set_text_vertex_data(pVert, math::vec2_t<math::half>{(math::half)rGlyph.uv[1][0], (math::half)rGlyph.uv[1][1]});
+    pVert = set_text_vertex_data(pVert, math::vec2_t<math::half>{(math::half)rGlyph.uv[1][0], (math::half)rGlyph.uv[1][1]});
+    pVert = set_text_vertex_data(pVert, math::vec2_t<math::half>{(math::half)rGlyph.uv[0][0], (math::half)rGlyph.uv[0][1]});
+            set_text_vertex_data(pVert, math::vec2_t<math::half>{(math::half)rGlyph.uv[0][0], (math::half)rGlyph.uv[1][1]});
 
     //return byte-stride to the next vertex attrib
-    static const unsigned vertOffset = sl_vertex_byte_size(SL_CommonVertType::TEXTURE_VERTEX);
+    static const unsigned vertOffset = sl_vertex_byte_size(SL_CommonVertType::PACKED_TEXTURE_VERTEX);
     return vertOffset;
 }
 
@@ -254,7 +254,7 @@ unsigned SL_TextMeshLoader::calc_text_geometry_norms(
     pVert = set_text_vertex_data(pVert, normDir);
     pVert = set_text_vertex_data(pVert, normDir);
     pVert = set_text_vertex_data(pVert, normDir);
-    set_text_vertex_data(pVert, normDir);
+            set_text_vertex_data(pVert, normDir);
 
     //return byte-stride to the next vertex attrib
     static const unsigned vertOffset = sl_vertex_byte_size(SL_CommonVertType::NORMAL_VERTEX);
@@ -275,10 +275,10 @@ unsigned SL_TextMeshLoader::calc_text_geometry_packed_norms(
     pVert = set_text_vertex_data(pVert, packedNorm);
     pVert = set_text_vertex_data(pVert, packedNorm);
     pVert = set_text_vertex_data(pVert, packedNorm);
-    set_text_vertex_data(pVert, packedNorm);
+            set_text_vertex_data(pVert, packedNorm);
 
     //return byte-stride to the next vertex attrib
-    static const unsigned vertOffset = sl_vertex_byte_size(SL_CommonVertType::NORMAL_VERTEX);
+    static const unsigned vertOffset = sl_vertex_byte_size(SL_CommonVertType::PACKED_NORMAL_VERTEX);
     return vertOffset;
 }
 
@@ -292,7 +292,7 @@ unsigned SL_TextMeshLoader::calc_text_geometry_indices(char* pVert, const unsign
     pVert = set_text_vertex_data<unsigned>(pVert, indexId);
     pVert = set_text_vertex_data<unsigned>(pVert, indexId);
     pVert = set_text_vertex_data<unsigned>(pVert, indexId);
-    set_text_vertex_data<unsigned>(pVert, indexId);
+            set_text_vertex_data<unsigned>(pVert, indexId);
 
     //return byte-stride to the next vertex attrib
     static const unsigned vertOffset = sl_vertex_byte_size(SL_CommonVertType::INDEX_VERTEX);
@@ -433,32 +433,28 @@ bool SL_TextMeshLoader::gen_text_geometry(const std::string& str, const SL_Atlas
     // The y-origin (starting 'yPos') was found using a lot of testing. This
     // was for resolution independence
     const SL_AtlasGlyph& newline = pGlyphs[u'\n'];
-    float yPos = newline.bearing[1] - (newline.bearing[1] - newline.size[1]);
+    float yPos = -newline.advance[1];
     float xPos = 0.f;
     unsigned charId = 0;
     unsigned indexOffset = 0;
 
-    for (unsigned i = 0; i < str.size(); ++i)
+    for (char c : str)
     {
-        const unsigned currChar = (unsigned)str[i];
+        const unsigned char currChar = (unsigned char)c;
         const SL_AtlasGlyph& rGlyph = pGlyphs[currChar];
-
-        // Amount the each glyph "hangs" below its Y-origin
-        const float vertHang = rGlyph.bearing[1] - rGlyph.size[1];
 
         if (currChar == u' ')
         {
-            xPos += rGlyph.advance[0];
+            xPos += rGlyph.advance[0] - rGlyph.bearing[0];
         }
         else if (currChar == u'\t')
         {
-            xPos += rGlyph.advance[0] * horizTabSpacing;
+            xPos += (rGlyph.advance[0] - rGlyph.bearing[0]) * horizTabSpacing;
         }
         else if (currChar == u'\n')
         {
-            // formula found through trial and error.
-            yPos += (rGlyph.bearing[1] + lineSpacing) + vertHang;
             xPos = 0.f;
+            yPos -= newline.advance[1] + lineSpacing;
         }
         else if (currChar == u'\r')
         {
@@ -466,14 +462,15 @@ bool SL_TextMeshLoader::gen_text_geometry(const std::string& str, const SL_Atlas
         }
         else if (currChar == u'\v')
         {
-            yPos += ((rGlyph.bearing[1] + lineSpacing) + vertHang) * vertTabSpacing;
+            yPos -= (newline.advance[1] + lineSpacing) * vertTabSpacing;
         }
         else
         {
             const math::vec2 posOffset{
-                xPos + rGlyph.bearing[0],
-                yPos - vertHang
+                xPos + rGlyph.baseline[0],
+                yPos + rGlyph.baseline[1]
             };
+
             xPos = xPos + rGlyph.advance[0];
             pVerts = gen_text_geometry_vert(rGlyph, pVerts, posOffset, charId++);
             pIndices = set_text_index_data(pIndices, indexOffset);

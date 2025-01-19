@@ -2,9 +2,9 @@
 #ifndef SL_ATLAS_HPP
 #define SL_ATLAS_HPP
 
-#include "lightsky/utils/Pointer.h"
-
 #include "lightsky/math/vec2.h"
+
+#include "lightsky/utils/Pointer.h"
 
 
 
@@ -25,6 +25,8 @@ class SL_Texture;
 -----------------------------------------------------------------------------*/
 struct SL_AtlasGlyph
 {
+    ls::math::vec2 baseline;
+
     /**
      * Size corresponds to the vertex width and height of a glyph.
      */
