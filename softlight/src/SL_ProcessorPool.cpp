@@ -177,6 +177,7 @@ void SL_ProcessorPool::flush() noexcept
 -------------------------------------*/
 void SL_ProcessorPool::wait() noexcept
 {
+#if 0
     // Each thread will pause except for the main thread.
     unsigned currentIters;
 
@@ -221,6 +222,17 @@ void SL_ProcessorPool::wait() noexcept
             }
         }
     }
+
+#else
+    for (unsigned threadId = 0; threadId < mNumThreads - 1u; ++threadId)
+    {
+        while (!mWorkers[threadId].ready())
+        {
+            //ls::setup::cpu_yield();
+            std::this_thread::yield();
+        }
+    }
+#endif
 }
 
 
