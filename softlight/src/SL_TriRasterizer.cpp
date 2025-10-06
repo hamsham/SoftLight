@@ -383,10 +383,10 @@ inline LS_INLINE __m128 _sl_mul_vec4_mat4_ps(const __m128 v, const __m128 m[4]) 
     // transpose, then add
     const __m128 t0 = _mm_unpacklo_ps(row0, row1);
     const __m128 t1 = _mm_unpacklo_ps(row2, row3);
+    __m128 sum0 = _mm_add_ps(_mm_movehl_ps(t1, t0), _mm_movelh_ps(t0, t1));
+
     const __m128 t2 = _mm_unpackhi_ps(row0, row1);
     const __m128 t3 = _mm_unpackhi_ps(row2, row3);
-
-    __m128 sum0 = _mm_add_ps(_mm_movehl_ps(t1, t0), _mm_movelh_ps(t0, t1));
     __m128 sum1 = _mm_add_ps(_mm_movehl_ps(t3, t2), _mm_movelh_ps(t2, t3));
 
     return _mm_add_ps(sum1, sum0);
@@ -394,17 +394,17 @@ inline LS_INLINE __m128 _sl_mul_vec4_mat4_ps(const __m128 v, const __m128 m[4]) 
 
 
 
-inline LS_INLINE void _sl_vec4_outer_ps(const __m128 v1, const __m128 v2, __m128 ret[4]) noexcept
+inline LS_INLINE void _sl_vec4_outer_ps(const __m128 v1, const __m128 v2, __m128* const ret) noexcept
 {
     const __m128 a = _mm_permute_ps(v1, 0x00);
     const __m128 b = _mm_permute_ps(v1, 0x55);
     const __m128 c = _mm_permute_ps(v1, 0xAA);
     const __m128 d = _mm_permute_ps(v1, 0xFF);
 
-    ret[0] = _mm_mul_ps(a, v2);
-    ret[1] = _mm_mul_ps(b, v2);
-    ret[2] = _mm_mul_ps(c, v2);
-    ret[3] = _mm_mul_ps(d, v2);
+    _mm_store_ps(reinterpret_cast<float*>(ret+0), _mm_mul_ps(a, v2));
+    _mm_store_ps(reinterpret_cast<float*>(ret+1), _mm_mul_ps(b, v2));
+    _mm_store_ps(reinterpret_cast<float*>(ret+2), _mm_mul_ps(c, v2));
+    _mm_store_ps(reinterpret_cast<float*>(ret+3), _mm_mul_ps(d, v2));
 }
 
 
@@ -484,50 +484,62 @@ void SL_TriRasterizer::render_triangle_simd(const SL_TextureView& LS_RESTRICT_PT
             do
             {
                 // calculate barycentric coordinates and perform a depth test
-                const __m128  xBound    = _mm_castsi128_ps(_mm_cmplt_epi32(x4, xMax));
-                const __m128  z         = _sl_mul_vec4_mat4_ps(depth, bc);
-                const __m128  d         = _sl_get_depth_texel4<depth_type>(pDepth).simd;
+                const __m128  xBound     = _mm_castsi128_ps(_mm_cmplt_epi32(x4, xMax));
+                const __m128  z          = _sl_mul_vec4_mat4_ps(depth, bc);
+                const __m128  d          = _sl_get_depth_texel4<depth_type>(pDepth).simd;
                 const __m128  depthTestV = _mm_and_ps(xBound, depthCmpFunc(z, d));
                 const int32_t depthTestI = _mm_movemask_ps(depthTestV);
 
-                if (LS_LIKELY(depthTestI))
+                if (!LS_LIKELY(_mm_test_all_zeros(_mm_castps_si128(depthTestV), _mm_castps_si128(depthTestV))))
                 {
+                    //const __m128 xy    = _mm_castsi128_ps(_mm_or_si128(_mm_and_si128(x4, _mm_set1_epi32(0x0000FFFF)), _mm_slli_epi32(_mm_set1_epi32(y), 16)));
+                    const __m128i xy   = _mm_or_si128(x4, _mm_set1_epi32(y16));
+
+                    // Interleaving instructions here to help with pipelining
                     {
-                        bc[2] = _mm_blendv_ps(bc[3], bc[2], _mm_permute_ps(depthTestV, 0xAA));
-                        bc[1] = _mm_blendv_ps(bc[2], bc[1], _mm_permute_ps(depthTestV, 0x55));
-                        bc[0] = _mm_blendv_ps(bc[1], bc[0], _mm_permute_ps(depthTestV, 0x00));
+                        #if 1
+                            uint32_t storeIndex0 = (uint32_t)depthTestI & 0x00;
+                            uint32_t storeIndex1 = (uint32_t)depthTestI & 0x01;
+                            uint32_t storeIndex2 = (uint32_t)depthTestI & 0x03;
+                            uint32_t storeIndex3 = (uint32_t)depthTestI & 0x07;
 
-                        _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + numQueuedFrags + 3), bc[3]);
-                        _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + numQueuedFrags + 2), bc[2]);
-                        _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + numQueuedFrags + 1), bc[1]);
-                        _mm_store_ps(reinterpret_cast<float*>(outCoords->bc + numQueuedFrags + 0), bc[0]);
-                    }
+                            storeIndex0 = _mm_popcnt_u32(storeIndex0);
+                            storeIndex1 = _mm_popcnt_u32(storeIndex1);
+                            storeIndex2 = _mm_popcnt_u32(storeIndex2);
+                            storeIndex3 = _mm_popcnt_u32(storeIndex3);
 
-                    {
-                        unsigned storeMask1 = (unsigned)depthTestI & 0x01u;
-                        unsigned storeMask2 = (unsigned)depthTestI & 0x03u;
-                        unsigned storeMask3 = (unsigned)depthTestI & 0x07u;
-                        unsigned storeMask4 = (unsigned)depthTestI & 0x0Fu;
+                            storeIndex0 += numQueuedFrags;
+                            storeIndex1 += numQueuedFrags;
+                            storeIndex2 += numQueuedFrags;
+                            storeIndex3 += numQueuedFrags;
+                        #elif 0
+                            const uint32_t storeIndex0 = numQueuedFrags;
+                            const uint32_t storeIndex1 = storeIndex0 + (depthTestI & 0x01);
+                            const uint32_t storeIndex2 = storeIndex1 + ((depthTestI & 0x02) >> 1);
+                            const uint32_t storeIndex3 = storeIndex2 + ((depthTestI & 0x04) >> 2);
+                        #else
+                            const uint32_t storeIndex0 = numQueuedFrags;
+                            const uint32_t storeIndex1 = storeIndex0 + (depthTestI & 0x01);
+                            const uint32_t storeIndex2 = storeIndex1 + ((depthTestI & 0x02) >> 1);
+                            const uint32_t storeIndex3 = storeIndex2 + ((depthTestI & 0x04) >> 2);
+                        #endif
 
-                        //const __m128 xy = _mm_castsi128_ps(_mm_or_si128(_mm_and_si128(x4, _mm_set1_epi32(0x0000FFFF)), _mm_slli_epi32(_mm_set1_epi32(y), 16)));
-                        const __m128i xy = _mm_or_si128(x4, _mm_set1_epi32(y16));
                         const __m128i xyz0 = _mm_unpacklo_epi32(xy, _mm_castps_si128(z));
+                        _mm_storel_pi(reinterpret_cast<__m64*>(outCoords->coord + storeIndex0), _mm_castsi128_ps(xyz0));
+                        _mm_storeh_pi(reinterpret_cast<__m64*>(outCoords->coord + storeIndex1), _mm_castsi128_ps(xyz0));
+
                         const __m128i xyz1 = _mm_unpackhi_epi32(xy, _mm_castps_si128(z));
+                        _mm_storel_pi(reinterpret_cast<__m64*>(outCoords->coord + storeIndex2), _mm_castsi128_ps(xyz1));
+                        _mm_storeh_pi(reinterpret_cast<__m64*>(outCoords->coord + storeIndex3), _mm_castsi128_ps(xyz1));
 
-                        // Interleaving instructions here to help with pipelining
-                        storeMask1 += numQueuedFrags;
-                        storeMask2 = (unsigned)_mm_popcnt_u32(storeMask2) + numQueuedFrags;
-                        storeMask3 = (unsigned)_mm_popcnt_u32(storeMask3) + numQueuedFrags;
-                        storeMask4 = (unsigned)_mm_popcnt_u32(storeMask4);
+                        _mm_store_ps(reinterpret_cast<float*>(outCoords->bc     + storeIndex0), bc[0]);
+                        _mm_store_ps(reinterpret_cast<float*>(outCoords->bc     + storeIndex1), bc[1]);
 
-                        _mm_storel_pi(reinterpret_cast<__m64*>(outCoords->coord + numQueuedFrags), _mm_castsi128_ps(xyz0));
-                        _mm_storeh_pi(reinterpret_cast<__m64*>(outCoords->coord + storeMask1),     _mm_castsi128_ps(xyz0));
-                        _mm_storel_pi(reinterpret_cast<__m64*>(outCoords->coord + storeMask2),     _mm_castsi128_ps(xyz1));
-                        _mm_storeh_pi(reinterpret_cast<__m64*>(outCoords->coord + storeMask3),     _mm_castsi128_ps(xyz1));
+                        numQueuedFrags += _mm_popcnt_u32(depthTestI);
 
-                        numQueuedFrags += storeMask4;
+                        _mm_store_ps(reinterpret_cast<float*>(outCoords->bc     + storeIndex2), bc[2]);
+                        _mm_store_ps(reinterpret_cast<float*>(outCoords->bc     + storeIndex3), bc[3]);
                     }
-
 
                     if (LS_UNLIKELY(numQueuedFrags > SL_SHADER_MAX_QUEUED_FRAGS - 4))
                     {
