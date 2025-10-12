@@ -7,6 +7,7 @@
 
 #include "lightsky/utils/Log.h"
 
+#include "lightsky/math/bits.h"
 #include "lightsky/math/quat_utils.h"
 
 #include "softlight/SL_BoundingBox.hpp"
