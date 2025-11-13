@@ -39,15 +39,36 @@
  * Output parameter to hold the number of vertical subdivisions for a
  * framebuffer.
  */
-template <typename data_type>
-inline void sl_calc_frag_tiles(data_type numThreads, data_type& numHoriz, data_type& numVert) noexcept
+template <typename integral_type>
+inline void sl_calc_frag_tiles(typename ls::setup::EnableIf<ls::setup::IsIntegral<integral_type>::value, integral_type>::type numTiles,
+    integral_type& outWidth,
+    integral_type& outHeight) noexcept
 {
     // Create a set of horizontal and vertical tiles. This method will create
     // more horizontal tiles than vertical ones.
-    data_type tileCount = ls::math::fast_sqrt<data_type>(numThreads);
-    tileCount += (numThreads % tileCount) != 0;
-    numHoriz  = ls::math::gcd(numThreads, tileCount);
-    numVert   = numThreads / numHoriz;
+
+    // old implementation
+    #if 0
+        integral_type tileCount = ls::math::fast_sqrt<integral_type>(numTiles);
+        integral_type paddedTiles = tileCount + ((numTiles % tileCount) != 0);
+        outHeight  = ls::math::gcd(numTiles, paddedTiles);
+        outWidth   = numTiles / outHeight;
+
+    #else
+        // calculate the maximum number of horizontal and vertical tiles. This
+        // values' product will equal the input number of total tiles.
+        integral_type h = ls::math::fast_sqrt<integral_type>(numTiles);
+
+        // Start from floor(sqrt(n)) and move downward to the first divisor.
+        while (h > 1 && (numTiles % h) != 0)
+        {
+            --h;
+        }
+
+        const integral_type w = numTiles / h;
+        outWidth = ls::math::max(w, h);
+        outHeight = ls::math::min(w, h);
+    #endif
 }
 
 
