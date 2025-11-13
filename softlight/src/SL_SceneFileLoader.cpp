@@ -312,7 +312,7 @@ bool SL_SceneFilePreload::load(const std::string& filename, SL_SceneLoadOpts opt
     }
     else
     {
-        const std::string::size_type baseDirIndex = filename.find_last_of(u8R"(\/)");
+        const std::string::size_type baseDirIndex = filename.find_last_of(R"(\/)");
         if (baseDirIndex != std::string::npos)
         {
             mBaseFileDir = filename.substr(0, baseDirIndex + 1);
