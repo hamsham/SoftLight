@@ -1,0 +1,7 @@
+# Default ignored files
+cmake-build-*
+build
+.ai
+.idea
+.vscode
+*.code-workspace
